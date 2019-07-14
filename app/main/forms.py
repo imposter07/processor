@@ -3,7 +3,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, TextAreaField
 from wtforms.validators import ValidationError, DataRequired, Length
 from flask_babel import _, lazy_gettext as _l
-from app.models import User
+from app.models import User, Processor
 
 
 class EditProfileForm(FlaskForm):
@@ -43,3 +43,17 @@ class MessageForm(FlaskForm):
     message = TextAreaField(_l('Message'), validators=[
         DataRequired(), Length(min=0, max=140)])
     submit = SubmitField(_l('Submit'))
+
+
+class ProcessorForm(FlaskForm):
+    name = TextAreaField(_l('Name'), validators=[
+        DataRequired()])
+    description = TextAreaField(_l('Description'), validators=[
+        DataRequired()])
+    local_path = TextAreaField(_l('Local Path'), validators=[DataRequired()])
+    submit = SubmitField(_l('Submit'))
+
+    def validate_name(self, name):
+        processor = Processor.query.filter_by(name=name.data).first()
+        if processor is not None:
+            raise ValidationError(_l('Please use a different processor name.'))

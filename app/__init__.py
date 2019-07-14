@@ -41,8 +41,8 @@ def create_app(config_class=Config()):
     app.elasticsearch = Elasticsearch([app.config['ELASTICSEARCH_URL']],
                                       use_ssl=True, ca_certs=certifi.where()) \
         if app.config['ELASTICSEARCH_URL'] else None
-    app.redis = Redis.from_url(app.config['REDIS_URL'], port=6379)
-    app.task_queue = rq.Queue('lqapp-redis', connection=app.redis)
+    app.redis = Redis.from_url(app.config['REDIS_URL'])
+    app.task_queue = rq.Queue('microblog-tasks', connection=app.redis)
 
     from app.errors import bp as errors_bp
     app.register_blueprint(errors_bp)

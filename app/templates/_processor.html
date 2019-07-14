@@ -1,0 +1,29 @@
+    <table class="table table-hover">
+        <tr>
+            <td width="70px">
+                <a href="{{ url_for('main.processor', username=processor.user.username) }}">
+                    <img src="{{ processor.user.avatar(70) }}" />
+                </a>
+            </td>
+            <td>
+                {% set user_link %}
+                    <span class="user_popup">
+                        <a href="{{ url_for('main.user', username=processor.user.username) }}">{{ processor.user.username }}</a>
+                    </span>
+                {% endset %}
+                {% set processor_link %}
+                    <span class="processor_popup">
+                        <a href="{{ url_for('main.processor_page', processor_name=processor.name) }}">{{ processor.name }}</a>
+                    </span>
+                {% endset %}
+                {{ _('%(username)s created %(name)s at %(when)s',
+                    username=user_link, name=processor_link, when=moment(processor.created_at).fromNow()) }}
+                <br>
+                <span id="description{{ processor.id }}">Description: {{ processor.description}}</span>
+                <br>
+                <span id="location{{ processor.id }}">Location: {{ processor.local_path }}</span>
+                <br>
+                <span id="last_run{{ processor.id }}">Last Run: {{ moment(processor.last_run_time).fromNow() }}</span>
+            </td>
+        </tr>
+</table>

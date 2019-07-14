@@ -5,8 +5,8 @@ from flask_login import current_user, login_required
 from flask_babel import _, get_locale
 from guess_language import guess_language
 from app import db
-from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm
-from app.models import User, Post, Message, Notification
+from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, ProcessorForm
+from app.models import User, Post, Message, Notification, Processor
 from app.translate import translate
 from app.main import bp
 
@@ -207,9 +207,55 @@ def notifications():
 @bp.route('/export_posts')
 @login_required
 def export_posts():
-    if current_user.get_task_in_progress('export_posts'):
+    if current_user.get_task_in_progress('.export_posts'):
         flash(_('An export task is currently in progress'))
     else:
-        current_user.launch_task('export_posts', _('Exporting posts...'))
+        current_user.launch_task('.export_posts', _('Exporting posts...'))
         db.session.commit()
     return redirect(url_for('main.user', username=current_user.username))
+
+
+@bp.route('/processor')
+@login_required
+def processor():
+    user = User.query.filter_by(id=current_user.id).first_or_404()
+    page = request.args.get('page', 1, type=int)
+    processor = current_user.processor.order_by(
+        Processor.last_run_time.desc()).paginate(
+        page, current_app.config['POSTS_PER_PAGE'], False)
+    next_url = url_for('main.processor', username=user.username,
+                       page=processor.next_num) if processor.has_next else None
+    prev_url = url_for('main.processor', username=user.username,
+                       page=processor.prev_num) if processor.has_prev else None
+    return render_template('processor.html', user=user, processors=processor.items,
+                           next_url=next_url, prev_url=prev_url)
+
+
+@bp.route('/create_processor', methods=['GET', 'POST'])
+@login_required
+def create_processor():
+    form = ProcessorForm()
+    user = User.query.filter_by(id=current_user.id).first_or_404()
+    if form.validate_on_submit():
+        new_processor = Processor(name=form.name.data, description=form.description.data,
+                                  user_id=current_user.id, created_at=datetime.utcnow(),
+                                  local_path=form.local_path.data)
+        db.session.add(new_processor)
+        db.session.commit()
+        flash(_('The processor has been created'))
+        return redirect(url_for('main.processor'))
+    return render_template('create_processor.html', user=user, title=_('Processor'), form=form)
+
+
+@bp.route('/processor/<processor_name>')
+@login_required
+def processor_page(processor_name):
+    processor_for_page = Processor.query.filter_by(name=processor_name).first_or_404()
+    return render_template('processor_page.html', processor=processor_for_page)
+
+
+@bp.route('/processor/<processor_name>/popup')
+@login_required
+def processor_popup(processor_name):
+    processor_for_page = Processor.query.filter_by(name=processor_name).first_or_404()
+    return render_template('processor_popup.html', processor=processor_for_page)

@@ -1,0 +1,16 @@
+<table class="table">
+    <tr>
+        <td style="border: 0px;">
+            <p>
+                <a href="{{ url_for('main.processor_page', processor_name=processor.name) }}">
+                    {{ processor.name }}
+                </a>
+            </p>
+            <small>
+                {%  set processor %}
+                        {% include '_processor.html' %}
+                {% endset %}
+            </small>
+        </td>
+    </tr>
+</table>

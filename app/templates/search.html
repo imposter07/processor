@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
-{% block app_content %}
+{% block app_header %}
     <h1>{{ _('Search Results') }}</h1>
+{% endblock %}
+
+{% block app_content %}
     {% for post in posts %}
         {% include '_post.html' %}
     {% endfor %}

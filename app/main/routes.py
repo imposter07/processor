@@ -259,3 +259,15 @@ def processor_page(processor_name):
 def processor_popup(processor_name):
     processor_for_page = Processor.query.filter_by(name=processor_name).first_or_404()
     return render_template('processor_popup.html', processor=processor_for_page)
+
+
+@bp.route('/processor/<processor_name>/run')
+@login_required
+def run_processor(processor_name):
+    processor_to_run = Processor.query.filter_by(name=processor_name).first_or_404()
+    if processor_to_run.get_task_in_progress('.export_posts'):
+        flash(_('An export task is currently in progress'))
+    else:
+        current_user.launch_task('.export_posts', _('Exporting posts...'))
+        db.session.commit()
+    return redirect(url_for('main.user', username=current_user.username))

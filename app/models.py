@@ -207,6 +207,7 @@ class Task(db.Model):
     description = db.Column(db.String(128))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     complete = db.Column(db.Boolean, default=False)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
 
     def get_rq_job(self):
         try:
@@ -228,3 +229,19 @@ class Processor(db.Model):
     local_path = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_run_time = db.Column(db.DateTime, default=datetime.utcnow)
+    tasks = db.relationship('Task', backref='processor', lazy='dynamic')
+
+    def launch_task(self, name, description, *args, **kwargs):
+        rq_job = current_app.task_queue.enqueue('app.tasks' + name,
+                                                self.id, *args, **kwargs)
+        task = Task(id=rq_job.get_id(), name=name, description=description,
+                    user=self.user_id)
+        db.session.add(task)
+        return task
+
+    def get_tasks_in_progress(self):
+        return Task.query.filter_by(processor=self, complete=False).all()
+
+    def get_task_in_progress(self, name):
+        return Task.query.filter_by(name=name, processor=self,
+                                    complete=False).first()

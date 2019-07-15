@@ -12,3 +12,4 @@ flask-bootstrap==3.3.7.1
 flask-moment==0.8.0
 flask-wtf==0.14.2
 rq==1.0
+git+https://github.com/jamezzz5/processor.git

@@ -4,7 +4,7 @@ import time
 from flask import render_template
 from rq import get_current_job
 from app import create_app, db
-from app.models import User, Post, Task
+from app.models import User, Post, Task, Processor
 from app.email import send_email
 
 app = create_app()
@@ -46,6 +46,16 @@ def export_posts(user_id):
                 attachments=[('posts.json', 'application/json',
                               json.dumps({'posts': data}, indent=4))],
                 sync=True)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def run_processor(processor_id):
+    try:
+        processor_to_run = Processor.query.get(processor_id)
+        _set_task_progress(0)
+        processor_to_run.local_path
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())

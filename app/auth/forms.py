@@ -3,6 +3,7 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo
 from flask_babel import _, lazy_gettext as _l
 from app.models import User
+from flask import current_app
 
 
 class LoginForm(FlaskForm):
@@ -15,10 +16,10 @@ class LoginForm(FlaskForm):
 class RegistrationForm(FlaskForm):
     username = StringField(_l('Username'), validators=[DataRequired()])
     email = StringField(_l('Email'), validators=[DataRequired(), Email()])
-    password = PasswordField(_l('Password'), validators=[DataRequired()])
-    password2 = PasswordField(
-        _l('Repeat Password'), validators=[DataRequired(),
-                                           EqualTo('password')])
+    # password = PasswordField(_l('Password'), validators=[DataRequired()])
+    # password2 = PasswordField(
+    #    _l('Repeat Password'), validators=[DataRequired(),
+    #                                       EqualTo('password')])
     submit = SubmitField(_l('Register'))
 
     def validate_username(self, username):
@@ -30,7 +31,10 @@ class RegistrationForm(FlaskForm):
         user = User.query.filter_by(email=email.data).first()
         if user is not None:
             raise ValidationError(_('Please use a different email address.'))
-
+        if current_app.config['USER_EMAIL_DOMAIN']:
+            if (current_app.config['USER_EMAIL_DOMAIN']
+                    != email.data.split('@')[1]):
+                raise ValidationError(_('Email has wrong domain.'))
 
 class ResetPasswordRequestForm(FlaskForm):
     email = StringField(_l('Email'), validators=[DataRequired(), Email()])

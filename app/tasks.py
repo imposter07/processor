@@ -55,7 +55,13 @@ def run_processor(processor_id):
     try:
         processor_to_run = Processor.query.get(processor_id)
         _set_task_progress(0)
-        processor_to_run.local_path
+        import os
+        file_path = processor_to_run.local_path.replace('S:\\', '/mnt/share/')
+        file_path = file_path.replace('\\', '/')
+        os.chdir(file_path)
+        from main import main
+        main('--api all --exp all')
+        _set_task_progress(100)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())

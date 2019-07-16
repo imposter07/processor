@@ -3,7 +3,12 @@
 
 {% block app_header %}
     <h1>{{ _('Processor') }}: {{ processor.name}}<br>
-    <button type="button" class="btn btn-primary btn-lg">Run Processor</button></h1>
+            <form method="post" action="{{ url_for('main.run_processor', processor_name=processor.name) }}">
+                <a href="{{ url_for('main.run_processor', processor_name=processor.name) }}">
+                    <button type="button" class="btn btn-primary btn-lg">Run Processor</button>
+                </a>
+            </form>
+    </h1>
 {% endblock %}
 
 {% block app_content %}

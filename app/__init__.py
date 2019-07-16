@@ -42,7 +42,8 @@ def create_app(config_class=Config()):
                                       use_ssl=True, ca_certs=certifi.where()) \
         if app.config['ELASTICSEARCH_URL'] else None
     app.redis = Redis.from_url(app.config['REDIS_URL'])
-    app.task_queue = rq.Queue('microblog-tasks', connection=app.redis)
+    app.task_queue = rq.Queue('microblog-tasks', connection=app.redis,
+                              default_timeout=14400)
 
     from app.errors import bp as errors_bp
     app.register_blueprint(errors_bp)

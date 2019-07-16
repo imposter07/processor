@@ -261,13 +261,14 @@ def processor_popup(processor_name):
     return render_template('processor_popup.html', processor=processor_for_page)
 
 
-@bp.route('/processor/<processor_name>/run')
+@bp.route('/processor/<processor_name>/run', methods=['GET', 'POST'])
 @login_required
 def run_processor(processor_name):
     processor_to_run = Processor.query.filter_by(name=processor_name).first_or_404()
-    if processor_to_run.get_task_in_progress('.export_posts'):
-        flash(_('An export task is currently in progress'))
+    if processor_to_run.get_task_in_progress('.run_processor'):
+        flash(_('The processor is already running.'))
     else:
-        current_user.launch_task('.export_posts', _('Exporting posts...'))
+        processor_to_run.launch_task('.run_processor', _('Running Processor {}...'.format(processor_name)))
+        processor_to_run.last_run_time = datetime.utcnow()
         db.session.commit()
-    return redirect(url_for('main.user', username=current_user.username))
+    return redirect(url_for('main.processor_page', processor_name=processor_name))

@@ -1,11 +1,13 @@
+import os
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
-    jsonify, current_app
+    jsonify, current_app, send_from_directory
 from flask_login import current_user, login_required
 from flask_babel import _, get_locale
 from guess_language import guess_language
 from app import db
-from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, ProcessorForm
+from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
+    ProcessorForm, EditProcessorForm
 from app.models import User, Post, Message, Notification, Processor
 from app.translate import translate
 from app.main import bp
@@ -239,10 +241,17 @@ def create_processor():
     if form.validate_on_submit():
         new_processor = Processor(name=form.name.data, description=form.description.data,
                                   user_id=current_user.id, created_at=datetime.utcnow(),
-                                  local_path=form.local_path.data)
+                                  local_path=form.local_path.data,
+                                  tableau_workbook=form.tableau_workbook.data,
+                                  tableau_view=form.tableau_view.data)
         db.session.add(new_processor)
         db.session.commit()
-        flash(_('The processor has been created'))
+        creation_text = 'Processor {} was created.'.format(new_processor.name)
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    processor_id=new_processor.id)
+        db.session.add(post)
+        db.session.commit()
         return redirect(url_for('main.processor'))
     return render_template('create_processor.html', user=user, title=_('Processor'), form=form)
 
@@ -268,7 +277,38 @@ def run_processor(processor_name):
     if processor_to_run.get_task_in_progress('.run_processor'):
         flash(_('The processor is already running.'))
     else:
-        processor_to_run.launch_task('.run_processor', _('Running Processor {}...'.format(processor_name)))
+        post_body = 'Running Processor {}...' \
+                    ''.format(processor_name)
+        processor_to_run.launch_task('.run_processor', _(post_body),
+                                     running_user=current_user.id)
         processor_to_run.last_run_time = datetime.utcnow()
+        post = Post(body=post_body, author=current_user,
+                    processor_id=processor_to_run.id)
+        db.session.add(post)
         db.session.commit()
     return redirect(url_for('main.processor_page', processor_name=processor_name))
+
+
+@bp.route('/processor/<processor_name>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_processor(processor_name):
+    processor_to_edit = Processor.query.filter_by(name=processor_name).first_or_404()
+    form = EditProcessorForm(processor_name)
+    if form.validate_on_submit():
+        processor_to_edit.name = form.name.data
+        processor_to_edit.description = form.description.data
+        processor_to_edit.local_path = form.local_path.data
+        processor_to_edit.tableau_workbook = form.tableau_workbook.data
+        processor_to_edit.tableau_view = form.tableau_view.data
+        db.session.commit()
+        flash(_('Your changes have been saved.'))
+        return redirect(url_for('main.processor_page',
+                                processor_name=processor_to_edit.name))
+    elif request.method == 'GET':
+        form.name.data = processor_to_edit.name
+        form.description.data = processor_to_edit.description
+        form.local_path.data = processor_to_edit.local_path
+        form.tableau_workbook.data = processor_to_edit.tableau_workbook
+        form.tableau_view.data = processor_to_edit.tableau_view
+    return render_template('create_processor.html', title=_('Edit Processor'),
+                           form=form)

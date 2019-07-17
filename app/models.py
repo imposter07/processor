@@ -174,6 +174,7 @@ class Post(SearchableMixin, db.Model):
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     language = db.Column(db.String(5))
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
@@ -229,12 +230,15 @@ class Processor(db.Model):
     local_path = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_run_time = db.Column(db.DateTime, default=datetime.utcnow)
+    tableau_workbook = db.Column(db.Text)
+    tableau_view = db.Column(db.Text)
     tasks = db.relationship('Task', backref='processor', lazy='dynamic')
+    posts = db.relationship('Post', backref='processor', lazy='dynamic')
 
-    def launch_task(self, name, description, *args, **kwargs):
+    def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
-                                                self.id, *args, **kwargs)
-
+                                                self.id, running_user,
+                                                *args, **kwargs)
         task = Task(id=rq_job.get_id(), name=name, description=description,
                     user_id=self.user_id, processor=self)
         db.session.add(task)

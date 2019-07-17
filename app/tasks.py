@@ -4,7 +4,7 @@ import time
 from flask import render_template
 from rq import get_current_job
 from app import create_app, db
-from app.models import User, Post, Task, Processor
+from app.models import User, Post, Task, Processor, Message
 from app.email import send_email
 
 app = create_app()
@@ -39,28 +39,40 @@ def export_posts(user_id):
             _set_task_progress(100 * i // total_posts)
 
         send_email('[LQApp] Your blog posts',
-                sender=app.config['ADMINS'][0], recipients=[user.email],
-                text_body=render_template('email/export_posts.txt', user=user),
-                html_body=render_template('email/export_posts.html',
-                                          user=user),
-                attachments=[('posts.json', 'application/json',
-                              json.dumps({'posts': data}, indent=4))],
-                sync=True)
+                   sender=app.config['ADMINS'][0], recipients=[user.email],
+                   text_body=render_template('email/export_posts.txt',
+                                             user=user),
+                   html_body=render_template('email/export_posts.html',
+                                             user=user),
+                   attachments=[('posts.json', 'application/json',
+                                 json.dumps({'posts': data}, indent=4))],
+                   sync=True)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
-def run_processor(processor_id):
+def run_processor(processor_id, current_user_id):
     try:
         processor_to_run = Processor.query.get(processor_id)
+        user_that_ran = User.query.get(current_user_id)
         _set_task_progress(0)
         import os
         file_path = processor_to_run.local_path.replace('S:\\', '/mnt/share/')
         file_path = file_path.replace('\\', '/')
         os.chdir(file_path)
         from main import main
-        main('--api all --exp all')
+        main('--noprocess')
+        complete_text = "Processor {} finished running.".format(processor_to_run.name)
+        msg = Message(author=user_that_ran, recipient=user_that_ran,
+                      body=complete_text)
+        db.session.add(msg)
+        user_that_ran.add_notification('unread_message_count',
+                                       user_that_ran .new_messages())
+        post = Post(body=complete_text, author=user_that_ran,
+                    processor_id=processor_to_run.id)
+        db.session.add(post)
+        db.session.commit()
         _set_task_progress(100)
     except:
         _set_task_progress(100)

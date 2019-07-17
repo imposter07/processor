@@ -3,15 +3,31 @@
 
 {% block app_header %}
     <h1>{{ _('Processor') }}: {{ processor.name}}<br>
-            <form method="post" action="{{ url_for('main.run_processor', processor_name=processor.name) }}">
-                <a href="{{ url_for('main.run_processor', processor_name=processor.name) }}">
-                    <button type="button" class="btn btn-primary btn-lg">Run Processor</button>
-                </a>
-            </form>
+        <a href="{{ url_for('main.run_processor', processor_name=processor.name) }}">
+            <button type="button" class="btn btn-primary btn-lg">{{ _('Run Processor') }}</button>
+        </a>
+        <a href="{{ url_for('main.edit_processor', processor_name=processor.name) }}">
+            <button type="button" class="btn btn-primary btn-lg">{{ _('Edit Processor') }}</button>
+        </a>
     </h1>
 {% endblock %}
 
 {% block app_content %}
+    {% if processor.tableau_workbook %}
+    <script type='text/javascript' src='https://us-east-1.online.tableau.com/javascripts/api/viz_v1.js'>
+    </script>
+    <div class='tableauPlaceholder' style='width: 1350px; height: 897px;'>
+        <object class='tableauViz' width='1350' height='897' style='display:none;'>
+            <param name='host_url' value='https%3A%2F%2Fus-east-1.online.tableau.com%2F' />
+            <param name='embed_code_version' value='3' />
+            <param name='site_root' value='&#47;t&#47;liquidadvertising' />
+            <param name='name' value='{{ processor.tableau_workbook }}&#47;{{ processor.tableau_view }}' />
+            <param name='tabs' value='no' /><param name='toolbar' value='yes' />
+            <param name='showAppBanner' value='false' />
+            <param name='filter' value='iframeSizedToWindow=true' />
+        </object>
+    </div>
+    {% endif %}
     <table class="table table-hover">
         <tr>
             <td>

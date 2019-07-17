@@ -51,9 +51,32 @@ class ProcessorForm(FlaskForm):
     description = TextAreaField(_l('Description'), validators=[
         DataRequired()])
     local_path = TextAreaField(_l('Local Path'), validators=[DataRequired()])
+    tableau_workbook = TextAreaField(_l('Tableau Workbook'))
+    tableau_view = TextAreaField(_l('Tableau View'))
     submit = SubmitField(_l('Submit'))
 
     def validate_name(self, name):
         processor = Processor.query.filter_by(name=name.data).first()
         if processor is not None:
-            raise ValidationError(_l('Please use a different processor name.'))
+            raise ValidationError(_l('Please use a different name.'))
+
+
+class EditProcessorForm(FlaskForm):
+    name = TextAreaField(_l('Name'), validators=[
+        DataRequired()])
+    description = TextAreaField(_l('Description'), validators=[
+        DataRequired()])
+    local_path = TextAreaField(_l('Local Path'), validators=[DataRequired()])
+    tableau_workbook = TextAreaField(_l('Tableau Workbook'))
+    tableau_view = TextAreaField(_l('Tableau View'))
+    submit = SubmitField(_l('Submit'))
+
+    def __init__(self, original_name, *args, **kwargs):
+        super(EditProcessorForm, self).__init__(*args, **kwargs)
+        self.original_name = original_name
+
+    def validate_name(self, name):
+        if name.data != self.original_name:
+            processor = Processor.query.filter_by(name=self.name.data).first()
+            if processor is not None:
+                raise ValidationError(_l('Please use a different name.'))

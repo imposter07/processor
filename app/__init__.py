@@ -5,6 +5,7 @@ import certifi
 from logging.handlers import SMTPHandler, RotatingFileHandler
 from flask import Flask, request, current_app
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import MetaData
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_mail import Mail
@@ -15,8 +16,14 @@ from config import Config
 from elasticsearch import Elasticsearch
 from redis import Redis
 
-
-db = SQLAlchemy()
+naming_convention = {
+    "ix": 'ix_%(column_0_label)s',
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(column_0_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
+db = SQLAlchemy(metadata=MetaData(naming_convention=naming_convention))
 migrate = Migrate()
 login = LoginManager()
 login.login_view = 'auth.login'
@@ -65,7 +72,7 @@ def create_app(config_class=Config()):
                 secure = ()
             mail_handler = SMTPHandler(
                 mailhost=(app.config['MAIL_SERVER'], app.config['MAIL_PORT']),
-                fromaddr='no-reply@' + app.config['MAIL_SERVER'],
+                fromaddr=app.config['ADMINS'][0],
                 toaddrs=app.config['ADMINS'], subject='JI APP Failure',
                 credentials=auth, secure=secure)
             mail_handler.setLevel(logging.ERROR)

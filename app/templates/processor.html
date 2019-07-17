@@ -9,7 +9,9 @@
                 <h1>{{ _('User') }}: {{ user.username }}</h1>
                 {% if user.about_me %}<p>{{ user.about_me }}</p>{% endif %}
                 {% if user == current_user %}
-                <p><a href="{{ url_for('main.create_processor') }}">{{ _('Create Processor') }}</a></p>
+                <a href="{{ url_for('main.create_processor') }}">
+                    <button type="button" class="btn btn-primary btn-lg">{{ _('Create Processor') }}</button>
+                </a>
                 {% endif %}
             </td>
         </tr>
@@ -20,6 +22,9 @@
 {% block app_content %}
     {% for processor in processors %}
         {% include '_processor.html' %}
+    {% endfor %}
+    {% for post in posts %}
+        {% include '_post.html' %}
     {% endfor %}
     <nav aria-label="...">
         <ul class="pager">

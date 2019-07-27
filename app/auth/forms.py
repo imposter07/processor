@@ -36,6 +36,7 @@ class RegistrationForm(FlaskForm):
                     != email.data.split('@')[1]):
                 raise ValidationError(_('Email has wrong domain.'))
 
+
 class ResetPasswordRequestForm(FlaskForm):
     email = StringField(_l('Email'), validators=[DataRequired(), Email()])
     submit = SubmitField(_l('Request Password Reset'))

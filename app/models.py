@@ -222,6 +222,26 @@ class Task(db.Model):
         return job.meta.get('progress', 0) if job is not None else 100
 
 
+class Client(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    product = db.relationship('Product', backref='client', lazy='dynamic')
+
+
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('client.id'))
+    campaign = db.relationship('Campaign', backref='product', lazy='dynamic')
+
+
+class Campaign(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
+    processor = db.relationship('Processor', backref='campaign', lazy='dynamic')
+
+
 class Processor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), index=True)
@@ -234,6 +254,7 @@ class Processor(db.Model):
     tableau_view = db.Column(db.Text)
     tasks = db.relationship('Task', backref='processor', lazy='dynamic')
     posts = db.relationship('Post', backref='processor', lazy='dynamic')
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,

@@ -8,7 +8,8 @@ from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm
-from app.models import User, Post, Message, Notification, Processor
+from app.models import User, Post, Message, Notification, Processor, \
+    Client, Product, Campaign
 from app.translate import translate
 from app.main import bp
 
@@ -233,17 +234,38 @@ def processor():
                            next_url=next_url, prev_url=prev_url)
 
 
+def check_add_new_campaign(form):
+    for item in [(form.new_client, Client, {}),
+                 (form.new_product, Product,
+                  {'client_id': form.new_client.id if form.new_client.data else form.client_id.data.id}),
+                 (form.new_campaign, Campaign,
+                  {'product_id': form.new_product.id if form.new_product.data else form.product_id.data.id})]:
+        submitted_item = item[0]
+        item_class = item[1]
+        foreign_class = item[2]
+        if submitted_item.data:
+            new_item = item_class(name=submitted_item.data, **foreign_class)
+            db.session.add(new_item)
+            db.session.commit()
+    if form.new_campaign.data:
+        campaign = Campaign.query.filter_by(name=form.new_campaign.data).first_or_404()
+    else:
+        campaign = Campaign.query.filter_by(id=form.campaign_id).first_or_404()
+    return campaign
+
+
 @bp.route('/create_processor', methods=['GET', 'POST'])
 @login_required
 def create_processor():
     form = ProcessorForm()
     user = User.query.filter_by(id=current_user.id).first_or_404()
     if form.validate_on_submit():
+        campaign = check_add_new_campaign(form)
         new_processor = Processor(name=form.name.data, description=form.description.data,
                                   user_id=current_user.id, created_at=datetime.utcnow(),
                                   local_path=form.local_path.data,
                                   tableau_workbook=form.tableau_workbook.data,
-                                  tableau_view=form.tableau_view.data)
+                                  tableau_view=form.tableau_view.data, campaign_id=campaign.id)
         db.session.add(new_processor)
         db.session.commit()
         creation_text = 'Processor {} was created.'.format(new_processor.name)
@@ -295,11 +317,13 @@ def edit_processor(processor_name):
     processor_to_edit = Processor.query.filter_by(name=processor_name).first_or_404()
     form = EditProcessorForm(processor_name)
     if form.validate_on_submit():
+        campaign = check_add_new_campaign(form)
         processor_to_edit.name = form.name.data
         processor_to_edit.description = form.description.data
         processor_to_edit.local_path = form.local_path.data
         processor_to_edit.tableau_workbook = form.tableau_workbook.data
         processor_to_edit.tableau_view = form.tableau_view.data
+        processor_to_edit.campaign_id = campaign.id
         db.session.commit()
         flash(_('Your changes have been saved.'))
         return redirect(url_for('main.processor_page',
@@ -310,5 +334,11 @@ def edit_processor(processor_name):
         form.local_path.data = processor_to_edit.local_path
         form.tableau_workbook.data = processor_to_edit.tableau_workbook
         form.tableau_view.data = processor_to_edit.tableau_view
+        campaign = Campaign.query.filter_by(id=processor_to_edit.campaign_id).first_or_404()
+        product = Product.query.filter_by(id=campaign.product_id).first_or_404()
+        client = Client.query.filter_by(id=product.client_id).first_or_404()
+        form.campaign_id.data = campaign
+        form.product_id.data = product
+        form.client_id.data = client
     return render_template('create_processor.html', title=_('Edit Processor'),
                            form=form)

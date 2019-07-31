@@ -87,6 +87,12 @@ def create_app(config_class=Config()):
             '[in %(pathname)s:%(lineno)d]'))
         file_handler.setLevel(logging.INFO)
         app.logger.addHandler(file_handler)
+        import sys
+        console = logging.StreamHandler(sys.stdout)
+        console.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s '
+            '[in %(pathname)s:%(lineno)d]'))
+        app.logger.addHandler(console)
 
         app.logger.setLevel(logging.INFO)
         app.logger.info('JI App startup')

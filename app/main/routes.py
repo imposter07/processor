@@ -1,7 +1,6 @@
-import os
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
-    jsonify, current_app, send_from_directory
+    jsonify, current_app
 from flask_login import current_user, login_required
 from flask_babel import _, get_locale
 from guess_language import guess_language
@@ -260,12 +259,14 @@ def create_processor():
     form = ProcessorForm()
     user = User.query.filter_by(id=current_user.id).first_or_404()
     if form.validate_on_submit():
-        campaign = check_add_new_campaign(form)
+        form_client = Client(name=form.client_name).check_and_add()
+        form_product = Product(name=form.product_name, client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(name=form.campaign_name, product_id=form_product.id).check_and_add()
         new_processor = Processor(name=form.name.data, description=form.description.data,
                                   user_id=current_user.id, created_at=datetime.utcnow(),
                                   local_path=form.local_path.data,
                                   tableau_workbook=form.tableau_workbook.data,
-                                  tableau_view=form.tableau_view.data, campaign_id=campaign.id)
+                                  tableau_view=form.tableau_view.data, campaign_id=form_campaign.id)
         db.session.add(new_processor)
         db.session.commit()
         creation_text = 'Processor {} was created.'.format(new_processor.name)
@@ -317,13 +318,15 @@ def edit_processor(processor_name):
     processor_to_edit = Processor.query.filter_by(name=processor_name).first_or_404()
     form = EditProcessorForm(processor_name)
     if form.validate_on_submit():
-        campaign = check_add_new_campaign(form)
+        form_client = Client(name=form.client_name).check_and_add()
+        form_product = Product(name=form.product_name, client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(name=form.campaign_name, product_id=form_product.id).check_and_add()
         processor_to_edit.name = form.name.data
         processor_to_edit.description = form.description.data
         processor_to_edit.local_path = form.local_path.data
         processor_to_edit.tableau_workbook = form.tableau_workbook.data
         processor_to_edit.tableau_view = form.tableau_view.data
-        processor_to_edit.campaign_id = campaign.id
+        processor_to_edit.campaign_id = form_campaign.id
         db.session.commit()
         flash(_('Your changes have been saved.'))
         return redirect(url_for('main.processor_page',
@@ -337,8 +340,8 @@ def edit_processor(processor_name):
         campaign = Campaign.query.filter_by(id=processor_to_edit.campaign_id).first_or_404()
         product = Product.query.filter_by(id=campaign.product_id).first_or_404()
         client = Client.query.filter_by(id=product.client_id).first_or_404()
-        form.campaign_id.data = campaign
-        form.product_id.data = product
-        form.client_id.data = client
+        form.cur_campaign.data = campaign
+        form.cur_product.data = product
+        form.cur_client.data = client
     return render_template('create_processor.html', title=_('Edit Processor'),
                            form=form)

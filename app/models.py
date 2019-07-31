@@ -227,6 +227,19 @@ class Client(db.Model):
     name = db.Column(db.String(128), index=True)
     product = db.relationship('Product', backref='client', lazy='dynamic')
 
+    def check(self):
+        client_check = Client.query.filter_by(name=self.name).first()
+        return client_check
+
+    def check_and_add(self):
+        client_check = self.check()
+        if not client_check:
+            client_check = Client(name=self.name)
+            db.session.add(client_check)
+            db.session.commit()
+            client_check = self.check()
+        return client_check
+
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -234,12 +247,38 @@ class Product(db.Model):
     client_id = db.Column(db.Integer, db.ForeignKey('client.id'))
     campaign = db.relationship('Campaign', backref='product', lazy='dynamic')
 
+    def check(self):
+        product_check = Product.query.filter_by(name=self.name, client_id=self.client_id).first()
+        return product_check
+
+    def check_and_add(self):
+        product_check = self.check()
+        if not product_check:
+            product_check = Product(name=self.name, client_id=self.client_id)
+            db.session.add(product_check)
+            db.session.commit()
+            product_check = self.check()
+        return product_check
+
 
 class Campaign(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), index=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
     processor = db.relationship('Processor', backref='campaign', lazy='dynamic')
+
+    def check(self):
+        campaign_check = Campaign.query.filter_by(name=self.name, product_id=self.product_id).first()
+        return campaign_check
+
+    def check_and_add(self):
+        campaign_check = self.check()
+        if not campaign_check:
+            campaign_check = Campaign(name=self.name, product_id=self.product_id)
+            db.session.add(campaign_check)
+            db.session.commit()
+            campaign_check = self.check()
+        return campaign_check
 
 
 class Processor(db.Model):

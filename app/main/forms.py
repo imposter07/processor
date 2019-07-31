@@ -1,6 +1,6 @@
 from flask import request
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, TextAreaField, SelectField
+from wtforms import StringField, SubmitField, TextAreaField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
 from flask_babel import _, lazy_gettext as _l
@@ -54,23 +54,55 @@ class ProcessorForm(FlaskForm):
     local_path = TextAreaField(_l('Local Path'), validators=[DataRequired()])
     tableau_workbook = StringField(_l('Tableau Workbook'))
     tableau_view = StringField(_l('Tableau View'))
-    client_id = QuerySelectField(_l('Client'), allow_blank=True,
-                                 query_factory=lambda: Client.query.all(),
-                                 get_label='name')
+    cur_client = QuerySelectField(_l('Client'), allow_blank=True,
+                                  query_factory=lambda: Client.query.all(),
+                                  get_label='name')
     new_client = StringField(_l('Add New Client'))
-    product_id = QuerySelectField(_l('Product'), allow_blank=True,
-                                  query_factory=lambda: Product.query.all(), get_label='name')
+    cur_product = QuerySelectField(_l('Product'), allow_blank=True,
+                                   query_factory=lambda: Product.query.all(),
+                                   get_label='name')
     new_product = StringField(_l('Add New Product'))
-    campaign_id = QuerySelectField(_l('Campaign'), allow_blank=True,
-                                   query_factory=lambda: Campaign.query.all(), get_label='name')
+    cur_campaign = QuerySelectField(_l('Campaign'), allow_blank=True,
+                                    query_factory=lambda: Campaign.query.all(),
+                                    get_label='name')
     new_campaign = StringField(_l('Add New Campaign'))
     submit = SubmitField(_l('Save & Quit'))
-    submit_continue = SubmitField(_l('Save & Continue'))
+    client_name = None
+    product_name = None
+    campaign_name = None
+    # submit_continue = SubmitField(_l('Save & Continue'))
 
     def validate_name(self, name):
         processor = Processor.query.filter_by(name=name.data).first()
         if processor is not None:
             raise ValidationError(_l('Please use a different name.'))
+
+    def validate_new_client(self, new_client):
+        if new_client.data:
+            self.client_name = new_client.data
+            new_client = Client.query.filter_by(name=new_client.data).first()
+            if new_client is not None:
+                raise ValidationError(_l('Client already exists, select from dropdown.'))
+        else:
+            self.client_name = self.cur_client.data.name
+
+    def validate_new_product(self, new_product):
+        if new_product.data:
+            self.product_name = new_product.data
+            new_product = Client.query.filter_by(name=self.product_name).first()
+            if new_product is not None:
+                raise ValidationError(_l('Product already exists, select from dropdown.'))
+        else:
+            self.product_name = self.cur_product.data.name
+
+    def validate_new_campaign(self, new_campaign):
+        if new_campaign.data:
+            self.campaign_name = new_campaign.data
+            new_campaign = Client.query.filter_by(name=self.campaign_name).first()
+            if new_campaign is not None:
+                raise ValidationError(_l('Campaign already exists, select from dropdown.'))
+        else:
+            self.product_name = self.cur_campaign.data.name
 
 
 class EditProcessorForm(FlaskForm):
@@ -81,27 +113,57 @@ class EditProcessorForm(FlaskForm):
     local_path = TextAreaField(_l('Local Path'), validators=[DataRequired()])
     tableau_workbook = StringField(_l('Tableau Workbook'))
     tableau_view = StringField(_l('Tableau View'))
-    client_id = QuerySelectField(_l('Client'), allow_blank=True,
-                                 query_factory=lambda: Client.query.all(),
-                                 get_label='name')
+    cur_client = QuerySelectField(_l('Client'), allow_blank=True,
+                                  query_factory=lambda: Client.query.all(),
+                                  get_label='name')
     new_client = StringField(_l('Add New Client'))
-    product_id = QuerySelectField(_l('Product'), allow_blank=True,
-                                  query_factory=lambda: Product.query.all(), get_label='name')
+    cur_product = QuerySelectField(_l('Product'), allow_blank=True,
+                                   query_factory=lambda: Product.query.all(),
+                                   get_label='name')
     new_product = StringField(_l('Add New Product'))
-    campaign_id = QuerySelectField(_l('Campaign'), allow_blank=True,
-                                   query_factory=lambda: Campaign.query.all(), get_label='name')
+    cur_campaign = QuerySelectField(_l('Campaign'), allow_blank=True,
+                                    query_factory=lambda: Campaign.query.all(),
+                                    get_label='name')
     new_campaign = StringField(_l('Add New Campaign'))
+    client_name = None
+    product_name = None
+    campaign_name = None
     submit = SubmitField(_l('Save & Quit'))
     submit_continue = SubmitField(_l('Save & Continue'))
 
     def __init__(self, original_name, *args, **kwargs):
         super(EditProcessorForm, self).__init__(*args, **kwargs)
         self.original_name = original_name
-        # if campaign_id:
-        #    self.campaign_id.default = campaign_id
 
     def validate_name(self, name):
         if name.data != self.original_name:
             processor = Processor.query.filter_by(name=self.name.data).first()
             if processor is not None:
                 raise ValidationError(_l('Please use a different name.'))
+
+    def validate_new_client(self, new_client):
+        if new_client.data:
+            self.client_name = new_client.data
+            new_client = Client.query.filter_by(name=new_client.data).first()
+            if new_client is not None:
+                raise ValidationError(_l('Client already exists, select from dropdown.'))
+        else:
+            self.client_name = self.cur_client.data.name
+
+    def validate_new_product(self, new_product):
+        if new_product.data:
+            self.product_name = new_product.data
+            new_product = Client.query.filter_by(name=self.product_name).first()
+            if new_product is not None:
+                raise ValidationError(_l('Product already exists, select from dropdown.'))
+        else:
+            self.product_name = self.cur_product.data.name
+
+    def validate_new_campaign(self, new_campaign):
+        if new_campaign.data:
+            self.campaign_name = new_campaign.data
+            new_campaign = Client.query.filter_by(name=self.campaign_name).first()
+            if new_campaign is not None:
+                raise ValidationError(_l('Campaign already exists, select from dropdown.'))
+        else:
+            self.product_name = self.cur_campaign.data.name

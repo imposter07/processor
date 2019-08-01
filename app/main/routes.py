@@ -260,13 +260,16 @@ def create_processor():
     user = User.query.filter_by(id=current_user.id).first_or_404()
     if form.validate_on_submit():
         form_client = Client(name=form.client_name).check_and_add()
-        form_product = Product(name=form.product_name, client_id=form_client.id).check_and_add()
-        form_campaign = Campaign(name=form.campaign_name, product_id=form_product.id).check_and_add()
-        new_processor = Processor(name=form.name.data, description=form.description.data,
-                                  user_id=current_user.id, created_at=datetime.utcnow(),
-                                  local_path=form.local_path.data,
-                                  tableau_workbook=form.tableau_workbook.data,
-                                  tableau_view=form.tableau_view.data, campaign_id=form_campaign.id)
+        form_product = Product(
+            name=form.product_name, client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(
+            name=form.campaign_name, product_id=form_product.id).check_and_add()
+        new_processor = Processor(
+            name=form.name.data, description=form.description.data,
+            user_id=current_user.id, created_at=datetime.utcnow(),
+            local_path=form.local_path.data,
+            tableau_workbook=form.tableau_workbook.data,
+            tableau_view=form.tableau_view.data, campaign_id=form_campaign.id)
         db.session.add(new_processor)
         db.session.commit()
         creation_text = 'Processor {} was created.'.format(new_processor.name)
@@ -276,27 +279,31 @@ def create_processor():
         db.session.add(post)
         db.session.commit()
         return redirect(url_for('main.processor'))
-    return render_template('create_processor.html', user=user, title=_('Processor'), form=form)
+    return render_template('create_processor.html', user=user,
+                           title=_('Processor'), form=form)
 
 
 @bp.route('/processor/<processor_name>')
 @login_required
 def processor_page(processor_name):
-    processor_for_page = Processor.query.filter_by(name=processor_name).first_or_404()
+    processor_for_page = Processor.query.filter_by(
+        name=processor_name).first_or_404()
     return render_template('processor_page.html', processor=processor_for_page)
 
 
 @bp.route('/processor/<processor_name>/popup')
 @login_required
 def processor_popup(processor_name):
-    processor_for_page = Processor.query.filter_by(name=processor_name).first_or_404()
+    processor_for_page = Processor.query.filter_by(
+        name=processor_name).first_or_404()
     return render_template('processor_popup.html', processor=processor_for_page)
 
 
 @bp.route('/processor/<processor_name>/run', methods=['GET', 'POST'])
 @login_required
 def run_processor(processor_name):
-    processor_to_run = Processor.query.filter_by(name=processor_name).first_or_404()
+    processor_to_run = Processor.query.filter_by(
+        name=processor_name).first_or_404()
     if processor_to_run.get_task_in_progress('.run_processor'):
         flash(_('The processor is already running.'))
     else:
@@ -309,7 +316,8 @@ def run_processor(processor_name):
                     processor_id=processor_to_run.id)
         db.session.add(post)
         db.session.commit()
-    return redirect(url_for('main.processor_page', processor_name=processor_name))
+    return redirect(url_for('main.processor_page',
+                            processor_name=processor_name))
 
 
 @bp.route('/processor/<processor_name>/edit', methods=['GET', 'POST'])
@@ -319,8 +327,10 @@ def edit_processor(processor_name):
     form = EditProcessorForm(processor_name)
     if form.validate_on_submit():
         form_client = Client(name=form.client_name).check_and_add()
-        form_product = Product(name=form.product_name, client_id=form_client.id).check_and_add()
-        form_campaign = Campaign(name=form.campaign_name, product_id=form_product.id).check_and_add()
+        form_product = Product(name=form.product_name,
+                               client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(name=form.campaign_name,
+                                 product_id=form_product.id).check_and_add()
         processor_to_edit.name = form.name.data
         processor_to_edit.description = form.description.data
         processor_to_edit.local_path = form.local_path.data
@@ -337,11 +347,14 @@ def edit_processor(processor_name):
         form.local_path.data = processor_to_edit.local_path
         form.tableau_workbook.data = processor_to_edit.tableau_workbook
         form.tableau_view.data = processor_to_edit.tableau_view
-        campaign = Campaign.query.filter_by(id=processor_to_edit.campaign_id).first_or_404()
-        product = Product.query.filter_by(id=campaign.product_id).first_or_404()
-        client = Client.query.filter_by(id=product.client_id).first_or_404()
-        form.cur_campaign.data = campaign
-        form.cur_product.data = product
-        form.cur_client.data = client
+        form_campaign = Campaign.query.filter_by(
+            id=processor_to_edit.campaign_id).first_or_404()
+        form_product = Product.query.filter_by(
+            id=form_campaign.product_id).first_or_404()
+        form_client = Client.query.filter_by(
+            id=form_product.client_id).first_or_404()
+        form.cur_campaign.data = form_campaign
+        form.cur_product.data = form_product
+        form.cur_client.data = form_client
     return render_template('create_processor.html', title=_('Edit Processor'),
                            form=form)

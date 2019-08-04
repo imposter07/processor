@@ -66,15 +66,15 @@ def explore():
 @bp.route('/user/<username>')
 @login_required
 def user(username):
-    user = User.query.filter_by(username=username).first_or_404()
+    user_page = User.query.filter_by(username=username).first_or_404()
     page = request.args.get('page', 1, type=int)
     posts = user.posts.order_by(Post.timestamp.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
-    next_url = url_for('main.user', username=user.username,
+    next_url = url_for('main.user', username=user_page.username,
                        page=posts.next_num) if posts.has_next else None
-    prev_url = url_for('main.user', username=user.username,
+    prev_url = url_for('main.user', username=user_page.username,
                        page=posts.prev_num) if posts.has_prev else None
-    return render_template('user.html', user=user, posts=posts.items,
+    return render_template('user.html', user=user_page, posts=posts.items,
                            next_url=next_url, prev_url=prev_url)
 
 
@@ -98,14 +98,14 @@ def edit_profile():
 @bp.route('/follow/<username>')
 @login_required
 def follow(username):
-    user = User.query.filter_by(username=username).first()
-    if user is None:
+    user_follow = User.query.filter_by(username=username).first()
+    if user_follow is None:
         flash(_('User %(username)s not found.', username=username))
         return redirect(url_for('main.index'))
-    if user == current_user:
+    if user_follow == current_user:
         flash(_('You cannot follow yourself!'))
         return redirect(url_for('main.user', username=username))
-    current_user.follow(user)
+    current_user.follow(user_follow)
     db.session.commit()
     flash(_('You are following %(username)s!', username=username))
     return redirect(url_for('main.user', username=username))
@@ -114,14 +114,14 @@ def follow(username):
 @bp.route('/unfollow/<username>')
 @login_required
 def unfollow(username):
-    user = User.query.filter_by(username=username).first()
-    if user is None:
+    user_unfollow = User.query.filter_by(username=username).first()
+    if user_unfollow is None:
         flash(_('User %(username)s not found.', username=username))
         return redirect(url_for('main.index'))
-    if user == current_user:
+    if user_unfollow == current_user:
         flash(_('You cannot unfollow yourself!'))
         return redirect(url_for('main.user', username=username))
-    current_user.unfollow(user)
+    current_user.unfollow(user_unfollow)
     db.session.commit()
     flash(_('You are not following %(username)s.', username=username))
     return redirect(url_for('main.user', username=username))
@@ -154,20 +154,21 @@ def search():
 @bp.route('/user/<username>/popup')
 @login_required
 def user_popup(username):
-    user = User.query.filter_by(username=username).first_or_404()
-    return render_template('user_popup.html', user=user)
+    user_for_popup = User.query.filter_by(username=username).first_or_404()
+    return render_template('user_popup.html', user=user_for_popup)
 
 
 @bp.route('/send_message/<recipient>', methods=['GET', 'POST'])
 @login_required
 def send_message(recipient):
-    user = User.query.filter_by(username=recipient).first_or_404()
+    rec_user = User.query.filter_by(username=recipient).first_or_404()
     form = MessageForm()
     if form.validate_on_submit():
-        msg = Message(author=current_user, recipient=user,
+        msg = Message(author=current_user, recipient=rec_user,
                       body=form.message.data)
         db.session.add(msg)
-        user.add_notification('unread_message_count', user.new_messages())
+        rec_user.add_notification('unread_message_count',
+                                  rec_user.new_messages())
         db.session.commit()
         flash(_('Your message has been sent.'))
         return redirect(url_for('main.user', username=recipient))
@@ -182,14 +183,14 @@ def messages():
     current_user.add_notification('unread_message_count', 0)
     db.session.commit()
     page = request.args.get('page', 1, type=int)
-    messages = current_user.messages_received.order_by(
+    user_messages = current_user.messages_received.order_by(
         Message.timestamp.desc()).paginate(
             page, current_app.config['POSTS_PER_PAGE'], False)
-    next_url = url_for('main.messages', page=messages.next_num) \
-        if messages.has_next else None
-    prev_url = url_for('main.messages', page=messages.prev_num) \
-        if messages.has_prev else None
-    return render_template('messages.html', messages=messages.items,
+    next_url = url_for('main.messages', page=user_messages.next_num) \
+        if user_messages.has_next else None
+    prev_url = url_for('main.messages', page=user_messages.prev_num) \
+        if user_messages.has_prev else None
+    return render_template('messages.html', messages=user_messages.items,
                            next_url=next_url, prev_url=prev_url)
 
 
@@ -197,13 +198,13 @@ def messages():
 @login_required
 def notifications():
     since = request.args.get('since', 0.0, type=float)
-    notifications = current_user.notifications.filter(
+    user_notifications = current_user.notifications.filter(
         Notification.timestamp > since).order_by(Notification.timestamp.asc())
     return jsonify([{
         'name': n.name,
         'data': n.get_data(),
         'timestamp': n.timestamp
-    } for n in notifications])
+    } for n in user_notifications])
 
 
 @bp.route('/export_posts')
@@ -220,44 +221,27 @@ def export_posts():
 @bp.route('/processor')
 @login_required
 def processor():
-    user = User.query.filter_by(id=current_user.id).first_or_404()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     page = request.args.get('page', 1, type=int)
-    processor = current_user.processor.order_by(
+    processors = current_user.processor.order_by(
         Processor.last_run_time.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
-    next_url = url_for('main.processor', username=user.username,
-                       page=processor.next_num) if processor.has_next else None
-    prev_url = url_for('main.processor', username=user.username,
-                       page=processor.prev_num) if processor.has_prev else None
-    return render_template('processor.html', user=user, processors=processor.items,
+    next_url = (url_for('main.processor', username=cur_user.username,
+                        page=processors.next_num)
+                if processors.has_next else None)
+    prev_url = (url_for('main.processor', username=cur_user.username,
+                        page=processors.prev_num)
+                if processors.has_prev else None)
+    return render_template('processor.html', user=cur_user,
+                           processors=processors.items,
                            next_url=next_url, prev_url=prev_url)
-
-
-def check_add_new_campaign(form):
-    for item in [(form.new_client, Client, {}),
-                 (form.new_product, Product,
-                  {'client_id': form.new_client.id if form.new_client.data else form.client_id.data.id}),
-                 (form.new_campaign, Campaign,
-                  {'product_id': form.new_product.id if form.new_product.data else form.product_id.data.id})]:
-        submitted_item = item[0]
-        item_class = item[1]
-        foreign_class = item[2]
-        if submitted_item.data:
-            new_item = item_class(name=submitted_item.data, **foreign_class)
-            db.session.add(new_item)
-            db.session.commit()
-    if form.new_campaign.data:
-        campaign = Campaign.query.filter_by(name=form.new_campaign.data).first_or_404()
-    else:
-        campaign = Campaign.query.filter_by(id=form.campaign_id).first_or_404()
-    return campaign
 
 
 @bp.route('/create_processor', methods=['GET', 'POST'])
 @login_required
 def create_processor():
     form = ProcessorForm()
-    user = User.query.filter_by(id=current_user.id).first_or_404()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     if form.validate_on_submit():
         form_client = Client(name=form.client_name).check_and_add()
         form_product = Product(
@@ -272,14 +256,18 @@ def create_processor():
             tableau_view=form.tableau_view.data, campaign_id=form_campaign.id)
         db.session.add(new_processor)
         db.session.commit()
-        creation_text = 'Processor {} was created.'.format(new_processor.name)
+        post_body = ('Create Processor {}...'.format(new_processor.name))
+        new_processor.launch_task('.create_processor', _(post_body),
+                                  current_user.id,
+                                  current_app.config['BASE_PROCESSOR_PATH'])
+        creation_text = 'Processor was requested for creation.'
         flash(_(creation_text))
         post = Post(body=creation_text, author=current_user,
                     processor_id=new_processor.id)
         db.session.add(post)
         db.session.commit()
         return redirect(url_for('main.processor'))
-    return render_template('create_processor.html', user=user,
+    return render_template('create_processor.html', user=cur_user,
                            title=_('Processor'), form=form)
 
 
@@ -307,8 +295,7 @@ def run_processor(processor_name):
     if processor_to_run.get_task_in_progress('.run_processor'):
         flash(_('The processor is already running.'))
     else:
-        post_body = 'Running Processor {}...' \
-                    ''.format(processor_name)
+        post_body = ('Running Processor {}...'.format(processor_name))
         processor_to_run.launch_task('.run_processor', _(post_body),
                                      running_user=current_user.id)
         processor_to_run.last_run_time = datetime.utcnow()
@@ -323,7 +310,8 @@ def run_processor(processor_name):
 @bp.route('/processor/<processor_name>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_processor(processor_name):
-    processor_to_edit = Processor.query.filter_by(name=processor_name).first_or_404()
+    processor_to_edit = Processor.query.filter_by(
+        name=processor_name).first_or_404()
     form = EditProcessorForm(processor_name)
     if form.validate_on_submit():
         form_client = Client(name=form.client_name).check_and_add()

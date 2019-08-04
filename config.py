@@ -23,6 +23,7 @@ class Config(object):
     AWS_SECRET_ACCESS_KEY = None
     ELASTICSEARCH_URL = None
     USER_EMAIL_DOMAIN = None
+    BASE_PROCESSOR_PATH = None
 
     def __init__(self, config_file='app/config.json'):
         config = self.load_config_file(config_file)

@@ -8,7 +8,7 @@ from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message
-from distutils.dir_util import copy_tree
+# from distutils.dir_util import copy_tree
 app = create_app()
 app.app_context().push()
 
@@ -55,10 +55,9 @@ def export_posts(user_id):
 
 
 def adjust_path(path):
-    path = path.replace('S:', '/mnt/share')
-    path = path.replace('C:', '/mnt/c')
-    path = path.replace('c:', '/mnt/c')
-    path = path.replace('\\', '/')
+    for x in [['S:', '/mnt/share'], ['C:', '/mnt/c'], ['c:', '/mnt/c'],
+              ['\\', '/']]:
+        path = path.replace(x[0], x[1])
     return path
 
 
@@ -88,6 +87,21 @@ def run_processor(processor_id, current_user_id):
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
+def copy_tree_no_overwrite(old_path, new_path):
+    for file_name in os.listdir(old_path):
+        old_file = os.path.join(old_path, file_name)
+        new_file = os.path.join(new_path, file_name)
+        if os.path.isfile(old_file):
+            if os.path.exists(new_file):
+                continue
+            else:
+                shutil.copy(old_file, new_file)
+        elif os.path.isdir(old_file):
+            if not os.path.exists(new_file):
+                os.mkdir(new_file)
+            copy_tree_no_overwrite(old_file, new_file)
+
+
 def create_processor(processor_id, current_user_id, base_path):
     try:
         new_processor = Processor.query.get(processor_id)
@@ -96,7 +110,7 @@ def create_processor(processor_id, current_user_id, base_path):
         new_path = adjust_path(new_processor.local_path)
         if not os.path.exists(new_path):
             os.makedirs(new_path)
-        copy_tree(old_path, new_path)
+        copy_tree_no_overwrite(old_path, new_path)
         msg_text = "Processor was created."
         processor_post_message(new_processor, user_create, msg_text)
         _set_task_progress(100)

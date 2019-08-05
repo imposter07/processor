@@ -1,5 +1,6 @@
 import os
 import json
+import urllib
 import logging
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -24,11 +25,22 @@ class Config(object):
     ELASTICSEARCH_URL = None
     USER_EMAIL_DOMAIN = None
     BASE_PROCESSOR_PATH = None
+    DATABASE_URL = None
+    DATABASE_USER = None
+    DATABASE_PW = None
+    DATABASE_PORT = None
+    DATABASE_NAME = None
 
     def __init__(self, config_file='app/config.json'):
         config = self.load_config_file(config_file)
         for k in config:
             setattr(self, k, config[k])
+        if self.DATABASE_URL:
+            db_items = [self.DATABASE_USER, self.DATABASE_PW, self.DATABASE_URL,
+                        self.DATABASE_PORT, self.DATABASE_NAME]
+            self.SQLALCHEMY_DATABASE_URI = \
+                ('postgresql://{0}:{1}@{2}:{3}/{4}'.format(
+                    *[urllib.parse.quote_plus(x) for x in db_items]))
 
     @staticmethod
     def load_config_file(config_file):

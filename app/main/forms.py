@@ -1,6 +1,8 @@
 from flask import request
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, TextAreaField
+from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
+    FormField, FieldList
+from wtforms.fields.html5 import DateField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
 from flask_babel import _, lazy_gettext as _l
@@ -49,9 +51,9 @@ class MessageForm(FlaskForm):
 class ProcessorForm(FlaskForm):
     name = StringField(_l('Name'), validators=[
         DataRequired()])
-    description = TextAreaField(_l('Description'), validators=[
+    description = StringField(_l('Description'), validators=[
         DataRequired()])
-    local_path = TextAreaField(_l('Local Path'), validators=[DataRequired()])
+    local_path = StringField(_l('Local Path'), validators=[DataRequired()])
     tableau_workbook = StringField(_l('Tableau Workbook'))
     tableau_view = StringField(_l('Tableau View'))
     cur_client = QuerySelectField(_l('Client'), allow_blank=True,
@@ -66,11 +68,11 @@ class ProcessorForm(FlaskForm):
                                     query_factory=lambda: Campaign.query.all(),
                                     get_label='name')
     new_campaign = StringField(_l('Add New Campaign'))
-    submit = SubmitField(_l('Save & Quit'))
     client_name = None
     product_name = None
     campaign_name = None
-    # submit_continue = SubmitField(_l('Save & Continue'))
+    submit = SubmitField(_l('Save & Quit'))
+    submit_continue = SubmitField(_l('Save & Continue'))
 
     def validate_name(self, name):
         processor = Processor.query.filter_by(name=name.data).first()
@@ -108,6 +110,20 @@ class ProcessorForm(FlaskForm):
                                          ' select from dropdown.'))
         else:
             self.campaign_name = self.cur_campaign.data.name
+
+
+class APIForm(FlaskForm):
+    api_name = SelectField('API Type', choices=[('Facebook', 'Facebook'),
+                                                ('Adwords', 'Adwords')])
+    account_id = StringField('Account ID')
+    start_date = DateField('Start Date', format='%Y-%m-%d')
+
+
+class ImportForm(FlaskForm):
+    apis = FieldList(FormField(APIForm))
+    add_child = SubmitField(label='Add API')
+    submit = SubmitField(_l('Save & Quit'))
+    submit_continue = SubmitField(_l('Save & Continue'))
 
 
 class EditProcessorForm(ProcessorForm):

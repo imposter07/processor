@@ -3,12 +3,36 @@
 
 {% block app_header %}
     <h1>{{ _('Processor Creation') }}</h1>
+    <div class="progress" style="height: 1px;">
+        <div class="progress-bar" role="progressbar" style="width: {{ edit_progress }}%;" aria-valuenow={{ edit_progress }} aria-valuemin="0" aria-valuemax="100">{{ edit_name }}</div>
+    </div>
+    <div class="progress" style="height: 20px;">
+        <div class="progress-bar" role="progressbar" style="width: {{ edit_progress }}%;" aria-valuenow={{ edit_progress }} aria-valuemin="0" aria-valuemax="100">{{ edit_name }}</div>
+    </div>
+    <div class="btn-group" role="group" aria-label="Basic example">
+        <a href="{{ url_for('main.edit_processor', processor_name=processor_name) }}">
+            <button type="button" class="btn btn-primary">{{ _('Basic') }}</button>
+        </a>
+        <a href="{{ url_for('main.edit_processor_import', processor_name=processor_name) }}">
+            <button type="button" class="btn btn-primary">{{ _('Import') }}</button>
+        </a>
+        <button type="button" class="btn btn-primary">Clean</button>
+        <button type="button" class="btn btn-primary">Export</button>
+    </div>
 {% endblock %}
 
 {% block app_content %}
     <div class="row">
-        <div class="col-md-4">
-            {{ wtf.quick_form(form) }}
-        </div>
+        {% if form.apis %}
+            {% for api in form.apis %}
+                <div class="col-md-4">
+                    {{ wtf.quick_form(api) }}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-md-4">
+                {{ wtf.quick_form(form) }}
+            </div>
+        {% endif %}
     </div>
 {% endblock %}

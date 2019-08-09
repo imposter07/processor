@@ -6,7 +6,7 @@ from flask_babel import _, get_locale
 from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
-    ProcessorForm, EditProcessorForm
+    ProcessorForm, EditProcessorForm, ImportForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign
 from app.translate import translate
@@ -68,7 +68,7 @@ def explore():
 def user(username):
     user_page = User.query.filter_by(username=username).first_or_404()
     page = request.args.get('page', 1, type=int)
-    posts = user.posts.order_by(Post.timestamp.desc()).paginate(
+    posts = user_page.posts.order_by(Post.timestamp.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
     next_url = url_for('main.user', username=user_page.username,
                        page=posts.next_num) if posts.has_next else None
@@ -266,10 +266,35 @@ def create_processor():
                     processor_id=new_processor.id)
         db.session.add(post)
         db.session.commit()
-        return redirect(url_for('main.processor'))
+        if form.submit_continue.data:
+            return redirect(url_for('main.edit_processor_import',
+                                    processor_name=new_processor.name))
+        else:
+            return redirect(url_for('main.processor'))
     return render_template('create_processor.html', user=cur_user,
-                           title=_('Processor'), form=form)
+                           title=_('Processor'), form=form, edit_progress="25",
+                           edit_name="Basic")
 
+
+@bp.route('/create_processor/<processor_name>/edit/import', methods=['GET', 'POST'])
+@login_required
+def edit_processor_import(processor_name):
+    form = ImportForm()
+    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    if form.add_child.data:
+        form.apis.append_entry()
+        return render_template('create_processor.html',
+                               processor_name=cur_proc.name, user=cur_user,
+                               title=_('Processor'), form=form,
+                               edit_progress=50,  edit_name="Import")
+    if form.validate_on_submit():
+        pass
+        # edit_processor.launch_task()
+        return redirect(url_for('main.processor'))
+    return render_template('create_processor.html', processor_name=cur_proc.name,
+                           user=cur_user, title=_('Processor'),
+                           form=form, edit_progress=50,  edit_name="Import")
 
 @bp.route('/processor/<processor_name>')
 @login_required
@@ -327,8 +352,12 @@ def edit_processor(processor_name):
         processor_to_edit.campaign_id = form_campaign.id
         db.session.commit()
         flash(_('Your changes have been saved.'))
-        return redirect(url_for('main.processor_page',
-                                processor_name=processor_to_edit.name))
+        if form.submit_continue.data:
+            return redirect(url_for('main.edit_processor_import',
+                                    processor_name=processor_to_edit.name))
+        else:
+            return redirect(url_for('main.processor_page',
+                                    processor_name=processor_to_edit.name))
     elif request.method == 'GET':
         form.name.data = processor_to_edit.name
         form.description.data = processor_to_edit.description
@@ -344,5 +373,7 @@ def edit_processor(processor_name):
         form.cur_campaign.data = form_campaign
         form.cur_product.data = form_product
         form.cur_client.data = form_client
-    return render_template('create_processor.html', title=_('Edit Processor'),
-                           form=form)
+    return render_template('create_processor.html',
+                           processor_name=processor_to_edit.name,
+                           title=_('Edit Processor'), form=form,
+                           edit_progress="25", edit_name="Basic")

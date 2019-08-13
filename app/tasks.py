@@ -8,7 +8,7 @@ from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message
-# from distutils.dir_util import copy_tree
+
 app = create_app()
 app.app_context().push()
 
@@ -55,7 +55,7 @@ def export_posts(user_id):
 
 
 def adjust_path(path):
-    for x in [['S:', '/mnt/share'], ['C:', '/mnt/c'], ['c:', '/mnt/c'],
+    for x in [['S:', '/mnt/s'], ['C:', '/mnt/c'], ['c:', '/mnt/c'],
               ['\\', '/']]:
         path = path.replace(x[0], x[1])
     return path

@@ -76,8 +76,8 @@ def run_processor(processor_id, current_user_id):
         user_that_ran = User.query.get(current_user_id)
         _set_task_progress(0)
         file_path = adjust_path(processor_to_run.local_path)
+        from processor.main import main
         os.chdir(file_path)
-        from main import main
         main('--noprocess')
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, msg_text)

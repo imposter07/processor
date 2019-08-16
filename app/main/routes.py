@@ -276,7 +276,8 @@ def create_processor():
                            edit_name="Basic")
 
 
-@bp.route('/create_processor/<processor_name>/edit/import', methods=['GET', 'POST'])
+@bp.route('/create_processor/<processor_name>/edit/import',
+          methods=['GET', 'POST'])
 @login_required
 def edit_processor_import(processor_name):
     form = ImportForm()
@@ -292,16 +293,30 @@ def edit_processor_import(processor_name):
         pass
         # edit_processor.launch_task()
         return redirect(url_for('main.processor'))
-    return render_template('create_processor.html', processor_name=cur_proc.name,
-                           user=cur_user, title=_('Processor'),
-                           form=form, edit_progress=50,  edit_name="Import")
+    return render_template('create_processor.html',
+                           processor_name=cur_proc.name, user=cur_user,
+                           title=_('Processor'), form=form, edit_progress=50,
+                           edit_name="Import")
+
 
 @bp.route('/processor/<processor_name>')
 @login_required
 def processor_page(processor_name):
     processor_for_page = Processor.query.filter_by(
         name=processor_name).first_or_404()
-    return render_template('processor_page.html', processor=processor_for_page)
+    page = request.args.get('page', 1, type=int)
+    posts_for_page = Post.query.filter_by(processor_id=processor_for_page.id)
+    posts = (Post.query.
+             filter_by(processor_id=processor_for_page.id).
+             order_by(Post.timestamp.desc()).
+             paginate(page, current_app.config['POSTS_PER_PAGE'], False))
+    next_url = url_for('main.explore', page=posts.next_num) \
+        if posts.has_next else None
+    prev_url = url_for('main.explore', page=posts.prev_num) \
+        if posts.has_prev else None
+    return render_template('processor_page.html', processor=processor_for_page,
+                           posts=posts.items, next_url=next_url,
+                           prev_url=prev_url)
 
 
 @bp.route('/processor/<processor_name>/popup')
@@ -312,17 +327,24 @@ def processor_popup(processor_name):
     return render_template('processor_popup.html', processor=processor_for_page)
 
 
-@bp.route('/processor/<processor_name>/run', methods=['GET', 'POST'])
+@bp.route('/processor/<processor_name>/run/<processor_args>',
+          methods=['GET', 'POST'])
 @login_required
-def run_processor(processor_name):
+def run_processor(processor_name, processor_args=''):
     processor_to_run = Processor.query.filter_by(
         name=processor_name).first_or_404()
     if processor_to_run.get_task_in_progress('.run_processor'):
         flash(_('The processor is already running.'))
     else:
-        post_body = ('Running Processor {}...'.format(processor_name))
+        post_body = ('Running {} for processor: {}...'.format(processor_args,
+                                                              processor_name))
+        arg_trans = {'full': '--api all --ftp all --dbi all --exp all --tab',
+                     'import': '--api all --ftp all --dbi all',
+                     'export': '--exp all --tab',
+                     'basic': ''}
         processor_to_run.launch_task('.run_processor', _(post_body),
-                                     running_user=current_user.id)
+                                     running_user=current_user.id,
+                                     processor_args=arg_trans[processor_args])
         processor_to_run.last_run_time = datetime.utcnow()
         post = Post(body=post_body, author=current_user,
                     processor_id=processor_to_run.id)

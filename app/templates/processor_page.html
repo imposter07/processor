@@ -2,13 +2,26 @@
 {% import 'bootstrap/wtf.html' as wtf %}
 
 {% block app_header %}
-    <h1>{{ _('Processor') }}: {{ processor.name}}<br>
-        <a href="{{ url_for('main.run_processor', processor_name=processor.name) }}">
-            <button type="button" class="btn btn-primary btn-lg">{{ _('Run Processor') }}</button>
-        </a>
-        <a href="{{ url_for('main.edit_processor', processor_name=processor.name) }}">
-            <button type="button" class="btn btn-primary btn-lg">{{ _('Edit Processor') }}</button>
-        </a>
+    <h1><small>{{ _('Processor') }}: {{ processor.name}}</small><br>
+        <div class="btn-toolbar" role="toolbar" style="justify-content: center; display: flex;">
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                    {{ _('Run Processor') }}
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                    <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor.name, processor_args='full') }}">{{ _('Full') }}</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor.name, processor_args='import') }}">{{ _('Import') }}</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor.name, processor_args='basic') }}">{{ _('Basic') }}</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor.name, processor_args='export') }}">{{ _('Export') }}</a></li>
+                </ul>
+            </div>
+            <div class="btn-group">
+                <a href="{{ url_for('main.edit_processor', processor_name=processor.name) }}">
+                    <button type="button" class="btn btn-primary">{{ _('Edit Processor') }}</button>
+                </a>
+            </div>
+        </div>
     </h1>
 {% endblock %}
 
@@ -34,5 +47,22 @@
                 {% include '_processor.html' %}
             </td>
         </tr>
+        {% for post in posts %}
+            {% include '_post.html' %}
+        {% endfor %}
+        <nav aria-label="...">
+        <ul class="pager">
+            <li class="previous{% if not prev_url %} disabled{% endif %}">
+                <a href="{{ prev_url or '#' }}">
+                    <span aria-hidden="true">&larr;</span> {{ _('Newer posts') }}
+                </a>
+            </li>
+            <li class="next{% if not next_url %} disabled{% endif %}">
+                <a href="{{ next_url or '#' }}">
+                    {{ _('Older posts') }} <span aria-hidden="true">&rarr;</span>
+                </a>
+            </li>
+        </ul>
+        </nav>
     </table>
 {% endblock %}

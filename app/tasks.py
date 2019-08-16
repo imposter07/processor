@@ -70,7 +70,7 @@ def processor_post_message(proc, usr, text):
     db.session.commit()
 
 
-def run_processor(processor_id, current_user_id):
+def run_processor(processor_id, current_user_id, processor_args):
     try:
         processor_to_run = Processor.query.get(processor_id)
         user_that_ran = User.query.get(current_user_id)
@@ -78,7 +78,10 @@ def run_processor(processor_id, current_user_id):
         file_path = adjust_path(processor_to_run.local_path)
         from processor.main import main
         os.chdir(file_path)
-        main('--noprocess')
+        if processor_args:
+            main(processor_args)
+        else:
+            main()
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, msg_text)
         _set_task_progress(100)

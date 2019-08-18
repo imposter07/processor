@@ -122,6 +122,7 @@ class APIForm(FlaskForm):
 class ImportForm(FlaskForm):
     apis = FieldList(FormField(APIForm))
     add_child = SubmitField(label='Add API')
+    remove_api = SubmitField('Remove Last API')
     submit = SubmitField(_l('Save & Quit'))
     submit_continue = SubmitField(_l('Save & Continue'))
 

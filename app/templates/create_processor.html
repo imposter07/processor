@@ -22,17 +22,17 @@
 {% endblock %}
 
 {% block app_content %}
-    <div class="row">
-        {% if form.apis %}
-            {% for api in form.apis %}
-                <div class="col-md-4">
-                    {{ wtf.quick_form(api) }}
-                </div>
-            {% endfor %}
-        {% else %}
-            <div class="col-md-4">
-                {{ wtf.quick_form(form) }}
-            </div>
-        {% endif %}
-    </div>
+    <form class="form form-horizontal" method="post" role="form">
+        {{ form.hidden_tag() }}
+        {{ wtf.form_errors(form, hiddens="only") }}
+        {% for field in form if field.widget.input_type != 'hidden'%}
+            {% if field.entries is defined %}
+                {% for entry in field.entries if entry.widget.input_type != 'hidden'%}
+                    {{ wtf.form_field(entry) }}
+                {% endfor %}
+            {% else %}
+                {{ wtf.form_field(field) }}
+            {% endif %}
+        {% endfor %}
+    </form>
 {% endblock %}

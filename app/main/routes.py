@@ -289,6 +289,12 @@ def edit_processor_import(processor_name):
                                processor_name=cur_proc.name, user=cur_user,
                                title=_('Processor'), form=form,
                                edit_progress=50,  edit_name="Import")
+    if form.remove_api.data:
+        form.apis.pop_entry()
+        return render_template('create_processor.html',
+                               processor_name=cur_proc.name, user=cur_user,
+                               title=_('Processor'), form=form,
+                               edit_progress=50,  edit_name="Import")
     if form.validate_on_submit():
         pass
         # edit_processor.launch_task()
@@ -305,7 +311,6 @@ def processor_page(processor_name):
     processor_for_page = Processor.query.filter_by(
         name=processor_name).first_or_404()
     page = request.args.get('page', 1, type=int)
-    posts_for_page = Post.query.filter_by(processor_id=processor_for_page.id)
     posts = (Post.query.
              filter_by(processor_id=processor_for_page.id).
              order_by(Post.timestamp.desc()).

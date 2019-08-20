@@ -113,18 +113,28 @@ class ProcessorForm(FlaskForm):
 
 
 class APIForm(FlaskForm):
-    api_name = SelectField('API Type', choices=[('Facebook', 'Facebook'),
-                                                ('Adwords', 'Adwords')])
+    name = StringField('Name')
+    key = SelectField(
+        'API Type', choices=[
+            ('Facebook', 'Facebook'), ('Adwords', 'Adwords'),
+            ('Sizmek', 'Sizmek'), ('Twitter', 'Twitter'), ('TTD', 'TTD'),
+            ('Snapchat', 'Snapchat'), ('DCM', 'DCM'), ('DBM', 'DBM'),
+            ('Redshell', 'Redshell'), ('Reddit', 'Reddit'),
+            ('Netbase', 'Netbase'), ('GA', 'GA'), ('Revcontent', 'Revcontent'),
+            ('AppsFlyer', 'AppsFlyer')])
     account_id = StringField('Account ID')
     start_date = DateField('Start Date', format='%Y-%m-%d')
+    account_filter = StringField('Filter')
+    api_fields = StringField('API Fields')
 
 
 class ImportForm(FlaskForm):
-    apis = FieldList(FormField(APIForm))
     add_child = SubmitField(label='Add API')
     remove_api = SubmitField('Remove Last API')
+    refresh = SubmitField('Refresh APIs')
     submit = SubmitField(_l('Save & Quit'))
     submit_continue = SubmitField(_l('Save & Continue'))
+    apis = FieldList(FormField(APIForm), label='name')
 
 
 class EditProcessorForm(ProcessorForm):

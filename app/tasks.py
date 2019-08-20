@@ -7,7 +7,7 @@ from flask import render_template
 from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
-from app.models import User, Post, Task, Processor, Message
+from app.models import User, Post, Task, Processor, Message, ProcessorImports
 
 app = create_app()
 app.app_context().push()
@@ -117,6 +117,38 @@ def create_processor(processor_id, current_user_id, base_path):
         msg_text = "Processor was created."
         processor_post_message(new_processor, user_create, msg_text)
         _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def get_processor_imports(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        old_imports = ProcessorImports.query.filter_by(
+            processor_id=cur_processor.id).all()
+        user_that_ran = User.query.get(current_user_id)
+        _set_task_progress(0)
+        if old_imports:
+            for imp in old_imports:
+                db.session.delete(imp)
+            db.session.commit()
+        processor_path = adjust_path(cur_processor.local_path)
+        from processor.reporting.vendormatrix import ImportConfig
+        os.chdir(processor_path)
+        ic = ImportConfig()
+        current_imports = ic.get_current_imports(matrix=True)
+        for imp in current_imports:
+            proc_import = ProcessorImports(
+                name=imp['name'], processor_id=cur_processor.id, key=imp['Key'],
+                account_id=imp['ID'], account_filter=imp['Filter'],
+                start_date=imp['START DATE'], api_fields=imp['API_FIELDS'])
+            db.session.add(proc_import)
+        db.session.commit()
+        msg_text = "Processor imports refreshed."
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+        db.session.commit()
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())

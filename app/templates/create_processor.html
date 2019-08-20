@@ -26,9 +26,9 @@
         {{ form.hidden_tag() }}
         {{ wtf.form_errors(form, hiddens="only") }}
         {% for field in form if field.widget.input_type != 'hidden'%}
-            {% if field.entries is defined %}
+            {% if field.entries is defined %}<br><br>
                 {% for entry in field.entries if entry.widget.input_type != 'hidden'%}
-                    {{ wtf.form_field(entry) }}
+                    <div class="col-xs-4">{{ wtf.form_field(entry) }}</div>
                 {% endfor %}
             {% else %}
                 {{ wtf.form_field(field) }}

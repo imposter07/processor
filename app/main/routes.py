@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
     jsonify, current_app
@@ -6,9 +7,9 @@ from flask_babel import _, get_locale
 from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
-    ProcessorForm, EditProcessorForm, ImportForm
+    ProcessorForm, EditProcessorForm, ImportForm, APIForm
 from app.models import User, Post, Message, Notification, Processor, \
-    Client, Product, Campaign
+    Client, Product, Campaign, ProcessorImports, Task
 from app.translate import translate
 from app.main import bp
 
@@ -276,13 +277,23 @@ def create_processor():
                            edit_name="Basic")
 
 
-@bp.route('/create_processor/<processor_name>/edit/import',
-          methods=['GET', 'POST'])
+@bp.route('/processor/<processor_name>/edit/import', methods=['GET', 'POST'])
 @login_required
 def edit_processor_import(processor_name):
-    form = ImportForm()
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    imp_dict = []
+    proc_imports = ProcessorImports.query.filter_by(processor_id=cur_proc.id)
+    for imp in proc_imports:
+        imp_dict.append({
+            'name': imp.name,
+            'key': imp.key,
+            'account_id': imp.account_id,
+            'start_date': imp.start_date,
+            'account_filter': imp.account_filter,
+            'api_fields': imp.api_fields
+        })
+    form = ImportForm(apis=imp_dict)
     if form.add_child.data:
         form.apis.append_entry()
         return render_template('create_processor.html',
@@ -291,6 +302,20 @@ def edit_processor_import(processor_name):
                                edit_progress=50,  edit_name="Import")
     if form.remove_api.data:
         form.apis.pop_entry()
+        return render_template('create_processor.html',
+                               processor_name=cur_proc.name, user=cur_user,
+                               title=_('Processor'), form=form,
+                               edit_progress=50,  edit_name="Import")
+    if form.refresh.data:
+        task = cur_proc.launch_task('.get_processor_imports',
+                                    _('Refreshing imports.'),
+                                    running_user=current_user.id)
+        db.session.commit()
+        for x in range(100):
+            if task.get_progress() == 100:
+                break
+            else:
+                time.sleep(5)
         return render_template('create_processor.html',
                                processor_name=cur_proc.name, user=cur_user,
                                title=_('Processor'), form=form,

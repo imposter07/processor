@@ -294,6 +294,8 @@ class Processor(db.Model):
     tasks = db.relationship('Task', backref='processor', lazy='dynamic')
     posts = db.relationship('Post', backref='processor', lazy='dynamic')
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
+    processor_imports = db.relationship('ProcessorImports', backref='processor',
+                                        lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -310,3 +312,14 @@ class Processor(db.Model):
     def get_task_in_progress(self, name):
         return Task.query.filter_by(name=name, processor=self,
                                     complete=False).first()
+
+
+class ProcessorImports(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    key = db.Column(db.String(64))
+    account_id = db.Column(db.String(64))
+    account_filter = db.Column(db.String(128))
+    start_date = db.Column(db.Date)
+    api_fields = db.Column(db.String(128))

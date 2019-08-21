@@ -323,3 +323,52 @@ class ProcessorImports(db.Model):
     account_filter = db.Column(db.String(128))
     start_date = db.Column(db.Date)
     api_fields = db.Column(db.String(128))
+
+    def __init__(self):
+        self.form_dict = self.get_form_dict()
+
+    def __eq__(self, other):
+        return self.get_form_dict() == other.get_form_dict()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def get_form_dict(self):
+        form_dict = {
+            'name': self.name,
+            'key': self.key,
+            'account_id': self.account_id,
+            'start_date': self.start_date,
+            'account_filter': self.account_filter,
+            'api_fields': self.api_fields
+        }
+        return form_dict
+
+    def get_processor_dict(self):
+        form_dict = {
+            'name': self.name,
+            'Key': self.key,
+            'ID': self.account_id,
+            'START DATE': self.start_date,
+            'Filter': self.account_filter,
+            'API_FIELDS': self.api_fields
+        }
+        return form_dict
+
+    def set_from_processor(self, processor_dict, current_processor):
+        self.name = processor_dict['name']
+        self.processor_id = current_processor.id
+        self.key = processor_dict['Key']
+        self.account_id = processor_dict['ID']
+        self.account_filter = processor_dict['Filter']
+        self.start_date = processor_dict['START DATE']
+        self.api_fields = processor_dict['API_FIELDS']
+
+    def set_from_form(self, form, current_processor):
+        self.name = form['name']
+        self.processor_id = current_processor.id
+        self.key = form['key']
+        self.account_id = form['account_id']
+        self.account_filter = form['account_filter']
+        self.start_date = form['start_date']
+        self.api_fields = form['api_fields']

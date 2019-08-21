@@ -139,13 +139,46 @@ def get_processor_imports(processor_id, current_user_id):
         ic = ImportConfig()
         current_imports = ic.get_current_imports(matrix=True)
         for imp in current_imports:
-            proc_import = ProcessorImports(
-                name=imp['name'], processor_id=cur_processor.id, key=imp['Key'],
-                account_id=imp['ID'], account_filter=imp['Filter'],
-                start_date=imp['START DATE'], api_fields=imp['API_FIELDS'])
+            proc_import = ProcessorImports()
+            proc_import.set_from_processor(imp, cur_processor)
             db.session.add(proc_import)
         db.session.commit()
         msg_text = "Processor imports refreshed."
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+        db.session.commit()
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def set_processor_imports(processor_id, current_user_id, form_imports):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        old_imports = ProcessorImports.query.filter_by(
+            processor_id=cur_processor.id).all()
+        user_that_ran = User.query.get(current_user_id)
+        _set_task_progress(0)
+        proc_imports = []
+        for imp in form_imports:
+            proc_import = ProcessorImports()
+            print(imp)
+            proc_import.set_from_form(imp, cur_processor)
+            proc_imports.append(proc_import)
+        for imp in old_imports:
+            if imp not in proc_imports:
+                db.session.delete(imp)
+        for imp in proc_imports:
+            if imp not in old_imports:
+                db.session.add(imp)
+        db.session.commit()
+        processor_dicts = [x.get_processor_dict() for x in proc_imports]
+        processor_path = adjust_path(cur_processor.local_path)
+        from processor.reporting.vendormatrix import ImportConfig
+        os.chdir(processor_path)
+        ic = ImportConfig()
+        ic.add_and_remove_from_vm(processor_dicts , matrix=True)
+        msg_text = "Processor imports set."
         processor_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
         db.session.commit()

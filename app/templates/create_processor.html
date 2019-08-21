@@ -24,10 +24,12 @@
 {% block app_content %}
     <form class="form form-horizontal" method="post" role="form">
         {{ form.hidden_tag() }}
+        {{ form.csrf_token }}
         {{ wtf.form_errors(form, hiddens="only") }}
         {% for field in form if field.widget.input_type != 'hidden'%}
             {% if field.entries is defined %}<br><br>
                 {% for entry in field.entries if entry.widget.input_type != 'hidden'%}
+                    {{ entry.csrf_token }}
                     <div class="col-xs-4">{{ wtf.form_field(entry) }}</div>
                 {% endfor %}
             {% else %}

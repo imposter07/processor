@@ -7,9 +7,9 @@ from flask_babel import _, get_locale
 from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
-    ProcessorForm, EditProcessorForm, ImportForm, APIForm
+    ProcessorForm, EditProcessorForm, ImportForm
 from app.models import User, Post, Message, Notification, Processor, \
-    Client, Product, Campaign, ProcessorImports, Task
+    Client, Product, Campaign, ProcessorImports
 from app.translate import translate
 from app.main import bp
 
@@ -285,14 +285,8 @@ def edit_processor_import(processor_name):
     imp_dict = []
     proc_imports = ProcessorImports.query.filter_by(processor_id=cur_proc.id)
     for imp in proc_imports:
-        imp_dict.append({
-            'name': imp.name,
-            'key': imp.key,
-            'account_id': imp.account_id,
-            'start_date': imp.start_date,
-            'account_filter': imp.account_filter,
-            'api_fields': imp.api_fields
-        })
+        form_dict = imp.get_form_dict()
+        imp_dict.append(form_dict)
     form = ImportForm(apis=imp_dict)
     if form.add_child.data:
         form.apis.append_entry()
@@ -321,9 +315,17 @@ def edit_processor_import(processor_name):
                                title=_('Processor'), form=form,
                                edit_progress=50,  edit_name="Import")
     if form.validate_on_submit():
-        pass
-        # edit_processor.launch_task()
-        return redirect(url_for('main.processor'))
+        task = cur_proc.launch_task('.set_processor_imports',
+                                    _('Setting imports.'),
+                                    running_user=current_user.id,
+                                    form_imports=form.apis.data)
+        db.session.commit()
+        if form.submit_continue.data:
+            return redirect(url_for('main.edit_processor_import',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.processor_page',
+                                    processor_name=cur_proc.name))
     return render_template('create_processor.html',
                            processor_name=cur_proc.name, user=cur_user,
                            title=_('Processor'), form=form, edit_progress=50,

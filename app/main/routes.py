@@ -7,7 +7,7 @@ from flask_babel import _, get_locale
 from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
-    ProcessorForm, EditProcessorForm, ImportForm
+    ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorImports
 from app.translate import translate
@@ -315,13 +315,12 @@ def edit_processor_import(processor_name):
                                title=_('Processor'), form=form,
                                edit_progress=50,  edit_name="Import")
     if form.validate_on_submit():
-        task = cur_proc.launch_task('.set_processor_imports',
-                                    _('Setting imports.'),
-                                    running_user=current_user.id,
-                                    form_imports=form.apis.data)
+        cur_proc.launch_task('.set_processor_imports', _('Setting imports.'),
+                             running_user=current_user.id,
+                             form_imports=form.apis.data)
         db.session.commit()
         if form.submit_continue.data:
-            return redirect(url_for('main.edit_processor_import',
+            return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
         else:
             return redirect(url_for('main.processor_page',
@@ -330,6 +329,43 @@ def edit_processor_import(processor_name):
                            processor_name=cur_proc.name, user=cur_user,
                            title=_('Processor'), form=form, edit_progress=50,
                            edit_name="Import")
+
+
+@bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
+@login_required
+def edit_processor_clean(processor_name):
+    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    form = ProcessorCleanForm()
+    template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
+                    'title': _('Processor'), 'form': form, 'edit_progress':75,
+                    'edit_name': "Clean"}
+    if form.run_processor_imports.data:
+        if cur_proc.get_task_in_progress('.run_processor'):
+            flash(_('The processor is already running.'))
+        else:
+            cur_proc.run('import', cur_user)
+        return render_template('create_processor.html', **template_arg)
+    if form.run_processor.data:
+        if cur_proc.get_task_in_progress('.run_processor'):
+            flash(_('The processor is already running.'))
+        else:
+            cur_proc.run('basic', cur_user)
+        return render_template('create_processor.html', **template_arg)
+    if form.refresh_data_sources.data:
+        cur_proc.launch_task('')
+    if form.validate_on_submit():
+        cur_proc.launch_task('.set_processor_imports', _('Setting imports.'),
+                             running_user=current_user.id,
+                             form_imports=form.apis.data)
+        db.session.commit()
+        if form.submit_continue.data:
+            return redirect(url_for('main.edit_processor_clean',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.processor_page',
+                                    processor_name=cur_proc.name))
+    return render_template('create_processor.html', **template_arg)
 
 
 @bp.route('/processor/<processor_name>')

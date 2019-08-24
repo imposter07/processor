@@ -185,3 +185,33 @@ def set_processor_imports(processor_id, current_user_id, form_imports):
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def refresh_datasources(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        old_imports = ProcessorImports.query.filter_by(
+            processor_id=cur_processor.id).all()
+        user_that_ran = User.query.get(current_user_id)
+        _set_task_progress(0)
+        if old_imports:
+            for imp in old_imports:
+                db.session.delete(imp)
+            db.session.commit()
+        processor_path = adjust_path(cur_processor.local_path)
+        from processor.reporting.vendormatrix import ImportConfig
+        os.chdir(processor_path)
+        ic = ImportConfig()
+        current_imports = ic.get_current_imports(matrix=True)
+        for imp in current_imports:
+            proc_import = ProcessorImports()
+            proc_import.set_from_processor(imp, cur_processor)
+            db.session.add(proc_import)
+        db.session.commit()
+        msg_text = "Processor imports refreshed."
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+        db.session.commit()
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())

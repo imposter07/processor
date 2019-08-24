@@ -313,6 +313,21 @@ class Processor(db.Model):
         return Task.query.filter_by(name=name, processor=self,
                                     complete=False).first()
 
+    def run(self, processor_args, current_user):
+        post_body = ('Running {} for processor: {}...'.format(processor_args,
+                                                              self.name))
+        arg_trans = {'full': '--api all --ftp all --dbi all --exp all --tab',
+                     'import': '--api all --ftp all --dbi all',
+                     'export': '--exp all --tab',
+                     'basic': '--basic'}
+        self.launch_task('.run_processor', post_body,
+                         running_user=current_user.id,
+                         processor_args=arg_trans[processor_args])
+        self.last_run_time = datetime.utcnow()
+        post = Post(body=post_body, author=current_user, processor_id=self.id)
+        db.session.add(post)
+        db.session.commit()
+
 
 class ProcessorImports(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -134,7 +134,7 @@ class ImportForm(FlaskForm):
     refresh = SubmitField('Refresh APIs')
     submit = SubmitField(_l('Save & Quit'))
     submit_continue = SubmitField(_l('Save & Continue'))
-    apis = FieldList(FormField(APIForm), label='name')
+    apis = FieldList(FormField(APIForm, label='{}'.format(APIForm.name)))
 
 
 class EditProcessorForm(ProcessorForm):
@@ -147,3 +147,14 @@ class EditProcessorForm(ProcessorForm):
             processor = Processor.query.filter_by(name=self.name.data).first()
             if processor is not None:
                 raise ValidationError(_l('Please use a different name.'))
+
+
+class DataSourceForm(FlaskForm):
+    refresh_data_source = SubmitField(_l('Refresh Source'))
+
+
+class ProcessorCleanForm(FlaskForm):
+    run_processor_imports = SubmitField(_l('Run Processor Imports'))
+    run_processor = SubmitField(_l('Run Processor'))
+    refresh_data_sources = SubmitField(_l('Refresh Data Sources'))
+    datasources = FieldList(FormField(DataSourceForm))

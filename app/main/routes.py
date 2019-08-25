@@ -331,6 +331,12 @@ def edit_processor_import(processor_name):
                            edit_name="Import")
 
 
+def adjust_path(path):
+    for x in [['S:', '/mnt/s'], ['C:', '/mnt/c'], ['c:', '/mnt/c'],
+              ['\\', '/']]:
+        path = path.replace(x[0], x[1])
+    return path
+
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
 @login_required
 def edit_processor_clean(processor_name):
@@ -338,7 +344,7 @@ def edit_processor_clean(processor_name):
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     form = ProcessorCleanForm()
     template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
-                    'title': _('Processor'), 'form': form, 'edit_progress':75,
+                    'title': _('Processor'), 'form': form, 'edit_progress': 75,
                     'edit_name': "Clean"}
     if form.run_processor_imports.data:
         if cur_proc.get_task_in_progress('.run_processor'):
@@ -353,7 +359,19 @@ def edit_processor_clean(processor_name):
             cur_proc.run('basic', cur_user)
         return render_template('create_processor.html', **template_arg)
     if form.refresh_data_sources.data:
-        cur_proc.launch_task('')
+        # cur_proc.launch_task('')
+        # db.session.commit()
+        import pandas as pd
+        import os
+        file_name = os.path.join(adjust_path(cur_proc.local_path), 'Raw Data Output.csv')
+        df = pd.read_csv(file_name)
+        metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
+                   'Net Cost Final']
+        tables = [df.groupby(['mpCampaign', 'mpVendor', 'Vendor Key'])['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
+                   'Net Cost Final'].sum(), df.groupby(['mpCampaign', 'mpVendor', 'mpCreative'])['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
+                   'Net Cost Final'].sum()]
+        return render_template('create_processor.html', tables=tables,
+                               **template_arg)
     if form.validate_on_submit():
         cur_proc.launch_task('.set_processor_imports', _('Setting imports.'),
                              running_user=current_user.id,
@@ -442,6 +460,16 @@ def edit_processor(processor_name):
         processor_to_edit.campaign_id = form_campaign.id
         db.session.commit()
         flash(_('Your changes have been saved.'))
+        post_body = ('Create Processor {}...'.format(processor_to_edit.name))
+        processor_to_edit.launch_task('.create_processor', _(post_body),
+                                  current_user.id,
+                                  current_app.config['BASE_PROCESSOR_PATH'])
+        creation_text = 'Processor was requested for creation.'
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    processor_id=processor_to_edit.id)
+        db.session.add(post)
+        db.session.commit()
         if form.submit_continue.data:
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=processor_to_edit.name))

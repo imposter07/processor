@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import 'bootstrap/wtf.html' as wtf %}
 
 {% block app_header %}
     <h1>{{ _('Hi, %(username)s!', username=current_user.username) }}</h1>
@@ -7,20 +6,22 @@
 
 {% block app_content %}
     {% if form %}
-    {{ wtf.quick_form(form) }}
+        {% include '_form.html' %}
     <br>
     {% endif %}
     {% for post in posts %}
         {% include '_post.html' %}
     {% endfor %}
     <nav aria-label="...">
-        <ul class="pager">
-            <li class="previous{% if not prev_url %} disabled{% endif %}">
+        <ul class="pagination">
+            <li class="page-item{% if not prev_url %} page-item disabled{% endif %}">
                 <a href="{{ prev_url or '#' }}">
                     <span aria-hidden="true">&larr;</span> {{ _('Newer posts') }}
                 </a>
             </li>
-            <li class="next{% if not next_url %} disabled{% endif %}">
+        </ul>
+        <ul class="pagination justify-content-end">
+            <li class="page-item{% if not next_url %} page-item disabled{% endif %}">
                 <a href="{{ next_url or '#' }}">
                     {{ _('Older posts') }} <span aria-hidden="true">&rarr;</span>
                 </a>

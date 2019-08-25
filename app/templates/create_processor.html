@@ -1,42 +1,31 @@
 {% extends "base.html" %}
-{% import 'bootstrap/wtf.html' as wtf %}
 
 {% block app_header %}
-    <h1><small>{{ _('Processor Creation') }}</small></h1>
-    <div class="progress" style="height: 1px;">
-        <div class="progress-bar" role="progressbar" style="width: {{ edit_progress }}%;" aria-valuenow={{ edit_progress }} aria-valuemin="0" aria-valuemax="100">{{ edit_name }}</div>
-    </div>
+    <h1>{{ _('Processor Creation') }}</h1>
     <div class="progress" style="height: 20px;">
         <div class="progress-bar" role="progressbar" style="width: {{ edit_progress }}%;" aria-valuenow={{ edit_progress }} aria-valuemin="0" aria-valuemax="100">{{ edit_name }}</div>
-    </div>
+    </div><br>
     <div class="btn-group" role="group" aria-label="Basic example">
         <a href="{{ url_for('main.edit_processor', processor_name=processor_name) }}">
-            <button type="button" class="btn btn-primary">{{ _('Basic') }}</button>
+            <button type="button" class="btn btn-secondary">{{ _('Basic') }}</button>
         </a>
         <a href="{{ url_for('main.edit_processor_import', processor_name=processor_name) }}">
-            <button type="button" class="btn btn-primary">{{ _('Import') }}</button>
+            <button type="button" class="btn btn-secondary">{{ _('Import') }}</button>
         </a>
         <a href="{{ url_for('main.edit_processor_clean', processor_name=processor_name) }}">
-            <button type="button" class="btn btn-primary">{{ _('Clean') }}</button>
+            <button type="button" class="btn btn-secondary">{{ _('Clean') }}</button>
         </a>
-        <button type="button" class="btn btn-primary">Export</button>
+        <button type="button" class="btn btn-secondary">Export</button>
     </div>
 {% endblock %}
 
 {% block app_content %}
-    <form class="form form-horizontal" method="post" role="form">
-        {{ form.hidden_tag() }}
-        {{ form.csrf_token }}
-        {{ wtf.form_errors(form, hiddens="only") }}
-        {% for field in form if field.widget.input_type != 'hidden'%}
-            {% if field.entries is defined %}<br><br>
-                {% for entry in field.entries if entry.widget.input_type != 'hidden'%}
-                    {{ entry.csrf_token }}
-                    <div class="col-xs-4">{{ wtf.form_field(entry) }}</div>
-                {% endfor %}
-            {% else %}
-                {{ wtf.form_field(field) }}
-            {% endif %}
+    {% with forms=forms %}
+        {% include '_form.html' %}
+    {% endwith %}
+    {% if tables %}
+        {% for table in tables %}
+            {{ table.to_html(classes="table table-hover table-striped table-dark")|safe }}
         {% endfor %}
-    </form>
+    {% endif %}
 {% endblock %}

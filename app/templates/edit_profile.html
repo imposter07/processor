@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import 'bootstrap/wtf.html' as wtf %}
 
 {% block app_header %}
     <h1>{{ _('Edit Profile') }}</h1>
@@ -8,7 +7,9 @@
 {% block app_content %}
     <div class="row">
         <div class="col-md-4">
-            {{ wtf.quick_form(form) }}
+            {% with forms=forms %}
+                {% include '_form.html' %}
+            {% endwith %}
         </div>
     </div>
 {% endblock %}

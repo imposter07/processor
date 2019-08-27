@@ -5,6 +5,39 @@
 {% endblock %}
 
 {% block app_content %}
+<div class="card-deck">
+  <div class="card">
+    <i class="fas fa-chart-bar btn btn-dark btn-lg" href="{{ url_for('main.processor') }} role="button"> </i>
+    <div class="card-body">
+      <h5 class="card-title">Processor</h5>
+      <p class="card-text">Create, view and update live campaigns using the data processor.</p>
+    </div>
+    <div class="card-footer">
+      <small class="text-muted">Last updated 3 mins ago</small>
+    </div>
+  </div>
+  <div class="card">
+    <i class="fas fa-paper-plane btn btn-dark btn-lg" href="#" role="button"> </i>
+    <div class="card-body">
+      <h5 class="card-title">Uploader</h5>
+      <p class="card-text">Create and upload new campaigns to Facebook, AdWords and DCM.</p>
+    </div>
+    <div class="card-footer">
+      <small class="text-muted">Last updated 3 mins ago</small>
+    </div>
+  </div>
+  <div class="card">
+    <i class="fas fa-edit btn btn-dark btn-lg" href="#" role="button"> </i>
+    <div class="card-body">
+      <h5 class="card-title">Clients</h5>
+      <p class="card-text">View and explore current clients.</p>
+    </div>
+    <div class="card-footer">
+      <small class="text-muted">Last updated 3 mins ago</small>
+    </div>
+  </div>
+</div>
+    <br><br><br>
     {% if form %}
         {% include '_form.html' %}
     <br>

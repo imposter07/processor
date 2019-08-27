@@ -3,7 +3,10 @@
 {% block app_header %}
     <h1>{{ _('Processor Creation') }}</h1>
     <div class="progress" style="height: 20px;">
-        <div class="progress-bar" role="progressbar" style="width: {{ edit_progress }}%;" aria-valuenow={{ edit_progress }} aria-valuemin="0" aria-valuemax="100">{{ edit_name }}</div>
+        <div class="progress-bar" role="progressbar"
+             style="width: {{ edit_progress }}%;"
+             aria-valuenow={{ edit_progress }} aria-valuemin="0" aria-valuemax="100">
+            {{ edit_name }}</div>
     </div><br>
     <div class="btn-group" role="group" aria-label="Basic example">
         <a href="{{ url_for('main.edit_processor', processor_name=processor_name) }}">

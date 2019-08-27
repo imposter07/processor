@@ -2,7 +2,7 @@
 
 {% block app_header %}
     <h1><small>{{ _('Processor') }}: {{ processor.name}}</small><br>
-        <div class="btn-toolbar" role="toolbar" style="justify-content: center; display: flex;">
+        <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
             <div class="dropdown">
                 <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                     {{ _('Run Processor') }}
@@ -15,10 +15,17 @@
                     <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor.name, processor_args='export') }}">{{ _('Export') }}</a></li>
                 </ul>
             </div>
-            <div class="btn-group">
-                <a href="{{ url_for('main.edit_processor', processor_name=processor.name) }}">
-                    <button type="button" class="btn btn-primary">{{ _('Edit Processor') }}</button>
-                </a>
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                    {{ _('Edit Processor') }}
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dropdownMenu2">
+                    <li><a class="dropdown-item" href="{{ url_for('main.edit_processor', processor_name=processor.name, processor_args='full') }}">{{ _('Basic') }}</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('main.edit_processor_import', processor_name=processor.name, processor_args='import') }}">{{ _('Import') }}</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('main.edit_processor_clean', processor_name=processor.name, processor_args='basic') }}">{{ _('Clean') }}</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor.name, processor_args='export') }}">{{ _('Export') }}</a></li>
+                </ul>
             </div>
         </div>
     </h1>

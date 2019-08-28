@@ -20,8 +20,8 @@
   </button>
     <div class="collapse navbar-collapse" id="navbarTogglerDemo02">
       <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
-          <li class="nav-item"><a class="nav-link"  href="{{ url_for('main.explore') }}"><i class="fas fa-rocket btn btn-dark btn-lg" href="#" role="button"></i></a></li>
-          <li class="nav-item"><a class="nav-link"  href="{{ url_for('main.processor') }}"><i class="fas fa-chart-bar btn btn-dark btn-lg" href="#" role="button"></i></a></li>
+          <li class="nav-item"><a class="nav-link"  title={{ _('Explore') }} href="{{ url_for('main.explore') }}"><i class="fas fa-rocket btn btn-dark btn-lg" href="#" role="button"></i></a></li>
+          <li class="nav-item"><a class="nav-link"  title={{ _('Processor') }} href="{{ url_for('main.processor') }}"><i class="fas fa-chart-bar btn btn-dark btn-lg" href="#" role="button"></i></a></li>
       </ul>
         {% if g.search_form %}
         <form class="form-inline my-2 my-lg-0" method="get" action="{{ url_for('main.search') }}">
@@ -34,7 +34,7 @@
             {% if current_user.is_anonymous %}
             <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">{{ _('Login') }}</a></li>
             {% else %}
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('main.messages') }}"><i class="fas fa-envelope btn btn-dark btn-lg" href="#" role="button"> </i>
+            <li class="nav-item"><a class="nav-link" title={{ _('Messages') }} href="{{ url_for('main.messages') }}"><i class="fas fa-envelope btn btn-dark btn-lg" href="#" role="button"> </i>
                     {% set new_messages = current_user.new_messages() %}
                     <span id="message_count" class="badge badge-light"
                           style="visibility: {% if new_messages %}visible
@@ -43,11 +43,10 @@
                     </span>
                 </a>
             </li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('main.user', username=current_user.username) }}"><i class="fas fa-user btn btn-dark btn-lg" href="#" role="button"> </i></a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt btn-dark btn-lg" href="#" role="button"></i></a></li>
+            <li class="nav-item"><a class="nav-link" title={{ _('Profile') }} href="{{ url_for('main.user', username=current_user.username) }}"><i class="fas fa-user btn btn-dark btn-lg" href="#" role="button"> </i></a></li>
+            <li class="nav-item"><a class="nav-link" title={{ _('Logout') }} href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt btn-dark btn-lg" href="#" role="button"></i></a></li>
             {% endif %}
         </ul>
-
     </div>
 </nav>
 {% endblock %}

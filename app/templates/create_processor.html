@@ -28,6 +28,7 @@
     {% endwith %}
     {% if tables %}
         {% for table in tables %}
+            {{ table.style.format('<input name="table" value="{}" />').render(classes="table table-hover table-striped table-dark")|safe}}
             {{ table.to_html(classes="table table-hover table-striped table-dark")|safe }}
         {% endfor %}
     {% endif %}

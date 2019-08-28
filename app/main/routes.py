@@ -342,7 +342,18 @@ def adjust_path(path):
 def edit_processor_clean(processor_name):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    form = ProcessorCleanForm()
+    import processor.reporting.vendormatrix as vm
+    import processor.reporting.vmcolumns as vmc
+    import os
+    current_path = os.getcwd()
+    os.chdir(adjust_path(cur_proc.local_path))
+    matrix = vm.VendorMatrix()
+    data_sources = matrix.get_data_sources()
+    data_sources = [{'vendor_key': x.key,
+      'full_placement_columns': x.p[vmc.fullplacename],
+      'placement_columns': x.p[vmc.placement]} for x in data_sources]
+    os.chdir(current_path)
+    form = ProcessorCleanForm(datasources=data_sources)
     template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
                     'title': _('Processor'), 'form': form, 'edit_progress': 75,
                     'edit_name': "Clean"}
@@ -363,7 +374,8 @@ def edit_processor_clean(processor_name):
         # db.session.commit()
         import pandas as pd
         import os
-        file_name = os.path.join(adjust_path(cur_proc.local_path), 'Raw Data Output.csv')
+        file_name = os.path.join(adjust_path(cur_proc.local_path),
+                                 'Raw Data Output.csv')
         df = pd.read_csv(file_name)
         metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
                    'Net Cost Final']
@@ -372,6 +384,17 @@ def edit_processor_clean(processor_name):
                    'Net Cost Final'].sum()]
         return render_template('create_processor.html', tables=tables,
                                **template_arg)
+    for ds in form.datasources:
+        if ds.refresh_data_source.data:
+            vk = ds.vendor_key.data
+            current_path = os.getcwd()
+            os.chdir(adjust_path(cur_proc.local_path))
+            matrix = vm.VendorMatrix()
+            data_source = matrix.get_data_source(vk)
+            tables = [data_source.get_dict_order_df().head()]
+            os.chdir(current_path)
+            return render_template('create_processor.html', tables=tables,
+                                   **template_arg)
     if form.validate_on_submit():
         cur_proc.launch_task('.set_processor_imports', _('Setting imports.'),
                              running_user=current_user.id,

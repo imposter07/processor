@@ -151,6 +151,9 @@ class EditProcessorForm(ProcessorForm):
 
 class DataSourceForm(FlaskForm):
     refresh_data_source = SubmitField(_l('Refresh Source'))
+    vendor_key = StringField(_l('Vendor Key'))
+    full_placement_columns = StringField(_l('Full Placement Columns'))
+    placement_columns = StringField(_l('Placement Column'))
 
 
 class ProcessorCleanForm(FlaskForm):

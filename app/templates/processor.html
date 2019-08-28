@@ -3,7 +3,6 @@
 {% block app_header %}
     <table class="table table-hover">
         <tr>
-            <td width="256px"><img src="{{ user.avatar(256) }}"></td>
             <td>
                 <h1>{{ _('User') }}: {{ user.username }}</h1>
                 {% if user.about_me %}<p>{{ user.about_me }}</p>{% endif %}
@@ -12,28 +11,46 @@
                     <button type="button" class="btn btn-primary btn-lg">{{ _('Create Processor') }}</button>
                 </a>
                 {% endif %}
+                <div class="input-group">
+                  <select class="custom-select" id="inputGroupSelect04">
+                    <option selected>Choose...</option>
+                      {% for processor in processors %}
+                          <option value="{{ processor.name }}">{{ processor.name }}</option>
+                      {% endfor %}
+                  </select>
+                </div>
             </td>
         </tr>
     </table>
-{% endblock %}
-
-
-{% block app_content %}
-    {% for processor in processors %}
-        {% include '_processor.html' %}
-    {% endfor %}
+        <div id="carousel" class="carousel slide" data-ride="carousel" data-interval="false">
+        <div class="carousel-inner">
+            {% for processor in processors %}
+                {% with loop_num = loop.index %}
+                    {% include '_processor.html' %}
+                {% endwith %}
+            {% endfor %}
+          <a class="carousel-control-prev" href="#carousel" role="button" data-slide="prev">
+            <i class="fas fa-arrow-alt-circle-left btn btn-dark btn-lg"></i>
+            <span class="sr-only">Previous</span>
+          </a>
+          <a class="carousel-control-next" href="#carousel" role="button" data-slide="next">
+            <i class="fas fa-arrow-alt-circle-right btn btn-dark btn-lg"></i>
+            <span class="sr-only">Next</span>
+          </a>
+        </div>
+    </div>
     {% for post in posts %}
         {% include '_post.html' %}
     {% endfor %}
     <nav aria-label="...">
-        <ul class="pager">
-            <li class="previous{% if not prev_url %} disabled{% endif %}">
-                <a href="{{ prev_url or '#' }}">
+        <ul class="pagination justify-content-center">
+            <li class="page-item{% if not prev_url %} page-item disabled{% endif %}">
+                <a class="page-link" href="{{ prev_url or '#' }}">
                     <span aria-hidden="true">&larr;</span> {{ _('Newer processors') }}
                 </a>
             </li>
-            <li class="next{% if not next_url %} disabled{% endif %}">
-                <a href="{{ next_url or '#' }}">
+            <li class="page-item{% if not next_url %} page-item disabled{% endif %}">
+                <a class="page-link" href="{{ next_url or '#' }}">
                     {{ _('Older processors') }} <span aria-hidden="true">&rarr;</span>
                 </a>
             </li>

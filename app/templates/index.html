@@ -48,14 +48,14 @@
     <nav aria-label="...">
         <ul class="pagination">
             <li class="page-item{% if not prev_url %} page-item disabled{% endif %}">
-                <a href="{{ prev_url or '#' }}">
+                <a class="page-link"  href="{{ prev_url or '#' }}">
                     <span aria-hidden="true">&larr;</span> {{ _('Newer posts') }}
                 </a>
             </li>
         </ul>
         <ul class="pagination justify-content-end">
             <li class="page-item{% if not next_url %} page-item disabled{% endif %}">
-                <a href="{{ next_url or '#' }}">
+                <a class="page-link"  href="{{ next_url or '#' }}">
                     {{ _('Older posts') }} <span aria-hidden="true">&rarr;</span>
                 </a>
             </li>

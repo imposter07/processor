@@ -2,8 +2,8 @@
 
 {% block app_header %}
     <h1>{{ _('Processor Creation') }}</h1>
-    <div class="progress" style="height: 20px;">
-        <div class="progress-bar" role="progressbar"
+    <div class="progress mx-auto" style="height: 20px; width: 50%;">
+        <div class="progress-bar progress-bar-striped bg-info" role="progressbar"
              style="width: {{ edit_progress }}%;"
              aria-valuenow={{ edit_progress }} aria-valuemin="0" aria-valuemax="100">
             {{ edit_name }}</div>
@@ -28,7 +28,7 @@
     {% endwith %}
     {% if tables %}
         {% for table in tables %}
-            {{ table.style.format('<input name="table" value="{}" />').render(classes="table table-hover table-striped table-dark")|safe}}
+            {{ table.style.format('<input name="table" value="{}" />').set_table_attributes('class="table table-hover table-striped table-dark"').render()|safe}}
             {{ table.to_html(classes="table table-hover table-striped table-dark")|safe }}
         {% endfor %}
     {% endif %}

@@ -3,6 +3,7 @@ import sys
 import json
 import time
 import shutil
+import pandas as pd
 from flask import render_template
 from rq import get_current_job
 from app import create_app, db
@@ -215,3 +216,38 @@ def refresh_datasources(processor_id, current_user_id):
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def get_data_sources(processor_id, current_user_id, local_path):
+    import processor.reporting.vendormatrix as vm
+    import processor.reporting.vmcolumns as vmc
+    os.chdir(adjust_path(local_path))
+    matrix = vm.VendorMatrix()
+    data_sources = matrix.get_data_sources()
+    data_sources = [{'vendor_key': x.key,
+      'full_placement_columns': x.p[vmc.fullplacename],
+      'placement_columns': x.p[vmc.placement]} for x in data_sources]
+    _set_task_progress(100)
+    return data_sources
+
+
+def get_data_tables(processor_id, current_user_id, local_path):
+    file_name = os.path.join(adjust_path(local_path), 'Raw Data Output.csv')
+    df = pd.read_csv(file_name)
+    metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
+               'Net Cost Final']
+    tables = [
+        df.groupby(['mpCampaign', 'mpVendor', 'Vendor Key'])[metrics].sum(),
+        df.groupby(['mpCampaign', 'mpVendor', 'mpCreative'])[metrics].sum()]
+    _set_task_progress(100)
+    return tables
+
+
+def get_dict_order(processor_id, current_user_id, local_path, vk):
+    import processor.reporting.vendormatrix as vm
+    os.chdir(adjust_path(local_path))
+    matrix = vm.VendorMatrix()
+    data_source = matrix.get_data_source(vk)
+    tables = [data_source.get_dict_order_df().head()]
+    _set_task_progress(100)
+    return tables

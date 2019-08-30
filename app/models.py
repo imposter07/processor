@@ -1,10 +1,10 @@
 import rq
 import jwt
 import json
+import time
 import redis
 from datetime import datetime
 from hashlib import md5
-from time import time
 from flask import current_app
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -122,18 +122,18 @@ class User(UserMixin, db.Model):
 
     def get_reset_password_token(self, expires_in=600):
         return jwt.encode(
-            {'reset_password': self.id, 'exp': time() + expires_in},
+            {'reset_password': self.id, 'exp': time.time() + expires_in},
             current_app.config['SECRET_KEY'],
             algorithm='HS256').decode('utf-8')
 
     @staticmethod
     def verify_reset_password_token(token):
         try:
-            id = jwt.decode(token, current_app.config['SECRET_KEY'],
-                            algorithms=['HS256'])['reset_password']
+            user_id = jwt.decode(token, current_app.config['SECRET_KEY'],
+                                 algorithms=['HS256'])['reset_password']
         except:
             return
-        return User.query.get(id)
+        return User.query.get(user_id)
 
     def new_messages(self):
         last_read_time = self.last_message_read_time or datetime(1900, 1, 1)
@@ -163,8 +163,8 @@ class User(UserMixin, db.Model):
 
 
 @login.user_loader
-def load_user(id):
-    return User.query.get(int(id))
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 
 class Post(SearchableMixin, db.Model):
@@ -195,7 +195,7 @@ class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    timestamp = db.Column(db.Float, index=True, default=time)
+    timestamp = db.Column(db.Float, index=True, default=time.time())
     payload_json = db.Column(db.Text)
 
     def get_data(self):
@@ -220,6 +220,18 @@ class Task(db.Model):
     def get_progress(self):
         job = self.get_rq_job()
         return job.meta.get('progress', 0) if job is not None else 100
+
+    def wait_for_job(self, loops=100):
+        for x in range(loops):
+            if self.get_progress() == 100:
+                break
+            else:
+                time.sleep(5)
+
+    def wait_and_get_job(self, loops=100):
+        self.wait_for_job(loops=loops)
+        job = self.get_rq_job()
+        return job
 
 
 class Client(db.Model):

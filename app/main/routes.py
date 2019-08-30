@@ -337,22 +337,18 @@ def adjust_path(path):
         path = path.replace(x[0], x[1])
     return path
 
+
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
 @login_required
 def edit_processor_clean(processor_name):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    import processor.reporting.vendormatrix as vm
-    import processor.reporting.vmcolumns as vmc
-    import os
-    current_path = os.getcwd()
-    os.chdir(adjust_path(cur_proc.local_path))
-    matrix = vm.VendorMatrix()
-    data_sources = matrix.get_data_sources()
-    data_sources = [{'vendor_key': x.key,
-      'full_placement_columns': x.p[vmc.fullplacename],
-      'placement_columns': x.p[vmc.placement]} for x in data_sources]
-    os.chdir(current_path)
+    task = cur_proc.launch_task('.get_data_sources', _('Refreshing data.'),
+                                running_user=current_user.id,
+                                local_path=cur_proc.local_path)
+    db.session.commit()
+    job = task.wait_and_get_job()
+    data_sources = job.result
     form = ProcessorCleanForm(datasources=data_sources)
     template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
                     'title': _('Processor'), 'form': form, 'edit_progress': 75,
@@ -370,29 +366,26 @@ def edit_processor_clean(processor_name):
             cur_proc.run('basic', cur_user)
         return render_template('create_processor.html', **template_arg)
     if form.refresh_data_sources.data:
-        # cur_proc.launch_task('')
-        # db.session.commit()
-        import pandas as pd
-        import os
-        file_name = os.path.join(adjust_path(cur_proc.local_path),
-                                 'Raw Data Output.csv')
-        df = pd.read_csv(file_name)
-        metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
-                   'Net Cost Final']
-        tables = [df.groupby(['mpCampaign', 'mpVendor', 'Vendor Key'])['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
-                   'Net Cost Final'].sum(), df.groupby(['mpCampaign', 'mpVendor', 'mpCreative'])['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
-                   'Net Cost Final'].sum()]
+        task = cur_proc.launch_task('.get_data_tables',
+                                    _('Getting raw data tables.'),
+                                    running_user=current_user.id,
+                                    local_path=cur_proc.local_path)
+        db.session.commit()
+        job = task.wait_and_get_job()
+        tables = job.result
         return render_template('create_processor.html', tables=tables,
                                **template_arg)
     for ds in form.datasources:
         if ds.refresh_data_source.data:
             vk = ds.vendor_key.data
-            current_path = os.getcwd()
-            os.chdir(adjust_path(cur_proc.local_path))
-            matrix = vm.VendorMatrix()
-            data_source = matrix.get_data_source(vk)
-            tables = [data_source.get_dict_order_df().head()]
-            os.chdir(current_path)
+            task = cur_proc.launch_task('.get_dict_order',
+                                        _('Getting dict order table.'),
+                                        running_user=current_user.id,
+                                        local_path=cur_proc.local_path,
+                                        vk=vk)
+            db.session.commit()
+            job = task.wait_and_get_job()
+            tables = job.result
             return render_template('create_processor.html', tables=tables,
                                    **template_arg)
     if form.validate_on_submit():

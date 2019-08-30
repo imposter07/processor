@@ -7,6 +7,7 @@ from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
 from flask_babel import _, lazy_gettext as _l
 from app.models import User, Processor, Client, Product, Campaign
+import processor.reporting.dictcolumns as dctc
 
 
 class EditProfileForm(FlaskForm):
@@ -151,9 +152,15 @@ class EditProcessorForm(ProcessorForm):
 
 class DataSourceForm(FlaskForm):
     refresh_data_source = SubmitField(_l('Refresh Source'))
+    refresh_dict = SubmitField(_l('Refresh Dictionary'))
     vendor_key = StringField(_l('Vendor Key'))
     full_placement_columns = StringField(_l('Full Placement Columns'))
     placement_columns = StringField(_l('Placement Column'))
+    auto_dictionary_placement = SelectField(_l('Auto Dict Placement'), choices=[
+        (x, x) for x in [dctc.FPN, dctc.PN]])
+    auto_dictionary_order = StringField(_l('Auto Dictionary Order'))
+    active_metrics = StringField(_l('Active Metrics'))
+    vm_rules = StringField(_l('Vendor Matrix Rules'))
 
 
 class ProcessorCleanForm(FlaskForm):

@@ -331,13 +331,6 @@ def edit_processor_import(processor_name):
                            edit_name="Import")
 
 
-def adjust_path(path):
-    for x in [['S:', '/mnt/s'], ['C:', '/mnt/c'], ['c:', '/mnt/c'],
-              ['\\', '/']]:
-        path = path.replace(x[0], x[1])
-    return path
-
-
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
 @login_required
 def edit_processor_clean(processor_name):
@@ -478,8 +471,8 @@ def edit_processor(processor_name):
         flash(_('Your changes have been saved.'))
         post_body = ('Create Processor {}...'.format(processor_to_edit.name))
         processor_to_edit.launch_task('.create_processor', _(post_body),
-                                  current_user.id,
-                                  current_app.config['BASE_PROCESSOR_PATH'])
+                                      current_user.id,
+                                      current_app.config['BASE_PROCESSOR_PATH'])
         creation_text = 'Processor was requested for creation.'
         flash(_(creation_text))
         post = Post(body=creation_text, author=current_user,

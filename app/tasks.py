@@ -224,9 +224,14 @@ def get_data_sources(processor_id, current_user_id, local_path):
     os.chdir(adjust_path(local_path))
     matrix = vm.VendorMatrix()
     data_sources = matrix.get_data_sources()
-    data_sources = [{'vendor_key': x.key,
-      'full_placement_columns': x.p[vmc.fullplacename],
-      'placement_columns': x.p[vmc.placement]} for x in data_sources]
+    data_sources = [{
+        'vendor_key': x.key,
+        'full_placement_columns': x.p[vmc.fullplacename],
+        'placement_columns': x.p[vmc.placement],
+        'auto_dictionary_placement': x.p[vmc.autodicplace],
+        'auto_dictionary_order': x.p[vmc.autodicord],
+        'active_metrics': x.get_active_metrics(),
+        'vm_rules': x.vm_rules} for x in data_sources]
     _set_task_progress(100)
     return data_sources
 

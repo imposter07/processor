@@ -331,6 +331,27 @@ def edit_processor_import(processor_name):
                            edit_name="Import")
 
 
+def adjust_path(path):
+    for x in [['S:', '/mnt/s'], ['C:', '/mnt/c'], ['c:', '/mnt/c'],
+              ['\\', '/']]:
+        path = path.replace(x[0], x[1])
+    return path
+
+
+@bp.route('/processor/<processor_name>/edit/clean/log', methods=['GET', 'POST'])
+@login_required
+def get_processor_logfile(processor_name):
+    import os
+    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
+
+    def generate():
+        with open(os.path.join(adjust_path(cur_proc.local_path), 'logfile.log')) as f:
+            while True:
+                yield f.read()
+                time.sleep(1)
+    return current_app.response_class(generate(), mimetype='text/plain')
+
+
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
 @login_required
 def edit_processor_clean(processor_name):
@@ -381,6 +402,7 @@ def edit_processor_clean(processor_name):
             tables = job.result
             return render_template('create_processor.html', tables=tables,
                                    **template_arg)
+    """
     if form.validate_on_submit():
         cur_proc.launch_task('.set_processor_imports', _('Setting imports.'),
                              running_user=current_user.id,
@@ -392,6 +414,7 @@ def edit_processor_clean(processor_name):
         else:
             return redirect(url_for('main.processor_page',
                                     processor_name=cur_proc.name))
+    """
     return render_template('create_processor.html', **template_arg)
 
 

@@ -40,7 +40,6 @@ def export_posts(user_id):
             time.sleep(5)
             i += 1
             _set_task_progress(100 * i // total_posts)
-
         send_email('[LQApp] Your blog posts',
                    sender=app.config['ADMINS'][0], recipients=[user.email],
                    text_body=render_template('email/export_posts.txt',
@@ -163,7 +162,6 @@ def set_processor_imports(processor_id, current_user_id, form_imports):
         proc_imports = []
         for imp in form_imports:
             proc_import = ProcessorImports()
-            print(imp)
             proc_import.set_from_form(imp, cur_processor)
             proc_imports.append(proc_import)
         for imp in old_imports:

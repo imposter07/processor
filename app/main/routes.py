@@ -445,10 +445,10 @@ def processor_popup(processor_name):
     return render_template('processor_popup.html', processor=processor_for_page)
 
 
-@bp.route('/processor/<processor_name>/run/<processor_args>',
+@bp.route('/processor/<processor_name>/run/<redirect>/<processor_args>',
           methods=['GET', 'POST'])
 @login_required
-def run_processor(processor_name, processor_args=''):
+def run_processor(processor_name, processor_args='', redirect=None):
     processor_to_run = Processor.query.filter_by(
         name=processor_name).first_or_404()
     if processor_to_run.get_task_in_progress('.run_processor'):
@@ -468,8 +468,18 @@ def run_processor(processor_name, processor_args=''):
                     processor_id=processor_to_run.id)
         db.session.add(post)
         db.session.commit()
-    return redirect(url_for('main.processor_page',
-                            processor_name=processor_name))
+    if not redirect:
+        return redirect(url_for('main.processor_page',
+                                processor_name=processor_name))
+    elif redirect == 'Basic':
+        return redirect(url_for('main.edit_processor',
+                                processor_name=processor_to_run.name))
+    elif redirect =='Import':
+        return redirect(url_for('main.edit_processor_import',
+                                processor_name=processor_to_run.name))
+    elif redirect =='Clean':
+        return redirect(url_for('main.edit_processor_clean',
+                                processor_name=processor_to_run.name))
 
 
 @bp.route('/processor/<processor_name>/edit', methods=['GET', 'POST'])

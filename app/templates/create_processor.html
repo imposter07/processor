@@ -21,11 +21,25 @@
         <button type="button" class="btn btn-secondary">Export</button>
     </div>
     <br><br>
+    <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
+        <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                {{ _('Run Processor') }}
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='full') }}">{{ _('Full') }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='import') }}">{{ _('Import') }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='basic') }}">{{ _('Basic') }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='export') }}">{{ _('Export') }}</a></li>
+            </ul>
+        </div>
+    </div>
+    <br><br>
     <!-- Button trigger modal -->
-    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
+    <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#exampleModal">
       Show Logs
     </button>
-
     <!-- Modal -->
     <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg" role="document">

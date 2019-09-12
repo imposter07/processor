@@ -9,7 +9,7 @@ from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm
 from app.models import User, Post, Message, Notification, Processor, \
-    Client, Product, Campaign, ProcessorImports
+    Client, Product, Campaign, ProcessorDatasources
 from app.translate import translate
 from app.main import bp
 
@@ -283,7 +283,7 @@ def edit_processor_import(processor_name):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     imp_dict = []
-    proc_imports = ProcessorImports.query.filter_by(processor_id=cur_proc.id)
+    proc_imports = ProcessorDatasources.query.filter_by(processor_id=cur_proc.id)
     for imp in proc_imports:
         form_dict = imp.get_form_dict()
         imp_dict.append(form_dict)
@@ -305,11 +305,7 @@ def edit_processor_import(processor_name):
                                     _('Refreshing imports.'),
                                     running_user=current_user.id)
         db.session.commit()
-        for x in range(100):
-            if task.get_progress() == 100:
-                break
-            else:
-                time.sleep(5)
+        job = task.wait_and_get_job()
         return render_template('create_processor.html',
                                processor_name=cur_proc.name, user=cur_user,
                                title=_('Processor'), form=form,
@@ -343,13 +339,19 @@ def adjust_path(path):
 def get_processor_logfile(processor_name):
     import os
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
-
     def generate():
-        with open(os.path.join(adjust_path(cur_proc.local_path), 'logfile.log')) as f:
+        with open(os.path.join(adjust_path(cur_proc.local_path),
+                               'logfile.log')) as f:
             while True:
                 yield f.read()
                 time.sleep(1)
     return current_app.response_class(generate(), mimetype='text/plain')
+
+
+@bp.route('/processor/<processor_name>/edit/clean/<datasource>')
+@login_required
+def edit_processor_clean_fpn(processor_name, datasource):
+    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
 
 
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
@@ -392,6 +394,31 @@ def edit_processor_clean(processor_name):
     for ds in form.datasources:
         if ds.refresh_data_source.data:
             vk = ds.vendor_key.data
+            task = cur_proc.launch_task('.get_dict_order',
+                                        _('Getting dict order table.'),
+                                        running_user=current_user.id,
+                                        local_path=cur_proc.local_path,
+                                        vk=vk)
+            db.session.commit()
+            job = task.wait_and_get_job()
+            tables = job.result
+            return render_template('create_processor.html', tables=tables,
+                                   **template_arg)
+        elif ds.refresh_dict.data:
+            vk = ds.vendor_key.data
+            task = cur_proc.launch_task('.get_dict_order',
+                                        _('Getting dict order table.'),
+                                        running_user=current_user.id,
+                                        local_path=cur_proc.local_path,
+                                        vk=vk)
+            db.session.commit()
+            job = task.wait_and_get_job()
+            tables = job.result
+            return render_template('create_processor.html', tables=tables,
+                                   **template_arg)
+        elif ds.full_placement_columns.data:
+            vk = ds.vendor_key.data
+
             task = cur_proc.launch_task('.get_dict_order',
                                         _('Getting dict order table.'),
                                         running_user=current_user.id,

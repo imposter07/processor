@@ -52,18 +52,18 @@
           </div>
           <div class="modal-body">
               <span class="form-control-static pull-left">
-            <pre id="output"></pre>
-            <script>
-                var output = document.getElementById('output');
+                <pre id="output"></pre>
+                <script>
+                    var output = document.getElementById('output');
 
-                var xhr = new XMLHttpRequest();
-                xhr.open('GET', '{{ url_for('main.get_processor_logfile', processor_name=processor_name) }}');
-                xhr.send();
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('GET', '{{ url_for('main.get_processor_logfile', processor_name=processor_name) }}');
+                    xhr.send();
 
-                setInterval(function() {
-                    output.textContent = xhr.responseText;
-                }, 1000);
-            </script>
+                    setInterval(function() {
+                        output.textContent = xhr.responseText;
+                    }, 1000);
+                </script>
               </span>
           </div>
           <div class="modal-footer">

@@ -306,8 +306,8 @@ class Processor(db.Model):
     tasks = db.relationship('Task', backref='processor', lazy='dynamic')
     posts = db.relationship('Post', backref='processor', lazy='dynamic')
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
-    processor_imports = db.relationship('ProcessorImports', backref='processor',
-                                        lazy='dynamic')
+    processor_datasources = db.relationship('ProcessorDatasources',
+                                            backref='processor', lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -341,7 +341,7 @@ class Processor(db.Model):
         db.session.commit()
 
 
-class ProcessorImports(db.Model):
+class ProcessorDatasources(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), index=True)
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
@@ -350,6 +350,13 @@ class ProcessorImports(db.Model):
     account_filter = db.Column(db.String(128))
     start_date = db.Column(db.Date)
     api_fields = db.Column(db.String(128))
+    vendor_key = db.Column(db.String(128))
+    full_placement_columns = db.Column(db.Text)
+    placement_columns = db.Column(db.Text)
+    auto_dictionary_placement = db.Column(db.Text)
+    auto_dictionary_order = db.Column(db.Text)
+    active_metrics = db.Column(db.Text)
+    vm_rules = db.Column(db.Text)
 
     def __init__(self):
         self.form_dict = self.get_form_dict()

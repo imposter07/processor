@@ -8,7 +8,8 @@ from flask import render_template
 from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
-from app.models import User, Post, Task, Processor, Message, ProcessorImports
+from app.models import User, Post, Task, Processor, Message, \
+    ProcessorDatasources
 
 app = create_app()
 app.app_context().push()
@@ -125,7 +126,7 @@ def create_processor(processor_id, current_user_id, base_path):
 def get_processor_imports(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
-        old_imports = ProcessorImports.query.filter_by(
+        old_imports = ProcessorDatasources.query.filter_by(
             processor_id=cur_processor.id).all()
         user_that_ran = User.query.get(current_user_id)
         _set_task_progress(0)
@@ -139,7 +140,7 @@ def get_processor_imports(processor_id, current_user_id):
         ic = ImportConfig()
         current_imports = ic.get_current_imports(matrix=True)
         for imp in current_imports:
-            proc_import = ProcessorImports()
+            proc_import = ProcessorDatasources()
             proc_import.set_from_processor(imp, cur_processor)
             db.session.add(proc_import)
         db.session.commit()
@@ -155,13 +156,13 @@ def get_processor_imports(processor_id, current_user_id):
 def set_processor_imports(processor_id, current_user_id, form_imports):
     try:
         cur_processor = Processor.query.get(processor_id)
-        old_imports = ProcessorImports.query.filter_by(
+        old_imports = ProcessorDatasources.query.filter_by(
             processor_id=cur_processor.id).all()
         user_that_ran = User.query.get(current_user_id)
         _set_task_progress(0)
         proc_imports = []
         for imp in form_imports:
-            proc_import = ProcessorImports()
+            proc_import = ProcessorDatasources()
             proc_import.set_from_form(imp, cur_processor)
             proc_imports.append(proc_import)
         for imp in old_imports:
@@ -176,7 +177,7 @@ def set_processor_imports(processor_id, current_user_id, form_imports):
         from processor.reporting.vendormatrix import ImportConfig
         os.chdir(processor_path)
         ic = ImportConfig()
-        ic.add_and_remove_from_vm(processor_dicts , matrix=True)
+        ic.add_and_remove_from_vm(processor_dicts, matrix=True)
         msg_text = "Processor imports set."
         processor_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
@@ -186,42 +187,44 @@ def set_processor_imports(processor_id, current_user_id, form_imports):
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
-def refresh_datasources(processor_id, current_user_id):
-    try:
-        cur_processor = Processor.query.get(processor_id)
-        old_imports = ProcessorImports.query.filter_by(
-            processor_id=cur_processor.id).all()
-        user_that_ran = User.query.get(current_user_id)
-        _set_task_progress(0)
-        if old_imports:
-            for imp in old_imports:
-                db.session.delete(imp)
-            db.session.commit()
-        processor_path = adjust_path(cur_processor.local_path)
-        from processor.reporting.vendormatrix import ImportConfig
-        os.chdir(processor_path)
-        ic = ImportConfig()
-        current_imports = ic.get_current_imports(matrix=True)
-        for imp in current_imports:
-            proc_import = ProcessorImports()
-            proc_import.set_from_processor(imp, cur_processor)
-            db.session.add(proc_import)
-        db.session.commit()
-        msg_text = "Processor imports refreshed."
-        processor_post_message(cur_processor, user_that_ran, msg_text)
-        _set_task_progress(100)
-        db.session.commit()
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
-
-
 def get_data_sources(processor_id, current_user_id, local_path):
+    cur_processor = Processor.query.get(processor_id)
+    old_imports = ProcessorDatasources.query.filter_by(
+        processor_id=cur_processor.id).all()
+    user_that_ran = User.query.get(current_user_id)
+    _set_task_progress(0)
+    if old_imports:
+        for imp in old_imports:
+            db.session.delete(imp)
+        db.session.commit()
     import processor.reporting.vendormatrix as vm
     import processor.reporting.vmcolumns as vmc
     os.chdir(adjust_path(local_path))
     matrix = vm.VendorMatrix()
     data_sources = matrix.get_data_sources()
+    data_sources = [{
+        'vendor_key': x.key,
+        'full_placement_columns': x.p[vmc.fullplacename],
+        'placement_columns': x.p[vmc.placement],
+        'auto_dictionary_placement': x.p[vmc.autodicplace],
+        'auto_dictionary_order': x.p[vmc.autodicord],
+        'active_metrics': x.get_active_metrics(),
+        'vm_rules': x.vm_rules} for x in data_sources]
+    _set_task_progress(100)
+    return data_sources
+
+
+def set_data_sources(processor_id, current_user_id, local_path, data_sources):
+    import processor.reporting.vendormatrix as vm
+    import processor.reporting.vmcolumns as vmc
+    os.chdir(adjust_path(local_path))
+    matrix = vm.VendorMatrix()
+    old_data_sources = matrix.get_data_sources()
+    for new_source in data_sources:
+        ds = [x for x in old_data_sources
+              if x.key == new_source['vendor_key']][0]
+        # for
+        ds.set_in_vendormatrix()
     data_sources = [{
         'vendor_key': x.key,
         'full_placement_columns': x.p[vmc.fullplacename],

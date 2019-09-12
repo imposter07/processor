@@ -154,13 +154,13 @@ class DataSourceForm(FlaskForm):
     refresh_data_source = SubmitField(_l('Refresh Source'))
     refresh_dict = SubmitField(_l('Refresh Dictionary'))
     vendor_key = StringField(_l('Vendor Key'))
-    full_placement_columns = StringField(_l('Full Placement Columns'))
+    full_placement_columns = TextAreaField(_l('Full Placement Columns'))
     placement_columns = StringField(_l('Placement Column'))
     auto_dictionary_placement = SelectField(_l('Auto Dict Placement'), choices=[
         (x, x) for x in [dctc.FPN, dctc.PN]])
-    auto_dictionary_order = StringField(_l('Auto Dictionary Order'))
-    active_metrics = StringField(_l('Active Metrics'))
-    vm_rules = StringField(_l('Vendor Matrix Rules'))
+    auto_dictionary_order = TextAreaField(_l('Auto Dictionary Order'))
+    active_metrics = TextAreaField(_l('Active Metrics'))
+    vm_rules = TextAreaField(_l('Vendor Matrix Rules'))
 
 
 class ProcessorCleanForm(FlaskForm):
@@ -168,3 +168,13 @@ class ProcessorCleanForm(FlaskForm):
     run_processor = SubmitField(_l('Run Processor'))
     refresh_data_sources = SubmitField(_l('Refresh Data Sources'))
     datasources = FieldList(FormField(DataSourceForm))
+
+
+class PlacementForm(FlaskForm):
+    column_name = SelectField('Column Names')
+
+
+class FullPlacementForm(FlaskForm):
+    add_child = SubmitField(label='Add Column')
+    remove_api = SubmitField('Remove Column')
+    placements = FieldList(FormField(PlacementForm))

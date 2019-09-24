@@ -137,6 +137,16 @@ class ImportForm(FlaskForm):
     submit_continue = SubmitField(_l('Save & Continue'))
     apis = FieldList(FormField(APIForm, label='{}'.format(APIForm.name)))
 
+    def set_apis(self, data_source, cur_proc):
+        imp_dict = []
+        proc_imports = data_source.query.filter_by(processor_id=cur_proc.id).all()
+        for imp in proc_imports:
+            if imp.name is not None:
+                form_dict = imp.get_import_form_dict()
+                imp_dict.append(form_dict)
+        self.apis = imp_dict
+        return imp_dict
+
 
 class EditProcessorForm(ProcessorForm):
     def __init__(self, original_name, *args, **kwargs):
@@ -164,10 +174,19 @@ class DataSourceForm(FlaskForm):
 
 
 class ProcessorCleanForm(FlaskForm):
-    run_processor_imports = SubmitField(_l('Run Processor Imports'))
-    run_processor = SubmitField(_l('Run Processor'))
     refresh_data_sources = SubmitField(_l('Refresh Data Sources'))
+    submit = SubmitField(_l('Save & Quit'))
+    submit_continue = SubmitField(_l('Save & Continue'))
     datasources = FieldList(FormField(DataSourceForm))
+
+    def set_datasources(self, data_source, cur_proc):
+        imp_dict = []
+        ds = data_source.query.filter_by(processor_id=cur_proc.id).all()
+        for source in ds:
+            form_dict = source.get_ds_form_dict()
+            imp_dict.append(form_dict)
+        self.apis = imp_dict
+        return imp_dict
 
 
 class PlacementForm(FlaskForm):

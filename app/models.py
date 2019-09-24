@@ -7,6 +7,7 @@ from datetime import datetime
 from hashlib import md5
 from flask import current_app
 from flask_login import UserMixin
+import processor.reporting.vmcolumns as vmc
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login
 from app.search import add_to_index, remove_from_index, query_index
@@ -359,15 +360,22 @@ class ProcessorDatasources(db.Model):
     vm_rules = db.Column(db.Text)
 
     def __init__(self):
-        self.form_dict = self.get_form_dict()
+        self.form_dict = self.get_import_form_dict()
+        self.ds_dict = self.get_ds_form_dict()
+        self.full_dict = self.get_full_dict()
 
     def __eq__(self, other):
-        return self.get_form_dict() == other.get_form_dict()
+        return self.get_full_dict() == other.get_full_dict()
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def get_form_dict(self):
+    def get_full_dict(self):
+        self.full_dict = self.form_dict.copy()
+        self.full_dict.update(self.ds_dict)
+        return self.full_dict
+
+    def get_import_form_dict(self):
         form_dict = {
             'name': self.name,
             'key': self.key,
@@ -378,7 +386,18 @@ class ProcessorDatasources(db.Model):
         }
         return form_dict
 
-    def get_processor_dict(self):
+    def get_ds_form_dict(self):
+        form_dict = {
+            'vendor_key': self.vendor_key,
+            'full_placement_columns': self.full_placement_columns,
+            'placement_columns': self.placement_columns,
+            'auto_dictionary_placement': self.auto_dictionary_placement,
+            'auto_dictionary_order': self.auto_dictionary_order,
+            'active_metrics': self.active_metrics,
+            'vm_rules': self.vm_rules}
+        return form_dict
+
+    def get_import_processor_dict(self):
         form_dict = {
             'name': self.name,
             'Key': self.key,
@@ -389,20 +408,63 @@ class ProcessorDatasources(db.Model):
         }
         return form_dict
 
-    def set_from_processor(self, processor_dict, current_processor):
-        self.name = processor_dict['name']
+    def set_from_processor(self, source, current_processor):
         self.processor_id = current_processor.id
-        self.key = processor_dict['Key']
-        self.account_id = processor_dict['ID']
-        self.account_filter = processor_dict['Filter']
-        self.start_date = processor_dict['START DATE']
-        self.api_fields = processor_dict['API_FIELDS']
+        self.start_date = source.p[vmc.startdate]
+        self.api_fields = source.p[vmc.apifields]
+        self.vendor_key = source.key
+        self.full_placement_columns = source.p[vmc.fullplacename]
+        self.placement_columns = source.p[vmc.placement]
+        self.auto_dictionary_placement = source.p[vmc.autodicplace]
+        self.auto_dictionary_order = source.p[vmc.autodicord]
+        self.active_metrics = str(source.get_active_metrics())
+        self.vm_rules =  str(source.vm_rules)
+        if source.ic_params:
+            self.name = source.ic_params['name']
+            self.key = source.ic_params['Key']
+            self.account_id = source.ic_params['ID']
+            self.account_filter = source.ic_params['Filter']
 
     def set_from_form(self, form, current_processor):
-        self.name = form['name']
-        self.processor_id = current_processor.id
-        self.key = form['key']
-        self.account_id = form['account_id']
-        self.account_filter = form['account_filter']
-        self.start_date = form['start_date']
-        self.api_fields = form['api_fields']
+        if 'name' in form:
+            self.name = form['name']
+            self.processor_id = current_processor.id
+            self.key = form['key']
+            self.account_id = form['account_id']
+            self.account_filter = form['account_filter']
+            self.start_date = form['start_date']
+            self.api_fields = form['api_fields']
+        else:
+            self.vendor_key = form['vendor_key']
+            self.full_placement_columns = form['full_placement_columns']
+            self.placement_columns = form['placement_columns']
+            self.auto_dictionary_placement = form['auto_dictionary_placement']
+            self.auto_dictionary_order = form['auto_dictionary_order']
+            self.active_metrics = form['active_metrics']
+            self.vm_rules = form['vm_rules']
+
+    def get_datasource_for_processor(self):
+        source = {
+            vmc.fullplacename: self.full_placement_columns.strip('{').strip('}').split(','),
+            vmc.placement: self.placement_columns,
+            vmc.autodicplace: self.auto_dictionary_placement,
+            vmc.autodicord: self.auto_dictionary_order,
+            'active_metrics': self.active_metrics,
+            'vm_rules': self.vm_rules
+        }
+
+        import ast
+        for x in ['active_metrics', 'vm_rules']:
+            print(x)
+            try:
+                source[x] = ast.literal_eval(source[x])
+            except:
+                pass
+        for x in [vmc.autodicord]:
+            print(x)
+            source[x] = source[x].strip('{').strip('}').split(',')
+            source[x] = [y.strip('"') for y in source[x]]
+        for x in [vmc.fullplacename]:
+            print(x)
+            source[x] = [y.strip('"') for y in source[x]]
+        return source

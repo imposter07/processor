@@ -123,7 +123,7 @@ def create_processor(processor_id, current_user_id, base_path):
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
-def get_processor_imports(processor_id, current_user_id):
+def get_processor_sources(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
         old_imports = ProcessorDatasources.query.filter_by(
@@ -134,14 +134,14 @@ def get_processor_imports(processor_id, current_user_id):
             for imp in old_imports:
                 db.session.delete(imp)
             db.session.commit()
+        import processor.reporting.vendormatrix as vm
         processor_path = adjust_path(cur_processor.local_path)
-        from processor.reporting.vendormatrix import ImportConfig
         os.chdir(processor_path)
-        ic = ImportConfig()
-        current_imports = ic.get_current_imports(matrix=True)
-        for imp in current_imports:
+        matrix = vm.VendorMatrix()
+        data_sources = matrix.get_all_data_sources()
+        for source in data_sources:
             proc_import = ProcessorDatasources()
-            proc_import.set_from_processor(imp, cur_processor)
+            proc_import.set_from_processor(source, cur_processor)
             db.session.add(proc_import)
         db.session.commit()
         msg_text = "Processor imports refreshed."
@@ -172,7 +172,7 @@ def set_processor_imports(processor_id, current_user_id, form_imports):
             if imp not in old_imports:
                 db.session.add(imp)
         db.session.commit()
-        processor_dicts = [x.get_processor_dict() for x in proc_imports]
+        processor_dicts = [x.get_import_processor_dict() for x in proc_imports]
         processor_path = adjust_path(cur_processor.local_path)
         from processor.reporting.vendormatrix import ImportConfig
         os.chdir(processor_path)
@@ -187,12 +187,56 @@ def set_processor_imports(processor_id, current_user_id, form_imports):
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
+def set_data_sources(processor_id, current_user_id, form_sources):
+    cur_processor = Processor.query.get(processor_id)
+    old_sources = ProcessorDatasources.query.filter_by(
+        processor_id=cur_processor.id).all()
+    user_that_ran = User.query.get(current_user_id)
+    _set_task_progress(0)
+    for source in form_sources:
+        ds = [x for x in old_sources if 'vendor_key' in source and
+              x.vendor_key == source['vendor_key']][0]
+        if ds:
+            ds.set_from_form(source, cur_processor)
+            db.session.add(ds)
+    db.session.commit()
+    sources = ProcessorDatasources.query.filter_by(
+        processor_id=cur_processor.id).all()
+    import processor.reporting.vendormatrix as vm
+    import processor.reporting.vmcolumns as vmc
+    # for source in sources:
+
+    _set_task_progress(100)
+    """
+    for source in form_sources:
+    import processor.reporting.vendormatrix as vm
+    import processor.reporting.vmcolumns as vmc
+    os.chdir(adjust_path(cur_processor.local_path))
+    matrix = vm.VendorMatrix()
+    old_data_sources = matrix.set_data_sources()
+    for new_source in data_sources:
+        ds = [x for x in old_data_sources
+              if x.key == new_source['vendor_key']][0]
+        # for
+        ds.set_in_vendormatrix()
+    data_sources = [{
+        'vendor_key': x.key,
+        'full_placement_columns': x.p[vmc.fullplacename],
+        'placement_columns': x.p[vmc.placement],
+        'auto_dictionary_placement': x.p[vmc.autodicplace],
+        'auto_dictionary_order': x.p[vmc.autodicord],
+        'active_metrics': x.get_active_metrics(),
+        'vm_rules': x.vm_rules} for x in data_sources]
+    """
+
+"""
 def get_data_sources(processor_id, current_user_id, local_path):
     cur_processor = Processor.query.get(processor_id)
     old_imports = ProcessorDatasources.query.filter_by(
         processor_id=cur_processor.id).all()
     user_that_ran = User.query.get(current_user_id)
     _set_task_progress(0)
+    (processor_id, )
     if old_imports:
         for imp in old_imports:
             db.session.delete(imp)
@@ -235,7 +279,7 @@ def set_data_sources(processor_id, current_user_id, local_path, data_sources):
         'vm_rules': x.vm_rules} for x in data_sources]
     _set_task_progress(100)
     return data_sources
-
+"""
 
 def get_data_tables(processor_id, current_user_id, local_path):
     file_name = os.path.join(adjust_path(local_path), 'Raw Data Output.csv')

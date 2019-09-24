@@ -274,7 +274,7 @@ def create_processor():
             return redirect(url_for('main.processor'))
     return render_template('create_processor.html', user=cur_user,
                            title=_('Processor'), form=form, edit_progress="25",
-                           edit_name="Basic")
+                           edit_name='Basic')
 
 
 @bp.route('/processor/<processor_name>/edit/import', methods=['GET', 'POST'])
@@ -282,34 +282,29 @@ def create_processor():
 def edit_processor_import(processor_name):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    imp_dict = []
-    proc_imports = ProcessorDatasources.query.filter_by(processor_id=cur_proc.id)
-    for imp in proc_imports:
-        form_dict = imp.get_form_dict()
-        imp_dict.append(form_dict)
-    form = ImportForm(apis=imp_dict)
+    apis = ImportForm().set_apis(ProcessorDatasources, cur_proc)
+    form = ImportForm(apis=apis)
+    template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
+                    'title': _('Processor'), 'form': form, 'edit_progress': 50,
+                    'edit_name': 'Import'}
     if form.add_child.data:
         form.apis.append_entry()
-        return render_template('create_processor.html',
-                               processor_name=cur_proc.name, user=cur_user,
-                               title=_('Processor'), form=form,
-                               edit_progress=50,  edit_name="Import")
+        template_arg['form'] = form
+        return render_template('create_processor.html', **template_arg)
     if form.remove_api.data:
         form.apis.pop_entry()
-        return render_template('create_processor.html',
-                               processor_name=cur_proc.name, user=cur_user,
-                               title=_('Processor'), form=form,
-                               edit_progress=50,  edit_name="Import")
+        template_arg['form'] = form
+        return render_template('create_processor.html', **template_arg)
     if form.refresh.data:
-        task = cur_proc.launch_task('.get_processor_imports',
+        task = cur_proc.launch_task('.get_processor_sources',
                                     _('Refreshing imports.'),
                                     running_user=current_user.id)
         db.session.commit()
         job = task.wait_and_get_job()
-        return render_template('create_processor.html',
-                               processor_name=cur_proc.name, user=cur_user,
-                               title=_('Processor'), form=form,
-                               edit_progress=50,  edit_name="Import")
+        db.session.commit()
+        apis = ImportForm().set_apis(ProcessorDatasources, cur_proc)
+        template_arg['form']  = ImportForm(apis=apis)
+        return render_template('create_processor.html', **template_arg)
     if form.validate_on_submit():
         cur_proc.launch_task('.set_processor_imports', _('Setting imports.'),
                              running_user=current_user.id,
@@ -321,10 +316,7 @@ def edit_processor_import(processor_name):
         else:
             return redirect(url_for('main.processor_page',
                                     processor_name=cur_proc.name))
-    return render_template('create_processor.html',
-                           processor_name=cur_proc.name, user=cur_user,
-                           title=_('Processor'), form=form, edit_progress=50,
-                           edit_name="Import")
+    return render_template('create_processor.html', **template_arg)
 
 
 def adjust_path(path):
@@ -359,89 +351,61 @@ def edit_processor_clean_fpn(processor_name, datasource):
 def edit_processor_clean(processor_name):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    task = cur_proc.launch_task('.get_data_sources', _('Refreshing data.'),
-                                running_user=current_user.id,
-                                local_path=cur_proc.local_path)
-    db.session.commit()
-    job = task.wait_and_get_job()
-    data_sources = job.result
-    form = ProcessorCleanForm(datasources=data_sources)
+    proc_arg = {'running_user': current_user.id}
+    ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
+    form = ProcessorCleanForm(datasources=ds)
     template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
                     'title': _('Processor'), 'form': form, 'edit_progress': 75,
                     'edit_name': "Clean"}
-    if form.run_processor_imports.data:
-        if cur_proc.get_task_in_progress('.run_processor'):
-            flash(_('The processor is already running.'))
-        else:
-            cur_proc.run('import', cur_user)
-        return render_template('create_processor.html', **template_arg)
-    if form.run_processor.data:
-        if cur_proc.get_task_in_progress('.run_processor'):
-            flash(_('The processor is already running.'))
-        else:
-            cur_proc.run('basic', cur_user)
-        return render_template('create_processor.html', **template_arg)
     if form.refresh_data_sources.data:
-        task = cur_proc.launch_task('.get_data_tables',
-                                    _('Getting raw data tables.'),
-                                    running_user=current_user.id,
-                                    local_path=cur_proc.local_path)
+        task = cur_proc.launch_task(
+            '.get_processor_sources', _('Refreshing data.'), **proc_arg)
         db.session.commit()
-        job = task.wait_and_get_job()
-        tables = job.result
-        return render_template('create_processor.html', tables=tables,
-                               **template_arg)
+        task.wait_and_get_job()
+        ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
+        template_arg['form'] = ProcessorCleanForm(datasources=ds)
+        return render_template('create_processor.html', **template_arg)
     for ds in form.datasources:
         if ds.refresh_data_source.data:
             vk = ds.vendor_key.data
-            task = cur_proc.launch_task('.get_dict_order',
-                                        _('Getting dict order table.'),
-                                        running_user=current_user.id,
-                                        local_path=cur_proc.local_path,
-                                        vk=vk)
+            proc_arg['vk'] = vk
+            task = cur_proc.launch_task(
+                '.get_dict_order', _('Getting dict order table.'), **proc_arg)
             db.session.commit()
             job = task.wait_and_get_job()
-            tables = job.result
-            return render_template('create_processor.html', tables=tables,
-                                   **template_arg)
+            template_arg['tables'] = job.result
+            return render_template('create_processor.html', **template_arg)
         elif ds.refresh_dict.data:
             vk = ds.vendor_key.data
-            task = cur_proc.launch_task('.get_dict_order',
-                                        _('Getting dict order table.'),
-                                        running_user=current_user.id,
-                                        local_path=cur_proc.local_path,
-                                        vk=vk)
+            proc_arg['vk'] = vk
+            task = cur_proc.launch_task(
+                '.get_dict_order', _('Getting dict order table.'), **proc_arg)
             db.session.commit()
             job = task.wait_and_get_job()
-            tables = job.result
-            return render_template('create_processor.html', tables=tables,
-                                   **template_arg)
+            template_arg['tables'] = job.result
+            return render_template('create_processor.html', **template_arg)
+        """
         elif ds.full_placement_columns.data:
             vk = ds.vendor_key.data
-
-            task = cur_proc.launch_task('.get_dict_order',
-                                        _('Getting dict order table.'),
-                                        running_user=current_user.id,
-                                        local_path=cur_proc.local_path,
-                                        vk=vk)
+            proc_arg['vk'] = vk
+            task = cur_proc.launch_task(
+                '.get_dict_order', _('Getting dict order table.'), **proc_arg)
             db.session.commit()
             job = task.wait_and_get_job()
-            tables = job.result
-            return render_template('create_processor.html', tables=tables,
-                                   **template_arg)
-    """
+            template_arg['tables'] = job.result
+            return render_template('create_processor.html', **template_arg)
+        """
     if form.validate_on_submit():
         cur_proc.launch_task('.set_processor_imports', _('Setting imports.'),
                              running_user=current_user.id,
                              form_imports=form.apis.data)
         db.session.commit()
         if form.submit_continue.data:
-            return redirect(url_for('main.edit_processor_clean',
+            return redirect(url_for('main.edit_processor_export',
                                     processor_name=cur_proc.name))
         else:
             return redirect(url_for('main.processor_page',
                                     processor_name=cur_proc.name))
-    """
     return render_template('create_processor.html', **template_arg)
 
 

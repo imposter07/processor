@@ -188,101 +188,43 @@ def set_processor_imports(processor_id, current_user_id, form_imports):
 
 
 def set_data_sources(processor_id, current_user_id, form_sources):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        old_sources = ProcessorDatasources.query.filter_by(
+            processor_id=cur_processor.id).all()
+        user_that_ran = User.query.get(current_user_id)
+        import processor.reporting.vmcolumns as vmc
+        _set_task_progress(0)
+        for source in form_sources:
+            ds = [x for x in old_sources if 'original_vendor_key' in source and
+                  x.vendor_key == source['original_vendor_key']][0]
+            if ds:
+                ds.set_from_form(source, cur_processor)
+                db.session.commit()
+        sources = ProcessorDatasources.query.filter_by(
+            processor_id=cur_processor.id).all()
+        sources = [x.get_datasource_for_processor() for x in sources]
+        for idx, source in enumerate(sources):
+            sources[idx]['original_vendor_key'] = [
+                x for x in form_sources
+                if x['vendor_key'] == source[vmc.vendorkey]
+            ][0]['original_vendor_key']
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        matrix.set_data_sources(sources)
+        msg_text = "Processor datasources set."
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def get_data_tables(processor_id, current_user_id):
     cur_processor = Processor.query.get(processor_id)
-    old_sources = ProcessorDatasources.query.filter_by(
-        processor_id=cur_processor.id).all()
-    user_that_ran = User.query.get(current_user_id)
-    _set_task_progress(0)
-    for source in form_sources:
-        ds = [x for x in old_sources if 'vendor_key' in source and
-              x.vendor_key == source['vendor_key']][0]
-        if ds:
-            ds.set_from_form(source, cur_processor)
-            db.session.add(ds)
-    db.session.commit()
-    sources = ProcessorDatasources.query.filter_by(
-        processor_id=cur_processor.id).all()
-    import processor.reporting.vendormatrix as vm
-    import processor.reporting.vmcolumns as vmc
-    # for source in sources:
-
-    _set_task_progress(100)
-    """
-    for source in form_sources:
-    import processor.reporting.vendormatrix as vm
-    import processor.reporting.vmcolumns as vmc
-    os.chdir(adjust_path(cur_processor.local_path))
-    matrix = vm.VendorMatrix()
-    old_data_sources = matrix.set_data_sources()
-    for new_source in data_sources:
-        ds = [x for x in old_data_sources
-              if x.key == new_source['vendor_key']][0]
-        # for
-        ds.set_in_vendormatrix()
-    data_sources = [{
-        'vendor_key': x.key,
-        'full_placement_columns': x.p[vmc.fullplacename],
-        'placement_columns': x.p[vmc.placement],
-        'auto_dictionary_placement': x.p[vmc.autodicplace],
-        'auto_dictionary_order': x.p[vmc.autodicord],
-        'active_metrics': x.get_active_metrics(),
-        'vm_rules': x.vm_rules} for x in data_sources]
-    """
-
-"""
-def get_data_sources(processor_id, current_user_id, local_path):
-    cur_processor = Processor.query.get(processor_id)
-    old_imports = ProcessorDatasources.query.filter_by(
-        processor_id=cur_processor.id).all()
-    user_that_ran = User.query.get(current_user_id)
-    _set_task_progress(0)
-    (processor_id, )
-    if old_imports:
-        for imp in old_imports:
-            db.session.delete(imp)
-        db.session.commit()
-    import processor.reporting.vendormatrix as vm
-    import processor.reporting.vmcolumns as vmc
-    os.chdir(adjust_path(local_path))
-    matrix = vm.VendorMatrix()
-    data_sources = matrix.get_data_sources()
-    data_sources = [{
-        'vendor_key': x.key,
-        'full_placement_columns': x.p[vmc.fullplacename],
-        'placement_columns': x.p[vmc.placement],
-        'auto_dictionary_placement': x.p[vmc.autodicplace],
-        'auto_dictionary_order': x.p[vmc.autodicord],
-        'active_metrics': x.get_active_metrics(),
-        'vm_rules': x.vm_rules} for x in data_sources]
-    _set_task_progress(100)
-    return data_sources
-
-
-def set_data_sources(processor_id, current_user_id, local_path, data_sources):
-    import processor.reporting.vendormatrix as vm
-    import processor.reporting.vmcolumns as vmc
-    os.chdir(adjust_path(local_path))
-    matrix = vm.VendorMatrix()
-    old_data_sources = matrix.get_data_sources()
-    for new_source in data_sources:
-        ds = [x for x in old_data_sources
-              if x.key == new_source['vendor_key']][0]
-        # for
-        ds.set_in_vendormatrix()
-    data_sources = [{
-        'vendor_key': x.key,
-        'full_placement_columns': x.p[vmc.fullplacename],
-        'placement_columns': x.p[vmc.placement],
-        'auto_dictionary_placement': x.p[vmc.autodicplace],
-        'auto_dictionary_order': x.p[vmc.autodicord],
-        'active_metrics': x.get_active_metrics(),
-        'vm_rules': x.vm_rules} for x in data_sources]
-    _set_task_progress(100)
-    return data_sources
-"""
-
-def get_data_tables(processor_id, current_user_id, local_path):
-    file_name = os.path.join(adjust_path(local_path), 'Raw Data Output.csv')
+    file_name = os.path.join(adjust_path(cur_processor.local_path),
+                             'Raw Data Output.csv')
     df = pd.read_csv(file_name)
     metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
                'Net Cost Final']
@@ -293,9 +235,10 @@ def get_data_tables(processor_id, current_user_id, local_path):
     return tables
 
 
-def get_dict_order(processor_id, current_user_id, local_path, vk):
+def get_dict_order(processor_id, current_user_id, vk):
+    cur_processor = Processor.query.get(processor_id)
     import processor.reporting.vendormatrix as vm
-    os.chdir(adjust_path(local_path))
+    os.chdir(adjust_path(cur_processor.local_path))
     matrix = vm.VendorMatrix()
     data_source = matrix.get_data_source(vk)
     tables = [data_source.get_dict_order_df().head()]

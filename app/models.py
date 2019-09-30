@@ -1,4 +1,5 @@
 import rq
+import ast
 import jwt
 import json
 import time
@@ -222,14 +223,14 @@ class Task(db.Model):
         job = self.get_rq_job()
         return job.meta.get('progress', 0) if job is not None else 100
 
-    def wait_for_job(self, loops=100):
+    def wait_for_job(self, loops=1000):
         for x in range(loops):
             if self.get_progress() == 100:
                 break
             else:
-                time.sleep(5)
+                time.sleep(1)
 
-    def wait_and_get_job(self, loops=100):
+    def wait_and_get_job(self, loops=1000):
         self.wait_for_job(loops=loops)
         job = self.get_rq_job()
         return job
@@ -371,6 +372,8 @@ class ProcessorDatasources(db.Model):
         return not self.__eq__(other)
 
     def get_full_dict(self):
+        self.form_dict = self.get_import_form_dict()
+        self.ds_dict = self.get_ds_form_dict()
         self.full_dict = self.form_dict.copy()
         self.full_dict.update(self.ds_dict)
         return self.full_dict
@@ -379,6 +382,7 @@ class ProcessorDatasources(db.Model):
         form_dict = {
             'name': self.name,
             'key': self.key,
+            'vendor_key': self.vendor_key,
             'account_id': self.account_id,
             'start_date': self.start_date,
             'account_filter': self.account_filter,
@@ -388,6 +392,7 @@ class ProcessorDatasources(db.Model):
 
     def get_ds_form_dict(self):
         form_dict = {
+            'original_vendor_key': self.vendor_key,
             'vendor_key': self.vendor_key,
             'full_placement_columns': self.full_placement_columns,
             'placement_columns': self.placement_columns,
@@ -411,19 +416,31 @@ class ProcessorDatasources(db.Model):
     def set_from_processor(self, source, current_processor):
         self.processor_id = current_processor.id
         self.start_date = source.p[vmc.startdate]
-        self.api_fields = source.p[vmc.apifields]
+        self.api_fields = ['' if x == 'nan' else x for x in source.p[vmc.apifields]][0]
         self.vendor_key = source.key
         self.full_placement_columns = source.p[vmc.fullplacename]
         self.placement_columns = source.p[vmc.placement]
         self.auto_dictionary_placement = source.p[vmc.autodicplace]
         self.auto_dictionary_order = source.p[vmc.autodicord]
         self.active_metrics = str(source.get_active_metrics())
-        self.vm_rules =  str(source.vm_rules)
+        self.vm_rules = str(source.vm_rules)
         if source.ic_params:
             self.name = source.ic_params['name']
             self.key = source.ic_params['Key']
             self.account_id = source.ic_params['ID']
             self.account_filter = source.ic_params['Filter']
+
+    def get_update_from_form(self, form):
+        update_dict = {
+            self.vendor_key: form['vendor_key'],
+            self.full_placement_columns: form['full_placement_columns'],
+            self.placement_columns: form['placement_columns'],
+            self.auto_dictionary_placement: form['auto_dictionary_placement'],
+            self.auto_dictionary_order: form['auto_dictionary_order'],
+            self.active_metrics: form['active_metrics'],
+            self.vm_rules: form['vm_rules']
+        }
+        return update_dict
 
     def set_from_form(self, form, current_processor):
         if 'name' in form:
@@ -445,26 +462,20 @@ class ProcessorDatasources(db.Model):
 
     def get_datasource_for_processor(self):
         source = {
-            vmc.fullplacename: self.full_placement_columns.strip('{').strip('}').split(','),
+            vmc.vendorkey: self.vendor_key,
+            vmc.fullplacename: self.full_placement_columns,
             vmc.placement: self.placement_columns,
             vmc.autodicplace: self.auto_dictionary_placement,
             vmc.autodicord: self.auto_dictionary_order,
             'active_metrics': self.active_metrics,
             'vm_rules': self.vm_rules
         }
-
-        import ast
         for x in ['active_metrics', 'vm_rules']:
-            print(x)
             try:
                 source[x] = ast.literal_eval(source[x])
             except:
                 pass
-        for x in [vmc.autodicord]:
-            print(x)
+        for x in [vmc.autodicord, vmc.fullplacename]:
             source[x] = source[x].strip('{').strip('}').split(',')
-            source[x] = [y.strip('"') for y in source[x]]
-        for x in [vmc.fullplacename]:
-            print(x)
             source[x] = [y.strip('"') for y in source[x]]
         return source

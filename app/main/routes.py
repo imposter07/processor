@@ -7,7 +7,8 @@ from flask_babel import _, get_locale
 from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
-    ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm
+    ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
+    ProcessorExportForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources
 from app.translate import translate
@@ -267,7 +268,8 @@ def create_processor():
                     processor_id=new_processor.id)
         db.session.add(post)
         db.session.commit()
-        if form.submit_continue.data:
+    if request.method == 'POST':
+        if 'continue' in request.values.to_dict():
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=new_processor.name))
         else:
@@ -296,21 +298,33 @@ def edit_processor_import(processor_name):
         template_arg['form'] = form
         return render_template('create_processor.html', **template_arg)
     if form.refresh.data:
-        task = cur_proc.launch_task('.get_processor_sources',
-                                    _('Refreshing imports.'),
+        msg_text = 'Refreshing data for {}'.format(processor_name)
+        task = cur_proc.launch_task('.get_processor_sources', _(msg_text),
                                     running_user=current_user.id)
         db.session.commit()
-        job = task.wait_and_get_job()
+        task.wait_and_get_job()
         db.session.commit()
-        apis = ImportForm().set_apis(ProcessorDatasources, cur_proc)
-        template_arg['form']  = ImportForm(apis=apis)
-        return render_template('create_processor.html', **template_arg)
-    if form.validate_on_submit():
-        cur_proc.launch_task('.set_processor_imports', _('Setting imports.'),
+        return redirect(url_for('main.edit_processor_import',
+                                processor_name=processor_name))
+    for api in form.apis:
+        if api.delete.data:
+            ds = ProcessorDatasources.query.filter_by(
+                account_id=api.account_id.data, start_date=api.start_date.data,
+                api_fields=api.api_fields.data, key=api.key.data,
+                account_filter=api.account_filter.data).first()
+            if ds:
+                db.session.delete(ds)
+                db.session.commit()
+            return redirect(url_for('main.edit_processor_import',
+                                    processor_name=processor_name))
+    print(request.values.to_dict())
+    if request.method == 'POST':
+        msg_text = 'Setting imports in vendormatrix for {}'.format(processor_name)
+        cur_proc.launch_task('.set_processor_imports', _(msg_text),
                              running_user=current_user.id,
                              form_imports=form.apis.data)
         db.session.commit()
-        if form.submit_continue.data:
+        if 'continue' in request.values.to_dict():
             return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
         else:
@@ -358,12 +372,19 @@ def edit_processor_clean(processor_name):
                     'title': _('Processor'), 'form': form, 'edit_progress': 75,
                     'edit_name': "Clean"}
     if form.refresh_data_sources.data:
+        msg_text = 'Refreshing data for {}'.format(processor_name)
         task = cur_proc.launch_task(
-            '.get_processor_sources', _('Refreshing data.'), **proc_arg)
+            '.get_processor_sources', _(msg_text), **proc_arg)
         db.session.commit()
         task.wait_and_get_job()
-        ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
-        template_arg['form'] = ProcessorCleanForm(datasources=ds)
+        return redirect(url_for('main.edit_processor_clean',
+                                processor_name=processor_name))
+    if form.show_data_tables.data:
+        msg_text = 'Getting data tables for {}'.format(processor_name)
+        task = cur_proc.launch_task('.get_data_tables', _(msg_text), **proc_arg)
+        db.session.commit()
+        job = task.wait_and_get_job()
+        template_arg['tables'] = job.result
         return render_template('create_processor.html', **template_arg)
     for ds in form.datasources:
         if ds.refresh_data_source.data:
@@ -384,28 +405,35 @@ def edit_processor_clean(processor_name):
             job = task.wait_and_get_job()
             template_arg['tables'] = job.result
             return render_template('create_processor.html', **template_arg)
-        """
-        elif ds.full_placement_columns.data:
-            vk = ds.vendor_key.data
-            proc_arg['vk'] = vk
-            task = cur_proc.launch_task(
-                '.get_dict_order', _('Getting dict order table.'), **proc_arg)
-            db.session.commit()
-            job = task.wait_and_get_job()
-            template_arg['tables'] = job.result
-            return render_template('create_processor.html', **template_arg)
-        """
-    if form.validate_on_submit():
-        cur_proc.launch_task('.set_processor_imports', _('Setting imports.'),
+    if request.method == 'POST':
+        msg_text = 'Setting data sources in vendormatrix for {}'.format(processor_name)
+        cur_proc.launch_task('.set_data_sources', _(msg_text),
                              running_user=current_user.id,
-                             form_imports=form.apis.data)
+                             form_sources=form.datasources.data)
         db.session.commit()
-        if form.submit_continue.data:
+        if 'continue' in request.values.to_dict():
             return redirect(url_for('main.edit_processor_export',
                                     processor_name=cur_proc.name))
         else:
             return redirect(url_for('main.processor_page',
                                     processor_name=cur_proc.name))
+    return render_template('create_processor.html', **template_arg)
+
+
+@bp.route('/processor/<processor_name>/edit/export', methods=['GET', 'POST'])
+@login_required
+def edit_processor_export(processor_name):
+    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    form = ProcessorExportForm()
+    template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
+                    'title': _('Processor'), 'form': form, 'edit_progress': 100,
+                    'edit_name': "Export"}
+    if request.method == 'GET':
+        form.tableau_workbook.data = cur_proc.tableau_workbook
+        form.tableau_view.data = cur_proc.tableau_view
+    elif request.method == 'POST':
+        pass
     return render_template('create_processor.html', **template_arg)
 
 
@@ -464,13 +492,13 @@ def run_processor(processor_name, processor_args='', redirect=None):
                                 processor_name=processor_name))
     elif redirect == 'Basic':
         return redirect(url_for('main.edit_processor',
-                                processor_name=processor_to_run.name))
+                                processor_name=processor_name))
     elif redirect =='Import':
         return redirect(url_for('main.edit_processor_import',
-                                processor_name=processor_to_run.name))
+                                processor_name=processor_name))
     elif redirect =='Clean':
         return redirect(url_for('main.edit_processor_clean',
-                                processor_name=processor_to_run.name))
+                                processor_name=processor_name))
 
 
 @bp.route('/processor/<processor_name>/edit', methods=['GET', 'POST'])
@@ -503,7 +531,8 @@ def edit_processor(processor_name):
                     processor_id=processor_to_edit.id)
         db.session.add(post)
         db.session.commit()
-        if form.submit_continue.data:
+    elif request.method == 'POST':
+        if 'continue' in request.values.to_dict():
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=processor_to_edit.name))
         else:

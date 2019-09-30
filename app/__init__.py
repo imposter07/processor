@@ -4,7 +4,7 @@ import logging
 import certifi
 from logging.handlers import SMTPHandler, RotatingFileHandler
 from flask import Flask, request, current_app
-from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy as _BaseSQLAlchemy
 from sqlalchemy import MetaData
 from flask_migrate import Migrate
 from flask_login import LoginManager
@@ -14,6 +14,13 @@ from flask_babel import Babel, lazy_gettext as _l
 from config import Config
 from elasticsearch import Elasticsearch
 from redis import Redis
+
+
+class SQLAlchemy(_BaseSQLAlchemy):
+    def apply_pool_defaults(self, app, options):
+        super(SQLAlchemy, self).apply_pool_defaults(app, options)
+        options["pool_pre_ping"] = True
+
 
 naming_convention = {
     "ix": 'ix_%(column_0_label)s',

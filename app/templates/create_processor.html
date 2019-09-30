@@ -1,40 +1,50 @@
 {% extends "base.html" %}
 
 {% block app_header %}
-    <h1>{{ _('Processor Creation') }}</h1>
-    <div class="progress mx-auto" style="height: 20px; width: 50%;">
+    <h1>{{ _('Processor - {}'.format(processor_name)) }}</h1>
+    <div class="progress mx-auto" style="height: 30px; width: 50%;">
         <div class="progress-bar progress-bar-striped bg-info" role="progressbar"
              style="width: {{ edit_progress }}%;"
              aria-valuenow={{ edit_progress }} aria-valuemin="0" aria-valuemax="100">
             {{ edit_name }}</div>
     </div><br>
-    <div class="btn-group" role="group" aria-label="Basic example">
-        <a href="{{ url_for('main.edit_processor', processor_name=processor_name) }}">
-            <button type="button" class="btn btn-secondary">{{ _('Basic') }}</button>
-        </a>
-        <a href="{{ url_for('main.edit_processor_import', processor_name=processor_name) }}">
-            <button type="button" class="btn btn-secondary">{{ _('Import') }}</button>
-        </a>
-        <a href="{{ url_for('main.edit_processor_clean', processor_name=processor_name) }}">
-            <button type="button" class="btn btn-secondary">{{ _('Clean') }}</button>
-        </a>
-        <button type="button" class="btn btn-secondary">Export</button>
-    </div>
-    <br><br>
-    <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
-        <div class="dropdown">
-            <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                {{ _('Run Processor') }}
-                <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='full') }}">{{ _('Full') }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='import') }}">{{ _('Import') }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='basic') }}">{{ _('Basic') }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='export') }}">{{ _('Export') }}</a></li>
-            </ul>
-        </div>
-    </div>
+    <nav aria-label="...">
+        <ul class="pagination pagination-lg justify-content-center">
+            <li class="page-item">
+                <form method="post" action="">
+                    <button type="submit" class="page-link" href="">
+                        <span aria-hidden="true">&larr;</span> {{ _('Save & Quit') }}
+                    </button>
+                </form>
+            </li>
+            <li class="page-item{% if edit_name == 'Basic' %} active{% endif %}">
+                <a class="page-link" href="{{ url_for('main.edit_processor', processor_name=processor_name) }}">
+                    {{ _('Basic') }}
+                </a>
+            </li>
+            <li class="page-item{% if edit_name == 'Import' %} active{% endif %}">
+                <a class="page-link" href="{{ url_for('main.edit_processor_import', processor_name=processor_name) }}">
+                    {{ _('Import') }}
+                </a>
+            </li>
+            <li class="page-item{% if edit_name == 'Clean' %} active{% endif %}">
+                <a class="page-link" href="{{ url_for('main.edit_processor_clean', processor_name=processor_name) }}">
+                    {{ _('Clean') }}
+                </a>
+            </li>
+            <li class="page-item{% if edit_name == 'Export' %} active{% endif %}">
+                <a class="page-link" href="{{ url_for('main.edit_processor_export', processor_name=processor_name) }}">
+                    {{ _('Export') }}
+                </a>
+            </li>
+            <li class="page-item" value="continue">
+                <form method="post" action="">
+                    <button type="submit" class="page-link" name="continue">
+                        {{ _('Save & Continue') }} <span aria-hidden="true">&rarr;</span>
+                    </button></form>
+            </li>
+        </ul>
+    </nav>
     <br><br>
     <!-- Button trigger modal -->
     <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#exampleModal">
@@ -72,6 +82,21 @@
         </div>
       </div>
     </div>
+    <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
+        <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                {{ _('Run Processor') }}
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='full') }}">{{ _('Full') }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='import') }}">{{ _('Import') }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='basic') }}">{{ _('Basic') }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='export') }}">{{ _('Export') }}</a></li>
+            </ul>
+        </div>
+    </div>
+    <br><br>
     {% if tables %}
         {% for table in tables %}
             {{ table.style.format('<input name="table" value="{}" />').set_table_attributes('class="table table-hover table-striped table-dark"').render()|safe}}

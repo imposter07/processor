@@ -1,7 +1,7 @@
 from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
-    FormField, FieldList
+    FormField, FieldList, HiddenField
 from wtforms.fields.html5 import DateField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
@@ -127,12 +127,14 @@ class APIForm(FlaskForm):
     start_date = DateField('Start Date', format='%Y-%m-%d')
     account_filter = StringField('Filter')
     api_fields = StringField('API Fields')
+    delete = SubmitField('Delete')
+    vendor_key = HiddenField('Vendor Key')
 
 
 class ImportForm(FlaskForm):
     add_child = SubmitField(label='Add API')
     remove_api = SubmitField('Remove Last API')
-    refresh = SubmitField('Refresh APIs')
+    refresh = SubmitField('Refresh From Processor')
     submit = SubmitField(_l('Save & Quit'))
     submit_continue = SubmitField(_l('Save & Continue'))
     apis = FieldList(FormField(APIForm, label='{}'.format(APIForm.name)))
@@ -162,7 +164,7 @@ class EditProcessorForm(ProcessorForm):
 
 class DataSourceForm(FlaskForm):
     refresh_data_source = SubmitField(_l('Refresh Source'))
-    refresh_dict = SubmitField(_l('Refresh Dictionary'))
+    refresh_dict = SubmitField(_l('Show Dictionary Order'))
     vendor_key = StringField(_l('Vendor Key'))
     full_placement_columns = TextAreaField(_l('Full Placement Columns'))
     placement_columns = StringField(_l('Placement Column'))
@@ -171,10 +173,16 @@ class DataSourceForm(FlaskForm):
     auto_dictionary_order = TextAreaField(_l('Auto Dictionary Order'))
     active_metrics = TextAreaField(_l('Active Metrics'))
     vm_rules = TextAreaField(_l('Vendor Matrix Rules'))
+    original_vendor_key = HiddenField('Original Vendor Key')
+
+    def __init__(self, *args, **kwargs):
+        super(DataSourceForm, self).__init__(*args, **kwargs)
+        self.original_vendor_key = self.vendor_key
 
 
 class ProcessorCleanForm(FlaskForm):
-    refresh_data_sources = SubmitField(_l('Refresh Data Sources'))
+    refresh_data_sources = SubmitField(_l('Refresh From Processor'))
+    show_data_tables = SubmitField(_l('Show Data Tables'))
     submit = SubmitField(_l('Save & Quit'))
     submit_continue = SubmitField(_l('Save & Continue'))
     datasources = FieldList(FormField(DataSourceForm))
@@ -197,3 +205,9 @@ class FullPlacementForm(FlaskForm):
     add_child = SubmitField(label='Add Column')
     remove_api = SubmitField('Remove Column')
     placements = FieldList(FormField(PlacementForm))
+
+
+
+class ProcessorExportForm(FlaskForm):
+    tableau_workbook = StringField(_l('Tableau Workbook'))
+    tableau_view = StringField(_l('Tableau View'))

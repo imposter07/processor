@@ -97,10 +97,8 @@ def create_app(config_class=Config()):
             '%(asctime)s %(levelname)s: %(message)s '
             '[in %(pathname)s:%(lineno)d]'))
         app.logger.addHandler(console)
-
         app.logger.setLevel(logging.INFO)
         app.logger.info('JI App startup')
-
     return app
 
 

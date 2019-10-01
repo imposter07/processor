@@ -72,8 +72,7 @@ class ProcessorForm(FlaskForm):
     client_name = None
     product_name = None
     campaign_name = None
-    submit = SubmitField(_l('Save & Quit'))
-    submit_continue = SubmitField(_l('Save & Continue'))
+    form_continue = HiddenField('form_continue')
 
     def validate_name(self, name):
         processor = Processor.query.filter_by(name=name.data).first()
@@ -135,8 +134,7 @@ class ImportForm(FlaskForm):
     add_child = SubmitField(label='Add API')
     remove_api = SubmitField('Remove Last API')
     refresh = SubmitField('Refresh From Processor')
-    submit = SubmitField(_l('Save & Quit'))
-    submit_continue = SubmitField(_l('Save & Continue'))
+    form_continue = HiddenField('form_continue')
     apis = FieldList(FormField(APIForm, label='{}'.format(APIForm.name)))
 
     def set_apis(self, data_source, cur_proc):
@@ -183,8 +181,7 @@ class DataSourceForm(FlaskForm):
 class ProcessorCleanForm(FlaskForm):
     refresh_data_sources = SubmitField(_l('Refresh From Processor'))
     show_data_tables = SubmitField(_l('Show Data Tables'))
-    submit = SubmitField(_l('Save & Quit'))
-    submit_continue = SubmitField(_l('Save & Continue'))
+    form_continue = HiddenField('form_continue')
     datasources = FieldList(FormField(DataSourceForm))
 
     def set_datasources(self, data_source, cur_proc):
@@ -205,7 +202,6 @@ class FullPlacementForm(FlaskForm):
     add_child = SubmitField(label='Add Column')
     remove_api = SubmitField('Remove Column')
     placements = FieldList(FormField(PlacementForm))
-
 
 
 class ProcessorExportForm(FlaskForm):

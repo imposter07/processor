@@ -269,7 +269,7 @@ def create_processor():
         db.session.add(post)
         db.session.commit()
     if request.method == 'POST':
-        if 'continue' in request.values.to_dict():
+        if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=new_processor.name))
         else:
@@ -317,14 +317,13 @@ def edit_processor_import(processor_name):
                 db.session.commit()
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=processor_name))
-    print(request.values.to_dict())
     if request.method == 'POST':
         msg_text = 'Setting imports in vendormatrix for {}'.format(processor_name)
         cur_proc.launch_task('.set_processor_imports', _(msg_text),
                              running_user=current_user.id,
                              form_imports=form.apis.data)
         db.session.commit()
-        if 'continue' in request.values.to_dict():
+        if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
         else:
@@ -411,7 +410,7 @@ def edit_processor_clean(processor_name):
                              running_user=current_user.id,
                              form_sources=form.datasources.data)
         db.session.commit()
-        if 'continue' in request.values.to_dict():
+        if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_export',
                                     processor_name=cur_proc.name))
         else:
@@ -532,7 +531,7 @@ def edit_processor(processor_name):
         db.session.add(post)
         db.session.commit()
     elif request.method == 'POST':
-        if 'continue' in request.values.to_dict():
+        if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=processor_to_edit.name))
         else:

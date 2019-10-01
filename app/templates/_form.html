@@ -138,7 +138,7 @@ the necessary fix for required=False attributes, but will also not set the requi
 {% endif %}
 
 {% endmacro %}
-<form class="form form-horizontal" method="post" role="form">
+<form class="form form-horizontal" method="post" role="form" id="base_form_id">
     {{ form.hidden_tag() }}
     {{ form.csrf_token }}
     {{ form_errors(form, hiddens="only") }}

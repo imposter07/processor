@@ -12,7 +12,7 @@
         <ul class="pagination pagination-lg justify-content-center">
             <li class="page-item">
                 <form method="post" action="">
-                    <button type="submit" class="page-link" href="">
+                    <button type="submit" class="page-link" href="" onclick="SubmitForm('')">
                         <span aria-hidden="true">&larr;</span> {{ _('Save & Quit') }}
                     </button>
                 </form>
@@ -37,11 +37,16 @@
                     {{ _('Export') }}
                 </a>
             </li>
+            <script type="text/javascript">
+                function SubmitForm(form_continue) {
+                     document.getElementById("form_continue").setAttribute("value", form_continue);
+                     document.getElementById("base_form_id").submit();
+                }
+            </script>
             <li class="page-item" value="continue">
-                <form method="post" action="">
-                    <button type="submit" class="page-link" name="continue">
-                        {{ _('Save & Continue') }} <span aria-hidden="true">&rarr;</span>
-                    </button></form>
+                <button type="submit" class="page-link" name="continue" onclick="SubmitForm('continue')">
+                    {{ _('Save & Continue') }} <span aria-hidden="true">&rarr;</span>
+                </button>
             </li>
         </ul>
     </nav>

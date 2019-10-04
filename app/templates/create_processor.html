@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 
 {% block app_header %}
+    <script>
+        function loading(destElem) {
+            $(destElem).button('toggle');
+            $(destElem).html('<img src="{{ url_for('static', filename='loading.gif') }}">');
+            SubmitForm('Continue');
+        }
+    </script>
     <h1>{{ _('Processor - {}'.format(processor_name)) }}</h1>
     <div class="progress mx-auto" style="height: 30px; width: 50%;">
         <div class="progress-bar progress-bar-striped bg-info" role="progressbar"
@@ -9,13 +16,17 @@
             {{ edit_name }}</div>
     </div><br>
     <nav aria-label="...">
+        <script type="text/javascript">
+                function SubmitForm(form_continue) {
+                     document.getElementById("form_continue").setAttribute("value", form_continue);
+                     document.getElementById("base_form_id").submit();
+                }
+        </script>
         <ul class="pagination pagination-lg justify-content-center">
             <li class="page-item">
-                <form method="post" action="">
-                    <button type="submit" class="page-link" href="" onclick="SubmitForm('')">
-                        <span aria-hidden="true">&larr;</span> {{ _('Save & Quit') }}
-                    </button>
-                </form>
+                <button type="submit" class="page-link" href="" onclick="SubmitForm('')">
+                    <i class="fas fa-sync-alt" href="#" role="button"></i> {{ _('Save & Refresh') }}
+                </button>
             </li>
             <li class="page-item{% if edit_name == 'Basic' %} active{% endif %}">
                 <a class="page-link" href="{{ url_for('main.edit_processor', processor_name=processor_name) }}">
@@ -37,24 +48,13 @@
                     {{ _('Export') }}
                 </a>
             </li>
-            <script type="text/javascript">
-                function SubmitForm(form_continue) {
-                     document.getElementById("form_continue").setAttribute("value", form_continue);
-                     document.getElementById("base_form_id").submit();
-                }
-            </script>
             <li class="page-item" value="continue">
-                <button type="submit" class="page-link" name="continue" onclick="SubmitForm('continue')">
-                    {{ _('Save & Continue') }} <span aria-hidden="true">&rarr;</span>
+                <button id="continue" type="submit" class="page-link" name="continue" onclick="loading('continue')">
+                    {{ _('Save & Continue') }} <i class="fas fa-arrow-circle-right" href="#" role="button"></i>
                 </button>
             </li>
         </ul>
     </nav>
-    <br><br>
-    <!-- Button trigger modal -->
-    <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#exampleModal">
-      Show Logs
-    </button>
     <!-- Modal -->
     <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg" role="document">
@@ -89,7 +89,8 @@
     </div>
     <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
         <div class="dropdown">
-            <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+            <button class="btn btn-success btn-lg btn-block dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                <i class="fas fa-play-circle" href="#" role="button"></i>
                 {{ _('Run Processor') }}
                 <span class="caret"></span>
             </button>
@@ -102,6 +103,10 @@
         </div>
     </div>
     <br><br>
+    <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#exampleModal">
+      Show Logs
+    </button>
+    <br>
     {% if tables %}
         {% for table in tables %}
             {{ table.style.format('<input name="table" value="{}" />').set_table_attributes('class="table table-hover table-striped table-dark"').render()|safe}}

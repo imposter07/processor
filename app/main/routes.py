@@ -244,7 +244,7 @@ def processor():
 def create_processor():
     form = ProcessorForm()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    if form.validate_on_submit():
+    if request.method == 'POST':
         form_client = Client(name=form.client_name).check_and_add()
         form_product = Product(
             name=form.product_name, client_id=form_client.id).check_and_add()
@@ -268,7 +268,6 @@ def create_processor():
                     processor_id=new_processor.id)
         db.session.add(post)
         db.session.commit()
-    if request.method == 'POST':
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=new_processor.name))
@@ -319,15 +318,16 @@ def edit_processor_import(processor_name):
                                     processor_name=processor_name))
     if request.method == 'POST':
         msg_text = 'Setting imports in vendormatrix for {}'.format(processor_name)
-        cur_proc.launch_task('.set_processor_imports', _(msg_text),
-                             running_user=current_user.id,
-                             form_imports=form.apis.data)
+        task = cur_proc.launch_task('.set_processor_imports', _(msg_text),
+                                    running_user=current_user.id,
+                                    form_imports=form.apis.data)
         db.session.commit()
         if form.form_continue.data == 'continue':
+            job = task.wait_and_get_job()
             return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
         else:
-            return redirect(url_for('main.processor_page',
+            return redirect(url_for('main.edit_processor_import',
                                     processor_name=cur_proc.name))
     return render_template('create_processor.html', **template_arg)
 
@@ -406,7 +406,7 @@ def edit_processor_clean(processor_name):
             return render_template('create_processor.html', **template_arg)
     if request.method == 'POST':
         msg_text = 'Setting data sources in vendormatrix for {}'.format(processor_name)
-        cur_proc.launch_task('.set_data_sources', _(msg_text),
+        task = cur_proc.launch_task('.set_data_sources', _(msg_text),
                              running_user=current_user.id,
                              form_sources=form.datasources.data)
         db.session.commit()
@@ -414,9 +414,11 @@ def edit_processor_clean(processor_name):
             return redirect(url_for('main.edit_processor_export',
                                     processor_name=cur_proc.name))
         else:
-            return redirect(url_for('main.processor_page',
+            job = task.wait_and_get_job()
+            return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
     return render_template('create_processor.html', **template_arg)
+
 
 
 @bp.route('/processor/<processor_name>/edit/export', methods=['GET', 'POST'])
@@ -506,7 +508,7 @@ def edit_processor(processor_name):
     processor_to_edit = Processor.query.filter_by(
         name=processor_name).first_or_404()
     form = EditProcessorForm(processor_name)
-    if form.validate_on_submit():
+    if request.method == 'POST':
         form_client = Client(name=form.client_name).check_and_add()
         form_product = Product(name=form.product_name,
                                client_id=form_client.id).check_and_add()
@@ -530,7 +532,6 @@ def edit_processor(processor_name):
                     processor_id=processor_to_edit.id)
         db.session.add(post)
         db.session.commit()
-    elif request.method == 'POST':
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=processor_to_edit.name))

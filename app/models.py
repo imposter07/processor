@@ -390,6 +390,11 @@ class ProcessorDatasources(db.Model):
         }
         return form_dict
 
+    def convert_string_to_list(self, string_value):
+        new_list = string_value.strip('{').strip('}').split(',')
+        new_list = [y.strip('"') for y in new_list]
+        return new_list
+
     def get_ds_form_dict(self):
         form_dict = {
             'original_vendor_key': self.vendor_key,
@@ -400,6 +405,10 @@ class ProcessorDatasources(db.Model):
             'auto_dictionary_order': self.auto_dictionary_order,
             'active_metrics': self.active_metrics,
             'vm_rules': self.vm_rules}
+        for x in ['auto_dictionary_order', 'full_placement_columns']:
+            if form_dict[x]:
+                val = self.convert_string_to_list(form_dict[x])
+                form_dict[x] = '\n'.join(val)
         return form_dict
 
     def get_import_processor_dict(self):
@@ -476,6 +485,5 @@ class ProcessorDatasources(db.Model):
             except:
                 pass
         for x in [vmc.autodicord, vmc.fullplacename]:
-            source[x] = source[x].strip('{').strip('}').split(',')
-            source[x] = [y.strip('"') for y in source[x]]
+            source[x] = '|'.join(source[x].split('\n'))
         return source

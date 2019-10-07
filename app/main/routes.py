@@ -385,12 +385,20 @@ def edit_processor_clean(processor_name):
         job = task.wait_and_get_job()
         template_arg['tables'] = job.result
         return render_template('create_processor.html', **template_arg)
+    if form.edit_translation.data:
+        msg_text = 'Getting translation dict for {}'.format(processor_name)
+        task = cur_proc.launch_task('.get_translation_dict', _(msg_text), **proc_arg)
+        db.session.commit()
+        job = task.wait_and_get_job()
+        template_arg['tables'] = job.result
+        return render_template('create_processor.html', **template_arg)
     for ds in form.datasources:
-        if ds.refresh_data_source.data:
+        if ds.delete_dict.data:
             vk = ds.vendor_key.data
             proc_arg['vk'] = vk
             task = cur_proc.launch_task(
-                '.get_dict_order', _('Getting dict order table.'), **proc_arg)
+                '.delete_dict', _('Deleting dictionary: {}.'.format(vk)),
+                **proc_arg)
             db.session.commit()
             job = task.wait_and_get_job()
             template_arg['tables'] = job.result
@@ -465,10 +473,10 @@ def processor_popup(processor_name):
     return render_template('processor_popup.html', processor=processor_for_page)
 
 
-@bp.route('/processor/<processor_name>/run/<redirect>/<processor_args>',
+@bp.route('/processor/<processor_name>/run/<redirect_dest>/<processor_args>',
           methods=['GET', 'POST'])
 @login_required
-def run_processor(processor_name, processor_args='', redirect=None):
+def run_processor(processor_name, processor_args='', redirect_dest=None):
     processor_to_run = Processor.query.filter_by(
         name=processor_name).first_or_404()
     if processor_to_run.get_task_in_progress('.run_processor'):
@@ -479,7 +487,7 @@ def run_processor(processor_name, processor_args='', redirect=None):
         arg_trans = {'full': '--api all --ftp all --dbi all --exp all --tab',
                      'import': '--api all --ftp all --dbi all',
                      'export': '--exp all --tab',
-                     'basic': ''}
+                     'basic': '--basic'}
         processor_to_run.launch_task('.run_processor', _(post_body),
                                      running_user=current_user.id,
                                      processor_args=arg_trans[processor_args])
@@ -488,18 +496,18 @@ def run_processor(processor_name, processor_args='', redirect=None):
                     processor_id=processor_to_run.id)
         db.session.add(post)
         db.session.commit()
-    if not redirect:
+    if not redirect_dest:
         return redirect(url_for('main.processor_page',
-                                processor_name=processor_name))
-    elif redirect == 'Basic':
+                                processor_name=processor_to_run.name))
+    elif redirect_dest == 'Basic':
         return redirect(url_for('main.edit_processor',
-                                processor_name=processor_name))
-    elif redirect =='Import':
+                                processor_name=processor_to_run.name))
+    elif redirect_dest =='Import':
         return redirect(url_for('main.edit_processor_import',
-                                processor_name=processor_name))
-    elif redirect =='Clean':
+                                processor_name=processor_to_run.name))
+    elif redirect_dest =='Clean':
         return redirect(url_for('main.edit_processor_clean',
-                                processor_name=processor_name))
+                                processor_name=processor_to_run.name))
 
 
 @bp.route('/processor/<processor_name>/edit', methods=['GET', 'POST'])

@@ -5,7 +5,7 @@
         function loading(destElem) {
             $(destElem).button('toggle');
             $(destElem).html('<img src="{{ url_for('static', filename='loading.gif') }}">');
-            SubmitForm('Continue');
+            SubmitForm('continue');
         }
     </script>
     <h1>{{ _('Processor - {}'.format(processor_name)) }}</h1>
@@ -95,10 +95,10 @@
                 <span class="caret"></span>
             </button>
             <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='full') }}">{{ _('Full') }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='import') }}">{{ _('Import') }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='basic') }}">{{ _('Basic') }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect=edit_name, processor_args='export') }}">{{ _('Export') }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='full') }}">{{ _('Full') }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='import') }}">{{ _('Import') }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='basic') }}">{{ _('Basic') }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='export') }}">{{ _('Export') }}</a></li>
             </ul>
         </div>
     </div>
@@ -108,14 +108,43 @@
     </button>
     <br>
     {% if tables %}
-        {% for table in tables %}
-            {{ table.style.format('<input name="table" value="{}" />').set_table_attributes('class="table table-hover table-striped table-dark"').render()|safe}}
-            {{ table.to_html(classes="table table-hover table-striped table-dark")|safe }}
-        {% endfor %}
+        <button id="tableModalButton" type="button" class="btn btn-primary" data-toggle="modal" data-target="#tableModal"
+            style="display: none;">
+          Launch demo modal
+        </button>
+        <div class="modal" id="tableModal" tabindex="-1" role="dialog"
+             aria-labelledby="exampleModalLabel">
+          <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Data Tables - {{ processor_name }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                {% for table in tables %}
+                    {{ table.to_html(classes="table table-hover table-striped table-dark")|safe }}
+                {% endfor %}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+    <script>
+        function show_modal_table(destElem) {
+            document.getElementById(destElem).click();
+        }
+    </script>
     {% endif %}
 {% endblock %}
 
 {% block app_content %}
+    {% if tables %}
+        <script type="text/javascript"> show_modal_table('tableModalButton');</script>
+    {% endif %}
     {% with forms=forms %}
         {% include '_form.html' %}
     {% endwith %}

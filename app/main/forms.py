@@ -161,8 +161,8 @@ class EditProcessorForm(ProcessorForm):
 
 
 class DataSourceForm(FlaskForm):
-    refresh_data_source = SubmitField(_l('Refresh Source'))
-    refresh_dict = SubmitField(_l('Show Dictionary Order'))
+    delete_dict = SubmitField(_l('Delete Dictionary'))
+    refresh_dict = SubmitField(_l('Show Dictionary'))
     vendor_key = StringField(_l('Vendor Key'))
     full_placement_columns = TextAreaField(_l('Full Placement Columns'))
     placement_columns = StringField(_l('Placement Column'))
@@ -181,6 +181,7 @@ class DataSourceForm(FlaskForm):
 class ProcessorCleanForm(FlaskForm):
     refresh_data_sources = SubmitField(_l('Refresh From Processor'))
     show_data_tables = SubmitField(_l('Show Data Tables'))
+    edit_translation = SubmitField(_l('Edit Translation Dictionary'))
     form_continue = HiddenField('form_continue')
     datasources = FieldList(FormField(DataSourceForm))
 

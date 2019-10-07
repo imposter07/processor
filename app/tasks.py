@@ -244,3 +244,32 @@ def get_dict_order(processor_id, current_user_id, vk):
     tables = [data_source.get_dict_order_df().head()]
     _set_task_progress(100)
     return tables
+
+
+def delete_dict(processor_id, current_user_id, vk):
+    cur_processor = Processor.query.get(processor_id)
+    import processor.reporting.utils as utl
+    import processor.reporting.vmcolumns as vmc
+    import processor.reporting.vendormatrix as vm
+    os.chdir(adjust_path(cur_processor.local_path))
+    matrix = vm.VendorMatrix()
+    data_source = matrix.get_data_source(vk)
+    try:
+        os.remove(os.path.join(utl.dict_path, data_source.p[vmc.filenamedict]))
+    except FileNotFoundError as e:
+        app.logger.warning('File not found error: {}'.format(e))
+    matrix = vm.VendorMatrix()
+    data_source = matrix.get_data_source(vk)
+    tables = [data_source.get_dict_order_df().head()]
+    _set_task_progress(100)
+    return tables
+
+def get_translation_dict(processor_id, current_user_id):
+    cur_processor = Processor.query.get(processor_id)
+    import processor.reporting.dictionary as dct
+    import processor.reporting.dictcolumns as dctc
+    os.chdir(adjust_path(cur_processor.local_path))
+    tc = dct.DictTranslationConfig()
+    tc.read(dctc.filename_tran_config)
+    _set_task_progress(100)
+    return [tc.df]

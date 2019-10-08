@@ -195,6 +195,25 @@ class ProcessorCleanForm(FlaskForm):
         return imp_dict
 
 
+class TranslationForm(FlaskForm):
+    column_name = SelectField('Column Name',
+                              choices=[(x, x) for x in dctc.COLS])
+    value = StringField('Current Value')
+    new_value = StringField('New Value')
+
+    new_value = DateField('Start Date', format='%Y-%m-%d')
+    account_filter = StringField('Filter')
+    api_fields = StringField('API Fields')
+    delete = SubmitField('Delete')
+    vendor_key = HiddenField('Vendor Key')
+
+
+class TranslationBroadForm(FlaskForm):
+    add_child = SubmitField(label='Add Translation')
+    remove_api = SubmitField('Remove Last Translation')
+    translations = FieldList(FormField(TranslationForm))
+
+
 class PlacementForm(FlaskForm):
     column_name = SelectField('Column Names')
 

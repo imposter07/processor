@@ -387,7 +387,8 @@ def edit_processor_clean(processor_name):
         return render_template('create_processor.html', **template_arg)
     if form.edit_translation.data:
         msg_text = 'Getting translation dict for {}'.format(processor_name)
-        task = cur_proc.launch_task('.get_translation_dict', _(msg_text), **proc_arg)
+        task = cur_proc.launch_task(
+            '.get_translation_dict', _(msg_text), **proc_arg)
         db.session.commit()
         job = task.wait_and_get_job()
         template_arg['tables'] = job.result
@@ -426,7 +427,6 @@ def edit_processor_clean(processor_name):
             return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
     return render_template('create_processor.html', **template_arg)
-
 
 
 @bp.route('/processor/<processor_name>/edit/export', methods=['GET', 'POST'])

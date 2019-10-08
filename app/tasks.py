@@ -241,7 +241,7 @@ def get_dict_order(processor_id, current_user_id, vk):
     os.chdir(adjust_path(cur_processor.local_path))
     matrix = vm.VendorMatrix()
     data_source = matrix.get_data_source(vk)
-    tables = [data_source.get_dict_order_df().head()]
+    tables = [data_source.get_dict_order_df().head().T]
     _set_task_progress(100)
     return tables
 

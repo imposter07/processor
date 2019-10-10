@@ -99,7 +99,10 @@ def copy_tree_no_overwrite(old_path, new_path):
             if os.path.exists(new_file):
                 continue
             else:
-                shutil.copy(old_file, new_file)
+                try:
+                    shutil.copy(old_file, new_file)
+                except PermissionError as e:
+                    app.logger.warning('Could not copy {}: {}'.format(old_file, e))
         elif os.path.isdir(old_file):
             if not os.path.exists(new_file):
                 os.mkdir(new_file)

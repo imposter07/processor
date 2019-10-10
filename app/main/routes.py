@@ -487,7 +487,25 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
         arg_trans = {'full': '--api all --ftp all --dbi all --exp all --tab',
                      'import': '--api all --ftp all --dbi all',
                      'export': '--exp all --tab',
-                     'basic': '--basic'}
+                     'basic': '--basic',
+                     'fb': '--api fb',
+                     'aw': '--api aw',
+                     'tw': '--api tw',
+                     'ttd': '--api ttd',
+                     'ga': '--api ga',
+                     'nb': '--api nb',
+                     'af': '--api af',
+                     'sc': '--api sc',
+                     'aj': '--api aj',
+                     'dc': '--api dc',
+                     'rs': '--api rs',
+                     'db': '--api db',
+                     'vk': '--api vk',
+                     'rc': '--api rc',
+                     'szk': '--api szk',
+                     'red': '--api red',
+                     'dcm': '--api dc'
+        }
         processor_to_run.launch_task('.run_processor', _(post_body),
                                      running_user=current_user.id,
                                      processor_args=arg_trans[processor_args])

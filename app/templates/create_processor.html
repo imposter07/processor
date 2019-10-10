@@ -96,7 +96,7 @@
             </button>
             <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
                 <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='full') }}">{{ _('Full') }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='import') }}">{{ _('Import') }}</a></li>
+                <li><a class="dropdown-item" href="javascript: show_modal_table('importRunButton');">{{ _('Import') }}</a></li>
                 <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='basic') }}">{{ _('Basic') }}</a></li>
                 <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='export') }}">{{ _('Export') }}</a></li>
             </ul>
@@ -106,15 +106,67 @@
     <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#exampleModal">
       Show Logs
     </button>
+    <button id="importRunButton" type="button" class="btn btn-primary" data-toggle="modal" data-target="#importModal"
+        style="display: none;">
+      Launch demo modal
+    </button>
+    <div class="modal fade bd-example-modal-lg" id="importModal" tabindex="-1" role="dialog"
+         aria-labelledby="exampleModalLabel">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Import - {{ processor_name }}</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+              <div class="list-group" id="list-tab" role="tablist">
+                  <a class="list-group-item list-group-item-action list-group-item-linkable active"
+                     id="list-all" data-toggle="list"
+                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='import') }}"
+                     role="tab" aria-controls="home">All</a>
+                  <a class="list-group-item list-group-item-action list-group-item-linkable"
+                     id="list-fb" data-toggle="list"
+                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='fb') }}"
+                     role="tab" aria-controls="profile">Facebook</a>
+                  <a class="list-group-item list-group-item-action list-group-item-linkable"
+                     id="list-aw" data-toggle="list"
+                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='aw') }}"
+                     role="tab" aria-controls="profile">Adwords</a>
+                  <a class="list-group-item list-group-item-action list-group-item-linkable"
+                     id="list-dc" data-toggle="list"
+                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='dc') }}"
+                     role="tab" aria-controls="profile">DCM</a>
+                  <a class="list-group-item list-group-item-action list-group-item-linkable"
+                     id="list-szk" data-toggle="list"
+                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='szk') }}"
+                     role="tab" aria-controls="profile">Sizmek</a>
+                  <a class="list-group-item list-group-item-action list-group-item-linkable"
+                     id="list-tw" data-toggle="list"
+                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='tw') }}"
+                     role="tab" aria-controls="profile">Twitter</a>
+                  <a class="list-group-item list-group-item-action list-group-item-linkable"
+                     id="list-dc" data-toggle="list"
+                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='db') }}"
+                     role="tab" aria-controls="profile">DBM</a>
+              </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <br>
     {% if tables %}
-        <button id="tableModalButton" type="button" class="btn btn-primary" data-toggle="modal" data-target="#tableModal"
-            style="display: none;">
+        <button id="tableModalButton" type="button" class="btn btn-primary"
+                data-toggle="modal" data-target="#tableModal" style="display: none;">
           Launch demo modal
         </button>
-        <div class="modal fade bd-example-modal-lg" id="tableModal" tabindex="-1" role="dialog"
-             aria-labelledby="exampleModalLabel">
-          <div class="modal-dialog modal-lg" role="document">
+        <div class="modal fade bd-example-modal-xl" id="tableModal" tabindex="-1"
+             role="dialog" aria-labelledby="exampleModalLabel">
+          <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Data Tables - {{ processor_name }}</h5>
@@ -124,7 +176,28 @@
               </div>
               <div class="modal-body">
                 {% for table in tables %}
-                    {{ table.to_html(table_id=loop.index, classes="table table-hover table-striped table-dark")|safe }}
+                    {{ table.reset_index().to_html(table_id=loop.index, classes="table table-dark")|safe }}
+                        <script>
+                            $(document).ready( function () {
+                                var editor = new $.fn.dataTable.Editor({
+                                    table: '#1',
+                                    idSrc: 'index',
+                                    fields: [{label: 'index', name:'index'}]
+                                });
+                                    // Activate an inline edit on click of a table cell
+                                $('#1').on( 'click', 'tbody td', function () {
+                                    editor.inline(this);
+                                } );
+                                var table = $('#1').DataTable({
+                                    dom: "Bfrtip",
+                                    buttons: [
+                                        { extend: 'create', editor: editor },
+                                        { extend: 'edit',   editor: editor },
+                                        { extend: 'remove', editor: editor }
+                                    ]
+                                });
+                            } );
+                        </script>
                 {% endfor %}
               </div>
               <div class="modal-footer">
@@ -133,28 +206,12 @@
             </div>
           </div>
         </div>
+    {% endif %}
     <script>
         function show_modal_table(destElem) {
             document.getElementById(destElem).click();
         }
     </script>
-    <script>
-        $(document).ready( function () {
-            var editor = new $.fn.dataTable.Editor({
-                table: '#1'
-            });
-            $('#1').DataTable({
-                dom: "Bfrtip",
-                select: true,
-                buttons: [
-                    { extend: 'create', editor: editor },
-                    { extend: 'edit',   editor: editor },
-                    { extend: 'remove', editor: editor }
-                ]
-            });
-        } );
-    </script>
-    {% endif %}
 {% endblock %}
 
 {% block app_content %}
@@ -164,4 +221,13 @@
     {% with forms=forms %}
         {% include '_form.html' %}
     {% endwith %}
+    <script>
+        $(document).ready(function() {
+            $('.list-group-item-linkable').on('click', function () {
+                // same window/tab:
+                var clickedHref = $(this).attr('href');
+                window.location.href = clickedHref;
+            });
+        })
+    </script>
 {% endblock %}

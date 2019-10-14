@@ -4,64 +4,77 @@
     <script>
         function loading(destElem) {
             $(destElem).button('toggle');
-            $(destElem).html('<img src="{{ url_for('static', filename='loading.gif') }}">');
+            $(destElem).html(
+                '<img src="{{ url_for('static', filename='loading.gif') }}">');
             SubmitForm('continue');
         }
     </script>
     <h1>{{ _('Processor - {}'.format(processor_name)) }}</h1>
     <div class="progress mx-auto" style="height: 30px; width: 50%;">
-        <div class="progress-bar progress-bar-striped bg-info" role="progressbar"
-             style="width: {{ edit_progress }}%;"
-             aria-valuenow={{ edit_progress }} aria-valuemin="0" aria-valuemax="100">
-            {{ edit_name }}</div>
+        <div class="progress-bar progress-bar-striped bg-info"
+             role="progressbar" style="width: {{ edit_progress }}%;"
+             aria-valuenow={{ edit_progress }} aria-valuemin="0"
+             aria-valuemax="100">{{ edit_name }}</div>
     </div><br>
     <nav aria-label="...">
         <script type="text/javascript">
-                function SubmitForm(form_continue) {
-                     document.getElementById("form_continue").setAttribute("value", form_continue);
-                     document.getElementById("base_form_id").submit();
-                }
+            function SubmitForm(form_continue) {
+                 document.getElementById(
+                     "form_continue").setAttribute("value", form_continue);
+                 document.getElementById("base_form_id").submit();
+            }
         </script>
         <ul class="pagination pagination-lg justify-content-center">
             <li class="page-item">
-                <button type="submit" class="page-link" href="" onclick="SubmitForm('')">
-                    <i class="fas fa-sync-alt" href="#" role="button"></i> {{ _('Save & Refresh') }}
+                <button type="submit" class="page-link" href=""
+                        onclick="SubmitForm('')">
+                    <i class="fas fa-sync-alt" href="#" role="button"></i>
+                    {{ _('Save & Refresh') }}
                 </button>
             </li>
             <li class="page-item{% if edit_name == 'Basic' %} active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.edit_processor', processor_name=processor_name) }}">
+                <a class="page-link" href="{{ url_for('main.edit_processor',
+                processor_name=processor_name) }}">
                     {{ _('Basic') }}
                 </a>
             </li>
             <li class="page-item{% if edit_name == 'Import' %} active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.edit_processor_import', processor_name=processor_name) }}">
+                <a class="page-link" href="{{ url_for('main.edit_processor_import',
+                 processor_name=processor_name) }}">
                     {{ _('Import') }}
                 </a>
             </li>
             <li class="page-item{% if edit_name == 'Clean' %} active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.edit_processor_clean', processor_name=processor_name) }}">
+                <a class="page-link" href="{{ url_for('main.edit_processor_clean',
+                processor_name=processor_name) }}">
                     {{ _('Clean') }}
                 </a>
             </li>
             <li class="page-item{% if edit_name == 'Export' %} active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.edit_processor_export', processor_name=processor_name) }}">
+                <a class="page-link" href="{{ url_for('main.edit_processor_export',
+                processor_name=processor_name) }}">
                     {{ _('Export') }}
                 </a>
             </li>
             <li class="page-item" value="continue">
-                <button id="continue" type="submit" class="page-link" name="continue" onclick="loading('continue')">
-                    {{ _('Save & Continue') }} <i class="fas fa-arrow-circle-right" href="#" role="button"></i>
+                <button id="continue" type="submit" class="page-link"
+                        name="continue" onclick="loading('continue')">
+                    {{ _('Save & Continue') }}
+                    <i class="fas fa-arrow-circle-right" href="#" role="button"></i>
                 </button>
             </li>
         </ul>
     </nav>
     <!-- Modal -->
-    <div class="modal hide fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal hide fade" id="exampleModal" tabindex="-1" role="dialog"
+         aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="exampleModalLabel">Logfile - {{processor_name }}</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <h5 class="modal-title" id="exampleModalLabel">
+                Logfile - {{processor_name }}</h5>
+            <button type="button" class="close" data-dismiss="modal"
+                    aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
@@ -72,7 +85,8 @@
                     var output = document.getElementById('output');
 
                     var xhr = new XMLHttpRequest();
-                    xhr.open('GET', '{{ url_for('main.get_processor_logfile', processor_name=processor_name) }}');
+                    xhr.open('GET', '{{ url_for('main.get_processor_logfile',
+                     processor_name=processor_name) }}');
                     xhr.send();
 
                     setInterval(function() {
@@ -89,34 +103,54 @@
     </div>
     <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
         <div class="dropdown">
-            <button class="btn btn-success btn-lg btn-block dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+            <button class="btn btn-success btn-lg btn-block dropdown-toggle"
+                    type="button" id="dropdownMenu1" data-toggle="dropdown"
+                    aria-haspopup="true" aria-expanded="true">
                 <i class="fas fa-play-circle" href="#" role="button"></i>
                 {{ _('Run Processor') }}
                 <span class="caret"></span>
             </button>
             <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='full') }}">{{ _('Full') }}</a></li>
-                <li><a class="dropdown-item" href="javascript: show_modal_table('importRunButton');">{{ _('Import') }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='basic') }}">{{ _('Basic') }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='export') }}">{{ _('Export') }}</a></li>
+                <li><a class="dropdown-item"
+                       href="{{ url_for('main.run_processor',
+                       processor_name=processor_name,
+                       redirect_dest=edit_name, processor_args='full') }}">
+                    {{ _('Full') }}</a></li>
+                <li><a class="dropdown-item"
+                       href="javascript: show_modal_table('importRunButton');">
+                    {{ _('Import') }}</a></li>
+                <li><a class="dropdown-item"
+                       href="{{ url_for('main.run_processor',
+                       processor_name=processor_name,
+                       redirect_dest=edit_name, processor_args='basic') }}">
+                    {{ _('Basic') }}</a></li>
+                <li><a class="dropdown-item"
+                       href="{{ url_for('main.run_processor',
+                       processor_name=processor_name,
+                       redirect_dest=edit_name, processor_args='export') }}">
+                    {{ _('Export') }}</a></li>
             </ul>
         </div>
     </div>
     <br><br>
-    <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#exampleModal">
+    <button type="button" class="btn btn-secondary"
+            data-toggle="modal" data-target="#exampleModal">
       Show Logs
     </button>
-    <button id="importRunButton" type="button" class="btn btn-primary" data-toggle="modal" data-target="#importModal"
+    <button id="importRunButton" type="button" class="btn btn-primary"
+            data-toggle="modal" data-target="#importModal"
         style="display: none;">
       Launch demo modal
     </button>
-    <div class="modal fade bd-example-modal-lg" id="importModal" tabindex="-1" role="dialog"
-         aria-labelledby="exampleModalLabel">
+    <div class="modal fade bd-example-modal-lg" id="importModal"
+         tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel">
       <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="exampleModalLabel">Import - {{ processor_name }}</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <h5 class="modal-title" id="exampleModalLabel">
+                Import - {{ processor_name }}</h5>
+            <button type="button" class="close"
+                    data-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
@@ -124,36 +158,51 @@
               <div class="list-group" id="list-tab" role="tablist">
                   <a class="list-group-item list-group-item-action list-group-item-linkable active"
                      id="list-all" data-toggle="list"
-                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='import') }}"
+                     href="{{ url_for('main.run_processor',
+                     processor_name=processor_name, redirect_dest=edit_name,
+                     processor_args='import') }}"
                      role="tab" aria-controls="home">All</a>
                   <a class="list-group-item list-group-item-action list-group-item-linkable"
                      id="list-fb" data-toggle="list"
-                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='fb') }}"
+                     href="{{ url_for('main.run_processor',
+                     processor_name=processor_name, redirect_dest=edit_name,
+                     processor_args='fb') }}"
                      role="tab" aria-controls="profile">Facebook</a>
                   <a class="list-group-item list-group-item-action list-group-item-linkable"
                      id="list-aw" data-toggle="list"
-                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='aw') }}"
+                     href="{{ url_for('main.run_processor',
+                     processor_name=processor_name, redirect_dest=edit_name,
+                     processor_args='aw') }}"
                      role="tab" aria-controls="profile">Adwords</a>
                   <a class="list-group-item list-group-item-action list-group-item-linkable"
                      id="list-dc" data-toggle="list"
-                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='dc') }}"
+                     href="{{ url_for('main.run_processor',
+                     processor_name=processor_name,
+                     redirect_dest=edit_name, processor_args='dc') }}"
                      role="tab" aria-controls="profile">DCM</a>
                   <a class="list-group-item list-group-item-action list-group-item-linkable"
                      id="list-szk" data-toggle="list"
-                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='szk') }}"
+                     href="{{ url_for('main.run_processor',
+                      processor_name=processor_name, redirect_dest=edit_name,
+                      processor_args='szk') }}"
                      role="tab" aria-controls="profile">Sizmek</a>
                   <a class="list-group-item list-group-item-action list-group-item-linkable"
                      id="list-tw" data-toggle="list"
-                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='tw') }}"
+                     href="{{ url_for('main.run_processor',
+                     processor_name=processor_name, redirect_dest=edit_name,
+                     processor_args='tw') }}"
                      role="tab" aria-controls="profile">Twitter</a>
                   <a class="list-group-item list-group-item-action list-group-item-linkable"
                      id="list-dc" data-toggle="list"
-                     href="{{ url_for('main.run_processor', processor_name=processor_name, redirect_dest=edit_name, processor_args='db') }}"
+                     href="{{ url_for('main.run_processor',
+                     processor_name=processor_name, redirect_dest=edit_name,
+                     processor_args='db') }}"
                      role="tab" aria-controls="profile">DBM</a>
               </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary"
+                    data-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
@@ -169,16 +218,19 @@
           <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
               <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">Data Tables - {{ processor_name }}</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <h5 class="modal-title" id="exampleModalLabel">
+                    Data Tables - {{ processor_name }}</h5>
+                <button type="button" class="close" data-dismiss="modal"
+                        aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
               <div class="modal-body">
                   {% for table in tables %}
-                    {{ table.reset_index().to_html(index=False, table_id=loop.index, classes="table table-dark")|safe }}
+                    {{ table.reset_index().to_html(index=False,
+                    table_id=loop.index, classes="table table-dark")|safe }}
                         <script>
-                            var cols = {{ table.reset_index().columns.to_list()|tojson }};
+                            var cols = {{ table.reset_index().columns.tolist()|tojson }};
                             var tableFields = cols.map(function(e) {
                               return {label: e, name: e}
                             });
@@ -194,9 +246,19 @@
                                     // Activate an inline edit on click of a table cell
                                 $('#1').on( 'click', 'tbody td', function () {
                                     editor.inline( this, {
-                                        buttons: { label: '<i class="fas fa-greater-than style="color:black""></i>', fn: function () { this.submit(); } }
+                                        buttons: { label:
+                                                '<i class="fas fa-greater-than style="color:black""></i>',
+                                            fn: function () { this.submit(); } }
                                     });
                                 });
+                                editor.on( 'open', function ( e, type, mode, action ) {
+                                    if (type === "main") {
+                                      $('#tableModal').modal('hide');
+                                    }
+                                } );
+                                 editor.on( 'close', function () {
+                                  $('#tableModal').modal('show');
+                                } );
                                 $('#1').DataTable({
                                     dom: "Bfrtip",
                                     columns: tableCols,
@@ -212,7 +274,8 @@
                 {% endfor %}
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary"
+                        data-dismiss="modal">Close</button>
               </div>
             </div>
           </div>
@@ -226,9 +289,6 @@
 {% endblock %}
 
 {% block app_content %}
-    {% if tables %}
-        <script type="text/javascript"> show_modal_table('tableModalButton');</script>
-    {% endif %}
     {% with forms=forms %}
         {% include '_form.html' %}
     {% endwith %}
@@ -241,4 +301,10 @@
             });
         })
     </script>
+    {% if tables %}
+        <script type="text/javascript">
+            $(document).ready(function() {
+                show_modal_table('tableModalButton');
+            });</script>
+    {% endif %}
 {% endblock %}

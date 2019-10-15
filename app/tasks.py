@@ -200,8 +200,9 @@ def set_data_sources(processor_id, current_user_id, form_sources):
         _set_task_progress(0)
         for source in form_sources:
             ds = [x for x in old_sources if 'original_vendor_key' in source and
-                  x.vendor_key == source['original_vendor_key']][0]
+                  x.vendor_key == source['original_vendor_key']]
             if ds:
+                ds = ds[0]
                 ds.set_from_form(source, cur_processor)
                 db.session.commit()
         sources = ProcessorDatasources.query.filter_by(

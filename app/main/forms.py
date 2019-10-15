@@ -126,14 +126,14 @@ class APIForm(FlaskForm):
     start_date = DateField('Start Date', format='%Y-%m-%d')
     account_filter = StringField('Filter')
     api_fields = StringField('API Fields')
-    delete = SubmitField('Delete')
+    refresh_delete = SubmitField('Delete')
     vendor_key = HiddenField('Vendor Key')
 
 
 class ImportForm(FlaskForm):
     add_child = SubmitField(label='Add API')
     remove_api = SubmitField('Remove Last API')
-    refresh = SubmitField('Refresh From Processor')
+    refresh_imports = SubmitField('Refresh From Processor')
     form_continue = HiddenField('form_continue')
     apis = FieldList(FormField(APIForm, label='{}'.format(APIForm.name)))
 
@@ -161,7 +161,7 @@ class EditProcessorForm(ProcessorForm):
 
 
 class DataSourceForm(FlaskForm):
-    delete_dict = SubmitField(_l('Delete Dictionary'))
+    refresh_delete_dict = SubmitField(_l('Delete Dictionary'))
     refresh_dict = SubmitField(_l('Show Dictionary'))
     vendor_key = StringField(_l('Vendor Key'))
     full_placement_columns = TextAreaField(_l('Full Placement Columns'))
@@ -180,8 +180,8 @@ class DataSourceForm(FlaskForm):
 
 class ProcessorCleanForm(FlaskForm):
     refresh_data_sources = SubmitField(_l('Refresh From Processor'))
-    show_data_tables = SubmitField(_l('Show Data Tables'))
-    edit_translation = SubmitField(_l('Edit Translation Dictionary'))
+    refresh_show_data_tables = SubmitField(_l('Show Data Tables'))
+    refresh_edit_translation = SubmitField(_l('Edit Translation Dictionary'))
     form_continue = HiddenField('form_continue')
     datasources = FieldList(FormField(DataSourceForm))
 
@@ -200,12 +200,6 @@ class TranslationForm(FlaskForm):
                               choices=[(x, x) for x in dctc.COLS])
     value = StringField('Current Value')
     new_value = StringField('New Value')
-
-    new_value = DateField('Start Date', format='%Y-%m-%d')
-    account_filter = StringField('Filter')
-    api_fields = StringField('API Fields')
-    delete = SubmitField('Delete')
-    vendor_key = HiddenField('Vendor Key')
 
 
 class TranslationBroadForm(FlaskForm):

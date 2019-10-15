@@ -485,5 +485,6 @@ class ProcessorDatasources(db.Model):
             except:
                 pass
         for x in [vmc.autodicord, vmc.fullplacename]:
-            source[x] = '|'.join([y for y in source[x].split('\r\n')])
+            if source[x]:
+                source[x] = '|'.join([y for y in source[x].split('\r\n')])
         return source

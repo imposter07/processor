@@ -2,11 +2,12 @@
 
 {% block app_header %}
     <script>
-        function loading(destElem) {
-            $(destElem).button('toggle');
-            $(destElem).html(
-                '<img src="{{ url_for('static', filename='loading.gif') }}">');
-            SubmitForm('continue');
+        function SubmitForm(form_continue, elemId) {
+         console.log('submitting form');
+         console.log(form_continue);
+         console.log(elemId);
+         document.getElementById(elemId).setAttribute("value", form_continue);
+         document.getElementById("base_form_id").submit();
         }
     </script>
     <h1>{{ _('Processor - {}'.format(processor_name)) }}</h1>
@@ -17,17 +18,10 @@
              aria-valuemax="100">{{ edit_name }}</div>
     </div><br>
     <nav aria-label="...">
-        <script type="text/javascript">
-            function SubmitForm(form_continue) {
-                 document.getElementById(
-                     "form_continue").setAttribute("value", form_continue);
-                 document.getElementById("base_form_id").submit();
-            }
-        </script>
         <ul class="pagination pagination-lg justify-content-center">
             <li class="page-item">
-                <button type="submit" class="page-link" href=""
-                        onclick="SubmitForm('')">
+                <button id=loadRefresh type="submit" class="page-link" href=""
+                        onclick="SubmitForm('', 'form_continue')">
                     <i class="fas fa-sync-alt" href="#" role="button"></i>
                     {{ _('Save & Refresh') }}
                 </button>
@@ -57,8 +51,8 @@
                 </a>
             </li>
             <li class="page-item" value="continue">
-                <button id="continue" type="submit" class="page-link"
-                        name="continue" onclick="loading('continue')">
+                <button id="loadContinue" type="submit" class="page-link"
+                        name="continue" onclick="SubmitForm('continue', 'form_continue')">
                     {{ _('Save & Continue') }}
                     <i class="fas fa-arrow-circle-right" href="#" role="button"></i>
                 </button>
@@ -68,7 +62,7 @@
     <!-- Modal -->
     <div class="modal hide fade" id="exampleModal" tabindex="-1" role="dialog"
          aria-labelledby="exampleModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
@@ -144,7 +138,7 @@
     </button>
     <div class="modal fade bd-example-modal-lg" id="importModal"
          tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel">
-      <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
@@ -247,7 +241,7 @@
                                 $('#1').on( 'click', 'tbody td', function () {
                                     editor.inline( this, {
                                         buttons: { label:
-                                                '<i class="fas fa-greater-than style="color:black""></i>',
+                                                '<i class="fas fa-greater-than text-error style="color:red""></i>',
                                             fn: function () { this.submit(); } }
                                     });
                                 });
@@ -266,6 +260,19 @@
                                     buttons: [
                                         { extend: 'create', editor: editor },
                                         { extend: 'edit',   editor: editor },
+                                        {
+                                            extend: "selected",
+                                            text: 'Duplicate',
+                                            action: function ( e, dt, node, config ) {
+                                                // Start in edit mode, and then change to create
+                                                editor
+                                                    .edit( table.rows( {selected: true} ).indexes(), {
+                                                        title: 'Duplicate record',
+                                                        buttons: 'Create from existing'
+                                                    } )
+                                                    .mode( 'create' );
+                                            }
+                                        },
                                         { extend: 'remove', editor: editor }
                                     ]
                                 });
@@ -274,6 +281,8 @@
                 {% endfor %}
               </div>
               <div class="modal-footer">
+                <button type="button" class="btn btn-success"
+                        data-dismiss="modal">Save</button>
                 <button type="button" class="btn btn-secondary"
                         data-dismiss="modal">Close</button>
               </div>
@@ -292,6 +301,12 @@
     {% with forms=forms %}
         {% include '_form.html' %}
     {% endwith %}
+    {% if tables %}
+        <script type="text/javascript">
+            $(document).ready(function() {
+                show_modal_table('tableModalButton');
+            });</script>
+    {% endif %}
     <script>
         $(document).ready(function() {
             $('.list-group-item-linkable').on('click', function () {
@@ -299,12 +314,26 @@
                 var clickedHref = $(this).attr('href');
                 window.location.href = clickedHref;
             });
-        })
+        });
+        $(document).ready(function() {
+            $('button[id^="load"]').click(function() {
+              // disable button
+              $(this).prop("disabled", true);
+              // add spinner to button
+              $(this).html(
+                `<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span> Loading...`
+              );
+            });
+        });
+        $(document).ready(function() {
+            $('input[id*="refresh_"]').click(function() {
+              // disable button
+              $(this).wrapAll('' +
+                        '<button class="btn btn-primary" type="button" disabled>' +
+                          '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                          'Loading...' +
+                        '</button>');
+        });
+        });
     </script>
-    {% if tables %}
-        <script type="text/javascript">
-            $(document).ready(function() {
-                show_modal_table('tableModalButton');
-            });</script>
-    {% endif %}
 {% endblock %}

@@ -296,7 +296,7 @@ def edit_processor_import(processor_name):
         form.apis.pop_entry()
         template_arg['form'] = form
         return render_template('create_processor.html', **template_arg)
-    if form.refresh.data:
+    if form.refresh_imports.data:
         msg_text = 'Refreshing data for {}'.format(processor_name)
         task = cur_proc.launch_task('.get_processor_sources', _(msg_text),
                                     running_user=current_user.id)
@@ -306,7 +306,7 @@ def edit_processor_import(processor_name):
         return redirect(url_for('main.edit_processor_import',
                                 processor_name=processor_name))
     for api in form.apis:
-        if api.delete.data:
+        if api.refresh_delete.data:
             ds = ProcessorDatasources.query.filter_by(
                 account_id=api.account_id.data, start_date=api.start_date.data,
                 api_fields=api.api_fields.data, key=api.key.data,
@@ -378,14 +378,14 @@ def edit_processor_clean(processor_name):
         task.wait_and_get_job()
         return redirect(url_for('main.edit_processor_clean',
                                 processor_name=processor_name))
-    if form.show_data_tables.data:
+    if form.refresh_show_data_tables.data:
         msg_text = 'Getting data tables for {}'.format(processor_name)
         task = cur_proc.launch_task('.get_data_tables', _(msg_text), **proc_arg)
         db.session.commit()
         job = task.wait_and_get_job()
         template_arg['tables'] = job.result
         return render_template('create_processor.html', **template_arg)
-    if form.edit_translation.data:
+    if form.refresh_edit_translation.data:
         msg_text = 'Getting translation dict for {}'.format(processor_name)
         task = cur_proc.launch_task(
             '.get_translation_dict', _(msg_text), **proc_arg)
@@ -394,7 +394,7 @@ def edit_processor_clean(processor_name):
         template_arg['tables'] = job.result
         return render_template('create_processor.html', **template_arg)
     for ds in form.datasources:
-        if ds.delete_dict.data:
+        if ds.refresh_delete_dict.data:
             vk = ds.vendor_key.data
             proc_arg['vk'] = vk
             task = cur_proc.launch_task(

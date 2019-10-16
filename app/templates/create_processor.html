@@ -12,7 +12,8 @@
     </script>
     <h1>{{ _('Processor - {}'.format(processor_name)) }}</h1>
     <div class="progress mx-auto" style="height: 30px; width: 50%;">
-        <div class="progress-bar progress-bar-striped bg-info"
+        <div id="progressBar"
+             class="progress-bar progress-bar-striped bg-info"
              role="progressbar" style="width: {{ edit_progress }}%;"
              aria-valuenow={{ edit_progress }} aria-valuemin="0"
              aria-valuemax="100">{{ edit_name }}</div>
@@ -315,9 +316,14 @@
                 window.location.href = clickedHref;
             });
         });
+        function animateBar(){
+          var d = document.getElementById("progressBar");
+          d.className += " progress-bar-animated";
+        }
         $(document).ready(function() {
             $('button[id^="load"]').click(function() {
               // disable button
+              animateBar();
               $(this).prop("disabled", true);
               // add spinner to button
               $(this).html(
@@ -328,6 +334,7 @@
         $(document).ready(function() {
             $('input[id*="refresh_"]').click(function() {
               // disable button
+              animateBar();
               $(this).wrapAll('' +
                         '<button class="btn btn-primary" type="button" disabled>' +
                           '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +

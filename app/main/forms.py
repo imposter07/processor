@@ -1,8 +1,8 @@
 from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
-    FormField, FieldList, HiddenField
-from wtforms.fields.html5 import DateField
+    FormField, FieldList, HiddenField, DateTimeField
+from wtforms.fields.html5 import DateField, TimeField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
 from flask_babel import _, lazy_gettext as _l
@@ -221,3 +221,9 @@ class FullPlacementForm(FlaskForm):
 class ProcessorExportForm(FlaskForm):
     tableau_workbook = StringField(_l('Tableau Workbook'))
     tableau_view = StringField(_l('Tableau View'))
+    schedule_start = DateField(_l('Schedule Start'), format='%Y-%m-%d')
+    schedule_end = DateField(_l('Schedule End'), format='%Y-%m-%d')
+    run_time = TimeField(_l('Run Time'))
+    interval = SelectField(_l('Hourly Interval'),
+                           choices=[(x, x) for x in range(1,25)], default='24')
+    form_continue = HiddenField('form_continue')

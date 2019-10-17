@@ -14,6 +14,7 @@ from flask_babel import Babel, lazy_gettext as _l
 from config import Config
 from elasticsearch import Elasticsearch
 from redis import Redis
+from rq_scheduler import Scheduler
 
 
 class SQLAlchemy(_BaseSQLAlchemy):
@@ -55,6 +56,7 @@ def create_app(config_class=Config()):
     app.redis = Redis.from_url(app.config['REDIS_URL'])
     app.task_queue = rq.Queue('lqapp-tasks', connection=app.redis,
                               default_timeout=14400)
+    app.scheduler = Scheduler(queue=app.task_queue, connection=app.redis)
 
     from app.errors import bp as errors_bp
     app.register_blueprint(errors_bp)

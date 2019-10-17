@@ -1,6 +1,7 @@
 import rq
 import ast
 import jwt
+import pytz
 import json
 import time
 import redis
@@ -88,6 +89,7 @@ class User(UserMixin, db.Model):
                                     lazy='dynamic')
     tasks = db.relationship('Task', backref='user', lazy='dynamic')
     processor = db.relationship('Processor', backref='user', lazy='dynamic')
+    schedule = db.relationship('TaskScheduler', backref='user', lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -262,7 +264,8 @@ class Product(db.Model):
     campaign = db.relationship('Campaign', backref='product', lazy='dynamic')
 
     def check(self):
-        product_check = Product.query.filter_by(name=self.name, client_id=self.client_id).first()
+        product_check = Product.query.filter_by(
+            name=self.name, client_id=self.client_id).first()
         return product_check
 
     def check_and_add(self):
@@ -307,6 +310,8 @@ class Processor(db.Model):
     tableau_view = db.Column(db.Text)
     tasks = db.relationship('Task', backref='processor', lazy='dynamic')
     posts = db.relationship('Post', backref='processor', lazy='dynamic')
+    task_scheduler = db.relationship('TaskScheduler', backref='processor',
+                                     lazy='dynamic')
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
     processor_datasources = db.relationship('ProcessorDatasources',
                                             backref='processor', lazy='dynamic')
@@ -319,6 +324,32 @@ class Processor(db.Model):
                     user_id=self.user_id, processor=self)
         db.session.add(task)
         return task
+
+    def schedule_job(self, name, description, start_date, end_date,
+                     scheduled_time, interval):
+        eastern = pytz.timezone('US/Eastern')
+        first_run = datetime.combine(start_date, scheduled_time)
+        first_run = eastern.localize(first_run)
+        first_run = first_run.astimezone(pytz.utc)
+        interval_sec = int(interval) * 60 * 60
+        repeat = (end_date - start_date).days * (24 / int(interval))
+        job = current_app.scheduler.schedule(
+            scheduled_time=first_run,
+            func='app.tasks' + name,
+            kwargs={'processor_args': 'full',
+                    'user_id': self.user_id,
+                    'processor_id': self.id},
+            interval=int(interval_sec),
+            repeat=int(repeat),
+        )
+
+        schedule = TaskScheduler(
+            id=job.get_id(), name=name, description=description,
+            created_at=datetime.utcnow(), scheduled_time=scheduled_time,
+            start_date=start_date, end_date=end_date, interval=interval,
+            user_id=self.user_id, processor=self)
+        db.session.add(schedule)
+        return schedule
 
     def get_tasks_in_progress(self):
         return Task.query.filter_by(processor=self, complete=False).all()
@@ -341,6 +372,19 @@ class Processor(db.Model):
         post = Post(body=post_body, author=current_user, processor_id=self.id)
         db.session.add(post)
         db.session.commit()
+
+
+class TaskScheduler(db.Model):
+    id = db.Column(db.String(36), primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    description = db.Column(db.String(128))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    scheduled_time = db.Column(db.Time, default=datetime.utcnow)
+    start_date = db.Column(db.DateTime, default=datetime.utcnow)
+    end_date = db.Column(db.DateTime, default=datetime.utcnow)
+    interval = db.Column(db.Integer, default=24)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
 
 
 class ProcessorDatasources(db.Model):

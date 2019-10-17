@@ -69,7 +69,10 @@ def processor_post_message(proc, usr, text):
     post = Post(body=text, author=usr, processor_id=proc.id)
     db.session.add(post)
     db.session.commit()
-
+    usr.add_notification('task_complete', {'text': text,
+                                           'timestamp': post.timestamp.isoformat(),
+                                           'post_id': post.id})
+    db.session.commit()
 
 def run_processor(processor_id, current_user_id, processor_args):
     try:
@@ -277,3 +280,9 @@ def get_translation_dict(processor_id, current_user_id):
     tc.read(dctc.filename_tran_config)
     _set_task_progress(100)
     return [tc.df]
+
+
+def full_run_processor(processor_id, processor_args, user_id):
+    processor = Processor.query.filter_by(id=processor_id).first()
+    current_user = User.query.filter_by(id=user_id).first()
+    processor.run(processor_args=processor_args, current_user=current_user)

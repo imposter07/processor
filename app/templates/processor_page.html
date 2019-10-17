@@ -24,7 +24,7 @@
                     <li><a class="dropdown-item" href="{{ url_for('main.edit_processor', processor_name=processor.name, processor_args='full') }}">{{ _('Basic') }}</a></li>
                     <li><a class="dropdown-item" href="{{ url_for('main.edit_processor_import', processor_name=processor.name, processor_args='import') }}">{{ _('Import') }}</a></li>
                     <li><a class="dropdown-item" href="{{ url_for('main.edit_processor_clean', processor_name=processor.name, processor_args='basic') }}">{{ _('Clean') }}</a></li>
-                    <li><a class="dropdown-item" href="{{ url_for('main.run_processor', processor_name=processor.name, redirect_dest='Page', processor_args='export') }}">{{ _('Export') }}</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('main.edit_processor_export', processor_name=processor.name, processor_args='export') }}">{{ _('Export') }}</a></li>
                 </ul>
             </div>
         </div>

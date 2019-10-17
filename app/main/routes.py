@@ -10,7 +10,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
     ProcessorExportForm
 from app.models import User, Post, Message, Notification, Processor, \
-    Client, Product, Campaign, ProcessorDatasources
+    Client, Product, Campaign, ProcessorDatasources, TaskScheduler
 from app.translate import translate
 from app.main import bp
 
@@ -435,14 +435,40 @@ def edit_processor_export(processor_name):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     form = ProcessorExportForm()
+    sched = TaskScheduler.query.filter_by(processor_id=cur_proc.id).first()
     template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
                     'title': _('Processor'), 'form': form, 'edit_progress': 100,
                     'edit_name': "Export"}
     if request.method == 'GET':
         form.tableau_workbook.data = cur_proc.tableau_workbook
         form.tableau_view.data = cur_proc.tableau_view
+        if sched:
+            form.schedule_start.data = sched.start_date
+            form.schedule_end.data = sched.end_date
+            form.run_time.data = sched.scheduled_time
+            form.interval.data = str(sched.interval)
     elif request.method == 'POST':
-        pass
+        cur_proc.tableau_workbook =  form.tableau_workbook.data
+        cur_proc.tableau_view = form.tableau_view.data
+        if form.schedule_start:
+            if sched:
+                if sched.id in current_app.scheduler:
+                    current_app.scheduler.cancel(sched.id)
+                db.session.delete(sched)
+                db.session.commit()
+            msg_text = 'Scheduling processor: {}'.format(processor_name)
+            schedule = cur_proc.schedule_job('.full_run_processor', msg_text,
+                                             start_date=form.schedule_start.data,
+                                             end_date=form.schedule_end.data,
+                                             scheduled_time=form.run_time.data,
+                                             interval=form.interval.data)
+        db.session.commit()
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.processor_page',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_export',
+                                    processor_name=cur_proc.name))
     return render_template('create_processor.html', **template_arg)
 
 
@@ -525,6 +551,9 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
                                 processor_name=processor_to_run.name))
     elif redirect_dest =='Clean':
         return redirect(url_for('main.edit_processor_clean',
+                                processor_name=processor_to_run.name))
+    elif redirect_dest =='Export':
+        return redirect(url_for('main.edit_processor_export',
                                 processor_name=processor_to_run.name))
 
 

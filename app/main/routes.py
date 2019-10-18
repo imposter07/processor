@@ -245,6 +245,7 @@ def create_processor():
     form = ProcessorForm()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     if request.method == 'POST':
+        form.validate()
         form_client = Client(name=form.client_name).check_and_add()
         form_product = Product(
             name=form.product_name, client_id=form_client.id).check_and_add()
@@ -414,6 +415,7 @@ def edit_processor_clean(processor_name):
             template_arg['tables'] = job.result
             return render_template('create_processor.html', **template_arg)
     if request.method == 'POST':
+        form.validate()
         msg_text = 'Setting data sources in vendormatrix for {}'.format(processor_name)
         task = cur_proc.launch_task('.set_data_sources', _(msg_text),
                              running_user=current_user.id,
@@ -448,6 +450,7 @@ def edit_processor_export(processor_name):
             form.run_time.data = sched.scheduled_time
             form.interval.data = str(sched.interval)
     elif request.method == 'POST':
+        form.validate()
         cur_proc.tableau_workbook =  form.tableau_workbook.data
         cur_proc.tableau_view = form.tableau_view.data
         if form.schedule_start:
@@ -564,6 +567,7 @@ def edit_processor(processor_name):
         name=processor_name).first_or_404()
     form = EditProcessorForm(processor_name)
     if request.method == 'POST':
+        form.validate()
         form_client = Client(name=form.client_name).check_and_add()
         form_product = Product(name=form.product_name,
                                client_id=form_client.id).check_and_add()

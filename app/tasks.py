@@ -112,6 +112,19 @@ def copy_tree_no_overwrite(old_path, new_path):
             copy_tree_no_overwrite(old_file, new_file)
 
 
+def set_initial_constant_file(cur_processor):
+    import processor.reporting.dictionary as dct
+    import processor.reporting.dictcolumns as dctc
+    os.chdir(adjust_path(cur_processor.local_path))
+    dcc = dct.DictConstantConfig(None)
+    dcc.read_raw_df(dctc.filename_con_config)
+    for col in [(dctc.CLI, cur_processor.campaign.product.client.name),
+                (dctc.PRN, cur_processor.campaign.product.name)]:
+        idx = dcc.df[dcc.df[dctc.DICT_COL_NAME]==col[0]].index[0]
+        dcc.df.loc[idx, dctc.DICT_COL_VALUE] = col[1]
+    dcc.write(dcc.df, dctc.filename_con_config)
+
+
 def create_processor(processor_id, current_user_id, base_path):
     try:
         new_processor = Processor.query.get(processor_id)
@@ -121,6 +134,7 @@ def create_processor(processor_id, current_user_id, base_path):
         if not os.path.exists(new_path):
             os.makedirs(new_path)
         copy_tree_no_overwrite(old_path, new_path)
+        set_initial_constant_file(new_processor)
         msg_text = "Processor was created."
         processor_post_message(new_processor, user_create, msg_text)
         _set_task_progress(100)

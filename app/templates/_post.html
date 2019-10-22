@@ -17,9 +17,11 @@
                     username=user_link, when=moment(post.timestamp).fromNow()) }}
                 <br>
                 {% if post.processor_id %}
-                    <a href="{{ url_for('main.processor_page',  processor_name=post.processor.name) }}">
-                        {{ post.processor.name }}
-                    </a>
+                    <span class="processor_popup">
+                        <a href="{{ url_for('main.processor_page',  processor_name=post.processor.name) }}">
+                            {{ post.processor.name }}
+                        </a>
+                    </span>
                 {% endif %}
                 <span id="post{{ post.id }}">{{ post.body }}</span>
                 {% if post.language and post.language != g.locale %}

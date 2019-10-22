@@ -1,16 +1,24 @@
-<table class="table">
-    <tr>
-        <td style="border: 0px;">
-            <p>
-                <a href="{{ url_for('main.processor_page', processor_name=processor.name) }}">
-                    {{ processor.name }}
-                </a>
-            </p>
-            <small>
-                {%  set processor %}
-                        {% include '_processor.html' %}
-                {% endset %}
-            </small>
-        </td>
-    </tr>
-</table>
+<div class="card bg-light mb-3" style="width: 18rem;">
+    <div class="card-header text-center">
+        <h5><a href="{{ url_for('main.processor_page', processor_name=processor.name) }}">
+            {{ processor.name }}
+        </a></h5>
+    </div>
+    <div class="card text-center" style="width: 18rem;">
+        <p class="card-text"><strong>
+            <div class="card-body">
+            <span id="campaign{{ processor.id }}">Campaign: {{ processor.campaign.name}}</span>
+            <br>
+            <span id="product{{ processor.id }}">Product: {{ processor.campaign.product.name}}</span>
+            <br>
+            <span id="client{{ processor.id }}">Client: {{ processor.campaign.product.client.name}}</span>
+            <br>
+            <span id="location{{ processor.id }}">Location: {{ processor.local_path }}</span>
+            <br>
+            <span id="last_run{{ processor.id }}">Last Run: {{ moment(processor.last_run_time).fromNow() }}</span>
+            <br>
+            <span id="description{{ processor.id }}">Description: {{ processor.description}}</span>
+        </strong></p>
+       </div>
+    </div>
+</div>

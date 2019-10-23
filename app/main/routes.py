@@ -259,7 +259,7 @@ def create_processor():
             tableau_view=form.tableau_view.data, campaign_id=form_campaign.id)
         db.session.add(new_processor)
         db.session.commit()
-        post_body = ('Create Processor {}...'.format(new_processor.name))
+        post_body = 'Create Processor {}...'.format(new_processor.name)
         new_processor.launch_task('.create_processor', _(post_body),
                                   current_user.id,
                                   current_app.config['BASE_PROCESSOR_PATH'])
@@ -324,7 +324,7 @@ def edit_processor_import(processor_name):
                                     form_imports=form.apis.data)
         db.session.commit()
         if form.form_continue.data == 'continue':
-            job = task.wait_and_get_job()
+            task.wait_and_get_job()
             return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
         else:
@@ -345,6 +345,7 @@ def adjust_path(path):
 def get_processor_logfile(processor_name):
     import os
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
+
     def generate():
         with open(os.path.join(adjust_path(cur_proc.local_path),
                                'logfile.log')) as f:
@@ -358,6 +359,20 @@ def get_processor_logfile(processor_name):
 @login_required
 def edit_processor_clean_fpn(processor_name, datasource):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
+
+
+@bp.route('/get_table', methods=['GET', 'POST'])
+@login_required
+def get_table():
+    proc_name = request.form['processor']
+    proc_arg = {'running_user': current_user.id,
+                'new_data': request.form['data']}
+    msg_text = 'Updating translational dict for {}'.format(proc_name)
+    cur_proc = Processor.query.filter_by(name=proc_name).first_or_404()
+    cur_proc.launch_task('.write_translational_dict', _(msg_text), **proc_arg)
+    db.session.commit()
+    return redirect(url_for('main.edit_processor_clean',
+                            processor_name=cur_proc.name))
 
 
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
@@ -418,14 +433,14 @@ def edit_processor_clean(processor_name):
         form.validate()
         msg_text = 'Setting data sources in vendormatrix for {}'.format(processor_name)
         task = cur_proc.launch_task('.set_data_sources', _(msg_text),
-                             running_user=current_user.id,
-                             form_sources=form.datasources.data)
+                                    running_user=current_user.id,
+                                    form_sources=form.datasources.data)
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_export',
                                     processor_name=cur_proc.name))
         else:
-            job = task.wait_and_get_job()
+            task.wait_and_get_job()
             return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
     return render_template('create_processor.html', **template_arg)
@@ -451,7 +466,7 @@ def edit_processor_export(processor_name):
             form.interval.data = str(sched.interval)
     elif request.method == 'POST':
         form.validate()
-        cur_proc.tableau_workbook =  form.tableau_workbook.data
+        cur_proc.tableau_workbook = form.tableau_workbook.data
         cur_proc.tableau_view = form.tableau_view.data
         if form.schedule_start:
             if sched:
@@ -460,11 +475,11 @@ def edit_processor_export(processor_name):
                 db.session.delete(sched)
                 db.session.commit()
             msg_text = 'Scheduling processor: {}'.format(processor_name)
-            schedule = cur_proc.schedule_job('.full_run_processor', msg_text,
-                                             start_date=form.schedule_start.data,
-                                             end_date=form.schedule_end.data,
-                                             scheduled_time=form.run_time.data,
-                                             interval=form.interval.data)
+            cur_proc.schedule_job('.full_run_processor', msg_text,
+                                  start_date=form.schedule_start.data,
+                                  end_date=form.schedule_end.data,
+                                  scheduled_time=form.run_time.data,
+                                  interval=form.interval.data)
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_page',
@@ -533,8 +548,7 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
                      'rc': '--api rc',
                      'szk': '--api szk',
                      'red': '--api red',
-                     'dcm': '--api dc'
-        }
+                     'dcm': '--api dc'}
         processor_to_run.launch_task('.run_processor', _(post_body),
                                      running_user=current_user.id,
                                      processor_args=arg_trans[processor_args])
@@ -549,13 +563,13 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
     elif redirect_dest == 'Basic':
         return redirect(url_for('main.edit_processor',
                                 processor_name=processor_to_run.name))
-    elif redirect_dest =='Import':
+    elif redirect_dest == 'Import':
         return redirect(url_for('main.edit_processor_import',
                                 processor_name=processor_to_run.name))
-    elif redirect_dest =='Clean':
+    elif redirect_dest == 'Clean':
         return redirect(url_for('main.edit_processor_clean',
                                 processor_name=processor_to_run.name))
-    elif redirect_dest =='Export':
+    elif redirect_dest == 'Export':
         return redirect(url_for('main.edit_processor_export',
                                 processor_name=processor_to_run.name))
 

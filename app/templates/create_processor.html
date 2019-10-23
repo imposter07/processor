@@ -267,7 +267,7 @@
                                             action: function ( e, dt, node, config ) {
                                                 // Start in edit mode, and then change to create
                                                 editor
-                                                    .edit( table.rows( {selected: true} ).indexes(), {
+                                                    .edit(table.rows( {selected: true} ).indexes(), {
                                                         title: 'Duplicate record',
                                                         buttons: 'Create from existing'
                                                     } )
@@ -282,8 +282,25 @@
                 {% endfor %}
               </div>
               <div class="modal-footer">
+                 <script type="text/javascript">
+                    function SendDataTable(sourceElem, destElem) {
+                        console.log('Post table called');
+                        var table = $(sourceElem).DataTable();
+                        var data = table
+                            .data().toArray();
+                        var json = JSON.stringify( data );
+                        $.post('/get_table',
+                            {
+                                data: json,
+                                processor:  "{{ processor_name }}"
+                            });
+                        console.log(data);
+                        console.log(JSON.stringify( data ));
+                    }
+                </script>
                 <button type="button" class="btn btn-success"
-                        data-dismiss="modal">Save</button>
+                        data-dismiss="modal"
+                        onclick="SendDataTable('#1', '#1')">Save</button>
                 <button type="button" class="btn btn-secondary"
                         data-dismiss="modal">Close</button>
               </div>

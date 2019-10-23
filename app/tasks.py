@@ -112,6 +112,29 @@ def copy_tree_no_overwrite(old_path, new_path):
             copy_tree_no_overwrite(old_file, new_file)
 
 
+def write_translational_dict(processor_id, current_user_id, new_data):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        user_that_ran = User.query.get(current_user_id)
+        import processor.reporting.dictionary as dct
+        import processor.reporting.dictcolumns as dctc
+        os.chdir(adjust_path(cur_processor.local_path))
+        tc = dct.DictTranslationConfig()
+        df = pd.read_json(new_data)
+        df = df.drop('index', axis=1)
+        df = df[[dctc.DICT_COL_NAME, dctc.DICT_COL_VALUE, dctc.DICT_COL_NVALUE,
+                 dctc.DICT_COL_FNC, dctc.DICT_COL_SEL]]
+        df = df.replace('NaN', '')
+        tc.write(df, dctc.filename_tran_config)
+        msg_text = ('{} processor translational dict was updated.'
+                    ''.format(cur_processor.name))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
 def set_initial_constant_file(cur_processor):
     import processor.reporting.dictionary as dct
     import processor.reporting.dictcolumns as dctc
@@ -300,3 +323,4 @@ def full_run_processor(processor_id, processor_args, user_id):
     processor = Processor.query.filter_by(id=processor_id).first()
     current_user = User.query.filter_by(id=user_id).first()
     processor.run(processor_args=processor_args, current_user=current_user)
+    _set_task_progress(100)

@@ -127,6 +127,33 @@
             </ul>
         </div>
     </div>
+    <div id="editTableDropdown" class="btn-group" role="group" aria-label="Button group with nested dropdown">
+        <div class="dropdown">
+            <button class="btn btn-info btn-lg btn-block dropdown-toggle"
+                    type="button" id="editTableDropdownButton" data-toggle="dropdown"
+                    aria-haspopup="true" aria-expanded="true">
+                <i class="fas fa-edit" href="#" role="button"></i>
+                {{ _('Edit Processor Files') }}
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                <li><a class="dropdown-item" id="editTableVendormatrix">
+                    {{ _('Vendormatrix') }}</a></li>
+                <li><a class="dropdown-item" id="editTableTranslate">
+                    {{ _('Translate') }}</a></li>
+                <li><a class="dropdown-item"
+                       href="{{ url_for('main.edit_processor_file',
+                       processor_name=processor_name,
+                       redirect_dest=edit_name, file_args='constant') }}">
+                    {{ _('Constant') }}</a></li>
+                <li><a class="dropdown-item"
+                       href="{{ url_for('main.edit_processor_file',
+                       processor_name=processor_name,
+                       redirect_dest=edit_name, file_args='relation') }}">
+                    {{ _('Relation') }}</a></li>
+            </ul>
+        </div>
+    </div>
     <br><br>
     <button type="button" class="btn btn-secondary"
             data-toggle="modal" data-target="#exampleModal">
@@ -202,112 +229,113 @@
         </div>
       </div>
     </div>
-    <br>
-    {% if tables %}
-        <button id="tableModalButton" type="button" class="btn btn-primary"
-                data-toggle="modal" data-target="#tableModal" style="display: none;">
-          Launch demo modal
-        </button>
-        <div class="modal fade bd-example-modal-xl" id="tableModal" tabindex="-1"
-             role="dialog" aria-labelledby="exampleModalLabel">
-          <div class="modal-dialog modal-xl" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">
-                    Data Tables - {{ processor_name }}</h5>
-                <button type="button" class="close" data-dismiss="modal"
-                        aria-label="Close">
-                  <span aria-hidden="true">&times;</span>
-                </button>
-              </div>
-              <div class="modal-body">
-                  {% for table in tables %}
-                    {{ table.reset_index().to_html(index=False,
-                    table_id=loop.index, classes="table table-dark")|safe }}
-                        <script>
-                            var cols = {{ table.reset_index().columns.tolist()|tojson }};
-                            var tableFields = cols.map(function(e) {
-                              return {label: e, name: e}
+    <button id="tableModalButton" type="button" class="btn btn-primary"
+            data-toggle="modal" data-target="#tableModal" style="display: none;">
+      Launch demo modal
+    </button>
+    <div class="modal fade bd-example-modal-xl" id="tableModal" tabindex="-1"
+         role="dialog" aria-labelledby="exampleModalLabel">
+      <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">
+                Data Tables - {{ processor_name }}</h5>
+            <button type="button" class="close" data-dismiss="modal"
+                    aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+              <div id="modal-body-table"></div>
+                <script>
+                function createTable(colData, rawData, tableName) {
+                    var cols = JSON.parse(colData);
+                    var tableFields = cols.map(function(e) {
+                      return {label: e, name: e}
+                    });
+                    var tableCols = cols.map(function(e) {
+                      return {data: e}
+                    });
+                    console.log(tableName);
+                    var tableJquery = '#modalTable' + tableName;
+                    document.getElementById("modal-body-table").innerHTML = rawData;
+                    $(document).ready( function () {
+                        var editor = new $.fn.dataTable.Editor({
+                            table: tableJquery,
+                            idSrc: 'index',
+                            fields: tableFields
+                        });
+                            // Activate an inline edit on click of a table cell
+                        $(tableJquery).on( 'click', 'tbody td', function () {
+                            editor.inline( this, {
+                                buttons: { label:
+                                        '<i class="fas fa-greater-than text-error style="color:red""></i>',
+                                    fn: function () { this.submit(); } }
                             });
-                            var tableCols = cols.map(function(e) {
-                              return {data: e}
-                            });
-                            $(document).ready( function () {
-                                var editor = new $.fn.dataTable.Editor({
-                                    table: '#1',
-                                    idSrc: 'index',
-                                    fields: tableFields
-                                });
-                                    // Activate an inline edit on click of a table cell
-                                $('#1').on( 'click', 'tbody td', function () {
-                                    editor.inline( this, {
-                                        buttons: { label:
-                                                '<i class="fas fa-greater-than text-error style="color:red""></i>',
-                                            fn: function () { this.submit(); } }
-                                    });
-                                });
-                                editor.on( 'open', function ( e, type, mode, action ) {
-                                    if (type === "main") {
-                                      $('#tableModal').modal('hide');
+                        });
+                        editor.on( 'open', function ( e, type, mode, action ) {
+                            if (type === "main") {
+                              $('#tableModal').modal('hide');
+                            }
+                        } );
+                         editor.on( 'close', function () {
+                          $('#tableModal').modal('show');
+                        } );
+                        table = $(tableJquery).DataTable({
+                            dom: "Bfrtip",
+                            columns: tableCols,
+                            "scrollX": true,
+                            select: true,
+                            buttons: [
+                                { extend: 'create', editor: editor },
+                                { extend: 'edit',   editor: editor },
+                                {
+                                    extend: "selected",
+                                    text: 'Duplicate',
+                                    action: function ( e, dt, node, config ) {
+                                        // Start in edit mode, and then change to create
+                                        editor
+                                            .edit(table.rows( {selected: true} ).indexes(), {
+                                                title: 'Duplicate record',
+                                                buttons: 'Create from existing'
+                                            } )
+                                            .mode( 'create' );
                                     }
-                                } );
-                                 editor.on( 'close', function () {
-                                  $('#tableModal').modal('show');
-                                } );
-                                $('#1').DataTable({
-                                    dom: "Bfrtip",
-                                    columns: tableCols,
-                                    select: true,
-                                    buttons: [
-                                        { extend: 'create', editor: editor },
-                                        { extend: 'edit',   editor: editor },
-                                        {
-                                            extend: "selected",
-                                            text: 'Duplicate',
-                                            action: function ( e, dt, node, config ) {
-                                                // Start in edit mode, and then change to create
-                                                editor
-                                                    .edit(table.rows( {selected: true} ).indexes(), {
-                                                        title: 'Duplicate record',
-                                                        buttons: 'Create from existing'
-                                                    } )
-                                                    .mode( 'create' );
-                                            }
-                                        },
-                                        { extend: 'remove', editor: editor }
-                                    ]
-                                });
-                            });
-                        </script>
-                {% endfor %}
-              </div>
-              <div class="modal-footer">
-                 <script type="text/javascript">
-                    function SendDataTable(sourceElem, destElem) {
-                        console.log('Post table called');
-                        var table = $(sourceElem).DataTable();
-                        var data = table
-                            .data().toArray();
-                        var json = JSON.stringify( data );
-                        $.post('/get_table',
-                            {
-                                data: json,
-                                processor:  "{{ processor_name }}"
-                            });
-                        console.log(data);
-                        console.log(JSON.stringify( data ));
-                    }
+                                },
+                                { extend: 'remove', editor: editor }
+                            ]
+                        });
+                        table.columns.adjust().draw();
+                    });
+                }
                 </script>
-                <button type="button" class="btn btn-success"
-                        data-dismiss="modal"
-                        onclick="SendDataTable('#1', '#1')">Save</button>
-                <button type="button" class="btn btn-secondary"
-                        data-dismiss="modal">Close</button>
-              </div>
-            </div>
+          </div>
+          <div class="modal-footer">
+             <script type="text/javascript">
+                function SendDataTable() {
+                    var sourceElem = $('table[id^="modalTable"]')[0].id;
+                    var tableName = sourceElem.replace('modalTable', '');
+                    var table = $(sourceElem).DataTable();
+                    var data = table
+                        .data().toArray();
+                    var json = JSON.stringify( data );
+                    $.post('/post_table',
+                        {
+                            data: json,
+                            processor:  "{{ processor_name }}",
+                            table: tableName
+                        });
+                }
+            </script>
+            <button type="button" class="btn btn-success"
+                    data-dismiss="modal"
+                    onclick="SendDataTable()">Save</button>
+            <button type="button" class="btn btn-secondary"
+                    data-dismiss="modal">Close</button>
           </div>
         </div>
-    {% endif %}
+      </div>
+    </div>
     <script>
         function show_modal_table(destElem) {
             document.getElementById(destElem).click();
@@ -327,6 +355,44 @@
     {% endif %}
     <script>
         $(document).ready(function() {
+            $('a[id^="editTable"]').click(function () {
+                var tableName = this.id.replace('editTable', '');
+                $("#editTableDropdownButton").prop("disabled", true);
+                  // add spinner to button
+                $("#editTableDropdownButton").html(
+                    `<span class="spinner-grow spinner-grow-sm" role="status"
+                      aria-hidden="true"></span> Loading...`
+                  );
+                animateBar();
+                getTable(tableName);
+            });
+        });
+        function getTable(tableName){
+            $.post('/get_table',
+                {
+                    table: tableName,
+                    processor:  "{{ processor_name }}"
+            }).done(function(data, status) {
+                show_modal_table('tableModalButton');
+                var tableName = data['data']['name'];
+                createTable(data['data']['cols'], data['data']['data'],
+                    tableName);
+            }).fail(function() {
+                console.log('fail')
+            }).always(function(){
+                $("#editTableDropdownButton").prop("disabled", false);
+                $('#editTableDropdownButton').replaceWith('' +
+                 '<button class="btn btn-info btn-lg btn-block dropdown-toggle"' +
+                        'type="button" id="editTableDropdownButton" data-toggle="dropdown"' +
+                        'aria-haspopup="true" aria-expanded="true">' +
+                    '<i class="fas fa-edit" href="#" role="button"></i>' +
+                    '{{ _('Edit Processor Files') }}' +
+                    '<span class="caret"></span>' +
+                '</button>');
+                unanimateBar();
+            });
+        }
+        $(document).ready(function() {
             $('.list-group-item-linkable').on('click', function () {
                 // same window/tab:
                 var clickedHref = $(this).attr('href');
@@ -337,6 +403,10 @@
           var d = document.getElementById("progressBar");
           d.className += " progress-bar-animated";
         }
+        function unanimateBar(){
+          var d = document.getElementById("progressBar");
+          d.className = d.className.replace( /(?:^|\s)progress-bar-animated(?!\S)/g , '' );
+        }
         $(document).ready(function() {
             $('button[id^="load"]').click(function() {
               // disable button
@@ -344,7 +414,8 @@
               $(this).prop("disabled", true);
               // add spinner to button
               $(this).html(
-                `<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span> Loading...`
+                `<span class="spinner-grow spinner-grow-sm"
+                    role="status" aria-hidden="true"></span> Loading...`
               );
             });
         });

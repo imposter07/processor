@@ -1,4 +1,5 @@
 import time
+import json
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
     jsonify, current_app
@@ -355,24 +356,48 @@ def get_processor_logfile(processor_name):
     return current_app.response_class(generate(), mimetype='text/plain')
 
 
-@bp.route('/processor/<processor_name>/edit/clean/<datasource>')
+@bp.route('/post_table', methods=['GET', 'POST'])
 @login_required
-def edit_processor_clean_fpn(processor_name, datasource):
-    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
+def post_table():
+    proc_name = request.form['processor']
+    proc_arg = {'running_user': current_user.id,
+                'new_data': request.form['data']}
+    table_name = request.form['table']
+    msg_text = 'Updating {} table for {}'.format(table_name, proc_name)
+    cur_proc = Processor.query.filter_by(name=proc_name).first_or_404()
+    arg_trans = {'Translate': '.write_translational_dict',
+                 'Vendormatrix': '.write_vendormatrix',
+                 'constant': '',
+                 'relation': ''}
+    job_name = arg_trans[table_name]
+    cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
+    db.session.commit()
+    return jsonify({'data': 'success'})
 
 
 @bp.route('/get_table', methods=['GET', 'POST'])
 @login_required
 def get_table():
-    proc_name = request.form['processor']
-    proc_arg = {'running_user': current_user.id,
-                'new_data': request.form['data']}
-    msg_text = 'Updating translational dict for {}'.format(proc_name)
-    cur_proc = Processor.query.filter_by(name=proc_name).first_or_404()
-    cur_proc.launch_task('.write_translational_dict', _(msg_text), **proc_arg)
+    cur_proc = Processor.query.filter_by(name=request.form['processor']).first_or_404()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    proc_arg = {'running_user': cur_user.id}
+    arg_trans = {'Translate': '.get_translation_dict',
+                 'Vendormatrix': '.get_vendormatrix',
+                 'constant': '',
+                 'relation': ''}
+    table_name = request.form['table']
+    job_name = arg_trans[table_name]
+    msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
+    task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
-    return redirect(url_for('main.edit_processor_clean',
-                            processor_name=cur_proc.name))
+    job = task.wait_and_get_job()
+    df = job.result[0]
+    import pandas as pd
+    pd.set_option('display.max_colwidth', -1)
+    cols = json.dumps(df.reset_index().columns.tolist())
+    data = df.reset_index().to_html(index=False, table_id=table_name,
+                                    classes="table table-dark")
+    return jsonify({'data': {'data': data, 'cols': cols, 'name': table_name}})
 
 
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])

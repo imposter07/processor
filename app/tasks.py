@@ -308,6 +308,7 @@ def delete_dict(processor_id, current_user_id, vk):
     _set_task_progress(100)
     return tables
 
+
 def get_translation_dict(processor_id, current_user_id):
     cur_processor = Processor.query.get(processor_id)
     import processor.reporting.dictionary as dct
@@ -317,6 +318,36 @@ def get_translation_dict(processor_id, current_user_id):
     tc.read(dctc.filename_tran_config)
     _set_task_progress(100)
     return [tc.df]
+
+
+def get_vendormatrix(processor_id, current_user_id):
+    cur_processor = Processor.query.get(processor_id)
+    import processor.reporting.vendormatrix as vm
+    os.chdir(adjust_path(cur_processor.local_path))
+    matrix = vm.VendorMatrix()
+    _set_task_progress(100)
+    return [matrix.vm_df]
+
+
+def write_vendormatrix(processor_id, current_user_id, new_data):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        user_that_ran = User.query.get(current_user_id)
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        df = pd.read_json(new_data)
+        df = df.drop('index', axis=1)
+        df = df.replace('NaN', '')
+        matrix.vm_df = df
+        matrix.write()
+        msg_text = ('{} processor vendormatrix was updated.'
+                    ''.format(cur_processor.name))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
 def full_run_processor(processor_id, processor_args, user_id):

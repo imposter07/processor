@@ -367,8 +367,8 @@ def post_table():
     cur_proc = Processor.query.filter_by(name=proc_name).first_or_404()
     arg_trans = {'Translate': '.write_translational_dict',
                  'Vendormatrix': '.write_vendormatrix',
-                 'constant': '',
-                 'relation': ''}
+                 'Constant': '.write_constant_dict',
+                 'Relation': '.write_relational_config'}
     job_name = arg_trans[table_name]
     cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
@@ -383,8 +383,8 @@ def get_table():
     proc_arg = {'running_user': cur_user.id}
     arg_trans = {'Translate': '.get_translation_dict',
                  'Vendormatrix': '.get_vendormatrix',
-                 'constant': '',
-                 'relation': ''}
+                 'Constant': '.get_constant_dict',
+                 'Relation': '.get_relational_config'}
     table_name = request.form['table']
     job_name = arg_trans[table_name]
     msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
@@ -395,6 +395,7 @@ def get_table():
     import pandas as pd
     pd.set_option('display.max_colwidth', -1)
     cols = json.dumps(df.reset_index().columns.tolist())
+    table_name = "modalTable{}".format(table_name)
     data = df.reset_index().to_html(index=False, table_id=table_name,
                                     classes="table table-dark")
     return jsonify({'data': {'data': data, 'cols': cols, 'name': table_name}})

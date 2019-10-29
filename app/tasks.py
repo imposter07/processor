@@ -223,6 +223,7 @@ def set_processor_imports(processor_id, current_user_id, form_imports):
         ic.add_and_remove_from_vm(processor_dicts, matrix=True)
         msg_text = "Processor imports set."
         processor_post_message(cur_processor, user_that_ran, msg_text)
+        get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
         db.session.commit()
     except:
@@ -333,12 +334,14 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
     try:
         cur_processor = Processor.query.get(processor_id)
         user_that_ran = User.query.get(current_user_id)
+        import processor.rpeorting.vmcolumns as vmc
         import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         df = pd.read_json(new_data)
         df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
+        df = df[[vmc.vendorkey] + vmc.vmkeys]
         matrix.vm_df = df
         matrix.write()
         msg_text = ('{} processor vendormatrix was updated.'
@@ -349,6 +352,80 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
+
+def get_constant_dict(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.dictionary as dct
+        import processor.reporting.dictcolumns as dctc
+        os.chdir(adjust_path(cur_processor.local_path))
+        dcc = dct.DictConstantConfig(None)
+        dcc.read_raw_df(dctc.filename_con_config)
+        _set_task_progress(100)
+        return [dcc.df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def write_constant_dict(processor_id, current_user_id, new_data):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        user_that_ran = User.query.get(current_user_id)
+        import processor.reporting.dictionary as dct
+        import processor.reporting.dictcolumns as dctc
+        os.chdir(adjust_path(cur_processor.local_path))
+        dcc = dct.DictConstantConfig(None)
+        df = pd.read_json(new_data)
+        df = df.drop('index', axis=1)
+        df = df.replace('NaN', '')
+        df = df[[dctc.DICT_COL_NAME, dctc.DICT_COL_VALUE,
+                 dctc.DICT_COL_DICTNAME]]
+        dcc.write(df, dctc.filename_con_config)
+        msg_text = ('{} processor constant dict was updated.'
+                    ''.format(cur_processor.name))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def get_relational_config(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.dictionary as dct
+        import processor.reporting.dictcolumns as dctc
+        os.chdir(adjust_path(cur_processor.local_path))
+        rc = dct.RelationalConfig()
+        rc.read(dctc.filename_rel_config)
+        _set_task_progress(100)
+        return [rc.df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def write_relational_config(processor_id, current_user_id, new_data):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        user_that_ran = User.query.get(current_user_id)
+        import processor.reporting.dictionary as dct
+        import processor.reporting.dictcolumns as dctc
+        os.chdir(adjust_path(cur_processor.local_path))
+        rc = dct.RelationalConfig()
+        df = pd.read_json(new_data)
+        df = df.drop('index', axis=1)
+        df = df.replace('NaN', '')
+        df = df[[dctc.RK, dctc.FN, dctc.KEY, dctc.DEP, dctc.AUTO]]
+        rc.write(df, dctc.filename_rel_config)
+        msg_text = ('{} processor constant dict was updated.'
+                    ''.format(cur_processor.name))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 def full_run_processor(processor_id, processor_args, user_id):
     processor = Processor.query.filter_by(id=processor_id).first()

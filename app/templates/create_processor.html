@@ -141,15 +141,9 @@
                     {{ _('Vendormatrix') }}</a></li>
                 <li><a class="dropdown-item" id="editTableTranslate">
                     {{ _('Translate') }}</a></li>
-                <li><a class="dropdown-item"
-                       href="{{ url_for('main.edit_processor_file',
-                       processor_name=processor_name,
-                       redirect_dest=edit_name, file_args='constant') }}">
+                <li><a class="dropdown-item" id="editTableConstant">
                     {{ _('Constant') }}</a></li>
-                <li><a class="dropdown-item"
-                       href="{{ url_for('main.edit_processor_file',
-                       processor_name=processor_name,
-                       redirect_dest=edit_name, file_args='relation') }}">
+                <li><a class="dropdown-item" id="editTableRelation">
                     {{ _('Relation') }}</a></li>
             </ul>
         </div>
@@ -256,8 +250,7 @@
                     var tableCols = cols.map(function(e) {
                       return {data: e}
                     });
-                    console.log(tableName);
-                    var tableJquery = '#modalTable' + tableName;
+                    var tableJquery = '#' + tableName;
                     document.getElementById("modal-body-table").innerHTML = rawData;
                     $(document).ready( function () {
                         var editor = new $.fn.dataTable.Editor({
@@ -314,16 +307,16 @@
              <script type="text/javascript">
                 function SendDataTable() {
                     var sourceElem = $('table[id^="modalTable"]')[0].id;
-                    var tableName = sourceElem.replace('modalTable', '');
-                    var table = $(sourceElem).DataTable();
-                    var data = table
+                    var sendTable = $('#' + sourceElem).DataTable();
+                    var sendTableName = sourceElem.replace('modalTable', '');
+                    var data = sendTable
                         .data().toArray();
                     var json = JSON.stringify( data );
                     $.post('/post_table',
                         {
                             data: json,
                             processor:  "{{ processor_name }}",
-                            table: tableName
+                            table: sendTableName
                         });
                 }
             </script>
@@ -374,9 +367,9 @@
                     processor:  "{{ processor_name }}"
             }).done(function(data, status) {
                 show_modal_table('tableModalButton');
-                var tableName = data['data']['name'];
+                var newTableName = data['data']['name'];
                 createTable(data['data']['cols'], data['data']['data'],
-                    tableName);
+                    newTableName);
             }).fail(function() {
                 console.log('fail')
             }).always(function(){

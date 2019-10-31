@@ -4,6 +4,12 @@
     <h1>{{ _('Hi, %(username)s!', username=current_user.username) }}</h1>
 {% endblock %}
 
+{% block vertical_navbar %}
+    {% for post in posts %}
+        {% include '_post.html' %}
+    {% endfor %}
+{% endblock %}
+
 {% block app_content %}
     <div class="card-deck">
       <div class="card">

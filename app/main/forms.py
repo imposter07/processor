@@ -180,8 +180,6 @@ class DataSourceForm(FlaskForm):
 
 class ProcessorCleanForm(FlaskForm):
     refresh_data_sources = SubmitField(_l('Refresh From Processor'))
-    refresh_show_data_tables = SubmitField(_l('Show Data Tables'))
-    refresh_edit_translation = SubmitField(_l('Edit Translation Dictionary'))
     form_continue = HiddenField('form_continue')
     datasources = FieldList(FormField(DataSourceForm))
 

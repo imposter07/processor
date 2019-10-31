@@ -334,14 +334,15 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
     try:
         cur_processor = Processor.query.get(processor_id)
         user_that_ran = User.query.get(current_user_id)
-        import processor.rpeorting.vmcolumns as vmc
+        import processor.reporting.vmcolumns as vmc
         import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         df = pd.read_json(new_data)
         df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
-        df = df[[vmc.vendorkey] + vmc.vmkeys]
+        rule_cols = [x for x in df.columns if x not in vmc.vmkeys]
+        df = df[[vmc.vendorkey] + vmc.vmkeys + rule_cols]
         matrix.vm_df = df
         matrix.write()
         msg_text = ('{} processor vendormatrix was updated.'

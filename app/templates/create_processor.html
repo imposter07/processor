@@ -20,7 +20,7 @@
     </div><br>
     <nav aria-label="...">
         <ul class="pagination pagination-lg justify-content-center">
-            <li class="page-item">
+            <li class="page-item{% if not form %} page-item disabled{% endif %}">
                 <button id=loadRefresh type="submit" class="page-link" href=""
                         onclick="SubmitForm('', 'form_continue')">
                     <i class="fas fa-sync-alt" href="#" role="button"></i>
@@ -51,7 +51,8 @@
                     {{ _('Export') }}
                 </a>
             </li>
-            <li class="page-item" value="continue">
+            <li class="page-item{% if not form %} page-item disabled{% endif %}"
+                value="continue">
                 <button id="loadContinue" type="submit" class="page-link"
                         name="continue" onclick="SubmitForm('continue', 'form_continue')">
                     {{ _('Save & Continue') }}
@@ -96,63 +97,6 @@
         </div>
       </div>
     </div>
-    <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
-        <div class="dropdown">
-            <button class="btn btn-success btn-lg btn-block dropdown-toggle"
-                    type="button" id="dropdownMenu1" data-toggle="dropdown"
-                    aria-haspopup="true" aria-expanded="true">
-                <i class="fas fa-play-circle" href="#" role="button"></i>
-                {{ _('Run Processor') }}
-                <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-                <li><a class="dropdown-item"
-                       href="{{ url_for('main.run_processor',
-                       processor_name=processor_name,
-                       redirect_dest=edit_name, processor_args='full') }}">
-                    {{ _('Full') }}</a></li>
-                <li><a class="dropdown-item"
-                       href="javascript: show_modal_table('importRunButton');">
-                    {{ _('Import') }}</a></li>
-                <li><a class="dropdown-item"
-                       href="{{ url_for('main.run_processor',
-                       processor_name=processor_name,
-                       redirect_dest=edit_name, processor_args='basic') }}">
-                    {{ _('Basic') }}</a></li>
-                <li><a class="dropdown-item"
-                       href="{{ url_for('main.run_processor',
-                       processor_name=processor_name,
-                       redirect_dest=edit_name, processor_args='export') }}">
-                    {{ _('Export') }}</a></li>
-            </ul>
-        </div>
-    </div>
-    <div id="editTableDropdown" class="btn-group" role="group" aria-label="Button group with nested dropdown">
-        <div class="dropdown">
-            <button class="btn btn-info btn-lg btn-block dropdown-toggle"
-                    type="button" id="editTableDropdownButton" data-toggle="dropdown"
-                    aria-haspopup="true" aria-expanded="true">
-                <i class="fas fa-edit" href="#" role="button"></i>
-                {{ _('Edit Processor Files') }}
-                <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-                <li><a class="dropdown-item" id="editTableVendormatrix">
-                    {{ _('Vendormatrix') }}</a></li>
-                <li><a class="dropdown-item" id="editTableTranslate">
-                    {{ _('Translate') }}</a></li>
-                <li><a class="dropdown-item" id="editTableConstant">
-                    {{ _('Constant') }}</a></li>
-                <li><a class="dropdown-item" id="editTableRelation">
-                    {{ _('Relation') }}</a></li>
-            </ul>
-        </div>
-    </div>
-    <br><br>
-    <button type="button" class="btn btn-secondary"
-            data-toggle="modal" data-target="#exampleModal">
-      Show Logs
-    </button>
     <button id="importRunButton" type="button" class="btn btn-primary"
             data-toggle="modal" data-target="#importModal"
         style="display: none;">
@@ -335,32 +279,169 @@
         }
     </script>
 {% endblock %}
+{% block vertical_navbar %}
+    <br>
+    {% with processor=processor %}
+        {% include 'processor_popup.html' %}
+    {% endwith %}
+    <div class="accordion" id="accordionExample">
+        <div class="card">
+            <button class="btn btn-outline-success btn-lg btn-block
+                           dropdown-toggle text-left"
+                    type="button" data-toggle="collapse"
+                    data-target="#collapseOne" aria-expanded="false"
+                    aria-controls="collapseOne">
+                <i class="fas fa-play-circle" href="#" role="button"></i>
+                {{ _('Run Processor') }}
+                <span class="caret"></span>
+            </button>
+            <div id="collapseOne" class="collapse"
+                 aria-labelledby="headingOne" data-parent="#accordionExample">
+                <div class="card-body">
+                    <a class="dropdown-item"
+                           href="{{ url_for('main.run_processor',
+                           processor_name=processor_name,
+                           redirect_dest=edit_name, processor_args='full') }}">
+                        {{ _('Full') }}</a>
+                    <a class="dropdown-item"
+                           href="javascript: show_modal_table('importRunButton');">
+                        {{ _('Import') }}</a>
+                    <a class="dropdown-item"
+                           href="{{ url_for('main.run_processor',
+                           processor_name=processor_name,
+                           redirect_dest=edit_name, processor_args='basic') }}">
+                        {{ _('Basic') }}</a>
+                    <a class="dropdown-item"
+                           href="{{ url_for('main.run_processor',
+                           processor_name=processor_name,
+                           redirect_dest=edit_name, processor_args='export') }}">
+                        {{ _('Export') }}</a>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <button class="btn btn-outline-info btn-lg btn-block
+                           dropdown-toggle text-left"
+                    type="button" data-toggle="collapse"
+                    id="editTableDropdownButton"
+                    data-target="#collapseTwo" aria-expanded="true"
+                    aria-controls="collapseTwo">
+                <i class="fas fa-edit" href="#" role="button"></i>
+                {{ _('Edit Processor Files') }}
+                <span class="caret"></span>
+            </button>
+            <div id="collapseTwo" class="collapse"
+                 aria-labelledby="headingTwo"
+                 data-parent="#accordionExample">
+                <div class="card-body">
+                    <a class="dropdown-item" id="editTableVendormatrix" href="#">
+                        {{ _('Vendormatrix') }}</a>
+                    <a class="dropdown-item" id="editTableTranslate" href="#">
+                        {{ _('Translate') }}</a>
+                    <a class="dropdown-item" id="editTableConstant" href="#">
+                        {{ _('Constant') }}</a>
+                    <a class="dropdown-item" id="editTableRelation" href="#">
+                        {{ _('Relation') }}</a>
+                 </div>
+            </div>
+        </div>
+        <div class="card">
+            <button class="btn btn-outline-secondary btn-lg btn-block
+                           dropdown-toggle text-left"
+                    type="button" data-toggle="collapse"
+                    id="editTableDropdownButtonView"
+                    data-target="#collapseThree" aria-expanded="true"
+                    aria-controls="collapseThree">
+                <i class="fas fa-table" href="#" role="button"></i>
+                {{ _('View Output Data') }}
+                <span class="caret"></span>
+            </button>
+            <div id="collapseThree" class="collapse"
+                 aria-labelledby="headingThree"
+                 data-parent="#accordionExample">
+                <div class="card-body">
+                    <a class="dropdown-item" id="editTableOutputData">
+                        {{ _('Campaign & Vendor') }}</a>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <button type="button"
+                    class="btn btn-outline-secondary btn-lg btn-block text-left"
+                    data-toggle="modal" data-target="#exampleModal">
+                <i class="fas fa-file-alt" href="#" role="button"></i>
+              {{ _('Show Logs') }}
+            </button>
+        </div>
+    </div>
+    <br>
+    <h3 class="sidebar-heading d-flex justify-content-between align-items-center
+               text-dark text-center">
+                  <span>{{ _('Posts') }}</span>
+    </h3>
+    <table class="table table-hover">
+        {% for post in posts %}
+            {% include '_post.html' %}
+        {% endfor %}
+        <nav aria-label="...">
+        <ul class="pagination justify-content-center">
+            <li class="page-item{% if not prev_url %} page-item disabled{% endif %}">
+                <a class="page-link" href="{{ prev_url or '#' }}">
+                    <span aria-hidden="true">&larr;</span> {{ _('Newer posts') }}
+                </a>
+            </li>
+            <li class="page-item{% if not next_url %} page-item disabled{% endif %}">
+                <a class="page-link" href="{{ next_url or '#' }}">
+                    {{ _('Older posts') }} <span aria-hidden="true">&rarr;</span>
+                </a>
+            </li>
+        </ul>
+        </nav>
+    </table>
+{% endblock %}
 
 {% block app_content %}
-    {% with forms=forms %}
+    {% if form %}
         {% include '_form.html' %}
-    {% endwith %}
+    {% endif %}
     {% if tables %}
         <script type="text/javascript">
             $(document).ready(function() {
                 show_modal_table('tableModalButton');
             });</script>
     {% endif %}
+    {% if tableau_workbook %}
+        <script type='text/javascript'
+                src='https://us-east-1.online.tableau.com/javascripts/api/viz_v1.js'>
+        </script>
+        <div class='tableauPlaceholder' style='width: 1350px; height: 897px;'>
+            <object class='tableauViz' width='1350' height='897' style='display:none;'>
+                <param name='host_url' value='https%3A%2F%2Fus-east-1.online.tableau.com%2F' />
+                <param name='embed_code_version' value='3' />
+                <param name='site_root' value='&#47;t&#47;liquidadvertising' />
+                <param name='name' value='{{ processor.tableau_workbook }}&#47;{{ processor.tableau_view }}' />
+                <param name='tabs' value='no' /><param name='toolbar' value='yes' />
+                <param name='showAppBanner' value='false' />
+                <param name='filter' value='iframeSizedToWindow=true' />
+            </object>
+        </div>
+    {% endif %}
     <script>
         $(document).ready(function() {
             $('a[id^="editTable"]').click(function () {
                 var tableName = this.id.replace('editTable', '');
-                $("#editTableDropdownButton").prop("disabled", true);
-                  // add spinner to button
-                $("#editTableDropdownButton").html(
+                var dropdownButton = "#" + $(this).parents()[2].children[0].id;
+                $(dropdownButton).prop("disabled", true);
+                var oldHtml = $(dropdownButton).html();
+                $(dropdownButton).html(
                     `<span class="spinner-grow spinner-grow-sm" role="status"
                       aria-hidden="true"></span> Loading...`
                   );
                 animateBar();
-                getTable(tableName);
+                getTable(tableName, dropdownButton, oldHtml);
             });
         });
-        function getTable(tableName){
+        function getTable(tableName, clickElem, oldHtml){
             $.post('/get_table',
                 {
                     table: tableName,
@@ -373,15 +454,8 @@
             }).fail(function() {
                 console.log('fail')
             }).always(function(){
-                $("#editTableDropdownButton").prop("disabled", false);
-                $('#editTableDropdownButton').replaceWith('' +
-                 '<button class="btn btn-info btn-lg btn-block dropdown-toggle"' +
-                        'type="button" id="editTableDropdownButton" data-toggle="dropdown"' +
-                        'aria-haspopup="true" aria-expanded="true">' +
-                    '<i class="fas fa-edit" href="#" role="button"></i>' +
-                    '{{ _('Edit Processor Files') }}' +
-                    '<span class="caret"></span>' +
-                '</button>');
+                $(clickElem).prop("disabled", false);
+                $(clickElem).html(oldHtml);
                 unanimateBar();
             });
         }
@@ -421,7 +495,7 @@
                           '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
                           'Loading...' +
                         '</button>');
-        });
+            });
         });
     </script>
 {% endblock %}

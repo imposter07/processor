@@ -1,29 +1,31 @@
-    <table class="table table-hover">
-        <tr>
-            <td width="70px">
-                <a href="{{ url_for('main.user', username=post.author.username) }}">
-                    <img src="{{ post.author.avatar(70) }}" />
+<table class="table table-hover">
+    <tr><td>
+    <div class="bg-light text-dark">
+        {% set user_link %}
+            <span class="user_popup">
+                <a href="{{ url_for('main.user',
+                username=post.author.username) }}">
+                    {{ post.author.username }}
                 </a>
-            </td>
-            <td>
-                {% set user_link %}
-                    <span class="user_popup">
-                        <a href="{{ url_for('main.user', username=post.author.username) }}">
-                            {{ post.author.username }}
-                        </a>
-                    </span>
-                {% endset %}
-                {{ _('%(username)s said %(when)s',
-                    username=user_link, when=moment(post.timestamp).fromNow()) }}
-                <br>
-                {% if post.processor_id %}
-                    <span class="processor_popup">
-                        <a href="{{ url_for('main.processor_page',  processor_name=post.processor.name) }}">
-                            {{ post.processor.name }}
-                        </a>
-                    </span>
-                {% endif %}
-                <span id="post{{ post.id }}">{{ post.body }}</span>
+            </span>
+        {% endset %}
+            <div class="media">
+                <a href="{{ url_for('main.user', username=post.author.username) }}">
+                    <img class="mr-3"
+                       src="{{ post.author.avatar(70) }}"
+                       alt="Generic placeholder image"></a>
+          <div class="media-body">
+            <h6 class="mt-0">{{ _('%(username)s said %(when)s',
+            username=user_link, when=moment(post.timestamp).fromNow()) }}</h6>
+            {% if post.processor_id %}
+                <span class="processor_popup">
+                    <a href="{{ url_for('main.processor_page',
+                     processor_name=post.processor.name) }}">
+                        {{ post.processor.name }}
+                    </a>
+                </span>
+            {% endif %}
+            <span id="post{{ post.id }}">{{ post.body }}</span>
                 {% if post.language and post.language != g.locale %}
                 <br><br>
                 <span id="translation{{ post.id }}">
@@ -33,7 +35,8 @@
                                 '{{ post.language }}',
                                 '{{ g.locale }}');">{{ _('Translate') }}</a>
                 </span>
-                {% endif %}
-            </td>
-        </tr>
+             {% endif %}
+          </div>
+        </div></div>
+    </td></tr>
 </table>

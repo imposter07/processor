@@ -5,11 +5,18 @@
                text-light">
                   <span>{{ _('User') }}: {{ user.username }}</span>
     </h1>
-    <button class="btn btn-outline-success btn-lg btn-block text-left"
+    <a href="{{ url_for('main.create_processor') }}">
+        <button class="btn btn-outline-success btn-lg btn-block text-left"
             type="button" href="{{ url_for('main.create_processor') }}">
-                <i class="fas fa-plus-circle" href="#" role="button"></i>
+
+                <i class="fas fa-plus-circle"
+                   role="button"></i>
                 {{ _('Create Processor') }}
-    </button>
+    </button></a><br>
+    <div class="custom-control custom-switch">
+      <input type="checkbox" class="custom-control-input" id="customSwitch1" checked>
+      <label class="custom-control-label" for="customSwitch1">Processors I've Created</label>
+    </div>
     <table class="table table-hover">
         <tr>
             <td>
@@ -17,7 +24,7 @@
                   <select class="custom-select" id="inputGroupSelect04">
                     <option selected>Choose...</option>
                       {% for processor in processors %}
-                          <option value="{{ processor.name }}">
+                          <option value="{{ processor.name }}" index="">
                               {{ processor.name }}</option>
                       {% endfor %}
                   </select>
@@ -27,19 +34,25 @@
     </table>
 {% endblock %}
 
+{% block app_header %}
+
+{% endblock %}
 {% block app_content %}
-    <div id="carousel" class="carousel slide" data-ride="carousel" data-interval="false">
-        <div class="carousel-inner">
+    <div id="carousel" class="carousel slide" data-ride="carousel"
+         data-interval="false">
+        <div class="carousel-inner text-center">
             {% for processor in processors %}
                 {% with loop_num = loop.index %}
                     {% include '_processor.html' %}
                 {% endwith %}
             {% endfor %}
-          <a class="carousel-control-prev" href="#carousel" role="button" data-slide="prev">
+          <a class="carousel-control-prev" href="#carousel"
+             role="button" data-slide="prev">
             <i class="fas fa-arrow-alt-circle-left btn btn-dark btn-lg"></i>
             <span class="sr-only">Previous</span>
           </a>
-          <a class="carousel-control-next" href="#carousel" role="button" data-slide="next">
+          <a class="carousel-control-next" href="#carousel"
+             role="button" data-slide="next">
             <i class="fas fa-arrow-alt-circle-right btn btn-dark btn-lg"></i>
             <span class="sr-only">Next</span>
           </a>
@@ -48,22 +61,13 @@
     {% for post in posts %}
         {% include '_post.html' %}
     {% endfor %}
-    <nav aria-label="...">
-        <ul class="pagination justify-content-center">
-            <li class="page-item{% if not prev_url %} page-item disabled{% endif %}">
-                <a class="page-link" href="{{ prev_url or '#' }}">
-                    <span aria-hidden="true">&larr;</span> {{ _('Newer processors') }}
-                </a>
-            </li>
-            <li class="page-item{% if not next_url %} page-item disabled{% endif %}">
-                <a class="page-link" href="{{ next_url or '#' }}">
-                    {{ _('Older processors') }} <span aria-hidden="true">&rarr;</span>
-                </a>
-            </li>
-        </ul>
-    </nav>
     <script>
-            $(document).ready(function() {
+        $(document).ready(function() {
+            $('select').on('change', function(e){
+                $('#carousel').carousel($(this)[0].selectedIndex - 1);
+            });
+        });
+        $(document).ready(function() {
             $('a[id^="editTable"]').click(function () {
                 var tableName = this.id.replace('editTable', '');
                 var dropdownButton = "#" + $(this).parents()[2].children[0].id;

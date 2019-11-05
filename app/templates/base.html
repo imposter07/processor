@@ -16,7 +16,8 @@
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
 <title>
 {% block title %}
-    {% if title %}Liquid App | {{ title }}{% else %}{{ _('Welcome to LQApp') }}{% endif %}
+    {% if title %}Liquid App | {{ title }}{% else %}
+        {{ _('Welcome to the  Liquid App') }}{% endif %}
 {% endblock %}
 </title>
 </head>
@@ -78,63 +79,63 @@
 </nav>
 {% endblock %}
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12 col-md-3 col-xl-2 bd-sidebar bg-light">
-            <div class="sidebar-sticky">
-                {% block vertical_navbar %}{% endblock %}
-            </div>
+
+<div class="row">
+    <div class="col-12 col-md-3 col-xl-2 bd-sidebar bg-light">
+        <div class="sidebar-sticky">
+            {% block vertical_navbar %}{% endblock %}
         </div>
-        <main class="col-md-9 ml-sm-auto col-lg-10 px-4" role="main">
-            <div class="jumbotron text-center">
-                <div class="container">
-                    {% if current_user.is_authenticated %}
-                    {% with tasks = current_user.get_tasks_in_progress() %}
-                    {% if tasks %}
-                        {% for task in tasks %}
-                          <div aria-live="polite" aria-atomic="true" style="position: relative; min-height: 1px;">
-                              <div id="toast" role="alert" aria-live="assertive"
-                                   class="toast" data-autohide="false" style="position: absolute; top: 0; right: 0; z-index: 999">
-                                <div class="toast-header">
-                                  <i class="fas fa-envelope btn btn-dark"></i>
-                                  <strong class="mr-auto">Task Complete!</strong>
-                                  <small> <span id="toast-small"></span></small>
-                                  <button type="button" class="ml-2 mb-1 close"
-                                          data-dismiss="toast" aria-label="Close"
-                                          onclick="destroyToast()">
-                                    <span aria-hidden="true">&times;</span>
-                                  </button>
-                                </div>
-                                <div id="toast-body" class="toast-body">
-                                  {{ task.description }}
-                                </div>
-                              </div>
+    </div>
+    <main class="col-md-9 ml-sm-auto col-lg-10 px-4" role="main">
+        <div class="jumbotron text-center">
+            <div class="container-fluid">
+                {% if current_user.is_authenticated %}
+                {% with tasks = current_user.get_tasks_in_progress() %}
+                {% if tasks %}
+                    {% for task in tasks %}
+                      <div aria-live="polite" aria-atomic="true" style="position: relative; min-height: 1px;">
+                          <div id="toast" role="alert" aria-live="assertive"
+                               class="toast" data-autohide="false" style="position: absolute; top: 0; right: 0; z-index: 999">
+                            <div class="toast-header">
+                              <i class="fas fa-envelope btn btn-dark"></i>
+                              <strong class="mr-auto">Task Complete!</strong>
+                              <small> <span id="toast-small"></span></small>
+                              <button type="button" class="ml-2 mb-1 close"
+                                      data-dismiss="toast" aria-label="Close"
+                                      onclick="destroyToast()">
+                                <span aria-hidden="true">&times;</span>
+                              </button>
                             </div>
-                        <div class="alert alert-success" role="alert">
-                            {{ task.description }}
-                            <span id="{{ task.id }}-progress">{{ task.get_progress() }}</span>%
+                            <div id="toast-body" class="toast-body">
+                              {{ task.description }}
+                            </div>
+                          </div>
                         </div>
+                    <div class="alert alert-success" role="alert">
+                        {{ task.description }}
+                        <span id="{{ task.id }}-progress">{{ task.get_progress() }}</span>%
+                    </div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+                {% endif %}
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        {% for message in messages %}
+                        <div class="alert alert-info" role="alert">{{ message }}</div>
                         {% endfor %}
                     {% endif %}
-                    {% endwith %}
-                    {% endif %}
-                    {% with messages = get_flashed_messages() %}
-                        {% if messages %}
-                            {% for message in messages %}
-                            <div class="alert alert-info" role="alert">{{ message }}</div>
-                            {% endfor %}
-                        {% endif %}
-                    {% endwith %}
-                    {# application content needs to be provided in the app_content block #}
-                    {% block app_header %}{% endblock %}
-                </div>
+                {% endwith %}
+                {# application content needs to be provided in the app_content block #}
+                {% block app_header %}{% endblock %}
             </div>
-            <div class="container">
-                {% block app_content %}{% endblock %}
-            </div>
-        </main>
-    </div>
+        </div>
+        <div class="container-fluid">
+            {% block app_content %}{% endblock %}
+        </div>
+    </main>
 </div>
+
 
 
 {% block scripts %}

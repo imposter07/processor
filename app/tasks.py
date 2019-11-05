@@ -41,7 +41,7 @@ def export_posts(user_id):
             time.sleep(5)
             i += 1
             _set_task_progress(100 * i // total_posts)
-        send_email('[LQApp] Your blog posts',
+        send_email('[Liquid App] Your blog posts',
                    sender=app.config['ADMINS'][0], recipients=[user.email],
                    text_body=render_template('email/export_posts.txt',
                                              user=user),
@@ -74,6 +74,7 @@ def processor_post_message(proc, usr, text):
                                            'post_id': post.id})
     db.session.commit()
 
+
 def run_processor(processor_id, current_user_id, processor_args):
     try:
         processor_to_run = Processor.query.get(processor_id)
@@ -94,8 +95,11 @@ def run_processor(processor_id, current_user_id, processor_args):
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
-def copy_tree_no_overwrite(old_path, new_path):
-    for file_name in os.listdir(old_path):
+def copy_tree_no_overwrite(old_path, new_path, first_run=True):
+    old_files = os.listdir(old_path)
+    for idx, file_name in enumerate(old_files):
+        if first_run:
+            _set_task_progress(int((int(idx) / int(len(old_files))) * 100))
         old_file = os.path.join(old_path, file_name)
         new_file = os.path.join(new_path, file_name)
         if os.path.isfile(old_file):
@@ -105,11 +109,12 @@ def copy_tree_no_overwrite(old_path, new_path):
                 try:
                     shutil.copy(old_file, new_file)
                 except PermissionError as e:
-                    app.logger.warning('Could not copy {}: {}'.format(old_file, e))
+                    app.logger.warning('Could not copy {}: '
+                                       '{}'.format(old_file, e))
         elif os.path.isdir(old_file):
             if not os.path.exists(new_file):
                 os.mkdir(new_file)
-            copy_tree_no_overwrite(old_file, new_file)
+            copy_tree_no_overwrite(old_file, new_file, first_run=False)
 
 
 def write_translational_dict(processor_id, current_user_id, new_data):

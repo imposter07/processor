@@ -281,9 +281,11 @@
 {% endblock %}
 {% block vertical_navbar %}
     <br>
-    {% with processor=processor %}
-        {% include 'processor_popup.html' %}
-    {% endwith %}
+    {% if processor %}
+        {% with processor=processor %}
+            {% include 'processor_popup.html' %}
+        {% endwith %}
+    {% endif %}
     <div class="accordion" id="accordionExample">
         <div class="card">
             <button class="btn btn-outline-success btn-lg btn-block

@@ -235,8 +235,8 @@ def processor():
     prev_url = (url_for('main.processor', username=cur_user.username,
                         page=processors.prev_num)
                 if processors.has_prev else None)
-    return render_template('processor.html', user=cur_user,
-                           processors=processors.items,
+    return render_template('processor.html', title=_('Processor'),
+                           user=cur_user, processors=processors.items,
                            next_url=next_url, prev_url=prev_url)
 
 

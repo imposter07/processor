@@ -272,67 +272,86 @@ def set_data_sources(processor_id, current_user_id, form_sources):
 
 
 def get_data_tables(processor_id, current_user_id):
-    cur_processor = Processor.query.get(processor_id)
-    file_name = os.path.join(adjust_path(cur_processor.local_path),
-                             'Raw Data Output.csv')
-    df = pd.read_csv(file_name)
-    metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
-               'Net Cost Final']
-    tables = [
-        df.groupby(['mpCampaign', 'mpVendor', 'Vendor Key'])[metrics].sum(),
-        df.groupby(['mpCampaign', 'mpVendor', 'mpCreative'])[metrics].sum()]
-    _set_task_progress(100)
-    return tables
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        file_name = os.path.join(adjust_path(cur_processor.local_path),
+                                 'Raw Data Output.csv')
+        df = pd.read_csv(file_name)
+        metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
+                   'Net Cost Final']
+        tables = [
+            df.groupby(['mpCampaign', 'mpVendor', 'Vendor Key'])[metrics].sum(),
+            df.groupby(['mpCampaign', 'mpVendor', 'mpCreative'])[metrics].sum()]
+        _set_task_progress(100)
+        return tables
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
 def get_dict_order(processor_id, current_user_id, vk):
-    cur_processor = Processor.query.get(processor_id)
-    import processor.reporting.vendormatrix as vm
-    os.chdir(adjust_path(cur_processor.local_path))
-    matrix = vm.VendorMatrix()
-    data_source = matrix.get_data_source(vk)
-    tables = [data_source.get_dict_order_df().head().T]
-    _set_task_progress(100)
-    return tables
-
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk)
+        tables = [data_source.get_dict_order_df().head().T]
+        _set_task_progress(100)
+        return tables
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 def delete_dict(processor_id, current_user_id, vk):
-    cur_processor = Processor.query.get(processor_id)
-    import processor.reporting.utils as utl
-    import processor.reporting.vmcolumns as vmc
-    import processor.reporting.vendormatrix as vm
-    os.chdir(adjust_path(cur_processor.local_path))
-    matrix = vm.VendorMatrix()
-    data_source = matrix.get_data_source(vk)
     try:
-        os.remove(os.path.join(utl.dict_path, data_source.p[vmc.filenamedict]))
-    except FileNotFoundError as e:
-        app.logger.warning('File not found error: {}'.format(e))
-    matrix = vm.VendorMatrix()
-    data_source = matrix.get_data_source(vk)
-    tables = [data_source.get_dict_order_df().head()]
-    _set_task_progress(100)
-    return tables
-
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.utils as utl
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk)
+        try:
+            os.remove(os.path.join(utl.dict_path,
+                                   data_source.p[vmc.filenamedict]))
+        except FileNotFoundError as e:
+            app.logger.warning('File not found error: {}'.format(e))
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk)
+        tables = [data_source.get_dict_order_df().head()]
+        _set_task_progress(100)
+        return tables
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 def get_translation_dict(processor_id, current_user_id):
-    cur_processor = Processor.query.get(processor_id)
-    import processor.reporting.dictionary as dct
-    import processor.reporting.dictcolumns as dctc
-    os.chdir(adjust_path(cur_processor.local_path))
-    tc = dct.DictTranslationConfig()
-    tc.read(dctc.filename_tran_config)
-    _set_task_progress(100)
-    return [tc.df]
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.dictionary as dct
+        import processor.reporting.dictcolumns as dctc
+        os.chdir(adjust_path(cur_processor.local_path))
+        tc = dct.DictTranslationConfig()
+        tc.read(dctc.filename_tran_config)
+        _set_task_progress(100)
+        return [tc.df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
 def get_vendormatrix(processor_id, current_user_id):
-    cur_processor = Processor.query.get(processor_id)
-    import processor.reporting.vendormatrix as vm
-    os.chdir(adjust_path(cur_processor.local_path))
-    matrix = vm.VendorMatrix()
-    _set_task_progress(100)
-    return [matrix.vm_df]
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        _set_task_progress(100)
+        return [matrix.vm_df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
 def write_vendormatrix(processor_id, current_user_id, new_data):
@@ -433,8 +452,13 @@ def write_relational_config(processor_id, current_user_id, new_data):
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
+
 def full_run_processor(processor_id, processor_args, user_id):
-    processor = Processor.query.filter_by(id=processor_id).first()
-    current_user = User.query.filter_by(id=user_id).first()
-    processor.run(processor_args=processor_args, current_user=current_user)
-    _set_task_progress(100)
+    try:
+        processor = Processor.query.filter_by(id=processor_id).first()
+        current_user = User.query.filter_by(id=user_id).first()
+        processor.run(processor_args=processor_args, current_user=current_user)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())

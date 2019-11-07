@@ -51,6 +51,11 @@ def index():
                            prev_url=prev_url)
 
 
+@bp.route('/health_check', methods=['GET'])
+def health_check():
+    return jsonify({'data': 'success'}), 200, {'ContentType':'application/json'}
+
+
 @bp.route('/explore')
 @login_required
 def explore():

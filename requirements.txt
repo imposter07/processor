@@ -13,4 +13,5 @@ flask-moment==0.8.0
 flask-wtf==0.14.2
 rq==1.0
 rq-scheduler==0.9.1
+rq-dashboard==0.6.0
 git+https://github.com/jamezzz5/processor.git

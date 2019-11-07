@@ -18,6 +18,7 @@ RUN venv/bin/pip install gunicorn pymysql
 
 COPY app app
 COPY migrations migrations
+COPY processor processor
 COPY app/config.json app/config.json
 COPY main.py config.py boot.sh ./
 RUN chmod a+x boot.sh

@@ -15,6 +15,7 @@ from config import Config
 from elasticsearch import Elasticsearch
 from redis import Redis
 from rq_scheduler import Scheduler
+import rq_dashboard
 
 
 class SQLAlchemy(_BaseSQLAlchemy):
@@ -66,6 +67,9 @@ def create_app(config_class=Config()):
 
     from app.main import bp as main_bp
     app.register_blueprint(main_bp)
+
+    app.config.from_object(rq_dashboard.default_settings)
+    app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rq")
 
     if not app.debug and not app.testing:
         if app.config['MAIL_SERVER']:

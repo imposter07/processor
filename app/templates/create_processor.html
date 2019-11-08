@@ -62,7 +62,11 @@
         </ul>
     </nav>
     <!-- Modal -->
-    <div class="modal hide fade" id="exampleModal" tabindex="-1" role="dialog"
+    <button id="logModalButton" type="button" class="btn btn-primary"
+            data-toggle="modal" data-target="#logModal" style="display: none;">
+      Launch demo modal
+    </button>
+    <div class="modal hide fade" id="logModal" tabindex="-1" role="dialog"
          aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
@@ -74,23 +78,7 @@
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
-          <div class="modal-body">
-              <span class="form-control-static pull-left">
-                <pre id="output"></pre>
-                <script>
-                    var output = document.getElementById('output');
-
-                    var xhr = new XMLHttpRequest();
-                    xhr.open('GET', '{{ url_for('main.get_processor_logfile',
-                     processor_name=processor_name) }}');
-                    xhr.send();
-
-                    setInterval(function() {
-                        output.textContent = xhr.responseText;
-                    }, 1000);
-                </script>
-              </span>
-          </div>
+          <div class="modal-body"></div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
           </div>
@@ -116,7 +104,8 @@
           </div>
           <div class="modal-body">
               <div class="list-group" id="list-tab" role="tablist">
-                  <a class="list-group-item list-group-item-action list-group-item-linkable active"
+                  <a class="list-group-item list-group-item-action
+                            list-group-item-linkable active"
                      id="list-all" data-toggle="list"
                      href="{{ url_for('main.run_processor',
                      processor_name=processor_name, redirect_dest=edit_name,
@@ -187,17 +176,17 @@
               <div id="modal-body-table"></div>
                 <script>
                 function createTable(colData, rawData, tableName) {
-                    var cols = JSON.parse(colData);
-                    var tableFields = cols.map(function(e) {
+                    let cols = JSON.parse(colData);
+                    let tableFields = cols.map(function(e) {
                       return {label: e, name: e}
                     });
-                    var tableCols = cols.map(function(e) {
+                    let tableCols = cols.map(function(e) {
                       return {data: e}
                     });
-                    var tableJquery = '#' + tableName;
+                    let tableJquery = '#' + tableName;
                     document.getElementById("modal-body-table").innerHTML = rawData;
                     $(document).ready( function () {
-                        var editor = new $.fn.dataTable.Editor({
+                        let editor = new $.fn.dataTable.Editor({
                             table: tableJquery,
                             idSrc: 'index',
                             fields: tableFields
@@ -218,7 +207,7 @@
                          editor.on( 'close', function () {
                           $('#tableModal').modal('show');
                         } );
-                        table = $(tableJquery).DataTable({
+                        var table = $(tableJquery).DataTable({
                             dom: "Bfrtip",
                             columns: tableCols,
                             "scrollX": true,
@@ -250,12 +239,12 @@
           <div class="modal-footer">
              <script type="text/javascript">
                 function SendDataTable() {
-                    var sourceElem = $('table[id^="modalTable"]')[0].id;
-                    var sendTable = $('#' + sourceElem).DataTable();
-                    var sendTableName = sourceElem.replace('modalTable', '');
-                    var data = sendTable
+                    let sourceElem = $('table[id^="modalTable"]')[0].id;
+                    let sendTable = $('#' + sourceElem).DataTable();
+                    let sendTableName = sourceElem.replace('modalTable', '');
+                    let data = sendTable
                         .data().toArray();
-                    var json = JSON.stringify( data );
+                    let json = JSON.stringify( data );
                     $.post('/post_table',
                         {
                             data: json,
@@ -370,6 +359,7 @@
         <div class="card">
             <button type="button"
                     class="btn btn-outline-secondary btn-lg btn-block text-left"
+                    id="getLog"
                     data-toggle="modal" data-target="#exampleModal">
                 <i class="fas fa-file-alt" href="#" role="button"></i>
               {{ _('Show Logs') }}
@@ -431,10 +421,10 @@
     <script>
         $(document).ready(function() {
             $('a[id^="editTable"]').click(function () {
-                var tableName = this.id.replace('editTable', '');
-                var dropdownButton = "#" + $(this).parents()[2].children[0].id;
+                let tableName = this.id.replace('editTable', '');
+                let dropdownButton = "#" + $(this).parents()[2].children[0].id;
                 $(dropdownButton).prop("disabled", true);
-                var oldHtml = $(dropdownButton).html();
+                let oldHtml = $(dropdownButton).html();
                 $(dropdownButton).html(
                     `<span class="spinner-grow spinner-grow-sm" role="status"
                       aria-hidden="true"></span> Loading...`
@@ -450,7 +440,7 @@
                     processor:  "{{ processor_name }}"
             }).done(function(data, status) {
                 show_modal_table('tableModalButton');
-                var newTableName = data['data']['name'];
+                let newTableName = data['data']['name'];
                 createTable(data['data']['cols'], data['data']['data'],
                     newTableName);
             }).fail(function() {
@@ -462,6 +452,58 @@
             });
         }
         $(document).ready(function() {
+            $('button[id^="getLog"]').click(function () {
+                let dropdownButton = "#" + $(this)[0].id;
+                $(dropdownButton).prop("disabled", true);
+                let oldHtml = $(dropdownButton).html();
+                $(dropdownButton).html(
+                    `<span class="spinner-grow spinner-grow-sm" role="status"
+                      aria-hidden="true"></span> Loading...`
+                  );
+                animateBar();
+                getLog(dropdownButton, oldHtml);
+            });
+        });
+        function parseLog(data){
+            let logFile = JSON.parse(data['data']);
+            let htmlLog = "<p align=\"left\" style='white-space: pre; " +
+                "font-family: Consolas;'>" +
+                logFile.join("</p><p align=\"left\" style='white-space: " +
+                    "pre; font-family: Consolas;'>")  + "</p>";
+            $('#logModal > div:nth-child(1) > div:nth-child(1) > div:nth-child(2)'
+            )[0].innerHTML = htmlLog;
+        }
+        function getLog(clickElem, oldHtml){
+            $.post('/get_log',
+                {
+                    processor:  "{{ processor_name }}"
+            }).done(function(data, status) {
+                show_modal_table('logModalButton');
+                parseLog(data);
+            }).fail(function() {
+                console.log('fail')
+            }).always(function(){
+                $(clickElem).prop("disabled", false);
+                $(clickElem).html(oldHtml);
+                unanimateBar();
+            });
+        }
+        var logRefresh = null;
+        $('#logModal').on({
+            'shown.bs.modal': function () {
+                logRefresh = setInterval(function () {
+                    $.post('/get_log',
+                        {
+                            processor: "{{ processor_name }}"
+                        }).done(function (data, status) {
+                        parseLog(data);
+                    });
+                }, 30000)},
+            'hidden.bs.modal': function(){
+                clearInterval(logRefresh);
+            }
+        });
+        $(document).ready(function() {
             $('.list-group-item-linkable').on('click', function () {
                 // same window/tab:
                 var clickedHref = $(this).attr('href');
@@ -469,11 +511,11 @@
             });
         });
         function animateBar(){
-          var d = document.getElementById("progressBar");
+          let d = document.getElementById("progressBar");
           d.className += " progress-bar-animated";
         }
         function unanimateBar(){
-          var d = document.getElementById("progressBar");
+          let d = document.getElementById("progressBar");
           d.className = d.className.replace( /(?:^|\s)progress-bar-animated(?!\S)/g , '' );
         }
         $(document).ready(function() {

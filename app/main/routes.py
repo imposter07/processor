@@ -339,26 +339,18 @@ def edit_processor_import(processor_name):
     return render_template('create_processor.html', **template_arg)
 
 
-def adjust_path(path):
-    for x in [['S:', '/mnt/s'], ['C:', '/mnt/c'], ['c:', '/mnt/c'],
-              ['\\', '/']]:
-        path = path.replace(x[0], x[1])
-    return path
-
-
-@bp.route('/processor/<processor_name>/edit/clean/log', methods=['GET', 'POST'])
+@bp.route('/get_log', methods=['GET', 'POST'])
 @login_required
-def get_processor_logfile(processor_name):
-    import os
-    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
-
-    def generate():
-        with open(os.path.join(adjust_path(cur_proc.local_path),
-                               'logfile.log')) as f:
-            while True:
-                yield f.read()
-                time.sleep(1)
-    return current_app.response_class(generate(), mimetype='text/plain')
+def get_log():
+    proc_name = request.form['processor']
+    msg_text = 'Getting logfile for {}.'.format(proc_name)
+    cur_proc = Processor.query.filter_by(name=proc_name).first_or_404()
+    task = cur_proc.launch_task('.get_logfile', _(msg_text),
+                                {'running_user': current_user.id})
+    db.session.commit()
+    job = task.wait_and_get_job()
+    log_list = job.result.split('\n')
+    return jsonify({'data': json.dumps(log_list)})
 
 
 @bp.route('/post_table', methods=['GET', 'POST'])
@@ -526,7 +518,7 @@ def processor_page(processor_name):
     return render_template('create_processor.html', processor=processor_for_page,
                            tableau_workbook=processor_for_page.tableau_workbook,
                            posts=posts.items, next_url=next_url,
-                           prev_url=prev_url,
+                           prev_url=prev_url, title =_('Processor'),
                            processor_name=processor_for_page.name)
 
 

@@ -462,3 +462,16 @@ def full_run_processor(processor_id, processor_args, user_id):
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def get_logfile(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        with open(os.path.join(adjust_path(cur_processor.local_path),
+                               'logfile.log'), 'r') as f:
+            log_file = f.read()
+        _set_task_progress(100)
+        return log_file
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())

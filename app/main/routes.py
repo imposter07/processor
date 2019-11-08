@@ -1,4 +1,3 @@
-import time
 import json
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
@@ -53,7 +52,7 @@ def index():
 
 @bp.route('/health_check', methods=['GET'])
 def health_check():
-    return jsonify({'data': 'success'}), 200, {'ContentType':'application/json'}
+    return jsonify({'data': 'success'}), 200
 
 
 @bp.route('/explore')
@@ -285,28 +284,49 @@ def create_processor():
                            edit_name='Basic')
 
 
+def get_current_processor(processor_name, current_page, edit_progress=0,
+                          edit_name='Page'):
+    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    page = request.args.get('page', 1, type=int)
+    posts = (Post.query.
+             filter_by(processor_id=cur_proc.id).
+             order_by(Post.timestamp.desc()).
+             paginate(page, 5, False))
+    args = {'processor': cur_proc, 'posts': posts.items,
+            'title': _('Processor'), 'processor_name': cur_proc.name,
+            'user': cur_user, 'edit_progress': edit_progress,
+            'edit_name': edit_name}
+    next_url = url_for('main.' + current_page, processor_name=cur_proc.name,
+                       page=posts.next_num) if posts.has_next else None
+    prev_url = url_for('main.' + current_page, processor_name=cur_proc.name,
+                       page=posts.prev_num) if posts.has_prev else None
+    args['prev_url'] = prev_url
+    args['next_url'] = next_url
+    return args
+
+
 @bp.route('/processor/<processor_name>/edit/import', methods=['GET', 'POST'])
 @login_required
 def edit_processor_import(processor_name):
-    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
-    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    apis = ImportForm().set_apis(ProcessorDatasources, cur_proc)
+    kwargs = get_current_processor(processor_name, 'edit_processor_import',
+                                   50, 'Import')
+    cur_proc = kwargs['processor']
+    apis = ImportForm().set_apis(ProcessorDatasources, kwargs['processor'])
     form = ImportForm(apis=apis)
-    template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
-                    'title': _('Processor'), 'form': form, 'edit_progress': 50,
-                    'edit_name': 'Import', 'processor': cur_proc}
+    kwargs['form'] = form
     if form.add_child.data:
         form.apis.append_entry()
-        template_arg['form'] = form
-        return render_template('create_processor.html', **template_arg)
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
     if form.remove_api.data:
         form.apis.pop_entry()
-        template_arg['form'] = form
-        return render_template('create_processor.html', **template_arg)
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
     if form.refresh_imports.data:
         msg_text = 'Refreshing data for {}'.format(processor_name)
-        task = cur_proc.launch_task('.get_processor_sources', _(msg_text),
-                                    running_user=current_user.id)
+        task = cur_proc.launch_task(
+            '.get_processor_sources', _(msg_text), running_user=current_user.id)
         db.session.commit()
         task.wait_and_get_job()
         db.session.commit()
@@ -325,9 +345,9 @@ def edit_processor_import(processor_name):
                                     processor_name=processor_name))
     if request.method == 'POST':
         msg_text = 'Setting imports in vendormatrix for {}'.format(processor_name)
-        task = cur_proc.launch_task('.set_processor_imports', _(msg_text),
-                                    running_user=current_user.id,
-                                    form_imports=form.apis.data)
+        task = cur_proc.launch_task(
+            '.set_processor_imports', _(msg_text),
+            running_user=current_user.id, form_imports=form.apis.data)
         db.session.commit()
         task.wait_and_get_job()
         if form.form_continue.data == 'continue':
@@ -336,7 +356,7 @@ def edit_processor_import(processor_name):
         else:
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=cur_proc.name))
-    return render_template('create_processor.html', **template_arg)
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/get_log', methods=['GET', 'POST'])
@@ -402,16 +422,13 @@ def get_table():
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
 @login_required
 def edit_processor_clean(processor_name):
-    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
-    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    posts = Post.query.filter_by(processor_id=cur_proc.id)
-    proc_arg = {'running_user': current_user.id}
+    kwargs = get_current_processor(processor_name, 'edit_processor_clean',
+                                   edit_progress=75, edit_name='Clean')
+    cur_proc = kwargs['processor']
+    proc_arg = {'running_user': kwargs['user'].id}
     ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
     form = ProcessorCleanForm(datasources=ds)
-    template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
-                    'title': _('Processor'), 'form': form, 'edit_progress': 75,
-                    'edit_name': "Clean", "posts": posts,
-                    "processor": cur_proc}
+    kwargs['form'] = form
     if form.refresh_data_sources.data:
         msg_text = 'Refreshing data for {}'.format(processor_name)
         task = cur_proc.launch_task(
@@ -429,8 +446,8 @@ def edit_processor_clean(processor_name):
                 **proc_arg)
             db.session.commit()
             job = task.wait_and_get_job()
-            template_arg['tables'] = job.result
-            return render_template('create_processor.html', **template_arg)
+            kwargs['tables'] = job.result
+            return render_template('create_processor.html', **kwargs)
         elif ds.refresh_dict.data:
             vk = ds.vendor_key.data
             proc_arg['vk'] = vk
@@ -438,11 +455,12 @@ def edit_processor_clean(processor_name):
                 '.get_dict_order', _('Getting dict order table.'), **proc_arg)
             db.session.commit()
             job = task.wait_and_get_job()
-            template_arg['tables'] = job.result
-            return render_template('create_processor.html', **template_arg)
+            kwargs['tables'] = job.result
+            return render_template('create_processor.html', **kwargs)
     if request.method == 'POST':
         form.validate()
-        msg_text = 'Setting data sources in vendormatrix for {}'.format(processor_name)
+        msg_text = ('Setting data sources in vendormatrix for {}'
+                    '').format(processor_name)
         task = cur_proc.launch_task('.set_data_sources', _(msg_text),
                                     running_user=current_user.id,
                                     form_sources=form.datasources.data)
@@ -454,19 +472,19 @@ def edit_processor_clean(processor_name):
             task.wait_and_get_job()
             return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
-    return render_template('create_processor.html', **template_arg)
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/processor/<processor_name>/edit/export', methods=['GET', 'POST'])
 @login_required
 def edit_processor_export(processor_name):
-    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
-    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_export',
+                                   edit_progress=100, edit_name='Export')
+    cur_proc = kwargs['processor']
     form = ProcessorExportForm()
     sched = TaskScheduler.query.filter_by(processor_id=cur_proc.id).first()
-    template_arg = {'processor_name': cur_proc.name, 'user': cur_user,
-                    'title': _('Processor'), 'form': form, 'edit_progress': 100,
-                    'edit_name': "Export", 'processor': cur_proc}
+    kwargs['form'] = form
     if request.method == 'GET':
         form.tableau_workbook.data = cur_proc.tableau_workbook
         form.tableau_view.data = cur_proc.tableau_view
@@ -498,28 +516,17 @@ def edit_processor_export(processor_name):
         else:
             return redirect(url_for('main.edit_processor_export',
                                     processor_name=cur_proc.name))
-    return render_template('create_processor.html', **template_arg)
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/processor/<processor_name>')
 @login_required
 def processor_page(processor_name):
-    processor_for_page = Processor.query.filter_by(
-        name=processor_name).first_or_404()
-    page = request.args.get('page', 1, type=int)
-    posts = (Post.query.
-             filter_by(processor_id=processor_for_page.id).
-             order_by(Post.timestamp.desc()).
-             paginate(page, current_app.config['POSTS_PER_PAGE'], False))
-    next_url = url_for('main.explore', page=posts.next_num) \
-        if posts.has_next else None
-    prev_url = url_for('main.explore', page=posts.prev_num) \
-        if posts.has_prev else None
-    return render_template('create_processor.html', processor=processor_for_page,
-                           tableau_workbook=processor_for_page.tableau_workbook,
-                           posts=posts.items, next_url=next_url,
-                           prev_url=prev_url, title =_('Processor'),
-                           processor_name=processor_for_page.name)
+    kwargs = get_current_processor(processor_name, 'processor_page',
+                                   edit_progress=100, edit_name='Page')
+    cur_proc = kwargs['processor']
+    return render_template('create_processor.html',
+                           tableau_workbook=cur_proc.tableau_workbook, **kwargs)
 
 
 @bp.route('/processor/<processor_name>/popup')
@@ -570,7 +577,7 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
                     processor_id=processor_to_run.id)
         db.session.add(post)
         db.session.commit()
-    if not redirect_dest:
+    if not redirect_dest or redirect_dest == 'Page':
         return redirect(url_for('main.processor_page',
                                 processor_name=processor_to_run.name))
     elif redirect_dest == 'Basic':
@@ -590,6 +597,8 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
 @bp.route('/processor/<processor_name>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_processor(processor_name):
+    kwargs = get_current_processor(processor_name, 'edit_processor',
+                                   edit_progress=25, edit_name='Basic')
     processor_to_edit = Processor.query.filter_by(
         name=processor_name).first_or_404()
     form = EditProcessorForm(processor_name)
@@ -639,8 +648,5 @@ def edit_processor(processor_name):
         form.cur_campaign.data = form_campaign
         form.cur_product.data = form_product
         form.cur_client.data = form_client
-    return render_template('create_processor.html',
-                           processor_name=processor_to_edit.name,
-                           title=_('Edit Processor'), form=form,
-                           edit_progress="25", edit_name="Basic",
-                           processor=processor_to_edit)
+    kwargs['form'] = form
+    return render_template('create_processor.html',  **kwargs)

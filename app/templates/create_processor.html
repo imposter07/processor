@@ -433,11 +433,12 @@
                 getTable(tableName, dropdownButton, oldHtml);
             });
         });
-        function getTable(tableName, clickElem, oldHtml){
+        function getTable(tableName, clickElem, oldHtml, vendorKey='None'){
             $.post('/get_table',
                 {
                     table: tableName,
-                    processor:  "{{ processor_name }}"
+                    processor:  "{{ processor_name }}",
+                    vendorkey: vendorKey
             }).done(function(data, status) {
                 show_modal_table('tableModalButton');
                 let newTableName = data['data']['name'];
@@ -532,13 +533,15 @@
         });
         $(document).ready(function() {
             $('input[id*="refresh_"]').click(function() {
-              // disable button
+              let vendorKey = $(this).parent().parent()[0].elements[0].value;
+              let oldHtml = $(this).parent().html();
+              getTable('Dictionary', $(this).parent(), oldHtml, vendorKey);
               animateBar();
-              $(this).wrapAll('' +
-                        '<button class="btn btn-primary" type="button" disabled>' +
-                          '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                          'Loading...' +
-                        '</button>');
+              $(this).parent().html('' +
+                '<button class="btn btn-primary" type="button" disabled>' +
+                  '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                  'Loading...' +
+                '</button>');
             });
         });
     </script>

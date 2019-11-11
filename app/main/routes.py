@@ -402,8 +402,11 @@ def get_table():
                  'Vendormatrix': '.get_vendormatrix',
                  'Constant': '.get_constant_dict',
                  'Relation': '.get_relational_config',
-                 'OutputData': '.get_data_tables'}
+                 'OutputData': '.get_data_tables',
+                 'Dictionary': '.get_dict_order'}
     table_name = request.form['table']
+    if request.form['vendorkey'] != 'None':
+        proc_arg['vk'] = request.form['vendorkey']
     job_name = arg_trans[table_name]
     msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)

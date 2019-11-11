@@ -161,9 +161,9 @@ class EditProcessorForm(ProcessorForm):
 
 
 class DataSourceForm(FlaskForm):
+    vendor_key = StringField(_l('Vendor Key'))
     refresh_delete_dict = SubmitField(_l('Delete Dictionary'))
     refresh_dict = SubmitField(_l('Show Dictionary'))
-    vendor_key = StringField(_l('Vendor Key'))
     full_placement_columns = TextAreaField(_l('Full Placement Columns'))
     placement_columns = StringField(_l('Placement Column'))
     auto_dictionary_placement = SelectField(_l('Auto Dict Placement'), choices=[
@@ -181,7 +181,7 @@ class DataSourceForm(FlaskForm):
 class ProcessorCleanForm(FlaskForm):
     refresh_data_sources = SubmitField(_l('Refresh From Processor'))
     form_continue = HiddenField('form_continue')
-    datasources = FieldList(FormField(DataSourceForm))
+    datasources = FieldList(FormField(DataSourceForm, label=''))
 
     def set_datasources(self, data_source, cur_proc):
         imp_dict = []

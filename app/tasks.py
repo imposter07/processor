@@ -148,7 +148,7 @@ def set_initial_constant_file(cur_processor):
     dcc.read_raw_df(dctc.filename_con_config)
     for col in [(dctc.CLI, cur_processor.campaign.product.client.name),
                 (dctc.PRN, cur_processor.campaign.product.name)]:
-        idx = dcc.df[dcc.df[dctc.DICT_COL_NAME]==col[0]].index[0]
+        idx = dcc.df[dcc.df[dctc.DICT_COL_NAME] == col[0]].index[0]
         dcc.df.loc[idx, dctc.DICT_COL_VALUE] = col[1]
     dcc.write(dcc.df, dctc.filename_con_config)
 
@@ -303,6 +303,7 @@ def get_dict_order(processor_id, current_user_id, vk):
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
+
 def delete_dict(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
@@ -325,6 +326,69 @@ def delete_dict(processor_id, current_user_id, vk):
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def get_raw_data(processor_id, current_user_id, vk):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk)
+        tables = [data_source.get_raw_df()]
+        _set_task_progress(100)
+        return tables
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def get_dictionary(processor_id, current_user_id, vk):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.dictionary as dct
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk)
+        dic = dct.Dict(data_source.p[vmc.filenamedict])
+        tables = [dic.data_dict]
+        _set_task_progress(100)
+        return tables
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def write_dictionary(processor_id, current_user_id, new_data, vk):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        user_that_ran = User.query.get(current_user_id)
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.dictionary as dct
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.dictcolumns as dctc
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk)
+        dic = dct.Dict(data_source.p[vmc.filenamedict])
+        df = pd.read_json(new_data)
+        df = df.drop('index', axis=1)
+        df = df.replace('NaN', '')
+        if vk == vm.plan_key:
+            df = df[dctc.PCOLS]
+        else:
+            df = df[dctc.COLS]
+        dic.write(df)
+        msg_text = ('{} processor dictionary: {} was updated.'
+                    ''.format(cur_processor.name, vk))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
 
 def get_translation_dict(processor_id, current_user_id):
     try:
@@ -453,11 +517,12 @@ def write_relational_config(processor_id, current_user_id, new_data):
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
-def full_run_processor(processor_id, processor_args, user_id):
+def full_run_processor(processor_id, current_user_id, processor_args):
     try:
-        processor = Processor.query.filter_by(id=processor_id).first()
-        current_user = User.query.filter_by(id=user_id).first()
-        processor.run(processor_args=processor_args, current_user=current_user)
+        cur_processor = Processor.query.get(processor_id)
+        current_user = User.query.get(current_user_id)
+        cur_processor.run(processor_args=processor_args,
+                          current_user=current_user)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

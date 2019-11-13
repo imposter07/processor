@@ -162,13 +162,15 @@ class EditProcessorForm(ProcessorForm):
 
 class DataSourceForm(FlaskForm):
     vendor_key = StringField(_l('Vendor Key'))
-    refresh_delete_dict = SubmitField(_l('Delete Dictionary'))
-    refresh_dict = SubmitField(_l('Show Dictionary'))
+    refresh_raw_data = SubmitField(_l('Show Raw Data'))
     full_placement_columns = TextAreaField(_l('Full Placement Columns'))
     placement_columns = StringField(_l('Placement Column'))
     auto_dictionary_placement = SelectField(_l('Auto Dict Placement'), choices=[
         (x, x) for x in [dctc.FPN, dctc.PN]])
+    refresh_dictionary_order = SubmitField(_l('Show Dictionary Order'))
     auto_dictionary_order = TextAreaField(_l('Auto Dictionary Order'))
+    refresh_delete_dict = SubmitField(_l('Delete Dictionary'))
+    refresh_dictionary = SubmitField(_l('Show Dictionary'))
     active_metrics = TextAreaField(_l('Active Metrics'))
     vm_rules = TextAreaField(_l('Vendor Matrix Rules'))
     original_vendor_key = HiddenField('Original Vendor Key')

@@ -535,7 +535,10 @@
             $('input[id*="refresh_"]').click(function() {
               let vendorKey = $(this).parent().parent()[0].elements[0].value;
               let oldHtml = $(this).parent().html();
-              getTable('Dictionary', $(this).parent(), oldHtml, vendorKey);
+              console.log($(this));
+              let tableName = $(this)[0].id.split('refresh_')[1];
+              console.log(tableName);
+              getTable(tableName, $(this).parent(), oldHtml, vendorKey);
               animateBar();
               $(this).parent().html('' +
                 '<button class="btn btn-primary" type="button" disabled>' +

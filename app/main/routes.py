@@ -368,7 +368,7 @@ def get_log():
     task = cur_proc.launch_task('.get_logfile', _(msg_text),
                                 {'running_user': current_user.id})
     db.session.commit()
-    job = task.wait_and_get_job()
+    job = task.wait_and_get_job(force_return=True)
     log_list = job.result.split('\n')
     return jsonify({'data': json.dumps(log_list)})
 
@@ -380,12 +380,18 @@ def post_table():
     proc_arg = {'running_user': current_user.id,
                 'new_data': request.form['data']}
     table_name = request.form['table']
+    if 'vendorkey' in table_name:
+        split_table_name = table_name.split('vendorkey')
+        table_name = split_table_name[0]
+        vendor_key = split_table_name[1].replace('___', ' ')
+        proc_arg['vk'] = vendor_key
     msg_text = 'Updating {} table for {}'.format(table_name, proc_name)
     cur_proc = Processor.query.filter_by(name=proc_name).first_or_404()
     arg_trans = {'Translate': '.write_translational_dict',
                  'Vendormatrix': '.write_vendormatrix',
                  'Constant': '.write_constant_dict',
-                 'Relation': '.write_relational_config'}
+                 'Relation': '.write_relational_config',
+                 'dictionary': '.write_dictionary'}
     job_name = arg_trans[table_name]
     cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
@@ -395,7 +401,8 @@ def post_table():
 @bp.route('/get_table', methods=['GET', 'POST'])
 @login_required
 def get_table():
-    cur_proc = Processor.query.filter_by(name=request.form['processor']).first_or_404()
+    cur_proc = Processor.query.filter_by(
+        name=request.form['processor']).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     proc_arg = {'running_user': cur_user.id}
     arg_trans = {'Translate': '.get_translation_dict',
@@ -403,15 +410,20 @@ def get_table():
                  'Constant': '.get_constant_dict',
                  'Relation': '.get_relational_config',
                  'OutputData': '.get_data_tables',
-                 'Dictionary': '.get_dict_order'}
+                 'dictionary_order': '.get_dict_order',
+                 'raw_data': '.get_raw_data',
+                 'dictionary': '.get_dictionary',
+                 'delete_dict': '.delete_dict'}
     table_name = request.form['table']
+    job_name = arg_trans[table_name]
     if request.form['vendorkey'] != 'None':
         proc_arg['vk'] = request.form['vendorkey']
-    job_name = arg_trans[table_name]
+        table_name = '{}vendorkey{}'.format(
+            table_name, request.form['vendorkey'].replace(' ', '___'))
     msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
-    job = task.wait_and_get_job()
+    job = task.wait_and_get_job(force_return=True)
     df = job.result[0]
     import pandas as pd
     pd.set_option('display.max_colwidth', -1)
@@ -440,26 +452,6 @@ def edit_processor_clean(processor_name):
         task.wait_and_get_job()
         return redirect(url_for('main.edit_processor_clean',
                                 processor_name=processor_name))
-    for ds in form.datasources:
-        if ds.refresh_delete_dict.data:
-            vk = ds.vendor_key.data
-            proc_arg['vk'] = vk
-            task = cur_proc.launch_task(
-                '.delete_dict', _('Deleting dictionary: {}.'.format(vk)),
-                **proc_arg)
-            db.session.commit()
-            job = task.wait_and_get_job()
-            kwargs['tables'] = job.result
-            return render_template('create_processor.html', **kwargs)
-        elif ds.refresh_dict.data:
-            vk = ds.vendor_key.data
-            proc_arg['vk'] = vk
-            task = cur_proc.launch_task(
-                '.get_dict_order', _('Getting dict order table.'), **proc_arg)
-            db.session.commit()
-            job = task.wait_and_get_job()
-            kwargs['tables'] = job.result
-            return render_template('create_processor.html', **kwargs)
     if request.method == 'POST':
         form.validate()
         msg_text = ('Setting data sources in vendormatrix for {}'

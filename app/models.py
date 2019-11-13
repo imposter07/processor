@@ -232,9 +232,17 @@ class Task(db.Model):
             else:
                 time.sleep(1)
 
-    def wait_and_get_job(self, loops=1000):
+    def check_return_value(self, job, force_return):
+        if force_return and not job.result:
+            job = self.get_rq_job()
+            if not job.result:
+                self.check_return_value(job, force_return)
+        return job
+
+    def wait_and_get_job(self, loops=1000, force_return=False):
         self.wait_for_job(loops=loops)
         job = self.get_rq_job()
+        job = self.check_return_value(job, force_return)
         return job
 
 
@@ -336,13 +344,12 @@ class Processor(db.Model):
         job = current_app.scheduler.schedule(
             scheduled_time=first_run,
             func='app.tasks' + name,
-            kwargs={'processor_args': 'full',
-                    'user_id': self.user_id,
-                    'processor_id': self.id},
+            kwargs={'processor_id': self.id,
+                    'current_user_id': self.user_id,
+                    'processor_args': 'full'},
             interval=int(interval_sec),
             repeat=int(repeat),
         )
-
         schedule = TaskScheduler(
             id=job.get_id(), name=name, description=description,
             created_at=datetime.utcnow(), scheduled_time=scheduled_time,

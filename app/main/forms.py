@@ -1,7 +1,7 @@
 from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
-    FormField, FieldList, HiddenField, DateTimeField
+    FormField, FieldList, HiddenField, DateTimeField, FileField
 from wtforms.fields.html5 import DateField, TimeField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
@@ -126,6 +126,7 @@ class APIForm(FlaskForm):
     start_date = DateField('Start Date', format='%Y-%m-%d')
     account_filter = StringField('Filter')
     api_fields = StringField('API Fields')
+    raw_file = FileField('Raw File')
     refresh_delete = SubmitField('Delete')
     vendor_key = HiddenField('Vendor Key')
 

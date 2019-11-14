@@ -405,6 +405,10 @@ def get_table():
         name=request.form['processor']).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     proc_arg = {'running_user': cur_user.id}
+    table_name = request.form['table']
+    if 'OutputData' in table_name:
+        proc_arg['parameter'] = table_name.replace('OutputData', '')
+        table_name = 'OutputData'
     arg_trans = {'Translate': '.get_translation_dict',
                  'Vendormatrix': '.get_vendormatrix',
                  'Constant': '.get_constant_dict',
@@ -414,7 +418,6 @@ def get_table():
                  'raw_data': '.get_raw_data',
                  'dictionary': '.get_dictionary',
                  'delete_dict': '.delete_dict'}
-    table_name = request.form['table']
     job_name = arg_trans[table_name]
     if request.form['vendorkey'] != 'None':
         proc_arg['vk'] = request.form['vendorkey']

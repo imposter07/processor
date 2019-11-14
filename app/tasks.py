@@ -271,7 +271,7 @@ def set_data_sources(processor_id, current_user_id, form_sources):
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
 
-def get_data_tables(processor_id, current_user_id):
+def get_data_tables(processor_id, current_user_id, parameter):
     try:
         cur_processor = Processor.query.get(processor_id)
         file_name = os.path.join(adjust_path(cur_processor.local_path),
@@ -279,9 +279,16 @@ def get_data_tables(processor_id, current_user_id):
         df = pd.read_csv(file_name)
         metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
                    'Net Cost Final']
-        tables = [
-            df.groupby(['mpCampaign', 'mpVendor', 'Vendor Key'])[metrics].sum(),
-            df.groupby(['mpCampaign', 'mpVendor', 'mpCreative'])[metrics].sum()]
+        param_translate = {
+            'Vendor': ['mpCampaign', 'mpVendor', 'Vendor Key'],
+            'Target': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpTargeting'],
+            'Creative': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpCreative'],
+            'Copy': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpCopy'],
+            'BuyModel': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpBuy Model',
+                         'mpBuy Rate', 'mpPlacement Date'],
+        }
+        parameter = param_translate[parameter]
+        tables = [df.groupby(parameter)[metrics].sum()]
         _set_task_progress(100)
         return tables
     except:
@@ -296,7 +303,7 @@ def get_dict_order(processor_id, current_user_id, vk):
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
-        tables = [data_source.get_dict_order_df().head().T]
+        tables = [data_source.get_dict_order_df().head().T.reset_index()]
         _set_task_progress(100)
         return tables
     except:

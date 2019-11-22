@@ -1,5 +1,11 @@
 FROM ubuntu:latest
 
+RUN apt-get update
+RUN apt-get install -y locales locales-all
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+
 RUN adduser lqapp
 
 WORKDIR /home/lqapp
@@ -14,7 +20,7 @@ RUN apt-get install -y git
 RUN apt-get install python3-venv -y
 RUN python3.6 -m venv venv
 RUN venv/bin/pip install -r requirements.txt
-RUN venv/bin/pip install gunicorn pymysql
+RUN venv/bin/pip install gunicorn
 
 COPY app app
 COPY migrations migrations

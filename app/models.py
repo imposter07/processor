@@ -179,6 +179,7 @@ class Post(SearchableMixin, db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     language = db.Column(db.String(5))
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
@@ -213,6 +214,7 @@ class Task(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     complete = db.Column(db.Boolean, default=False)
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
 
     def get_rq_job(self):
         try:
@@ -539,3 +541,16 @@ class ProcessorDatasources(db.Model):
             if source[x]:
                 source[x] = '|'.join([y for y in source[x].split('\r\n')])
         return source
+
+
+class Uploader(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    description = db.Column(db.String(128))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    local_path = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_run_time = db.Column(db.DateTime, default=datetime.utcnow)
+    tasks = db.relationship('Task', backref='processor', lazy='dynamic')
+    posts = db.relationship('Post', backref='processor', lazy='dynamic')
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))

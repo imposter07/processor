@@ -1,0 +1,37 @@
+<div class="carousel-item{% if loop_num == 1 %} carousel-item active{% endif %} style">
+    <p class="text-dark"><strong>
+        {% set user_link %}
+            <span class="user_popup">
+                <a href="{{ url_for('main.user',
+                    username=uploader.user.username) }}">
+                    {{ uploader.user.username }}</a>
+            </span>
+        {% endset %}
+        {% set processor_link %}
+            <span class="uploader_popup">
+                <a href="{{ url_for('main.processor_page',
+                processor_name=uploader.name) }}"
+                id="currentProcessor">
+                    {{ uploader.name }}
+                </a>
+            </span>
+        {% endset %}
+        {{ _('%(username)s created %(name)s at %(when)s',
+            username=user_link, name=processor_link,
+            when=moment(uploader.created_at).fromNow()) }}
+        <br>
+        <span id="campaign{{ uploader.id }}">
+            Campaign: {{ uploader.campaign.name}}</span><br>
+        <span id="product{{ uploader.id }}">
+            Product: {{ uploader.campaign.product.name}}</span><br>
+        <span id="client{{ uploader.id }}">
+            Client: {{ uploader.campaign.product.client.name}}</span><br>
+        <span id="location{{ uploader.id }}">
+            Location: {{ uploader.local_path }}</span><br>
+        <span id="last_run{{ uploader.id }}">
+            Last Run: {{ moment(uploader.last_run_time).fromNow() }}</span><br>
+        <span id="description{{ uploader.id }}">
+            Description: {{ uploader.description}}</span>
+    </strong></p>
+    <br>
+</div>

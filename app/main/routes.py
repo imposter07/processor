@@ -10,7 +10,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
     ProcessorExportForm
 from app.models import User, Post, Message, Notification, Processor, \
-    Client, Product, Campaign, ProcessorDatasources, TaskScheduler
+    Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
+    Uploader
 from app.translate import translate
 from app.main import bp
 
@@ -648,3 +649,61 @@ def edit_processor(processor_name):
         form.cur_client.data = form_client
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
+
+
+@bp.route('/uploader')
+@login_required
+def uploader():
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    page = request.args.get('page', 1, type=int)
+    uploaders = current_user.uploader.order_by(
+        Uploader.last_run_time.desc()).paginate(
+        page, current_app.config['POSTS_PER_PAGE'], False)
+    next_url = (url_for('main.uploader', username=cur_user.username,
+                        page=uploaders.next_num)
+                if uploaders.has_next else None)
+    prev_url = (url_for('main.uploader', username=cur_user.username,
+                        page=uploaders.prev_num)
+                if uploaders.has_prev else None)
+    return render_template('uploader.html', title=_('Uploader'),
+                           user=cur_user, processors=uploaders.items,
+                           next_url=next_url, prev_url=prev_url)
+
+
+@bp.route('/create_uploader', methods=['GET', 'POST'])
+@login_required
+def create_uploader():
+    form = UploaderForm()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    if request.method == 'POST':
+        form.validate()
+        form_client = Client(name=form.client_name).check_and_add()
+        form_product = Product(
+            name=form.product_name, client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(
+            name=form.campaign_name, product_id=form_product.id).check_and_add()
+        new_uploader = Uploader(
+            name=form.name.data, description=form.description.data,
+            user_id=current_user.id, created_at=datetime.utcnow(),
+            local_path=form.local_path.data, campaign_id=form_campaign.id)
+        db.session.add(new_uploader)
+        db.session.commit()
+        post_body = 'Create Uploader {}...'.format(new_uploader.name)
+        new_uploader.launch_task('.create_processor', _(post_body),
+                                 current_user.id,
+                                 current_app.config['BASE_UPLOADER_PATH'])
+        creation_text = ('Uploader {} was requested for creation.'
+                         ''.format(new_uploader.name))
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    processor_id=new_processor.id)
+        db.session.add(post)
+        db.session.commit()
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_processor_import',
+                                    processor_name=new_uploader.name))
+        else:
+            return redirect(url_for('main.processor'))
+    return render_template('create_uploader.html', user=cur_user,
+                           title=_('Uploader'), form=form, edit_progress="25",
+                           edit_name='Basic')

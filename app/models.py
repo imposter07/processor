@@ -551,6 +551,6 @@ class Uploader(db.Model):
     local_path = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_run_time = db.Column(db.DateTime, default=datetime.utcnow)
-    tasks = db.relationship('Task', backref='processor', lazy='dynamic')
-    posts = db.relationship('Post', backref='processor', lazy='dynamic')
+    tasks = db.relationship('Task', backref='uploader', lazy='dynamic')
+    posts = db.relationship('Post', backref='uploader', lazy='dynamic')
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))

@@ -291,8 +291,9 @@ def create_processor():
         new_processor = Processor(
             name=form.name.data, description=form.description.data,
             user_id=current_user.id, created_at=datetime.utcnow(),
-            local_path=form.local_path.data, start_date=form.start_date,
-            end_date=form.end_date, tableau_workbook=form.tableau_workbook.data,
+            local_path=form.local_path.data, start_date=form.start_date.data,
+            end_date=form.end_date.data,
+            tableau_workbook=form.tableau_workbook.data,
             tableau_view=form.tableau_view.data, campaign_id=form_campaign.id)
         db.session.add(new_processor)
         db.session.commit()

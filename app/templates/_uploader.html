@@ -7,17 +7,17 @@
                     {{ uploader.user.username }}</a>
             </span>
         {% endset %}
-        {% set processor_link %}
+        {% set uploader_link %}
             <span class="uploader_popup">
-                <a href="{{ url_for('main.processor_page',
-                processor_name=uploader.name) }}"
-                id="currentProcessor">
+                <a href="{{ url_for('main.uploader_page',
+                uploader_name=uploader.name) }}"
+                id="currentUploader">
                     {{ uploader.name }}
                 </a>
             </span>
         {% endset %}
         {{ _('%(username)s created %(name)s at %(when)s',
-            username=user_link, name=processor_link,
+            username=user_link, name=uploader_link,
             when=moment(uploader.created_at).fromNow()) }}
         <br>
         <span id="campaign{{ uploader.id }}">

@@ -8,7 +8,7 @@ from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
-    ProcessorExportForm
+    ProcessorExportForm, UploaderForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader
@@ -260,8 +260,8 @@ def create_processor():
         new_processor = Processor(
             name=form.name.data, description=form.description.data,
             user_id=current_user.id, created_at=datetime.utcnow(),
-            local_path=form.local_path.data,
-            tableau_workbook=form.tableau_workbook.data,
+            local_path=form.local_path.data, start_date=form.start_date,
+            end_date=form.end_date, tableau_workbook=form.tableau_workbook.data,
             tableau_view=form.tableau_view.data, campaign_id=form_campaign.id)
         db.session.add(new_processor)
         db.session.commit()
@@ -345,7 +345,8 @@ def edit_processor_import(processor_name):
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=processor_name))
     if request.method == 'POST':
-        msg_text = 'Setting imports in vendormatrix for {}'.format(processor_name)
+        msg_text = ('Setting imports in '
+                    'vendormatrix for {}').format(processor_name)
         task = cur_proc.launch_task(
             '.set_processor_imports', _(msg_text),
             running_user=current_user.id, form_imports=form.apis.data)
@@ -613,6 +614,8 @@ def edit_processor(processor_name):
         processor_to_edit.local_path = form.local_path.data
         processor_to_edit.tableau_workbook = form.tableau_workbook.data
         processor_to_edit.tableau_view = form.tableau_view.data
+        processor_to_edit.start_date = form.start_date.data
+        processor_to_edit.end_date = form.end_date.data
         processor_to_edit.campaign_id = form_campaign.id
         db.session.commit()
         flash(_('Your changes have been saved.'))
@@ -638,6 +641,8 @@ def edit_processor(processor_name):
         form.local_path.data = processor_to_edit.local_path
         form.tableau_workbook.data = processor_to_edit.tableau_workbook
         form.tableau_view.data = processor_to_edit.tableau_view
+        form.start_date.data = processor_to_edit.start_date
+        form.end_date.data = processor_to_edit.end_date
         form_campaign = Campaign.query.filter_by(
             id=processor_to_edit.campaign_id).first_or_404()
         form_product = Product.query.filter_by(
@@ -696,7 +701,7 @@ def create_uploader():
                          ''.format(new_uploader.name))
         flash(_(creation_text))
         post = Post(body=creation_text, author=current_user,
-                    processor_id=new_processor.id)
+                    processor_id=uploader.id)
         db.session.add(post)
         db.session.commit()
         if form.form_continue.data == 'continue':

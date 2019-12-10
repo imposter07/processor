@@ -69,9 +69,10 @@ def processor_post_message(proc, usr, text):
     post = Post(body=text, author=usr, processor_id=proc.id)
     db.session.add(post)
     db.session.commit()
-    usr.add_notification('task_complete', {'text': text,
-                                           'timestamp': post.timestamp.isoformat(),
-                                           'post_id': post.id})
+    usr.add_notification(
+        'task_complete', {'text': text,
+                          'timestamp': post.timestamp.isoformat(),
+                          'post_id': post.id})
     db.session.commit()
 
 
@@ -79,6 +80,9 @@ def run_processor(processor_id, current_user_id, processor_args):
     try:
         processor_to_run = Processor.query.get(processor_id)
         user_that_ran = User.query.get(current_user_id)
+        post_body = ('Running {} for processor: {}...'.format(
+            processor_args, processor_to_run.name))
+        processor_post_message(processor_to_run, user_that_ran, post_body)
         _set_task_progress(0)
         file_path = adjust_path(processor_to_run.local_path)
         from processor.main import main
@@ -526,10 +530,9 @@ def write_relational_config(processor_id, current_user_id, new_data):
 
 def full_run_processor(processor_id, current_user_id, processor_args):
     try:
-        cur_processor = Processor.query.get(processor_id)
-        current_user = User.query.get(current_user_id)
-        cur_processor.run(processor_args=processor_args,
-                          current_user=current_user)
+        _set_task_progress(0)
+        run_processor(processor_id, current_user_id,
+                      '--api all --ftp all --dbi all --exp all --tab')
         _set_task_progress(100)
     except:
         _set_task_progress(100)

@@ -31,6 +31,7 @@ class SearchableMixin(object):
     def before_commit(cls, session):
         session._changes = {
             'add': list(session.new),
+            'add': list(session.new),
             'update': list(session.dirty),
             'delete': list(session.deleted)
         }
@@ -89,6 +90,7 @@ class User(UserMixin, db.Model):
                                     lazy='dynamic')
     tasks = db.relationship('Task', backref='user', lazy='dynamic')
     processor = db.relationship('Processor', backref='user', lazy='dynamic')
+    uploader = db.relationship('Uploader', backref='user', lazy='dynamic')
     schedule = db.relationship('TaskScheduler', backref='user', lazy='dynamic')
 
     def __repr__(self):
@@ -295,7 +297,8 @@ class Campaign(db.Model):
     processor = db.relationship('Processor', backref='campaign', lazy='dynamic')
 
     def check(self):
-        campaign_check = Campaign.query.filter_by(name=self.name, product_id=self.product_id).first()
+        campaign_check = Campaign.query.filter_by(
+            name=self.name, product_id=self.product_id).first()
         return campaign_check
 
     def check_and_add(self):
@@ -316,6 +319,8 @@ class Processor(db.Model):
     local_path = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_run_time = db.Column(db.DateTime, default=datetime.utcnow)
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
     tableau_workbook = db.Column(db.Text)
     tableau_view = db.Column(db.Text)
     tasks = db.relationship('Task', backref='processor', lazy='dynamic')
@@ -358,6 +363,9 @@ class Processor(db.Model):
             start_date=start_date, end_date=end_date, interval=interval,
             user_id=self.user_id, processor=self)
         db.session.add(schedule)
+        task = Task(id=job.get_id(), name=name, description=description,
+                    user_id=self.user_id, processor=self, complete=True)
+        db.session.add(task)
         return schedule
 
     def get_tasks_in_progress(self):
@@ -368,18 +376,12 @@ class Processor(db.Model):
                                     complete=False).first()
 
     def run(self, processor_args, current_user):
-        post_body = ('Running {} for processor: {}...'.format(processor_args,
-                                                              self.name))
-        arg_trans = {'full': '--api all --ftp all --dbi all --exp all --tab',
-                     'import': '--api all --ftp all --dbi all',
-                     'export': '--exp all --tab',
-                     'basic': '--basic'}
+        post_body = ('Running {} for processor: {}...'.format(
+            processor_args, self.name))
         self.launch_task('.run_processor', post_body,
                          running_user=current_user.id,
-                         processor_args=arg_trans[processor_args])
+                         processor_args=processor_args)
         self.last_run_time = datetime.utcnow()
-        post = Post(body=post_body, author=current_user, processor_id=self.id)
-        db.session.add(post)
         db.session.commit()
 
 

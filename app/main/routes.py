@@ -71,6 +71,33 @@ def explore():
                            prev_url=prev_url)
 
 
+@bp.route('/get_processor_by_date', methods=['GET','POST'])
+@login_required
+def get_processor_by_date():
+    processors = Processor.query.order_by(Processor.created_at)
+    event_response = [{'title': x.name,
+                       'start': x.created_at.date().isoformat(),
+                       'url': url_for(
+                           'main.processor_page', processor_name=x.name)}
+                      for x in processors]
+    return jsonify(event_response)
+
+
+@bp.route('/clients')
+@login_required
+def clients():
+    page = request.args.get('page', 1, type=int)
+    clients = Client.query.order_by(Client.name).paginate(
+        page, current_app.config['POSTS_PER_PAGE'], False)
+    next_url = url_for('main.explore', page=clients.next_num) \
+        if clients.has_next else None
+    prev_url = url_for('main.explore', page=clients.prev_num) \
+        if clients.has_prev else None
+    return render_template('clients.html', title=_('Clients'),
+                           clients=clients.items, next_url=next_url,
+                           prev_url=prev_url)
+
+
 @bp.route('/user/<username>')
 @login_required
 def user(username):
@@ -231,7 +258,10 @@ def export_posts():
 def processor():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     page = request.args.get('page', 1, type=int)
-    processors = current_user.processor.order_by(
+    processors = Processor.query.order_by(
+        Processor.last_run_time.desc()).paginate(
+        page, current_app.config['POSTS_PER_PAGE'], False)
+    current_processors = current_user.processor.order_by(
         Processor.last_run_time.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
     next_url = (url_for('main.processor', username=cur_user.username,
@@ -242,6 +272,7 @@ def processor():
                 if processors.has_prev else None)
     return render_template('processor.html', title=_('Processor'),
                            user=cur_user, processors=processors.items,
+                           currrent_processors=current_processors.items,
                            next_url=next_url, prev_url=prev_url)
 
 

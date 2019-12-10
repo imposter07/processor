@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block app_header %}
+    <h1>{{ _('Client Calendar') }}</h1>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          events: '/get_processor_by_date',
+          plugins: ['dayGrid' , 'timeGrid', 'list', 'bootstrap'],
+          themeSystem: 'bootstrap',
+          header: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,dayGridWeek,listDay'
+          }
+        },
+        );
+
+        calendar.render();
+      });
+    </script>
+{% endblock %}
+
+{% block vertical_navbar %}
+    <br><br>
+    <h3 class="sidebar-heading d-flex justify-content-between align-items-center
+               text-dark text-center">
+                  <span>{{ _('Client Directory') }}</span>
+    </h3>
+    <div class="accordion" id="accordionClient">
+        {% for client in clients %}
+            {% set client_loop = loop %}
+            <div class="card">
+                <button class="btn btn-dark btn-lg btn-block
+                               collapsed text-left"
+                        id="heading{{ loop.index }}"
+                        type="button"
+                        data-toggle="collapse"
+                        data-target="#collapse{{ loop.index }}"
+                        aria-expanded="false"
+                        aria-controls="collapse{{ loop.index }}">
+                  {{ client.name }}<span class="caret"></span>
+                </button><br>
+                <div id="collapse{{ loop.index }}" class="collapse"
+                     aria-labelledby="heading{{ loop.index }}"
+                     data-parent="#accordionClient">
+                  <div class="card-body">
+                    <div class="accordion" id="accordionProduct">
+                      {% for product in client.product.order_by('name') %}
+                        <div class="card">
+                            <button class="btn btn-outline-primary
+                                           btn-lg btn-block text-left collapsed"
+                                    type="button"
+                                    data-toggle="collapse"
+                                    data-target="#collapse{{ client_loop.index }}_{{ loop.index }}"
+                                    aria-expanded="false"
+                                    aria-controls="collapse{{ client_loop.index }}_{{ loop.index }}"
+                                    id="heading{{ client_loop.index }}_{{ loop.index }}">
+                              {{ product.name }}
+                            </button>
+
+                            <div id="collapse{{ client_loop.index }}_{{ loop.index }}"
+                                 class="collapse"
+                                 aria-labelledby="heading{{ client_loop.index }}_{{ loop.index }}"
+                                 data-parent="#accordionProduct">
+                              <div class="card-body">
+                                  {% for campaign in product.campaign %}
+                                      {% set processor = campaign.processor.first().name %}
+                                      <a class="dropdown-item" href=
+                                              "{{ url_for('main.processor_page',
+                                              processor_name=processor) }}">
+                                          {{ campaign.name }}</a>
+                                  {% endfor %}
+                              </div>
+                            </div>
+                        </div>
+                      {% endfor %}
+                  </div>
+                  </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}
+
+{% block app_content %}
+    <div id='calendar'></div>
+{% endblock %}

@@ -14,6 +14,18 @@
 
 
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+
+<link href="{{ url_for('static', filename='fullcalendar/core/main.css') }}" rel='stylesheet' />
+<link href="{{ url_for('static', filename='fullcalendar/daygrid/main.css') }}" rel='stylesheet' />
+<link href="{{ url_for('static', filename='fullcalendar/list/main.css') }}"  rel='stylesheet' />
+<link href="{{ url_for('static', filename='fullcalendar/bootstrap/main.css') }}"  rel='stylesheet' />
+
+<script src="{{ url_for('static', filename='fullcalendar/core/main.js') }}"></script>
+<script src="{{ url_for('static', filename='fullcalendar/daygrid/main.js') }}"></script>
+<script src="{{ url_for('static', filename='fullcalendar/list/main.js') }}"></script>
+<script src="{{ url_for('static', filename='fullcalendar/bootstrap/main.js') }}"></script>
+
 <title>
 {% block title %}
     {% if title %}Liquid App | {{ title }}{% else %}
@@ -54,6 +66,10 @@
                 <a class="nav-link" href="{{ url_for('auth.login') }}">
                     {{ _('Login') }}</a></li>
             {% else %}
+                <li class="nav-item"><a class="nav-link" title={{ _('Clients') }}
+                    href="{{ url_for('main.clients') }}">
+                <i class="fas fa-gamepad btn btn-dark btn-lg" href="#"
+                   role="button"></i></a></li>
             <li class="nav-item"><a class="nav-link" title={{ _('Messages') }}
                     href="{{ url_for('main.messages') }}">
                 <i class="fas fa-envelope btn btn-dark btn-lg" href="#" role="button"> </i>
@@ -65,6 +81,7 @@
                     </span>
                 </a>
             </li>
+
             <li class="nav-item"><a class="nav-link" title={{ _('Profile') }}
                     href="{{ url_for('main.user', username=current_user.username) }}">
                 <i class="fas fa-user btn btn-dark btn-lg" href="#"

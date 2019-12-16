@@ -71,15 +71,27 @@ def explore():
                            prev_url=prev_url)
 
 
-@bp.route('/get_processor_by_date', methods=['GET','POST'])
+@bp.route('/get_processor_by_date', methods=['GET', 'POST'])
 @login_required
 def get_processor_by_date():
     processors = Processor.query.order_by(Processor.created_at)
-    event_response = [{'title': x.name,
+    event_response = [{'title': 'Created: {}'.format(x.name),
                        'start': x.created_at.date().isoformat(),
                        'url': url_for(
-                           'main.processor_page', processor_name=x.name)}
+                           'main.processor_page', processor_name=x.name),
+                       'color': 'LightGreen',
+                       'textColor': 'Black',
+                       'borderColor': 'DimGray'}
                       for x in processors]
+    event_response.extend(
+        [{'title': x.name,
+          'start': x.start_date.isoformat(),
+          'end': x.end_date.isoformat(),
+          'url': url_for('main.processor_page', processor_name=x.name),
+          'color': 'LightSkyBlue',
+          'textColor': 'Black',
+          'borderColor': 'DimGray'}
+         for x in processors if x.start_date])
     return jsonify(event_response)
 
 

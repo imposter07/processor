@@ -4,6 +4,7 @@ import json
 import time
 import shutil
 import pandas as pd
+import sqlalchemy as sqa
 from flask import render_template
 from rq import get_current_job
 from app import create_app, db
@@ -65,7 +66,7 @@ def adjust_path(path):
 def processor_post_message(proc, usr, text):
     msg = Message(author=usr, recipient=usr, body=text)
     db.session.add(msg)
-    usr.add_notification('unread_message_count', usr.new_messages())
+    # usr.add_notification('unread_message_count', usr.new_messages())
     post = Post(body=text, author=usr, processor_id=proc.id)
     db.session.add(post)
     db.session.commit()
@@ -92,7 +93,11 @@ def run_processor(processor_id, current_user_id, processor_args):
         else:
             main()
         msg_text = ("{} finished running.".format(processor_to_run.name))
-        processor_post_message(processor_to_run, user_that_ran, msg_text)
+        try:
+            processor_post_message(processor_to_run, user_that_ran, msg_text)
+        except:
+            db.session.rollback()
+            processor_post_message(processor_to_run, user_that_ran, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

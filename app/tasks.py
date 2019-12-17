@@ -17,16 +17,21 @@ app.app_context().push()
 
 
 def _set_task_progress(progress):
-    job = get_current_job()
-    if job:
-        job.meta['progress'] = progress
-        job.save_meta()
-        task = Task.query.get(job.get_id())
-        task.user.add_notification('task_progress', {'task_id': job.get_id(),
-                                                     'progress': progress})
-        if progress >= 100:
-            task.complete = True
-        db.session.commit()
+    try:
+        job = get_current_job()
+        if job:
+            job.meta['progress'] = progress
+            job.save_meta()
+            task = Task.query.get(job.get_id())
+            task.user.add_notification(
+                'task_progress', {'task_id': job.get_id(),
+                                  'progress': progress})
+            if progress >= 100:
+                task.complete = True
+            db.session.commit()
+    except:
+        db.session.rollback()
+        _set_task_progress(progress)
 
 
 def export_posts(user_id):
@@ -64,17 +69,21 @@ def adjust_path(path):
 
 
 def processor_post_message(proc, usr, text):
-    msg = Message(author=usr, recipient=usr, body=text)
-    db.session.add(msg)
-    # usr.add_notification('unread_message_count', usr.new_messages())
-    post = Post(body=text, author=usr, processor_id=proc.id)
-    db.session.add(post)
-    db.session.commit()
-    usr.add_notification(
-        'task_complete', {'text': text,
-                          'timestamp': post.timestamp.isoformat(),
-                          'post_id': post.id})
-    db.session.commit()
+    try:
+        msg = Message(author=usr, recipient=usr, body=text)
+        db.session.add(msg)
+        usr.add_notification('unread_message_count', usr.new_messages())
+        post = Post(body=text, author=usr, processor_id=proc.id)
+        db.session.add(post)
+        db.session.commit()
+        usr.add_notification(
+            'task_complete', {'text': text,
+                              'timestamp': post.timestamp.isoformat(),
+                              'post_id': post.id})
+        db.session.commit()
+    except:
+        db.session.rollback()
+        processor_post_message(proc, usr, text)
 
 
 def run_processor(processor_id, current_user_id, processor_args):
@@ -93,11 +102,7 @@ def run_processor(processor_id, current_user_id, processor_args):
         else:
             main()
         msg_text = ("{} finished running.".format(processor_to_run.name))
-        try:
-            processor_post_message(processor_to_run, user_that_ran, msg_text)
-        except:
-            db.session.rollback()
-            processor_post_message(processor_to_run, user_that_ran, msg_text)
+        processor_post_message(processor_to_run, user_that_ran, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -285,7 +290,7 @@ def get_data_tables(processor_id, current_user_id, parameter):
         cur_processor = Processor.query.get(processor_id)
         file_name = os.path.join(adjust_path(cur_processor.local_path),
                                  'Raw Data Output.csv')
-        df = pd.read_csv(file_name)
+        tables = pd.read_csv(file_name)
         metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
                    'Net Cost Final']
         param_translate = {
@@ -295,9 +300,13 @@ def get_data_tables(processor_id, current_user_id, parameter):
             'Copy': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpCopy'],
             'BuyModel': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpBuy Model',
                          'mpBuy Rate', 'mpPlacement Date'],
+            'FullOutput': []
         }
         parameter = param_translate[parameter]
-        tables = [df.groupby(parameter)[metrics].sum()]
+        if parameter:
+            tables = [tables.groupby(parameter)[metrics].sum()]
+        else:
+            tables = [tables]
         _set_task_progress(100)
         return tables
     except:

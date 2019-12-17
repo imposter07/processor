@@ -357,6 +357,7 @@ class Processor(db.Model):
             interval=int(interval_sec),
             repeat=int(repeat),
             timeout=14400,
+            result_ttl=None
         )
         schedule = TaskScheduler(
             id=job.get_id(), name=name, description=description,

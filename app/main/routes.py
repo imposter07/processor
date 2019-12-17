@@ -99,14 +99,14 @@ def get_processor_by_date():
 @login_required
 def clients():
     page = request.args.get('page', 1, type=int)
-    clients = Client.query.order_by(Client.name).paginate(
+    current_clients = Client.query.order_by(Client.name).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
     next_url = url_for('main.explore', page=clients.next_num) \
-        if clients.has_next else None
+        if current_clients.has_next else None
     prev_url = url_for('main.explore', page=clients.prev_num) \
-        if clients.has_prev else None
+        if current_clients.has_prev else None
     return render_template('clients.html', title=_('Clients'),
-                           clients=clients.items, next_url=next_url,
+                           clients=current_clients.items, next_url=next_url,
                            prev_url=prev_url)
 
 

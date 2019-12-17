@@ -68,7 +68,7 @@
     </button>
     <div class="modal hide fade" id="logModal" tabindex="-1" role="dialog"
          aria-labelledby="exampleModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-xl" role="document">
+      <div class="modal-dialog modal-xl mw-100 w-75" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
@@ -90,9 +90,9 @@
         style="display: none;">
       Launch demo modal
     </button>
-    <div class="modal fade bd-example-modal-lg" id="importModal"
+    <div class="modal fade bd-example-modal-xl" id="importModal"
          tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel">
-      <div class="modal-dialog modal-xl" role="document">
+      <div class="modal-dialog modal-xl mw-100 w-75" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
@@ -162,7 +162,7 @@
     </button>
     <div class="modal fade bd-example-modal-xl" id="tableModal" tabindex="-1"
          role="dialog" aria-labelledby="exampleModalLabel">
-      <div class="modal-dialog modal-xl" role="document">
+      <div class="modal-dialog modal-xl mw-100 w-75" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
@@ -191,15 +191,8 @@
                             idSrc: 'index',
                             fields: tableFields
                         });
-                            // Activate an inline edit on click of a table cell
-                        $(tableJquery).on( 'click', 'tbody td', function () {
-                            editor.inline( this, {
-                                buttons: { label:
-                                        '<i class="fas fa-greater-than text-error style="color:red""></i>',
-                                    fn: function () { this.submit(); } }
-                            });
-                        });
                         editor.on( 'open', function ( e, type, mode, action ) {
+                            console.log(type);
                             if (type === "main") {
                               $('#tableModal').modal('hide');
                             }
@@ -211,8 +204,27 @@
                             dom: "Bfrtip",
                             columns: tableCols,
                             "scrollX": true,
-                            select: true,
+                            autoFill: true,
+                            keys: {
+                                columns: ':not(:first-child)',
+                                editor:  editor
+                            },
+                            select: {
+                                style:    'os',
+                                selector: 'td:first-child',
+                                blurable: true
+                            },
                             buttons: [
+                                {
+                                    extend: 'collection',
+                                    text: 'Export',
+                                    buttons: [
+                                        'copy',
+                                        'excel',
+                                        'csv',
+                                        'pdf'
+                                    ]
+                                },
                                 { extend: 'create', editor: editor },
                                 { extend: 'edit',   editor: editor },
                                 {
@@ -337,7 +349,7 @@
             </div>
         </div>
         <div class="card">
-            <button class="btn btn-outline-secondary btn-lg btn-block
+            <button class="btn btn-outline-primary btn-lg btn-block
                            dropdown-toggle text-left"
                     type="button" data-toggle="collapse"
                     id="editTableDropdownButtonView"
@@ -351,6 +363,8 @@
                  aria-labelledby="headingThree"
                  data-parent="#accordionExample">
                 <div class="card-body">
+                    <a class="dropdown-item" id="editTableOutputDataFullOutput">
+                        {{ _('Raw Data Output') }}</a>
                     <a class="dropdown-item" id="editTableOutputDataVendor">
                         {{ _('Campaign & Vendor') }}</a>
                     <a class="dropdown-item" id="editTableOutputDataTarget">

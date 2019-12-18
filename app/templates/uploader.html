@@ -25,7 +25,7 @@
                     <option selected>Choose...</option>
                       {% for uploader in uploaders %}
                           <option value="{{ uploader.name }}" index="">
-                              {{ uploader1.name }}</option>
+                              {{ uploader.name }}</option>
                       {% endfor %}
                   </select>
                 </div>
@@ -43,7 +43,7 @@
         <div class="carousel-inner text-center">
             {% for uploader in uploaders %}
                 {% with loop_num = loop.index %}
-                    {% include '_uplaoder.html' %}
+                    {% include '_uploader.html' %}
                 {% endwith %}
             {% endfor %}
           <a class="carousel-control-prev" href="#carousel"

@@ -295,6 +295,7 @@ class Campaign(db.Model):
     name = db.Column(db.String(128), index=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
     processor = db.relationship('Processor', backref='campaign', lazy='dynamic')
+    uploader = db.relationship('Uploader', backref='campaign', lazy='dynamic')
 
     def check(self):
         campaign_check = Campaign.query.filter_by(
@@ -558,3 +559,12 @@ class Uploader(db.Model):
     tasks = db.relationship('Task', backref='uploader', lazy='dynamic')
     posts = db.relationship('Post', backref='uploader', lazy='dynamic')
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
+
+    def launch_task(self, name, description, running_user, *args, **kwargs):
+        rq_job = current_app.task_queue.enqueue('app.tasks' + name,
+                                                self.id, running_user,
+                                                *args, **kwargs)
+        task = Task(id=rq_job.get_id(), name=name, description=description,
+                    user_id=self.user_id, uploader=self)
+        db.session.add(task)
+        return task

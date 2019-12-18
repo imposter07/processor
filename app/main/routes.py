@@ -8,7 +8,7 @@ from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
-    ProcessorExportForm, UploaderForm
+    ProcessorExportForm, UploaderForm, EditUploaderForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader
@@ -408,10 +408,19 @@ def edit_processor_import(processor_name):
 @bp.route('/get_log', methods=['GET', 'POST'])
 @login_required
 def get_log():
-    proc_name = request.form['processor']
-    msg_text = 'Getting logfile for {}.'.format(proc_name)
-    cur_proc = Processor.query.filter_by(name=proc_name).first_or_404()
-    task = cur_proc.launch_task('.get_logfile', _(msg_text),
+    if 'processor' in request.form:
+        item_name = request.form['processor']
+        item_model = Processor
+        task = '.get_logfile'
+    elif 'uploader' in request.form:
+        item_name = request.form['uploader']
+        item_model = Uploader
+        task = '.get_logfile_uploader'
+    else:
+        return jsonify({'data': 'Could not recognize request.'})
+    msg_text = 'Getting logfile for {}.'.format(item_name)
+    cur_item = item_model.query.filter_by(name=item_name).first_or_404()
+    task = cur_item.launch_task(task, _(msg_text),
                                 {'running_user': current_user.id})
     db.session.commit()
     job = task.wait_and_get_job(force_return=True)
@@ -715,7 +724,7 @@ def uploader():
                         page=uploaders.prev_num)
                 if uploaders.has_prev else None)
     return render_template('uploader.html', title=_('Uploader'),
-                           user=cur_user, processors=uploaders.items,
+                           user=cur_user, uploaders=uploaders.items,
                            next_url=next_url, prev_url=prev_url)
 
 
@@ -738,21 +747,104 @@ def create_uploader():
         db.session.add(new_uploader)
         db.session.commit()
         post_body = 'Create Uploader {}...'.format(new_uploader.name)
-        new_uploader.launch_task('.create_processor', _(post_body),
+        new_uploader.launch_task('.create_uploader', _(post_body),
                                  current_user.id,
                                  current_app.config['BASE_UPLOADER_PATH'])
         creation_text = ('Uploader {} was requested for creation.'
                          ''.format(new_uploader.name))
         flash(_(creation_text))
         post = Post(body=creation_text, author=current_user,
-                    processor_id=uploader.id)
+                    uploader_id=uploader.id)
         db.session.add(post)
         db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_import',
-                                    processor_name=new_uploader.name))
+            return redirect(url_for('main.edit_uploader',
+                                    uploader_name=new_uploader.name))
         else:
-            return redirect(url_for('main.processor'))
+            return redirect(url_for('main.uploader'))
     return render_template('create_uploader.html', user=cur_user,
                            title=_('Uploader'), form=form, edit_progress="25",
                            edit_name='Basic')
+
+
+def get_current_uploader(uploader_name, current_page, edit_progress=0,
+                         edit_name='Page'):
+    cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    page = request.args.get('page', 1, type=int)
+    posts = (Post.query.
+             filter_by(uploader_id=cur_up.id).
+             order_by(Post.timestamp.desc()).
+             paginate(page, 5, False))
+    args = {'uploader': cur_up, 'posts': posts.items,
+            'title': _('Uploader'), 'uploader_name': cur_up.name,
+            'user': cur_user, 'edit_progress': edit_progress,
+            'edit_name': edit_name}
+    next_url = url_for('main.' + current_page, uploader_name=cur_up.name,
+                       page=posts.next_num) if posts.has_next else None
+    prev_url = url_for('main.' + current_page, uploader_name=cur_up.name,
+                       page=posts.prev_num) if posts.has_prev else None
+    args['prev_url'] = prev_url
+    args['next_url'] = next_url
+    return args
+
+
+@bp.route('/uploader/<uploader_name>')
+@login_required
+def uploader_page(uploader_name):
+    kwargs = get_current_uploader(uploader_name, 'uploader_page',
+                                  edit_progress=100, edit_name='Page')
+    return render_template('create_uploader.html', **kwargs)
+
+
+@bp.route('/uploader/<uploader_name>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_uploader(uploader_name):
+    kwargs = get_current_uploader(uploader_name, 'edit_uploader',
+                                  edit_progress=25, edit_name='Basic')
+    uploader_to_edit = kwargs['uploader']
+    form = EditUploaderForm(uploader_name)
+    if request.method == 'POST':
+        form.validate()
+        form_client = Client(name=form.client_name).check_and_add()
+        form_product = Product(name=form.product_name,
+                               client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(name=form.campaign_name,
+                                 product_id=form_product.id).check_and_add()
+        uploader_to_edit.name = form.name.data
+        uploader_to_edit.description = form.description.data
+        uploader_to_edit.local_path = form.local_path.data
+        uploader_to_edit.campaign_id = form_campaign.id
+        db.session.commit()
+        flash(_('Your changes have been saved.'))
+        post_body = ('Create Uploader {}...'.format(uploader_to_edit.name))
+        uploader_to_edit.launch_task('.create_uploader', _(post_body),
+                                     current_user.id,
+                                     current_app.config['BASE_UPLOADER_PATH'])
+        creation_text = 'Uploader was requested for creation.'
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    uploader_id=uploader_to_edit.id)
+        db.session.add(post)
+        db.session.commit()
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_uploader',
+                                    uploader_name=uploader_to_edit.name))
+        else:
+            return redirect(url_for('main.uploader_page',
+                                    uploader_name=uploader_to_edit.name))
+    elif request.method == 'GET':
+        form.name.data = uploader_to_edit.name
+        form.description.data = uploader_to_edit.description
+        form.local_path.data = uploader_to_edit.local_path
+        form_campaign = Campaign.query.filter_by(
+            id=uploader_to_edit.campaign_id).first_or_404()
+        form_product = Product.query.filter_by(
+            id=form_campaign.product_id).first_or_404()
+        form_client = Client.query.filter_by(
+            id=form_product.client_id).first_or_404()
+        form.cur_campaign.data = form_campaign
+        form.cur_product.data = form_product
+        form.cur_client.data = form_client
+    kwargs['form'] = form
+    return render_template('create_uploader.html',  **kwargs)

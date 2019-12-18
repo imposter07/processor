@@ -6,7 +6,7 @@ from wtforms.fields.html5 import DateField, TimeField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
 from flask_babel import _, lazy_gettext as _l
-from app.models import User, Processor, Client, Product, Campaign
+from app.models import User, Processor, Client, Product, Campaign, Uploader
 import processor.reporting.dictcolumns as dctc
 
 
@@ -228,7 +228,7 @@ class ProcessorExportForm(FlaskForm):
     schedule_end = DateField(_l('Schedule End'), format='%Y-%m-%d')
     run_time = TimeField(_l('Run Time'))
     interval = SelectField(_l('Hourly Interval'),
-                           choices=[(x, x) for x in range(1,25)], default='24')
+                           choices=[(x, x) for x in range(1, 25)], default='24')
     form_continue = HiddenField('form_continue')
 
 
@@ -291,3 +291,15 @@ class UploaderForm(FlaskForm):
                                          ' select from dropdown.'))
         else:
             self.campaign_name = self.cur_campaign.data.name
+
+
+class EditUploaderForm(UploaderForm):
+    def __init__(self, original_name, *args, **kwargs):
+        super(EditUploaderForm, self).__init__(*args, **kwargs)
+        self.original_name = original_name
+
+    def validate_name(self, name):
+        if name.data != self.original_name:
+            uploader = Uploader.query.filter_by(name=self.name.data).first()
+            if uploader is not None:
+                raise ValidationError(_l('Please use a different name.'))

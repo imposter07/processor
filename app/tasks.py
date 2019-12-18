@@ -4,13 +4,12 @@ import json
 import time
 import shutil
 import pandas as pd
-import sqlalchemy as sqa
 from flask import render_template
 from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
-    ProcessorDatasources
+    ProcessorDatasources, Uploader
 
 app = create_app()
 app.app_context().push()
@@ -163,7 +162,8 @@ def set_initial_constant_file(cur_processor):
     for col in [(dctc.CLI, cur_processor.campaign.product.client.name),
                 (dctc.PRN, cur_processor.campaign.product.name)]:
         idx = dcc.df[dcc.df[dctc.DICT_COL_NAME] == col[0]].index[0]
-        dcc.df.loc[idx, dctc.DICT_COL_VALUE] = col[1]
+        if dcc.df.loc[idx, dctc.DICT_COL_VALUE] == 'None':
+            dcc.df.loc[idx, dctc.DICT_COL_VALUE] = col[1]
     dcc.write(dcc.df, dctc.filename_con_config)
 
 
@@ -561,6 +561,54 @@ def get_logfile(processor_id, current_user_id):
             log_file = f.read()
         _set_task_progress(100)
         return log_file
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def get_logfile_uploader(uploader_id, current_user_id):
+    try:
+        cur_uploader = Uploader.query.get(uploader_id)
+        with open(os.path.join(adjust_path(cur_uploader.local_path),
+                               'logfile.log'), 'r') as f:
+            log_file = f.read()
+        _set_task_progress(100)
+        return log_file
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+
+
+def uploader_post_message(uploader, usr, text):
+    try:
+        msg = Message(author=usr, recipient=usr, body=text)
+        db.session.add(msg)
+        usr.add_notification('unread_message_count', usr.new_messages())
+        post = Post(body=text, author=usr, uploader_id=uploader.id)
+        db.session.add(post)
+        db.session.commit()
+        usr.add_notification(
+            'task_complete', {'text': text,
+                              'timestamp': post.timestamp.isoformat(),
+                              'post_id': post.id})
+        db.session.commit()
+    except:
+        db.session.rollback()
+        processor_post_message(uploader, usr, text)
+
+
+def create_uploader(uploader_id, current_user_id, base_path):
+    try:
+        new_uploader = Uploader.query.get(uploader_id)
+        user_create = User.query.get(current_user_id)
+        old_path = adjust_path(base_path)
+        new_path = adjust_path(new_uploader.local_path)
+        if not os.path.exists(new_path):
+            os.makedirs(new_path)
+        copy_tree_no_overwrite(old_path, new_path)
+        msg_text = "Uploader was created."
+        uploader_post_message(new_uploader, user_create, msg_text)
+        _set_task_progress(100)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())

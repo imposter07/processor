@@ -25,6 +25,14 @@
                     </a>
                 </span>
             {% endif %}
+            {% if post.uploader_id %}
+                <span class="uploader_popup">
+                    <a href="{{ url_for('main.uploader_page',
+                     uploader_name=post.uploader.name) }}">
+                        {{ post.uploader.name }}
+                    </a>
+                </span>
+            {% endif %}
             <span id="post{{ post.id }}">{{ post.body }}</span>
                 {% if post.language and post.language != g.locale %}
                 <br><br>

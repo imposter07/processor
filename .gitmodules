@@ -1,3 +1,6 @@
 [submodule "processor"]
 	path = processor
 	url = https://github.com/jamezzz5/processor
+[submodule "uploader"]
+	path = uploader
+	url = https://github.com/jamezzz5/uploader.git

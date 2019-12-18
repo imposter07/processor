@@ -21,11 +21,11 @@
             when=moment(uploader.created_at).fromNow()) }}
         <br>
         <span id="campaign{{ uploader.id }}">
-            Campaign: {{ uploader.campaign.name}}</span><br>
+            Campaign: {{ uploader.campaign.name }}</span><br>
         <span id="product{{ uploader.id }}">
-            Product: {{ uploader.campaign.product.name}}</span><br>
+            Product: {{ uploader.campaign.product.name }}</span><br>
         <span id="client{{ uploader.id }}">
-            Client: {{ uploader.campaign.product.client.name}}</span><br>
+            Client: {{ uploader.campaign.product.client.name }}</span><br>
         <span id="location{{ uploader.id }}">
             Location: {{ uploader.local_path }}</span><br>
         <span id="last_run{{ uploader.id }}">

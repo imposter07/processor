@@ -8,7 +8,7 @@ from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
-    ProcessorExportForm, UploaderForm, EditUploaderForm
+    ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader
@@ -91,7 +91,7 @@ def get_processor_by_date():
           'color': 'LightSkyBlue',
           'textColor': 'Black',
           'borderColor': 'DimGray'}
-         for x in processors if x.start_date])
+         for x in processors if x.start_date and x.end_date])
     return jsonify(event_response)
 
 
@@ -288,6 +288,20 @@ def processor():
                            next_url=next_url, prev_url=prev_url)
 
 
+def get_navigation_buttons(buttons=None):
+    if buttons == 'ProcessorRequest':
+        buttons = [{'Basic': 'main.edit_processor'},
+                   {'Accounts': 'main.edit_processor_import'},
+                   {'Fees': 'main.edit_processor_clean'},
+                   {'Finish': 'main.edit_processor_export'}]
+    else:
+        buttons = [{'Basic': 'main.edit_processor'},
+                   {'Import': 'main.edit_processor_import'},
+                   {'Clean': 'main.edit_processor_clean'},
+                   {'Export': 'main.edit_processor_export'}]
+    return buttons
+
+
 @bp.route('/create_processor', methods=['GET', 'POST'])
 @login_required
 def create_processor():
@@ -326,11 +340,11 @@ def create_processor():
             return redirect(url_for('main.processor'))
     return render_template('create_processor.html', user=cur_user,
                            title=_('Processor'), form=form, edit_progress="25",
-                           edit_name='Basic')
+                           edit_name='Basic', buttons=get_navigation_buttons())
 
 
 def get_current_processor(processor_name, current_page, edit_progress=0,
-                          edit_name='Page'):
+                          edit_name='Page', buttons=None):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     page = request.args.get('page', 1, type=int)
@@ -342,6 +356,7 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
             'title': _('Processor'), 'processor_name': cur_proc.name,
             'user': cur_user, 'edit_progress': edit_progress,
             'edit_name': edit_name}
+    args['buttons'] = get_navigation_buttons(buttons)
     next_url = url_for('main.' + current_page, processor_name=cur_proc.name,
                        page=posts.next_num) if posts.has_next else None
     prev_url = url_for('main.' + current_page, processor_name=cur_proc.name,
@@ -707,6 +722,43 @@ def edit_processor(processor_name):
         form.cur_client.data = form_client
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
+
+
+@bp.route('/request_processor', methods=['GET', 'POST'])
+@login_required
+def request_processor():
+    form = ProcessorRequestForm()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    if request.method == 'POST':
+        form.validate()
+        form_client = Client(name=form.client_name).check_and_add()
+        form_product = Product(
+            name=form.product_name, client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(
+            name=form.campaign_name, product_id=form_product.id).check_and_add()
+        new_processor = Processor(
+            name=form.name.data, description=form.description.data,
+            requesting_user_id=current_user.id, plan_path=form.plan_path.data,
+            start_date=form.start_date.data, end_date=form.end_date.data,
+            first_report_=form.first_report.data,
+            campaign_id=form_campaign.id)
+        db.session.add(new_processor)
+        db.session.commit()
+        creation_text = 'Processor was requested for creation.'
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    processor_id=new_processor.id)
+        db.session.add(post)
+        db.session.commit()
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_processor_import',
+                                    processor_name=new_processor.name))
+        else:
+            return redirect(url_for('main.processor'))
+    return render_template('create_processor.html', user=cur_user,
+                           title=_('Processor'), form=form, edit_progress="25",
+                           edit_name='Basic',
+                           buttons=get_navigation_buttons('ProcessorRequest'))
 
 
 @bp.route('/uploader')

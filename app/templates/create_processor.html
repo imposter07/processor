@@ -27,30 +27,16 @@
                     {{ _('Save & Refresh') }}
                 </button>
             </li>
-            <li class="page-item{% if edit_name == 'Basic' %} active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.edit_processor',
-                processor_name=processor_name) }}">
-                    {{ _('Basic') }}
-                </a>
-            </li>
-            <li class="page-item{% if edit_name == 'Import' %} active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.edit_processor_import',
-                 processor_name=processor_name) }}">
-                    {{ _('Import') }}
-                </a>
-            </li>
-            <li class="page-item{% if edit_name == 'Clean' %} active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.edit_processor_clean',
-                processor_name=processor_name) }}">
-                    {{ _('Clean') }}
-                </a>
-            </li>
-            <li class="page-item{% if edit_name == 'Export' %} active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.edit_processor_export',
-                processor_name=processor_name) }}">
-                    {{ _('Export') }}
-                </a>
-            </li>
+            {% for button in buttons %}
+                {% for button_name, button_link in button.items() %}
+                    <li class="page-item{% if edit_name == button_name %} active{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for(button_link, processor_name=processor_name) }}">
+                            {{ button_name }}
+                        </a>
+                    </li>
+                {% endfor %}
+            {% endfor %}
             <li class="page-item{% if not form %} page-item disabled{% endif %}"
                 value="continue">
                 <button id="loadContinue" type="submit" class="page-link"

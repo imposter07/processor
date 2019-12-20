@@ -89,7 +89,11 @@ class User(UserMixin, db.Model):
     notifications = db.relationship('Notification', backref='user',
                                     lazy='dynamic')
     tasks = db.relationship('Task', backref='user', lazy='dynamic')
-    processor = db.relationship('Processor', backref='user', lazy='dynamic')
+    processor = db.relationship('Processor', foreign_keys='Processor.user_id',
+                                backref='user', lazy='dynamic')
+    processor_request_user = db.relationship(
+        'Processor', foreign_keys='Processor.requesting_user_id',
+        backref='request_user', lazy='dynamic')
     uploader = db.relationship('Uploader', backref='user', lazy='dynamic')
     schedule = db.relationship('TaskScheduler', backref='user', lazy='dynamic')
 
@@ -324,6 +328,9 @@ class Processor(db.Model):
     end_date = db.Column(db.Date)
     tableau_workbook = db.Column(db.Text)
     tableau_view = db.Column(db.Text)
+    requesting_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    plan_path = db.Column(db.Text)
+    first_report_ = db.Column(db.Date)
     tasks = db.relationship('Task', backref='processor', lazy='dynamic')
     posts = db.relationship('Post', backref='processor', lazy='dynamic')
     task_scheduler = db.relationship('TaskScheduler', backref='processor',

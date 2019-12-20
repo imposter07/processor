@@ -11,6 +11,13 @@
                 <i class="fas fa-plus-circle"
                    role="button"></i>
                 {{ _('Create Processor') }}
+    </button></a>
+    <a href="{{ url_for('main.request_processor') }}">
+        <button class="btn btn-outline-info btn-lg btn-block text-left"
+            type="button" href="{{ url_for('main.request_processor') }}">
+                <i class="fas fa-blender-phone"
+                   role="button"></i>
+                {{ _('Request Processor') }}
     </button></a><br>
     <div class="custom-control custom-switch" id="customSwitchDiv">
       <input type="checkbox" class="custom-control-input" id="customSwitch1" checked>

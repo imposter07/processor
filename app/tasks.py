@@ -105,7 +105,8 @@ def run_processor(processor_id, current_user_id, processor_args):
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def copy_tree_no_overwrite(old_path, new_path, first_run=True):
@@ -150,7 +151,8 @@ def write_translational_dict(processor_id, current_user_id, new_data):
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def set_initial_constant_file(cur_processor):
@@ -177,12 +179,25 @@ def create_processor(processor_id, current_user_id, base_path):
             os.makedirs(new_path)
         copy_tree_no_overwrite(old_path, new_path)
         set_initial_constant_file(new_processor)
-        msg_text = "Processor was created."
+        msg_text = "Processor {} was created.".format(new_processor.name)
         processor_post_message(new_processor, user_create, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
+def add_data_sources_from_processor(cur_processor, data_sources):
+    for source in data_sources:
+        proc_import = ProcessorDatasources()
+        proc_import.set_from_processor(source, cur_processor)
+        db.session.add(proc_import)
+    try:
+        db.session.commit()
+    except:
+        db.session.rollback()
+        add_data_sources_from_processor(cur_processor, data_sources)
 
 
 def get_processor_sources(processor_id, current_user_id):
@@ -201,18 +216,15 @@ def get_processor_sources(processor_id, current_user_id):
         os.chdir(processor_path)
         matrix = vm.VendorMatrix()
         data_sources = matrix.get_all_data_sources()
-        for source in data_sources:
-            proc_import = ProcessorDatasources()
-            proc_import.set_from_processor(source, cur_processor)
-            db.session.add(proc_import)
-        db.session.commit()
-        msg_text = "Processor imports refreshed."
+        add_data_sources_from_processor(cur_processor, data_sources)
+        msg_text = "Processor {} imports refreshed.".format(cur_processor.name)
         processor_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
         db.session.commit()
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def set_processor_imports(processor_id, current_user_id, form_imports):
@@ -240,14 +252,15 @@ def set_processor_imports(processor_id, current_user_id, form_imports):
         os.chdir(processor_path)
         ic = ImportConfig()
         ic.add_and_remove_from_vm(processor_dicts, matrix=True)
-        msg_text = "Processor imports set."
+        msg_text = "Processor {} imports set.".format(cur_processor.name)
         processor_post_message(cur_processor, user_that_ran, msg_text)
         get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
         db.session.commit()
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def set_data_sources(processor_id, current_user_id, form_sources):
@@ -277,12 +290,13 @@ def set_data_sources(processor_id, current_user_id, form_sources):
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         matrix.set_data_sources(sources)
-        msg_text = "Processor datasources set."
+        msg_text = "Processor {} datasources set.".format(cur_processor.name)
         processor_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def get_data_tables(processor_id, current_user_id, parameter):
@@ -311,7 +325,8 @@ def get_data_tables(processor_id, current_user_id, parameter):
         return tables
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def get_dict_order(processor_id, current_user_id, vk):
@@ -326,7 +341,8 @@ def get_dict_order(processor_id, current_user_id, vk):
         return tables
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def delete_dict(processor_id, current_user_id, vk):
@@ -350,7 +366,8 @@ def delete_dict(processor_id, current_user_id, vk):
         return tables
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def get_raw_data(processor_id, current_user_id, vk):
@@ -365,7 +382,8 @@ def get_raw_data(processor_id, current_user_id, vk):
         return tables
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def get_dictionary(processor_id, current_user_id, vk):
@@ -383,7 +401,8 @@ def get_dictionary(processor_id, current_user_id, vk):
         return tables
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def write_dictionary(processor_id, current_user_id, new_data, vk):
@@ -412,7 +431,8 @@ def write_dictionary(processor_id, current_user_id, new_data, vk):
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def get_translation_dict(processor_id, current_user_id):
@@ -427,7 +447,8 @@ def get_translation_dict(processor_id, current_user_id):
         return [tc.df]
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def get_vendormatrix(processor_id, current_user_id):
@@ -440,7 +461,8 @@ def get_vendormatrix(processor_id, current_user_id):
         return [matrix.vm_df]
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def write_vendormatrix(processor_id, current_user_id, new_data):
@@ -464,7 +486,8 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def get_constant_dict(processor_id, current_user_id):
@@ -479,7 +502,8 @@ def get_constant_dict(processor_id, current_user_id):
         return [dcc.df]
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def write_constant_dict(processor_id, current_user_id, new_data):
@@ -502,7 +526,8 @@ def write_constant_dict(processor_id, current_user_id, new_data):
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def get_relational_config(processor_id, current_user_id):
@@ -517,7 +542,8 @@ def get_relational_config(processor_id, current_user_id):
         return [rc.df]
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def write_relational_config(processor_id, current_user_id, new_data):
@@ -539,7 +565,8 @@ def write_relational_config(processor_id, current_user_id, new_data):
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def full_run_processor(processor_id, current_user_id, processor_args):
@@ -550,7 +577,8 @@ def full_run_processor(processor_id, current_user_id, processor_args):
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def get_logfile(processor_id, current_user_id):
@@ -563,7 +591,8 @@ def get_logfile(processor_id, current_user_id):
         return log_file
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def get_logfile_uploader(uploader_id, current_user_id):
@@ -576,7 +605,8 @@ def get_logfile_uploader(uploader_id, current_user_id):
         return log_file
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
 def uploader_post_message(uploader, usr, text):
@@ -594,7 +624,7 @@ def uploader_post_message(uploader, usr, text):
         db.session.commit()
     except:
         db.session.rollback()
-        processor_post_message(uploader, usr, text)
+        uploader_post_message(uploader, usr, text)
 
 
 def create_uploader(uploader_id, current_user_id, base_path):
@@ -611,4 +641,5 @@ def create_uploader(uploader_id, current_user_id, base_path):
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())

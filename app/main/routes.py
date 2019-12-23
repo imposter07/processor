@@ -388,7 +388,7 @@ def edit_processor_import(processor_name):
         task = cur_proc.launch_task(
             '.get_processor_sources', _(msg_text), running_user=current_user.id)
         db.session.commit()
-        task.wait_and_get_job()
+        # task.wait_and_get_job()
         db.session.commit()
         return redirect(url_for('main.edit_processor_import',
                                 processor_name=processor_name))
@@ -522,7 +522,7 @@ def edit_processor_clean(processor_name):
         task = cur_proc.launch_task(
             '.get_processor_sources', _(msg_text), **proc_arg)
         db.session.commit()
-        task.wait_and_get_job()
+        # task.wait_and_get_job()
         return redirect(url_for('main.edit_processor_clean',
                                 processor_name=processor_name))
     if request.method == 'POST':
@@ -620,6 +620,7 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
                      'import': '--api all --ftp all --dbi all',
                      'export': '--exp all --tab',
                      'basic': '--basic',
+                     'update': '--update all --noprocess',
                      'fb': '--api fb',
                      'aw': '--api aw',
                      'tw': '--api tw',
@@ -641,9 +642,6 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
                                      running_user=current_user.id,
                                      processor_args=arg_trans[processor_args])
         processor_to_run.last_run_time = datetime.utcnow()
-        post = Post(body=post_body, author=current_user,
-                    processor_id=processor_to_run.id)
-        db.session.add(post)
         db.session.commit()
     if not redirect_dest or redirect_dest == 'Page':
         return redirect(url_for('main.processor_page',

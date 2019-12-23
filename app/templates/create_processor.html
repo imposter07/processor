@@ -305,6 +305,11 @@
                            processor_name=processor_name,
                            redirect_dest=edit_name, processor_args='export') }}">
                         {{ _('Export') }}</a>
+                    <a class="dropdown-item"
+                           href="{{ url_for('main.run_processor',
+                           processor_name=processor_name,
+                           redirect_dest=edit_name, processor_args='update') }}">
+                        {{ _('Update') }}</a>
                 </div>
             </div>
         </div>

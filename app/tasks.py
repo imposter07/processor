@@ -85,6 +85,32 @@ def processor_post_message(proc, usr, text):
         processor_post_message(proc, usr, text)
 
 
+def copy_processor_local(file_path, copy_back=False):
+    if file_path[:6] == '/mnt/s':
+        new_file_path = file_path.replace('/mnt/s', '/mnt/c')
+        if copy_back:
+            tmp_path = file_path
+            file_path = new_file_path
+            new_file_path = tmp_path
+            from processor.main import OUTPUT_FILE
+            for file_name in [OUTPUT_FILE, 'logfile.log']:
+                new_file = os.path.join(new_file_path, file_name)
+                old_file = os.path.join(file_path, file_name)
+                shutil.copy(old_file, new_file)
+        if not os.path.exists(new_file_path):
+            os.makedirs(new_file_path)
+        import processor.reporting.utils as utl
+        for directory in [utl.config_path, utl.raw_path, utl.dict_path]:
+            new_path = os.path.join(new_file_path, directory)
+            old_path = os.path.join(file_path, directory)
+            if not os.path.exists(new_path):
+                os.makedirs(new_path)
+            copy_tree_no_overwrite(old_path, new_path, overwrite=True)
+        return new_file_path
+    else:
+        return file_path
+
+
 def run_processor(processor_id, current_user_id, processor_args):
     try:
         processor_to_run = Processor.query.get(processor_id)
@@ -93,13 +119,15 @@ def run_processor(processor_id, current_user_id, processor_args):
             processor_args, processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, post_body)
         _set_task_progress(0)
-        file_path = adjust_path(processor_to_run.local_path)
+        old_file_path = adjust_path(processor_to_run.local_path)
+        file_path = copy_processor_local(old_file_path)
         from processor.main import main
         os.chdir(file_path)
         if processor_args:
             main(processor_args)
         else:
             main()
+        copy_processor_local(old_file_path, copy_back=True)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, msg_text)
         _set_task_progress(100)
@@ -109,7 +137,7 @@ def run_processor(processor_id, current_user_id, processor_args):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def copy_tree_no_overwrite(old_path, new_path, first_run=True):
+def copy_tree_no_overwrite(old_path, new_path, first_run=True, overwrite=False):
     old_files = os.listdir(old_path)
     for idx, file_name in enumerate(old_files):
         if first_run:
@@ -117,7 +145,7 @@ def copy_tree_no_overwrite(old_path, new_path, first_run=True):
         old_file = os.path.join(old_path, file_name)
         new_file = os.path.join(new_path, file_name)
         if os.path.isfile(old_file):
-            if os.path.exists(new_file):
+            if os.path.exists(new_file) and not overwrite:
                 continue
             else:
                 try:

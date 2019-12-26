@@ -17,7 +17,6 @@
           }
         },
         );
-
         calendar.render();
       });
     </script>
@@ -49,30 +48,50 @@
                   <div class="card-body">
                     <div class="accordion" id="accordionProduct">
                       {% for product in client.product.order_by('name') %}
+                        {% set product_loop = loop %}
                         <div class="card">
                             <button class="btn btn-outline-primary
                                            btn-lg btn-block text-left collapsed"
                                     type="button"
                                     data-toggle="collapse"
-                                    data-target="#collapse{{ client_loop.index }}_{{ loop.index }}"
+                                    data-target="#collapse{{ client_loop.index }}_{{ product_loop.index }}"
                                     aria-expanded="false"
-                                    aria-controls="collapse{{ client_loop.index }}_{{ loop.index }}"
-                                    id="heading{{ client_loop.index }}_{{ loop.index }}">
+                                    aria-controls="collapse{{ client_loop.index }}_{{ product_loop.index }}"
+                                    id="heading{{ client_loop.index }}_{{ product_loop.index }}">
                               {{ product.name }}
                             </button>
-
-                            <div id="collapse{{ client_loop.index }}_{{ loop.index }}"
+                            <div id="collapse{{ client_loop.index }}_{{ product_loop.index }}"
                                  class="collapse"
-                                 aria-labelledby="heading{{ client_loop.index }}_{{ loop.index }}"
+                                 aria-labelledby="heading{{ client_loop.index }}_{{ product_loop.index }}"
                                  data-parent="#accordionProduct">
                               <div class="card-body">
-                                  {% for campaign in product.campaign %}
-                                      {% set processor = campaign.processor.first().name %}
-                                      <a class="dropdown-item" href=
-                                              "{{ url_for('main.processor_page',
-                                              processor_name=processor) }}">
-                                          {{ campaign.name }}</a>
-                                  {% endfor %}
+                                  <div class="accordion" id="accordionCampaign">
+                                      {% for campaign in product.campaign.order_by('name') %}
+                                          <div class="card">
+                                            <button class="btn btn-outline-info
+                                                           btn-lg btn-block text-left collapsed"
+                                                    type="button"
+                                                    data-toggle="collapse"
+                                                    data-target="#collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                                    aria-expanded="false"
+                                                    aria-controls="collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                                    id="heading{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}">
+                                              {{ campaign.name }}
+                                            </button>
+                                          <div id="collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                             class="collapse"
+                                             aria-labelledby="heading{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                             data-parent="#accordionCampaign">
+                                          </div>
+                                          {% for processor in campaign.processor.order_by('name') %}
+                                          <a class="dropdown-item" href=
+                                                  "{{ url_for('main.processor_page', processor_name=processor.name) }}">
+                                              {{ processor.name }}</a>
+                                          {% endfor %}
+                                          </div>
+                                      {% endfor %}
+
+                                  </div>
                               </div>
                             </div>
                         </div>

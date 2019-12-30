@@ -1,0 +1,80 @@
+<h3 class="sidebar-heading d-flex justify-content-between align-items-center
+           text-dark text-center">
+              <span>{{ _('Client Directory') }}</span>
+</h3>
+<div class="accordion" id="accordionClient">
+    {% for client in clients %}
+        {% set client_loop = loop %}
+        <div class="card">
+            <button class="btn btn-dark btn-lg btn-block
+                           collapsed text-left"
+                    id="heading{{ loop.index }}"
+                    type="button"
+                    data-toggle="collapse"
+                    data-target="#collapse{{ loop.index }}"
+                    aria-expanded="false"
+                    aria-controls="collapse{{ loop.index }}">
+              {{ client.name }}<span class="caret"></span>
+            </button><br>
+            <div id="collapse{{ loop.index }}" class="collapse"
+                 aria-labelledby="heading{{ loop.index }}"
+                 data-parent="#accordionClient">
+              <div class="card-body">
+                <div class="accordion" id="accordionProduct">
+                  {% for product in client.product.order_by('name') %}
+                    {% set product_loop = loop %}
+                    <div class="card">
+                        <button class="btn btn-outline-primary
+                                       btn-lg btn-block text-left collapsed"
+                                type="button"
+                                data-toggle="collapse"
+                                data-target="#collapse{{ client_loop.index }}_{{ product_loop.index }}"
+                                aria-expanded="false"
+                                aria-controls="collapse{{ client_loop.index }}_{{ product_loop.index }}"
+                                id="heading{{ client_loop.index }}_{{ product_loop.index }}">
+                          {{ product.name }}
+                        </button>
+                        <div id="collapse{{ client_loop.index }}_{{ product_loop.index }}"
+                             class="collapse"
+                             aria-labelledby="heading{{ client_loop.index }}_{{ product_loop.index }}"
+                             data-parent="#accordionProduct">
+                          <div class="card-body">
+                              <div class="accordion" id="accordionCampaign">
+                                  {% for campaign in product.campaign.order_by('name') %}
+                                      <div class="card">
+                                        <button class="btn btn-outline-info
+                                                       btn-lg btn-block text-left collapsed"
+                                                type="button"
+                                                data-toggle="collapse"
+                                                data-target="#collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                                aria-expanded="false"
+                                                aria-controls="collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                                id="heading{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}">
+                                          {{ campaign.name }}
+                                        </button>
+                                      <div id="collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                         class="collapse"
+                                         aria-labelledby="heading{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                         data-parent="#accordionCampaign">
+                                      <div class="card-body">
+                                      {% for processor in campaign.processor.order_by('name') %}
+                                      <a class="dropdown-item" href=
+                                              "{{ url_for('main.processor_page', processor_name=processor.name) }}">
+                                          {{ processor.name }}</a>
+                                      {% endfor %}
+                                      </div>
+                                      </div>
+                                      </div>
+                                  {% endfor %}
+
+                              </div>
+                          </div>
+                        </div>
+                    </div>
+                  {% endfor %}
+              </div>
+              </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>

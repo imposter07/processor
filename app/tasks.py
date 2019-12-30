@@ -156,7 +156,8 @@ def copy_tree_no_overwrite(old_path, new_path, first_run=True, overwrite=False):
         elif os.path.isdir(old_file):
             if not os.path.exists(new_file):
                 os.mkdir(new_file)
-            copy_tree_no_overwrite(old_file, new_file, first_run=False)
+            copy_tree_no_overwrite(old_file, new_file, first_run=False,
+                                   overwrite=overwrite)
 
 
 def write_translational_dict(processor_id, current_user_id, new_data):

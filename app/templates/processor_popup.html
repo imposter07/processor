@@ -1,7 +1,11 @@
 <div class="card bg-light mb-3">
     <div class="card-header text-center">
-        <h3><a href="{{ url_for('main.processor_page', processor_name=processor.name) }}">
+        <h3>
+            <a href="{{ url_for('main.processor_page',
+            processor_name=processor.name) }}">
             {{ processor.name }}
+        </a>
+            <a href="#"><i class="far fa-star" style="color:#008CBA"></i>
         </a></h3>
     </div>
     <div class="card text-center">

@@ -270,6 +270,7 @@ def export_posts():
 def processor():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     page = request.args.get('page', 1, type=int)
+    current_clients = Client.query.order_by(Client.name)
     processors = Processor.query.order_by(
         Processor.last_run_time.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -285,7 +286,8 @@ def processor():
     return render_template('processor.html', title=_('Processor'),
                            user=cur_user, processors=processors.items,
                            currrent_processors=current_processors.items,
-                           next_url=next_url, prev_url=prev_url)
+                           next_url=next_url, prev_url=prev_url,
+                           clients=current_clients)
 
 
 def get_navigation_buttons(buttons=None):

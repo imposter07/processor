@@ -125,6 +125,8 @@ def copy_processor_local(file_path, copy_back=False):
             old_path = os.path.join(file_path, directory)
             if not os.path.exists(new_path):
                 os.makedirs(new_path)
+            if not copy_back and directory == utl.raw_path:
+                shutil.rmtree(new_path, ignore_errors=True)
             copy_tree_no_overwrite(old_path, new_path, overwrite=True)
         return new_file_path
     else:

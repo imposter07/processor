@@ -364,7 +364,7 @@ class Processor(db.Model):
                     'processor_args': 'full'},
             interval=int(interval_sec),
             repeat=int(repeat),
-            timeout=18000,
+            timeout=32400,
             result_ttl=None
         )
         schedule = TaskScheduler(

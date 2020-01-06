@@ -85,6 +85,26 @@ def processor_post_message(proc, usr, text):
         processor_post_message(proc, usr, text)
 
 
+def copy_file(old_file, new_file, attempt=1):
+    try:
+        shutil.copy(old_file, new_file)
+    except PermissionError as e:
+        app.logger.warning('Could not copy {}: '
+                           '{}'.format(old_file, e))
+    except OSError as e:
+        attempt += 1
+        if attempt > 100:
+            app.logger.warning(
+                'Exceeded after 100 attempts not copying {} '
+                '{}'.format(old_file, e))
+        else:
+            app.logger.warning('Attempt {}: could not copy {} due to OSError '
+                               'retrying in 60s: {}'.format(attempt, old_file,
+                                                            e))
+            time.sleep(60)
+            copy_file(old_file, new_file, attempt=attempt)
+
+
 def copy_processor_local(file_path, copy_back=False):
     if file_path[:6] == '/mnt/s':
         new_file_path = file_path.replace('/mnt/s', '/mnt/c')
@@ -96,7 +116,7 @@ def copy_processor_local(file_path, copy_back=False):
             for file_name in [OUTPUT_FILE, 'logfile.log']:
                 new_file = os.path.join(new_file_path, file_name)
                 old_file = os.path.join(file_path, file_name)
-                shutil.copy(old_file, new_file)
+                copy_file(old_file, new_file)
         if not os.path.exists(new_file_path):
             os.makedirs(new_file_path)
         import processor.reporting.utils as utl
@@ -137,6 +157,24 @@ def run_processor(processor_id, current_user_id, processor_args):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+def list_files(path, attempt=1):
+    try:
+        file_list = os.listdir(path)
+    except OSError as e:
+        attempt += 1
+        if attempt > 100:
+            app.logger.warning(
+                'Exceeded after 100 attempts could not list files '
+                '{}'.format(path, e))
+            file_list = []
+        else:
+            app.logger.warning('Attempt {}: could list files due to OSError '
+                               'retrying in 60s: {}'.format(attempt, e))
+            time.sleep(60)
+            file_list = list_files(path, attempt)
+    return file_list
+
+
 def copy_tree_no_overwrite(old_path, new_path, first_run=True, overwrite=False):
     old_files = os.listdir(old_path)
     for idx, file_name in enumerate(old_files):
@@ -148,11 +186,7 @@ def copy_tree_no_overwrite(old_path, new_path, first_run=True, overwrite=False):
             if os.path.exists(new_file) and not overwrite:
                 continue
             else:
-                try:
-                    shutil.copy(old_file, new_file)
-                except PermissionError as e:
-                    app.logger.warning('Could not copy {}: '
-                                       '{}'.format(old_file, e))
+                copy_file(old_file, new_file)
         elif os.path.isdir(old_file):
             if not os.path.exists(new_file):
                 os.mkdir(new_file)

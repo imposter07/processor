@@ -1,7 +1,6 @@
 import os
 import rq
 import logging
-import certifi
 from logging.handlers import SMTPHandler, RotatingFileHandler
 from flask import Flask, request, current_app
 from flask_sqlalchemy import SQLAlchemy as _BaseSQLAlchemy
@@ -12,10 +11,11 @@ from flask_mail import Mail
 from flask_moment import Moment
 from flask_babel import Babel, lazy_gettext as _l
 from config import Config
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, RequestsHttpConnection
 from redis import Redis
 from rq_scheduler import Scheduler
 import rq_dashboard
+from requests_aws4auth import AWS4Auth
 
 
 class SQLAlchemy(_BaseSQLAlchemy):
@@ -51,8 +51,16 @@ def create_app(config_class=Config()):
     mail.init_app(app)
     moment.init_app(app)
     babel.init_app(app)
-    app.elasticsearch = Elasticsearch([app.config['ELASTICSEARCH_URL']],
-                                      use_ssl=True, ca_certs=certifi.where()) \
+    app.elasticsearch = Elasticsearch(
+        hosts=[{'host': app.config['ELASTICSEARCH_URL'].replace('https://', ''),
+                'port': 443}],
+        http_auth=AWS4Auth(app.config['AWS_ACCESS_KEY_ID'],
+                           app.config['AWS_SECRET_ACCESS_KEY'],
+                           app.config['AWS_REGION_NAME'], 'es'),
+        use_ssl=True,
+        verify_certs=True,
+        connection_class=RequestsHttpConnection
+    ) \
         if app.config['ELASTICSEARCH_URL'] else None
     app.redis = Redis.from_url(app.config['REDIS_URL'])
     app.task_queue = rq.Queue('lqapp-tasks', connection=app.redis,

@@ -338,6 +338,7 @@ class Processor(db.Model):
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
     processor_datasources = db.relationship('ProcessorDatasources',
                                             backref='processor', lazy='dynamic')
+    accounts = db.relationship('Account', backref='processor', lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -553,6 +554,34 @@ class ProcessorDatasources(db.Model):
             if source[x]:
                 source[x] = '|'.join([y for y in source[x].split('\r\n')])
         return source
+
+
+class Account(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    key = db.Column(db.String(64))
+    account_id = db.Column(db.Text)
+    campaign_id = db.Column(db.Text)
+    username = db.Column(db.Text)
+    password = db.Column(db.Text)
+
+    def get_form_dict(self):
+        form_dict = {
+            'key': self.key,
+            'account_id': self.account_id,
+            'campaign_id': self.campaign_id,
+            'username': self.username,
+            'password': self.password
+        }
+        return form_dict
+
+    def set_from_form(self, form, current_processor):
+        self.processor_id = current_processor.id
+        self.key = form['key']
+        self.account_id = form['account_id']
+        self.campaign_id = form['campaign_id']
+        self.username = form['username']
+        self.password = form['password']
 
 
 class Uploader(db.Model):

@@ -9,13 +9,13 @@ from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
-    ProcessorDatasources, Uploader
+    ProcessorDatasources, Uploader, Account
 
 app = create_app()
 app.app_context().push()
 
 
-def _set_task_progress(progress):
+def _set_task_progress(progress, attempt=1):
     try:
         job = get_current_job()
         if job:
@@ -29,8 +29,12 @@ def _set_task_progress(progress):
                 task.complete = True
             db.session.commit()
     except:
-        db.session.rollback()
-        _set_task_progress(progress)
+        attempt += 1
+        if attempt > 10:
+            app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        else:
+            db.session.rollback()
+            _set_task_progress(progress)
 
 
 def export_posts(user_id):
@@ -254,7 +258,7 @@ def create_processor(processor_id, current_user_id, base_path):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def add_data_sources_from_processor(cur_processor, data_sources):
+def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
     for source in data_sources:
         proc_import = ProcessorDatasources()
         proc_import.set_from_processor(source, cur_processor)
@@ -262,8 +266,15 @@ def add_data_sources_from_processor(cur_processor, data_sources):
     try:
         db.session.commit()
     except:
-        db.session.rollback()
-        add_data_sources_from_processor(cur_processor, data_sources)
+        attempt += 1
+        if attempt > 20:
+            app.logger.error('Unhandled exception - Processor {} User {}'
+                             ''.format(cur_processor.id, cur_processor.user.id),
+                             exc_info=sys.exc_info())
+        else:
+            db.session.rollback()
+            add_data_sources_from_processor(cur_processor, data_sources,
+                                            attempt)
 
 
 def get_processor_sources(processor_id, current_user_id):
@@ -709,3 +720,28 @@ def create_uploader(uploader_id, current_user_id, base_path):
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Uploader {} User {}'.format(
             uploader_id, current_user_id), exc_info=sys.exc_info())
+
+
+def set_processor_accounts(processor_id, current_user_id, form_sources):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        old_accounts = Account.query.filter_by(
+            processor_id=cur_processor.id).all()
+        user_that_ran = User.query.get(current_user_id)
+        _set_task_progress(0)
+        if old_accounts:
+            for act in old_accounts:
+                db.session.delete(act)
+            db.session.commit()
+        for form_account in form_sources:
+            account = Account()
+            account.set_from_form(form_account, cur_processor)
+            db.session.add(account)
+        db.session.commit()
+        msg_text = "Processor {} accounts set.".format(cur_processor.name)
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())

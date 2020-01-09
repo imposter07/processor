@@ -296,6 +296,55 @@ class ProcessorRequestForm(FlaskForm):
             self.campaign_name = self.cur_campaign.data.name
 
 
+class EditProcessorRequestForm(ProcessorRequestForm):
+    def __init__(self, original_name, *args, **kwargs):
+        super(EditProcessorRequestForm, self).__init__(*args, **kwargs)
+        self.original_name = original_name
+
+    def validate_name(self, name):
+        if name.data != self.original_name:
+            processor = Processor.query.filter_by(name=self.name.data).first()
+            if processor is not None:
+                raise ValidationError(_l('Please use a different name.'))
+
+
+class AccountForm(FlaskForm):
+    key = SelectField(
+        'Account Type', choices=[
+            ('Facebook', 'Facebook'), ('Adwords', 'Adwords'),
+            ('Sizmek', 'Sizmek'), ('Twitter', 'Twitter'), ('TTD', 'TTD'),
+            ('Snapchat', 'Snapchat'), ('DCM', 'DCM'), ('DBM', 'DBM'),
+            ('Redshell', 'Redshell'), ('Reddit', 'Reddit'),
+            ('Netbase', 'Netbase'), ('GA', 'GA'), ('Revcontent', 'Revcontent'),
+            ('AppsFlyer', 'AppsFlyer')])
+    account_id = StringField('Account ID')
+    username = StringField('Username',
+                           description=('Only include if NOT under '
+                                        'a general Liquid account.'))
+    password = StringField('Password',
+                           description=('Only include if NOT under '
+                                        'a general Liquid account.'))
+    campaign_id = StringField('Campaign ID or Name')
+    refresh_delete = SubmitField('Delete')
+
+
+class GeneralAccountForm(FlaskForm):
+    add_child = SubmitField(label='Add Account')
+    remove_account = SubmitField('Remove Last Account')
+    form_continue = HiddenField('form_continue')
+    accounts = FieldList(FormField(AccountForm, label=''))
+
+    def set_accounts(self, data_source, cur_proc):
+        account_dict = []
+        proc_acts = data_source.query.filter_by(processor_id=cur_proc.id).all()
+        for act in proc_acts:
+            if act.key is not None:
+                form_dict = act.get_form_dict()
+                account_dict.append(form_dict)
+        self.accounts = account_dict
+        return account_dict
+
+
 class UploaderForm(FlaskForm):
     name = StringField(_l('Name'), validators=[
         DataRequired()])

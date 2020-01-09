@@ -8,10 +8,11 @@ from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
-    ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm
+    ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
+    GeneralAccountForm, EditProcessorRequestForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
-    Uploader
+    Uploader, Account
 from app.translate import translate
 from app.main import bp
 
@@ -122,7 +123,8 @@ def user(username):
     prev_url = url_for('main.user', username=user_page.username,
                        page=posts.prev_num) if posts.has_prev else None
     return render_template('user.html', user=user_page, posts=posts.items,
-                           next_url=next_url, prev_url=prev_url)
+                           next_url=next_url, prev_url=prev_url,
+                           title=_('User | {}'.format(username)))
 
 
 @bp.route('/edit_profile', methods=['GET', 'POST'])
@@ -238,7 +240,8 @@ def messages():
     prev_url = url_for('main.messages', page=user_messages.prev_num) \
         if user_messages.has_prev else None
     return render_template('messages.html', messages=user_messages.items,
-                           next_url=next_url, prev_url=prev_url)
+                           next_url=next_url, prev_url=prev_url,
+                           title=_('Messages'))
 
 
 @bp.route('/notifications')
@@ -386,12 +389,13 @@ def edit_processor_import(processor_name):
         kwargs['form'] = form
         return render_template('create_processor.html', **kwargs)
     if form.refresh_imports.data:
-        msg_text = 'Refreshing data for {}'.format(processor_name)
-        task = cur_proc.launch_task(
-            '.get_processor_sources', _(msg_text), running_user=current_user.id)
-        db.session.commit()
-        # task.wait_and_get_job()
-        db.session.commit()
+        if cur_proc.get_task_in_progress('.get_processor_sources'):
+            flash(_('The data sources are already refreshing.'))
+        else:
+            msg_text = 'Refreshing data for {}'.format(processor_name)
+            cur_proc.launch_task('.get_processor_sources', _(msg_text),
+                                 running_user=current_user.id)
+            db.session.commit()
         return redirect(url_for('main.edit_processor_import',
                                 processor_name=processor_name))
     for api in form.apis:
@@ -406,13 +410,15 @@ def edit_processor_import(processor_name):
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=processor_name))
     if request.method == 'POST':
-        msg_text = ('Setting imports in '
-                    'vendormatrix for {}').format(processor_name)
-        task = cur_proc.launch_task(
-            '.set_processor_imports', _(msg_text),
-            running_user=current_user.id, form_imports=form.apis.data)
-        db.session.commit()
-        task.wait_and_get_job()
+        if cur_proc.get_task_in_progress('.set_processor_imports'):
+            flash(_('The data sources are already being set.'))
+        else:
+            msg_text = ('Setting imports in '
+                        'vendormatrix for {}').format(processor_name)
+            task = cur_proc.launch_task(
+                '.set_processor_imports', _(msg_text),
+                running_user=current_user.id, form_imports=form.apis.data)
+            db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
@@ -520,28 +526,33 @@ def edit_processor_clean(processor_name):
     form = ProcessorCleanForm(datasources=ds)
     kwargs['form'] = form
     if form.refresh_data_sources.data:
-        msg_text = 'Refreshing data for {}'.format(processor_name)
-        task = cur_proc.launch_task(
-            '.get_processor_sources', _(msg_text), **proc_arg)
-        db.session.commit()
-        # task.wait_and_get_job()
+        if cur_proc.get_task_in_progress('.get_processor_sources'):
+            flash(_('The data sources are already refreshing.'))
+        else:
+            msg_text = 'Refreshing data for {}'.format(processor_name)
+            cur_proc.launch_task(
+                '.get_processor_sources', _(msg_text), **proc_arg)
+            db.session.commit()
         return redirect(url_for('main.edit_processor_clean',
                                 processor_name=processor_name))
     if request.method == 'POST':
         form.validate()
-        msg_text = ('Setting data sources in vendormatrix for {}'
-                    '').format(processor_name)
-        task = cur_proc.launch_task('.set_data_sources', _(msg_text),
-                                    running_user=current_user.id,
-                                    form_sources=form.datasources.data)
-        db.session.commit()
-        if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_export',
-                                    processor_name=cur_proc.name))
+        if cur_proc.get_task_in_progress('.set_data_sources'):
+            flash(_('The data sources are already being set.'))
         else:
-            task.wait_and_get_job()
-            return redirect(url_for('main.edit_processor_clean',
-                                    processor_name=cur_proc.name))
+            msg_text = ('Setting data sources in vendormatrix for {}'
+                        '').format(processor_name)
+            task = cur_proc.launch_task('.set_data_sources', _(msg_text),
+                                        running_user=current_user.id,
+                                        form_sources=form.datasources.data)
+            db.session.commit()
+            if form.form_continue.data == 'continue':
+                return redirect(url_for('main.edit_processor_export',
+                                        processor_name=cur_proc.name))
+            else:
+                task.wait_and_get_job()
+                return redirect(url_for('main.edit_processor_clean',
+                                        processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
@@ -751,7 +762,7 @@ def request_processor():
         db.session.add(post)
         db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_import',
+            return redirect(url_for('main.edit_processor_account',
                                     processor_name=new_processor.name))
         else:
             return redirect(url_for('main.processor'))
@@ -759,6 +770,107 @@ def request_processor():
                            title=_('Processor'), form=form, edit_progress="25",
                            edit_name='Basic',
                            buttons=get_navigation_buttons('ProcessorRequest'))
+
+
+@bp.route('/processor/<processor_name>/edit/request', methods=['GET', 'POST'])
+@login_required
+def edit_request_processor(processor_name):
+    kwargs = get_current_processor(processor_name, 'edit_processor_request',
+                                   edit_progress=25, edit_name='Basic',
+                                   buttons='ProcessorRequest')
+    processor_to_edit = Processor.query.filter_by(
+        name=processor_name).first_or_404()
+    form = EditProcessorRequestForm(processor_name)
+    if request.method == 'POST':
+        form.validate()
+        form_client = Client(name=form.client_name).check_and_add()
+        form_product = Product(name=form.product_name,
+                               client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(name=form.campaign_name,
+                                 product_id=form_product.id).check_and_add()
+        processor_to_edit.name = form.name.data
+        processor_to_edit.description = form.description.data
+        processor_to_edit.plan_path = form.plan_path.data
+        processor_to_edit.start_date = form.start_date.data
+        processor_to_edit.end_date = form.end_date.data
+        processor_to_edit.first_report_ = form.first_report.data
+        processor_to_edit.campaign_id = form_campaign.id
+        db.session.commit()
+        creation_text = 'Processor request was edited.'
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    processor_id=processor_to_edit.id)
+        db.session.add(post)
+        db.session.commit()
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_processor_account',
+                                    processor_name=processor_to_edit.name))
+        else:
+            return redirect(url_for('main.processor_page',
+                                    processor_name=processor_to_edit.name))
+    elif request.method == 'GET':
+        form.name.data = processor_to_edit.name
+        form.description.data = processor_to_edit.description
+        form.plan_path.data = processor_to_edit.plan_path
+        form.start_date.data = processor_to_edit.start_date
+        form.end_date.data = processor_to_edit.end_date
+        form.first_report.data = processor_to_edit.first_report_
+        form_campaign = Campaign.query.filter_by(
+            id=processor_to_edit.campaign_id).first_or_404()
+        form_product = Product.query.filter_by(
+            id=form_campaign.product_id).first_or_404()
+        form_client = Client.query.filter_by(
+            id=form_product.client_id).first_or_404()
+        form.cur_campaign.data = form_campaign
+        form.cur_product.data = form_product
+        form.cur_client.data = form_client
+    kwargs['form'] = form
+    return render_template('create_processor.html',  **kwargs)
+
+
+@bp.route('/processor/<processor_name>/edit/accounts', methods=['GET', 'POST'])
+@login_required
+def edit_processor_account(processor_name):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_import',
+                                   edit_progress=50, edit_name='Import')
+    cur_proc = kwargs['processor']
+    accounts = GeneralAccountForm().set_accounts(Account, cur_proc)
+    form = GeneralAccountForm(accounts=accounts)
+    kwargs['form'] = form
+    if form.add_child.data:
+        form.accounts.append_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
+    if form.remove_account.data:
+        form.accounts.pop_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
+    for act in form.accounts:
+        if act.refresh_delete.data:
+            act = Account.query.filter_by(
+                key=act.key.data, account_id=act.account_id.data,
+                campaign_id=act.campaign_id.data, username=act.username.data,
+                password=act.password.data, processor_id=cur_proc.id).first()
+            if act:
+                db.session.delete(act)
+                db.session.commit()
+            return redirect(url_for('main.edit_processor_account',
+                                    processor_name=processor_name))
+    if request.method == 'POST':
+        msg_text = ('Setting accounts for {}').format(processor_name)
+        task = cur_proc.launch_task(
+            '.set_processor_accounts', _(msg_text),
+            running_user=current_user.id, form_sources=form.accounts.data)
+        db.session.commit()
+        task.wait_and_get_job()
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_processor_account',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_account',
+                                    processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/uploader')

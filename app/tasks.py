@@ -34,7 +34,7 @@ def _set_task_progress(progress, attempt=1):
             app.logger.error('Unhandled exception', exc_info=sys.exc_info())
         else:
             db.session.rollback()
-            _set_task_progress(progress)
+            _set_task_progress(progress, attempt)
 
 
 def export_posts(user_id):

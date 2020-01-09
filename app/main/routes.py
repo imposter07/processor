@@ -295,8 +295,8 @@ def processor():
 
 def get_navigation_buttons(buttons=None):
     if buttons == 'ProcessorRequest':
-        buttons = [{'Basic': 'main.edit_processor'},
-                   {'Accounts': 'main.edit_processor_import'},
+        buttons = [{'Basic': 'main.edit_request_processor'},
+                   {'Accounts': 'main.edit_processor_account'},
                    {'Fees': 'main.edit_processor_clean'},
                    {'Finish': 'main.edit_processor_export'}]
     else:

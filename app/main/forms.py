@@ -1,7 +1,7 @@
 from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
-    FormField, FieldList, HiddenField, DateTimeField, FileField
+    FormField, FieldList, HiddenField, DateTimeField, FileField, BooleanField
 from wtforms.fields.html5 import DateField, TimeField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
@@ -224,6 +224,7 @@ class FullPlacementForm(FlaskForm):
 class ProcessorExportForm(FlaskForm):
     tableau_workbook = StringField(_l('Tableau Workbook'))
     tableau_view = StringField(_l('Tableau View'))
+    schedule = BooleanField(_l('Schedule'), )
     schedule_start = DateField(_l('Schedule Start'), format='%Y-%m-%d')
     schedule_end = DateField(_l('Schedule End'), format='%Y-%m-%d')
     run_time = TimeField(_l('Run Time'))
@@ -319,11 +320,9 @@ class AccountForm(FlaskForm):
             ('AppsFlyer', 'AppsFlyer')])
     account_id = StringField('Account ID')
     username = StringField('Username',
-                           description=('Only include if NOT under '
-                                        'a general Liquid account.'))
+                           description='Only include if shared login.')
     password = StringField('Password',
-                           description=('Only include if NOT under '
-                                        'a general Liquid account.'))
+                           description='Only include if shared login.')
     campaign_id = StringField('Campaign ID or Name')
     refresh_delete = SubmitField('Delete')
 

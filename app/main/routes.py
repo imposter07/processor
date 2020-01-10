@@ -556,6 +556,14 @@ def edit_processor_clean(processor_name):
     return render_template('create_processor.html', **kwargs)
 
 
+def cancel_schedule(scheduled_task):
+    if scheduled_task:
+        if scheduled_task.id in current_app.scheduler:
+            current_app.scheduler.cancel(scheduled_task.id)
+        db.session.delete(scheduled_task)
+        db.session.commit()
+
+
 @bp.route('/processor/<processor_name>/edit/export', methods=['GET', 'POST'])
 @login_required
 def edit_processor_export(processor_name):
@@ -570,6 +578,7 @@ def edit_processor_export(processor_name):
         form.tableau_workbook.data = cur_proc.tableau_workbook
         form.tableau_view.data = cur_proc.tableau_view
         if sched:
+            form.schedule.data = True
             form.schedule_start.data = sched.start_date
             form.schedule_end.data = sched.end_date
             form.run_time.data = sched.scheduled_time
@@ -578,12 +587,8 @@ def edit_processor_export(processor_name):
         form.validate()
         cur_proc.tableau_workbook = form.tableau_workbook.data
         cur_proc.tableau_view = form.tableau_view.data
-        if form.schedule_start:
-            if sched:
-                if sched.id in current_app.scheduler:
-                    current_app.scheduler.cancel(sched.id)
-                db.session.delete(sched)
-                db.session.commit()
+        cancel_schedule(sched)
+        if form.schedule.data:
             msg_text = 'Scheduling processor: {}'.format(processor_name)
             cur_proc.schedule_job('.full_run_processor', msg_text,
                                   start_date=form.schedule_start.data,

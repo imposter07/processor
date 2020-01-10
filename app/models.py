@@ -5,7 +5,7 @@ import pytz
 import json
 import time
 import redis
-from datetime import datetime
+from datetime import datetime, timedelta
 from hashlib import md5
 from flask import current_app
 from flask_login import UserMixin
@@ -352,8 +352,14 @@ class Processor(db.Model):
     def schedule_job(self, name, description, start_date, end_date,
                      scheduled_time, interval):
         eastern = pytz.timezone('US/Eastern')
+        today = eastern.localize(datetime.today())
         first_run = datetime.combine(start_date, scheduled_time)
         first_run = eastern.localize(first_run)
+        if first_run < today:
+            tomorrow = today.date() + timedelta(days=1)
+            first_run = datetime.combine(tomorrow, scheduled_time)
+            first_run = eastern.localize(first_run)
+            print(first_run)
         first_run = first_run.astimezone(pytz.utc)
         interval_sec = int(interval) * 60 * 60
         repeat = (end_date - start_date).days * (24 / int(interval))
@@ -414,7 +420,7 @@ class ProcessorDatasources(db.Model):
     name = db.Column(db.String(128), index=True)
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
     key = db.Column(db.String(64))
-    account_id = db.Column(db.String(64))
+    account_id = db.Column(db.Text)
     account_filter = db.Column(db.String(128))
     start_date = db.Column(db.Date)
     api_fields = db.Column(db.String(128))

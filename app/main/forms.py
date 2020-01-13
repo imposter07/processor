@@ -129,7 +129,7 @@ class APIForm(FlaskForm):
     account_filter = StringField('Filter')
     api_fields = StringField('API Fields')
     raw_file = FileField('Raw File')
-    refresh_delete = SubmitField('Delete')
+    delete = SubmitField('Delete')
     vendor_key = HiddenField('Vendor Key')
 
 
@@ -324,7 +324,7 @@ class AccountForm(FlaskForm):
     password = StringField('Password',
                            description='Only include if shared login.')
     campaign_id = StringField('Campaign ID or Name')
-    refresh_delete = SubmitField('Delete')
+    delete = SubmitField('Delete')
 
 
 class GeneralAccountForm(FlaskForm):

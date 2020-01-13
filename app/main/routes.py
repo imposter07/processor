@@ -399,7 +399,7 @@ def edit_processor_import(processor_name):
         return redirect(url_for('main.edit_processor_import',
                                 processor_name=processor_name))
     for api in form.apis:
-        if api.refresh_delete.data:
+        if api.delete.data:
             ds = ProcessorDatasources.query.filter_by(
                 account_id=api.account_id.data, start_date=api.start_date.data,
                 api_fields=api.api_fields.data, key=api.key.data,
@@ -837,8 +837,9 @@ def edit_request_processor(processor_name):
 @login_required
 def edit_processor_account(processor_name):
     kwargs = get_current_processor(processor_name,
-                                   current_page='edit_processor_import',
-                                   edit_progress=50, edit_name='Import')
+                                   current_page='edit_processor_account',
+                                   edit_progress=50, edit_name='Accounts',
+                                   buttons='ProcessorRequest')
     cur_proc = kwargs['processor']
     accounts = GeneralAccountForm().set_accounts(Account, cur_proc)
     form = GeneralAccountForm(accounts=accounts)
@@ -852,7 +853,7 @@ def edit_processor_account(processor_name):
         kwargs['form'] = form
         return render_template('create_processor.html', **kwargs)
     for act in form.accounts:
-        if act.refresh_delete.data:
+        if act.delete.data:
             act = Account.query.filter_by(
                 key=act.key.data, account_id=act.account_id.data,
                 campaign_id=act.campaign_id.data, username=act.username.data,

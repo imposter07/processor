@@ -309,11 +309,30 @@ class Campaign(db.Model):
     def check_and_add(self):
         campaign_check = self.check()
         if not campaign_check:
-            campaign_check = Campaign(name=self.name, product_id=self.product_id)
+            campaign_check = Campaign(name=self.name,
+                                      product_id=self.product_id)
             db.session.add(campaign_check)
             db.session.commit()
             campaign_check = self.check()
         return campaign_check
+
+
+class RateCard(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    name = db.Column(db.Text)
+    description = db.Column(db.Text)
+    processor = db.relationship('Processor', backref='rate_card',
+                                lazy='dynamic')
+    rates = db.relationship('Rates', backref='rate_card', lazy='dynamic')
+
+
+class Rates(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    type_name = db.Column(db.Text)
+    adserving_fee = db.Column(db.Numeric)
+    reporting_fee = db.Column(db.Numeric)
+    rate_card_id = db.Column(db.Integer, db.ForeignKey('rate_card.id'))
 
 
 class Processor(db.Model):
@@ -336,6 +355,7 @@ class Processor(db.Model):
     task_scheduler = db.relationship('TaskScheduler', backref='processor',
                                      lazy='dynamic')
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
+    rate_card_id = db.Column(db.Integer, db.ForeignKey('rate_card.id'))
     processor_datasources = db.relationship('ProcessorDatasources',
                                             backref='processor', lazy='dynamic')
     accounts = db.relationship('Account', backref='processor', lazy='dynamic')

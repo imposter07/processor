@@ -350,6 +350,9 @@ class Processor(db.Model):
     requesting_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     plan_path = db.Column(db.Text)
     first_report_ = db.Column(db.Date)
+    digital_agency_fees = db.Column(db.Numeric)
+    trad_agency_fees = db.Column(db.Numeric)
+    dcm_service_fees = db.Column(db.Numeric)
     tasks = db.relationship('Task', backref='processor', lazy='dynamic')
     posts = db.relationship('Post', backref='processor', lazy='dynamic')
     task_scheduler = db.relationship('TaskScheduler', backref='processor',

@@ -9,7 +9,7 @@ from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
-    ProcessorDatasources, Uploader, Account
+    ProcessorDatasources, Uploader, Account, RateCard, Rates
 
 app = create_app()
 app.app_context().push()
@@ -666,6 +666,67 @@ def get_logfile(processor_id, current_user_id):
             log_file = f.read()
         _set_task_progress(100)
         return log_file
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
+def get_rate_card(processor_id, current_user_id, vk):
+    try:
+        _set_task_progress(0)
+        if vk == '__None':
+            rate_card = None
+        else:
+            rate_card = RateCard.query.filter_by(id=vk).first()
+        rate_list = []
+        if not rate_card:
+            rate_list.append({x: 'None'
+                              for x in Rates.__table__.columns.keys()
+                              if 'id' not in x})
+        else:
+            for row in rate_card.rates:
+                rate_list.append(dict((col, getattr(row, col))
+                                 for col in row.__table__.columns.keys()
+                                      if 'id' not in col))
+        df = pd.DataFrame(rate_list)
+        df = df[[Rates.type_name.name, Rates.adserving_fee.name,
+                 Rates.reporting_fee.name]]
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
+def write_rate_card(processor_id, current_user_id, new_data, vk):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        user_that_ran = User.query.get(current_user_id)
+        rate_card_name = '{}|{}'.format(cur_processor.name,
+                                        user_that_ran.username)
+        rate_card = RateCard.query.filter_by(name=rate_card_name).first()
+        if not rate_card:
+            rate_card = RateCard(name=rate_card_name, owner_id=current_user_id)
+            db.session.add(rate_card)
+            db.session.commit()
+            rate_card = RateCard.query.filter_by(name=rate_card_name).first()
+        for x in rate_card.rates:
+            db.session.delete(x)
+        db.session.commit()
+        data = json.loads(new_data)
+        for x in data:
+            rate = Rates(adserving_fee=float(x[Rates.adserving_fee.name]),
+                         reporting_fee=float(x[Rates.reporting_fee.name]),
+                         type_name=x[Rates.type_name.name],
+                         rate_card_id=rate_card.id)
+            db.session.add(rate)
+        db.session.commit()
+        msg_text = ('{} processor rate card was updated.'
+                    ''.format(cur_processor.name))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(

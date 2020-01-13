@@ -9,10 +9,10 @@ from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
     ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
-    GeneralAccountForm, EditProcessorRequestForm
+    GeneralAccountForm, EditProcessorRequestForm, FeeForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
-    Uploader, Account
+    Uploader, Account, RateCard
 from app.translate import translate
 from app.main import bp
 
@@ -297,7 +297,7 @@ def get_navigation_buttons(buttons=None):
     if buttons == 'ProcessorRequest':
         buttons = [{'Basic': 'main.edit_request_processor'},
                    {'Accounts': 'main.edit_processor_account'},
-                   {'Fees': 'main.edit_processor_clean'},
+                   {'Fees': 'main.edit_processor_fees'},
                    {'Finish': 'main.edit_processor_export'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
@@ -469,7 +469,8 @@ def post_table():
                  'Vendormatrix': '.write_vendormatrix',
                  'Constant': '.write_constant_dict',
                  'Relation': '.write_relational_config',
-                 'dictionary': '.write_dictionary'}
+                 'dictionary': '.write_dictionary',
+                 'rate_card': '.write_rate_card'}
     job_name = arg_trans[table_name]
     cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
@@ -495,7 +496,8 @@ def get_table():
                  'dictionary_order': '.get_dict_order',
                  'raw_data': '.get_raw_data',
                  'dictionary': '.get_dictionary',
-                 'delete_dict': '.delete_dict'}
+                 'delete_dict': '.delete_dict',
+                 'rate_card': '.get_rate_card'}
     job_name = arg_trans[table_name]
     if request.form['vendorkey'] != 'None':
         proc_arg['vk'] = request.form['vendorkey']
@@ -864,18 +866,58 @@ def edit_processor_account(processor_name):
             return redirect(url_for('main.edit_processor_account',
                                     processor_name=processor_name))
     if request.method == 'POST':
-        msg_text = ('Setting accounts for {}').format(processor_name)
+        msg_text = 'Setting accounts for {}'.format(processor_name)
         task = cur_proc.launch_task(
             '.set_processor_accounts', _(msg_text),
             running_user=current_user.id, form_sources=form.accounts.data)
         db.session.commit()
         task.wait_and_get_job()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_account',
+            return redirect(url_for('main.edit_processor_fees',
                                     processor_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_account',
                                     processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/edit/fees', methods=['GET', 'POST'])
+@login_required
+def edit_processor_fees(processor_name):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_fees',
+                                   edit_progress=75, edit_name='Fees',
+                                   buttons='ProcessorRequest')
+    cur_proc = kwargs['processor']
+    form = FeeForm()
+    if request.method == 'POST':
+        form.validate()
+        cur_proc.digital_agency_fees = form.digital_agency_fees.data
+        cur_proc.trad_agency_fees = form.trad_agency_fees.data
+        cur_proc.rate_card_id = form.rate_card.data.id
+        cur_proc.dcm_service_fees = int(
+            form.dcm_service_fees.data.replace('%', '')) / 100
+        db.session.commit()
+        creation_text = 'Processor fees were edited.'
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    processor_id=cur_proc.id)
+        db.session.add(post)
+        db.session.commit()
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_processor_fees',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_fees',
+                                    processor_name=cur_proc.name))
+    elif request.method == 'GET':
+        form.digital_agency_fees.data = cur_proc.digital_agency_fees
+        form.trad_agency_fees.data = cur_proc.trad_agency_fees
+        form_rate_card = RateCard.query.filter_by(
+            id=cur_proc.rate_card_id).first()
+        form.rate_card.data = form_rate_card
+        form.dcm_service_fees.data = cur_proc.dcm_service_fees
+    kwargs['form'] = form
     return render_template('create_processor.html', **kwargs)
 
 

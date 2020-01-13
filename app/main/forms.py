@@ -1,12 +1,14 @@
 from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
-    FormField, FieldList, HiddenField, DateTimeField, FileField, BooleanField
+    FormField, FieldList, HiddenField, DateTimeField, FileField, BooleanField, \
+    DecimalField
 from wtforms.fields.html5 import DateField, TimeField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
 from flask_babel import _, lazy_gettext as _l
-from app.models import User, Processor, Client, Product, Campaign, Uploader
+from app.models import User, Processor, Client, Product, Campaign, Uploader,\
+    RateCard
 import processor.reporting.dictcolumns as dctc
 
 
@@ -342,6 +344,18 @@ class GeneralAccountForm(FlaskForm):
                 account_dict.append(form_dict)
         self.accounts = account_dict
         return account_dict
+
+
+class FeeForm(FlaskForm):
+    digital_agency_fees = DecimalField(_('Digital Agency Fees'))
+    trad_agency_fees = DecimalField(_('Traditional Agency Fees'))
+    rate_card = QuerySelectField(_l('Rate Card'), allow_blank=True,
+                                 query_factory=lambda: RateCard.query.all(),
+                                 get_label='name')
+    refresh_rate_card = SubmitField('View Rate Card')
+    dcm_service_fees = SelectField('DCM Service Fee', choices=[
+        ('0%', '0%'), ('10%', '10%'), ('15%', '15%')])
+    form_continue = HiddenField('form_continue')
 
 
 class UploaderForm(FlaskForm):

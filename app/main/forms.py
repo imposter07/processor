@@ -10,6 +10,7 @@ from flask_babel import _, lazy_gettext as _l
 from app.models import User, Processor, Client, Product, Campaign, Uploader,\
     RateCard
 import processor.reporting.dictcolumns as dctc
+import processor.reporting.vmcolumns as vmc
 
 
 class EditProfileForm(FlaskForm):
@@ -356,6 +357,39 @@ class FeeForm(FlaskForm):
     dcm_service_fees = SelectField('DCM Service Fee', choices=[
         ('0%', '0%'), ('10%', '10%'), ('15%', '15%')])
     form_continue = HiddenField('form_continue')
+
+
+class ConversionForm(FlaskForm):
+    conversion_name = StringField('Conversion Name')
+    conversion_type = SelectField('Conversion Type',
+                                  choices=[(x, x) for x in vmc.datafloatcol])
+    key = SelectField(
+        'Conversion Platform', choices=[
+            ('DCM', 'DCM'), ('Sizmek', 'Sizmek'), ('Facebook', 'Facebook'),
+            ('Adwords', 'Adwords'), ('Twitter', 'Twitter'), ('TTD', 'TTD'),
+            ('Snapchat', 'Snapchat'), ('DBM', 'DBM'), ('Redshell', 'Redshell'),
+            ('Reddit', 'Reddit'), ('Netbase', 'Netbase'), ('GA', 'GA'),
+            ('Revcontent', 'Revcontent'), ('AppsFlyer', 'AppsFlyer')])
+    delete = SubmitField('Delete')
+
+
+class GeneralConversionForm(FlaskForm):
+    add_child = SubmitField(label='Add Conversion')
+    remove_conversion = SubmitField('Remove Last Conversion')
+    refresh_edit_conversions = SubmitField('Edit As Spreadsheet')
+    form_continue = HiddenField('form_continue')
+    conversions = FieldList(FormField(ConversionForm, label=''))
+
+    def set_conversions(self, data_source, cur_proc):
+        conv_dict = []
+        proc_convs = data_source.query.filter_by(processor_id=cur_proc.id).all()
+        for conv in proc_convs:
+            if conv.conversion_name is not None:
+                form_dict = conv.get_form_dict()
+                conv_dict.append(form_dict)
+        self.conversions = conv_dict
+        return conv_dict
+
 
 
 class UploaderForm(FlaskForm):

@@ -9,7 +9,7 @@ from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
-    ProcessorDatasources, Uploader, Account, RateCard, Rates
+    ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion
 
 app = create_app()
 app.app_context().push()
@@ -783,24 +783,43 @@ def create_uploader(uploader_id, current_user_id, base_path):
             uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
+def set_processor_values(processor_id, current_user_id, form_sources, table):
+    cur_processor = Processor.query.get(processor_id)
+    old_items = table.query.filter_by(
+        processor_id=cur_processor.id).all()
+    user_that_ran = User.query.get(current_user_id)
+    _set_task_progress(0)
+    if old_items:
+        for item in old_items:
+            db.session.delete(item)
+        db.session.commit()
+    for form_source in form_sources:
+        t = table()
+        t.set_from_form(form_source, cur_processor)
+        db.session.add(t)
+    db.session.commit()
+    msg_text = "Processor {} {} set.".format(cur_processor.name,
+                                             table.__name__)
+    processor_post_message(cur_processor, user_that_ran, msg_text)
+
+
 def set_processor_accounts(processor_id, current_user_id, form_sources):
     try:
-        cur_processor = Processor.query.get(processor_id)
-        old_accounts = Account.query.filter_by(
-            processor_id=cur_processor.id).all()
-        user_that_ran = User.query.get(current_user_id)
-        _set_task_progress(0)
-        if old_accounts:
-            for act in old_accounts:
-                db.session.delete(act)
-            db.session.commit()
-        for form_account in form_sources:
-            account = Account()
-            account.set_from_form(form_account, cur_processor)
-            db.session.add(account)
-        db.session.commit()
-        msg_text = "Processor {} accounts set.".format(cur_processor.name)
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        set_processor_values(processor_id=processor_id,
+                             current_user_id=current_user_id,
+                             form_sources=form_sources, table=Account)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
+def set_processor_conversions(processor_id, current_user_id, form_sources):
+    try:
+        set_processor_values(processor_id=processor_id,
+                             current_user_id=current_user_id,
+                             form_sources=form_sources, table=Conversion)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

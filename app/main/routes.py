@@ -9,10 +9,11 @@ from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
     ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
-    GeneralAccountForm, EditProcessorRequestForm, FeeForm
+    GeneralAccountForm, EditProcessorRequestForm, FeeForm, ConversionForm, \
+    GeneralConversionForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
-    Uploader, Account, RateCard
+    Uploader, Account, RateCard, Conversion
 from app.translate import translate
 from app.main import bp
 
@@ -298,7 +299,8 @@ def get_navigation_buttons(buttons=None):
         buttons = [{'Basic': 'main.edit_request_processor'},
                    {'Accounts': 'main.edit_processor_account'},
                    {'Fees': 'main.edit_processor_fees'},
-                   {'Finish': 'main.edit_processor_export'}]
+                   {'Conversions': 'main.edit_processor_conversions'},
+                   {'Finish': 'main.edit_processor_conversions'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
                    {'Import': 'main.edit_processor_import'},
@@ -782,7 +784,8 @@ def request_processor():
 @bp.route('/processor/<processor_name>/edit/request', methods=['GET', 'POST'])
 @login_required
 def edit_request_processor(processor_name):
-    kwargs = get_current_processor(processor_name, 'edit_processor_request',
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_request_processor',
                                    edit_progress=25, edit_name='Basic',
                                    buttons='ProcessorRequest')
     processor_to_edit = Processor.query.filter_by(
@@ -813,7 +816,7 @@ def edit_request_processor(processor_name):
             return redirect(url_for('main.edit_processor_account',
                                     processor_name=processor_to_edit.name))
         else:
-            return redirect(url_for('main.processor_page',
+            return redirect(url_for('main.edit_request_processor',
                                     processor_name=processor_to_edit.name))
     elif request.method == 'GET':
         form.name.data = processor_to_edit.name
@@ -918,6 +921,53 @@ def edit_processor_fees(processor_name):
         form.rate_card.data = form_rate_card
         form.dcm_service_fees.data = cur_proc.dcm_service_fees
     kwargs['form'] = form
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/edit/conversions',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_conversions(processor_name):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_conversions',
+                                   edit_progress=75, edit_name='Conversions',
+                                   buttons='ProcessorRequest')
+    cur_proc = kwargs['processor']
+    conversions = GeneralConversionForm().set_conversions(Conversion, cur_proc)
+    form = GeneralConversionForm(conversions=conversions)
+    kwargs['form'] = form
+    if form.add_child.data:
+        form.conversions.append_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
+    if form.remove_conversion.data:
+        form.conversions.pop_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
+    for conv in form.conversions:
+        if conv.delete.data:
+            conv = Conversion.query.filter_by(
+                key=conv.key.data, conversion_name=conv.conversion_name.data,
+                conversion_type=conv.conversion_type.data,
+                processor_id=cur_proc.id).first()
+            if conv:
+                db.session.delete(conv)
+                db.session.commit()
+            return redirect(url_for('main.edit_processor_conversions',
+                                    processor_name=processor_name))
+    if request.method == 'POST':
+        msg_text = 'Setting conversions for {}'.format(processor_name)
+        task = cur_proc.launch_task(
+            '.set_processor_conversions', _(msg_text),
+            running_user=current_user.id, form_sources=form.conversions.data)
+        db.session.commit()
+        task.wait_and_get_job()
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_processor_conversions',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_conversions',
+                                    processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 

@@ -335,6 +335,28 @@ class Rates(db.Model):
     rate_card_id = db.Column(db.Integer, db.ForeignKey('rate_card.id'))
 
 
+class Conversion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    conversion_name = db.Column(db.Text)
+    conversion_type = db.Column(db.Text)
+    key = db.Column(db.String(64))
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+
+    def get_form_dict(self):
+        form_dict = {
+            'key': self.key,
+            'conversion_name': self.conversion_name,
+            'conversion_type': self.conversion_type,
+        }
+        return form_dict
+
+    def set_from_form(self, form, current_processor):
+        self.processor_id = current_processor.id
+        self.key = form['key']
+        self.conversion_name = form['conversion_name']
+        self.conversion_type = form['conversion_type']
+
+
 class Processor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), index=True)
@@ -357,6 +379,8 @@ class Processor(db.Model):
     posts = db.relationship('Post', backref='processor', lazy='dynamic')
     task_scheduler = db.relationship('TaskScheduler', backref='processor',
                                      lazy='dynamic')
+    conversions = db.relationship('Conversion', backref='processor',
+                                  lazy='dynamic')
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
     rate_card_id = db.Column(db.Integer, db.ForeignKey('rate_card.id'))
     processor_datasources = db.relationship('ProcessorDatasources',

@@ -79,6 +79,11 @@ class User(UserMixin, db.Model):
         primaryjoin=(followers.c.follower_id == id),
         secondaryjoin=(followers.c.followed_id == id),
         backref=db.backref('followers', lazy='dynamic'), lazy='dynamic')
+    processor_followed = db.relationship(
+        'User', secondary=followers,
+        primaryjoin=(followers.c.follower_id == id),
+        secondaryjoin=(followers.c.followed_id == id),
+        backref=db.backref('followers', lazy='dynamic'), lazy='dynamic')
     messages_sent = db.relationship('Message',
                                     foreign_keys='Message.sender_id',
                                     backref='author', lazy='dynamic')
@@ -128,7 +133,25 @@ class User(UserMixin, db.Model):
             followers, (followers.c.followed_id == Post.user_id)).filter(
                 followers.c.follower_id == self.id)
         own = Post.query.filter_by(user_id=self.id)
-        return followed.union(own).order_by(Post.timestamp.desc())
+        processor_followed = Post.query.join(
+            processor_followers, (processor_followers.c.followed_id ==
+                                  Post.processor_id)).filter(
+                processor_followers.c.follower_id ==self.id
+        )
+        all_posts = followed.union(own).union(processor_followed).order_by(Post.timestamp.desc())
+        return all_posts
+
+    def follow_processor(self, processor):
+        if not self.is_following_processor(processor):
+            self.processor_followed.append(processor)
+
+    def unfollow_processor(self, processor):
+        if self.is_following_processor(processor):
+            self.processor_followed.remove(processor)
+
+    def is_following_processor(self, processor):
+        return self.processor_followed.filter(
+            processor_followers.c.followed_id == processor.id).count() > 0
 
     def get_reset_password_token(self, expires_in=600):
         return jwt.encode(
@@ -340,6 +363,7 @@ class Conversion(db.Model):
     conversion_name = db.Column(db.Text)
     conversion_type = db.Column(db.Text)
     key = db.Column(db.String(64))
+    dcm_category = db.Column(db.Text)
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
 
     def get_form_dict(self):
@@ -347,6 +371,7 @@ class Conversion(db.Model):
             'key': self.key,
             'conversion_name': self.conversion_name,
             'conversion_type': self.conversion_type,
+            'dcm_category': self.dcm_category
         }
         return form_dict
 
@@ -355,7 +380,14 @@ class Conversion(db.Model):
         self.key = form['key']
         self.conversion_name = form['conversion_name']
         self.conversion_type = form['conversion_type']
+        self.dcm_category = form['dcm_category']
 
+
+processor_followers = db.Table(
+    'processor_followers',
+    db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
+    db.column('followed_id', db.Integer, db.ForeignKey('processor.id'))
+)
 
 class Processor(db.Model):
     id = db.Column(db.Integer, primary_key=True)

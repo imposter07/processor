@@ -472,7 +472,8 @@ def post_table():
                  'Constant': '.write_constant_dict',
                  'Relation': '.write_relational_config',
                  'dictionary': '.write_dictionary',
-                 'rate_card': '.write_rate_card'}
+                 'rate_card': '.write_rate_card',
+                 'edit_conversions': '.write_conversions'}
     job_name = arg_trans[table_name]
     cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
@@ -499,8 +500,14 @@ def get_table():
                  'raw_data': '.get_raw_data',
                  'dictionary': '.get_dictionary',
                  'delete_dict': '.delete_dict',
-                 'rate_card': '.get_rate_card'}
+                 'rate_card': '.get_rate_card',
+                 'edit_conversions': '.get_processor_conversions',
+                 'data_sources': '.get_processor_sources',
+                 'imports': '.get_processor_sources'}
     job_name = arg_trans[table_name]
+    if cur_proc.get_task_in_progress(job_name):
+        flash(_('This job: {} is already running!').format(table_name))
+        return jsonify({'data': {'data': [], 'cols': [], 'name': table_name}})
     if request.form['vendorkey'] != 'None':
         proc_arg['vk'] = request.form['vendorkey']
         table_name = '{}vendorkey{}'.format(
@@ -508,9 +515,13 @@ def get_table():
     msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
-    job = task.wait_and_get_job(force_return=True)
-    df = job.result[0]
     import pandas as pd
+    if job_name in ['.get_processor_sources']:
+        df = pd.DataFrame([{
+            'Result': 'Data for the requested processor is being refreshed.'}])
+    else:
+        job = task.wait_and_get_job(force_return=True)
+        df = job.result[0]
     pd.set_option('display.max_colwidth', -1)
     cols = json.dumps(df.reset_index().columns.tolist())
     table_name = "modalTable{}".format(table_name)
@@ -761,7 +772,7 @@ def request_processor():
             requesting_user_id=current_user.id, plan_path=form.plan_path.data,
             start_date=form.start_date.data, end_date=form.end_date.data,
             first_report_=form.first_report.data,
-            campaign_id=form_campaign.id)
+            campaign_id=form_campaign.id, user_id=current_user.id)
         db.session.add(new_processor)
         db.session.commit()
         creation_text = 'Processor was requested for creation.'
@@ -908,7 +919,7 @@ def edit_processor_fees(processor_name):
         db.session.add(post)
         db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_fees',
+            return redirect(url_for('main.edit_processor_conversions',
                                     processor_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_fees',
@@ -919,7 +930,8 @@ def edit_processor_fees(processor_name):
         form_rate_card = RateCard.query.filter_by(
             id=cur_proc.rate_card_id).first()
         form.rate_card.data = form_rate_card
-        form.dcm_service_fees.data = cur_proc.dcm_service_fees
+        dcm_fee = '{}%'.format(round(cur_proc.dcm_service_fees * 100))
+        form.dcm_service_fees.data = dcm_fee
     kwargs['form'] = form
     return render_template('create_processor.html', **kwargs)
 
@@ -949,6 +961,7 @@ def edit_processor_conversions(processor_name):
             conv = Conversion.query.filter_by(
                 key=conv.key.data, conversion_name=conv.conversion_name.data,
                 conversion_type=conv.conversion_type.data,
+                dcm_category=conv.dcm_category.data,
                 processor_id=cur_proc.id).first()
             if conv:
                 db.session.delete(conv)
@@ -963,10 +976,59 @@ def edit_processor_conversions(processor_name):
         db.session.commit()
         task.wait_and_get_job()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_conversions',
+            return redirect(url_for('main.edit_processor_finish',
                                     processor_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_conversions',
+                                    processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/edit/finish',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_finish(processor_name):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_users',
+                                   edit_progress=100, edit_name='Conversions',
+                                   buttons='ProcessorRequest')
+    cur_proc = kwargs['processor']
+    conversions = GeneralConversionForm().set_conversions(Conversion, cur_proc)
+    form = GeneralConversionForm(conversions=conversions)
+    kwargs['form'] = form
+    if form.add_child.data:
+        form.conversions.append_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
+    if form.remove_conversion.data:
+        form.conversions.pop_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
+    for conv in form.conversions:
+        if conv.delete.data:
+            conv = Conversion.query.filter_by(
+                key=conv.key.data, conversion_name=conv.conversion_name.data,
+                conversion_type=conv.conversion_type.data,
+                dcm_category=conv.dcm_category.data,
+                processor_id=cur_proc.id).first()
+            if conv:
+                db.session.delete(conv)
+                db.session.commit()
+            return redirect(url_for('main.edit_processor_conversions',
+                                    processor_name=processor_name))
+    if request.method == 'POST':
+        msg_text = 'Setting conversions for {}'.format(processor_name)
+        task = cur_proc.launch_task(
+            '.set_processor_conversions', _(msg_text),
+            running_user=current_user.id, form_sources=form.conversions.data)
+        db.session.commit()
+        task.wait_and_get_job()
+        if form.form_continue.data == 'continue':
+
+            return redirect(url_for('main.edit_processor_finish',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_finish',
                                     processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 

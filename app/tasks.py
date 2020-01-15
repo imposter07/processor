@@ -294,7 +294,7 @@ def get_processor_sources(processor_id, current_user_id):
         matrix = vm.VendorMatrix()
         data_sources = matrix.get_all_data_sources()
         add_data_sources_from_processor(cur_processor, data_sources)
-        msg_text = "Processor {} imports refreshed.".format(cur_processor.name)
+        msg_text = "Processor {} sources refreshed.".format(cur_processor.name)
         processor_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
         db.session.commit()
@@ -817,6 +817,44 @@ def set_processor_accounts(processor_id, current_user_id, form_sources):
 
 def set_processor_conversions(processor_id, current_user_id, form_sources):
     try:
+        set_processor_values(processor_id=processor_id,
+                             current_user_id=current_user_id,
+                             form_sources=form_sources, table=Conversion)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
+def get_processor_conversions(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        old_items = Conversion.query.filter_by(
+            processor_id=cur_processor.id).all()
+        _set_task_progress(0)
+        conv_list = []
+        if not old_items:
+            conv_list.append({x: 'None'
+                              for x in Rates.__table__.columns.keys()
+                              if 'id' not in x})
+        else:
+            for row in old_items:
+                conv_list.append(dict((col, getattr(row, col))
+                                      for col in row.__table__.columns.keys()
+                                      if 'id' not in col))
+        df = pd.DataFrame(conv_list)
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
+def write_conversions(processor_id, current_user_id, new_data):
+    try:
+        form_sources = json.loads(new_data)
         set_processor_values(processor_id=processor_id,
                              current_user_id=current_user_id,
                              form_sources=form_sources, table=Conversion)

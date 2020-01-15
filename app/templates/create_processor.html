@@ -242,13 +242,15 @@
                     let sendTableName = sourceElem.replace('modalTable', '');
                     let data = sendTable
                         .data().toArray();
-                    let json = JSON.stringify( data );
+                    let json = JSON.stringify(data);
                     $.post('/post_table',
                         {
                             data: json,
                             processor:  "{{ processor_name }}",
                             table: sendTableName
-                        });
+                        }).done(function(data, status) {
+                            location.reload();
+                    });
                 }
             </script>
             <button type="button" class="btn btn-success"
@@ -366,6 +368,30 @@
                         {{ _('Campaign & Vendor & Copy') }}</a>
                     <a class="dropdown-item" id="editTableOutputDataBuyModel">
                         {{ _('Campaign & Vendor & Buy Model') }}</a>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <button class="btn btn-outline-danger btn-lg btn-block
+                           dropdown-toggle text-left"
+                    type="button" data-toggle="collapse"
+                    id="editTableDropdownButtonView"
+                    data-target="#collapseFour" aria-expanded="true"
+                    aria-controls="collapseFour">
+                <i class="fas fa-blender-phone" href="#" role="button"></i>
+                {{ _('Requests') }}
+                <span class="caret"></span>
+            </button>
+            <div id="collapseFour" class="collapse"
+                 aria-labelledby="headingFour"
+                 data-parent="#accordionExample">
+                <div class="card-body">
+                    <a class="dropdown-item" id=""
+                     href="{{ url_for('main.edit_request_processor',
+                        processor_name=processor_name) }}">
+                        {{ _('View Initial Request') }}</a>
+                    <a class="dropdown-item" id="">
+                        {{ _('Request Data Fix') }}</a>
                 </div>
             </div>
         </div>
@@ -550,8 +576,12 @@
               if (tableName === 'rate_card') {
                   var vendorKey = $('#' + tableName)[0].value;
               } else {
-                  vendorKey = $(this).parent().parent()[0].elements[0].value;
+              try {
+                vendorKey = $(this).parent().parent()[0].elements[0].value;
               }
+              catch(err) {
+                vendorKey = 'None';
+              }}
               let oldHtml = $(this).parent().html();
               console.log($(this));
               console.log(tableName);

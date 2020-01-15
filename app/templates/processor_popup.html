@@ -1,14 +1,24 @@
 <div class="card bg-light mb-3">
-    <div class="card-header text-center">
+    <div class="card-header">
         <h3>
             <a href="{{ url_for('main.processor_page',
             processor_name=processor.name) }}">
             {{ processor.name }}
         </a>
-            <a href="#"><i class="far fa-star" style="color:#008CBA"></i>
-        </a></h3>
+            {% if not current_user.is_following_processor(processor) %}
+                <a class="btn btn-outline-primary rounded-pill"
+                   href="{{ url_for('main.follow_processor',
+                   processor_name=processor.name) }}"
+                style="float: right;">Follow</a>
+             {% else %}
+                <a class="btn btn-primary rounded-pill"
+                   href="{{ url_for('main.unfollow_processor',
+                   processor_name=processor.name) }}"
+                style="float: right;">Following</a>
+            {% endif %}
+        </h3>
     </div>
-    <div class="card text-center">
+    <div class="card">
         <div class="card-body">
         <p class="card-text">
             <span id="campaign{{ processor.id }}">

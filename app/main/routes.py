@@ -177,6 +177,34 @@ def unfollow(username):
     return redirect(url_for('main.user', username=username))
 
 
+@bp.route('/follow_processor/<processor_name>')
+@login_required
+def follow_processor(processor_name):
+    processor_follow = Processor.query.filter_by(name=processor_name).first()
+    if processor_follow is None:
+        flash(_('Processor {} not found.'.format(processor_name)))
+        return redirect(url_for('main.index'))
+    current_user.follow_processor(processor_follow)
+    db.session.commit()
+    flash(_('You are following {}!'.format(processor_name)))
+    return redirect(url_for('main.processor_page',
+                            processor_name=processor_name))
+
+
+@bp.route('/unfollow_processor/<processor_name>')
+@login_required
+def unfollow_processor(processor_name):
+    processor_unfollow = Processor.query.filter_by(name=processor_name).first()
+    if processor_unfollow is None:
+        flash(_('Processor {} not found.'.format(processor_name)))
+        return redirect(url_for('main.index'))
+    current_user.unfollow_processor(processor_unfollow)
+    db.session.commit()
+    flash(_('You are no longer following {}!'.format(processor_name)))
+    return redirect(url_for('main.processor_page',
+                            processor_name=processor_name))
+
+
 @bp.route('/translate', methods=['POST'])
 @login_required
 def translate_text():

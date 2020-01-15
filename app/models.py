@@ -66,6 +66,13 @@ followers = db.Table(
 )
 
 
+processor_followers = db.Table(
+    'processor_followers',
+    db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('followed_id', db.Integer, db.ForeignKey('processor.id'))
+)
+
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
@@ -80,10 +87,11 @@ class User(UserMixin, db.Model):
         secondaryjoin=(followers.c.followed_id == id),
         backref=db.backref('followers', lazy='dynamic'), lazy='dynamic')
     processor_followed = db.relationship(
-        'User', secondary=followers,
-        primaryjoin=(followers.c.follower_id == id),
-        secondaryjoin=(followers.c.followed_id == id),
-        backref=db.backref('followers', lazy='dynamic'), lazy='dynamic')
+        'Processor', secondary=processor_followers,
+        primaryjoin=(processor_followers.c.follower_id == id),
+        secondaryjoin="processor_followers.c.followed_id == Processor.id",
+        backref=db.backref('processor_followers', lazy='dynamic'),
+        lazy='dynamic')
     messages_sent = db.relationship('Message',
                                     foreign_keys='Message.sender_id',
                                     backref='author', lazy='dynamic')
@@ -136,9 +144,9 @@ class User(UserMixin, db.Model):
         processor_followed = Post.query.join(
             processor_followers, (processor_followers.c.followed_id ==
                                   Post.processor_id)).filter(
-                processor_followers.c.follower_id ==self.id
-        )
-        all_posts = followed.union(own).union(processor_followed).order_by(Post.timestamp.desc())
+                processor_followers.c.follower_id == self.id)
+        all_posts = followed.union(own).union(processor_followed).order_by(
+            Post.timestamp.desc())
         return all_posts
 
     def follow_processor(self, processor):
@@ -382,12 +390,6 @@ class Conversion(db.Model):
         self.conversion_type = form['conversion_type']
         self.dcm_category = form['dcm_category']
 
-
-processor_followers = db.Table(
-    'processor_followers',
-    db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
-    db.column('followed_id', db.Integer, db.ForeignKey('processor.id'))
-)
 
 class Processor(db.Model):
     id = db.Column(db.Integer, primary_key=True)

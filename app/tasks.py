@@ -863,3 +863,12 @@ def write_conversions(processor_id, current_user_id, new_data):
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+
+
+def build_processor_from_request(processor_id, current_user_id):
+    cur_processor = Processor.query.get(processor_id)
+    base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
+        cur_processor.campaign.product.client.name,
+        cur_processor.campaign.product.name, cur_processor.campaign.name,
+        cur_processor.name)
+    create_processor(processor_id, current_user_id, base_path)

@@ -9,8 +9,8 @@ from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
     ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
-    GeneralAccountForm, EditProcessorRequestForm, FeeForm, ConversionForm, \
-    GeneralConversionForm
+    GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
+    GeneralConversionForm, ProcessorRequestFinishForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion
@@ -328,7 +328,7 @@ def get_navigation_buttons(buttons=None):
                    {'Accounts': 'main.edit_processor_account'},
                    {'Fees': 'main.edit_processor_fees'},
                    {'Conversions': 'main.edit_processor_conversions'},
-                   {'Finish': 'main.edit_processor_conversions'}]
+                   {'Finish': 'main.edit_processor_finish'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
                    {'Import': 'main.edit_processor_import'},
@@ -1017,43 +1017,45 @@ def edit_processor_conversions(processor_name):
 @login_required
 def edit_processor_finish(processor_name):
     kwargs = get_current_processor(processor_name,
-                                   current_page='edit_processor_users',
-                                   edit_progress=100, edit_name='Conversions',
+                                   current_page='edit_processor_finish',
+                                   edit_progress=100, edit_name='Finish',
                                    buttons='ProcessorRequest')
     cur_proc = kwargs['processor']
-    conversions = GeneralConversionForm().set_conversions(Conversion, cur_proc)
-    form = GeneralConversionForm(conversions=conversions)
+    cur_users = ProcessorRequestFinishForm().set_users(Processor, cur_proc)
+    form = ProcessorRequestFinishForm(assigned_users=cur_users)
     kwargs['form'] = form
     if form.add_child.data:
-        form.conversions.append_entry()
+        form.assigned_users.append_entry()
         kwargs['form'] = form
         return render_template('create_processor.html', **kwargs)
-    if form.remove_conversion.data:
-        form.conversions.pop_entry()
+    if form.remove_user.data:
+        form.assigned_users.pop_entry()
         kwargs['form'] = form
         return render_template('create_processor.html', **kwargs)
-    for conv in form.conversions:
-        if conv.delete.data:
-            conv = Conversion.query.filter_by(
-                key=conv.key.data, conversion_name=conv.conversion_name.data,
-                conversion_type=conv.conversion_type.data,
-                dcm_category=conv.dcm_category.data,
-                processor_id=cur_proc.id).first()
-            if conv:
-                db.session.delete(conv)
+    for usr in form.assigned_users:
+        if usr.delete.data:
+            delete_user = usr.assigned_user.data
+            if delete_user:
+                delete_user.unfollow_processor(cur_proc)
                 db.session.commit()
-            return redirect(url_for('main.edit_processor_conversions',
+            return redirect(url_for('main.edit_processor_finish',
                                     processor_name=processor_name))
     if request.method == 'POST':
+        for usr in form.assigned_users:
+            follow_user = usr.assigned_user.data
+            if follow_user:
+                follow_user.follow_processor(cur_proc)
+                db.session.commit()
+        """
         msg_text = 'Setting conversions for {}'.format(processor_name)
         task = cur_proc.launch_task(
             '.set_processor_conversions', _(msg_text),
             running_user=current_user.id, form_sources=form.conversions.data)
         db.session.commit()
         task.wait_and_get_job()
+        """
         if form.form_continue.data == 'continue':
-
-            return redirect(url_for('main.edit_processor_finish',
+            return redirect(url_for('main.processor_page',
                                     processor_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_finish',

@@ -397,6 +397,34 @@ class GeneralConversionForm(FlaskForm):
         return conv_dict
 
 
+class AssignUserForm(FlaskForm):
+    assigned_user = QuerySelectField(_l('User'), allow_blank=True,
+                                     query_factory=lambda: User.query.all(),
+                                     get_label='username')
+    user_level = SelectField(
+        'User Level', choices=[(x, x) for x in ['Follower', 'Owner']])
+    delete = SubmitField('Delete')
+
+
+class ProcessorRequestFinishForm(FlaskForm):
+    add_child = SubmitField(label='Add User')
+    remove_user = SubmitField('Remove Last User')
+    form_continue = HiddenField('form_continue')
+    assigned_users = FieldList(FormField(AssignUserForm, label=''))
+
+    def set_users(self, data_source, cur_proc):
+        usr_dict = []
+        proc_users = data_source.query.get(cur_proc.id).processor_followers
+        for usr in proc_users:
+            if usr.username is not None:
+                form_dict = {'assigned_user': usr,
+                             'user_level': 'Follower'}
+                if cur_proc.user_id == usr.id:
+                    form_dict['user_level'] = 'Owner'
+                usr_dict.append(form_dict)
+        self.assigned_users = usr_dict
+        return usr_dict
+
 
 class UploaderForm(FlaskForm):
     name = StringField(_l('Name'), validators=[

@@ -1,0 +1,15 @@
+Dear {{ user.username }},
+
+A report has recently been requested with you assigned as a follower.
+
+The processor can be found at : https://lqadata.com/processor/{{ processor_name }}
+
+The results of the automatic creation are listed below:
+
+{% for x in progress %}
+    {{ x }}
+{% endfor %}
+
+Sincerely,
+
+Liquid App

@@ -370,12 +370,7 @@ class ConversionForm(FlaskForm):
             ('Snapchat', 'Snapchat'), ('DBM', 'DBM'), ('Redshell', 'Redshell'),
             ('Reddit', 'Reddit'), ('Netbase', 'Netbase'), ('GA', 'GA'),
             ('Revcontent', 'Revcontent'), ('AppsFlyer', 'AppsFlyer')])
-    dcm_category = SelectField(
-        'DCM Category', choices=[
-            ('Button Clicks', 'Button Clicks'),
-            ('Landing Page Views', 'Landing Page Views'),
-            ('Learn More Pages', 'Learn More Pages'),
-            ('Purchases', 'Purchases')])
+    dcm_category = StringField('DCM Category')
     delete = SubmitField('Delete')
 
 

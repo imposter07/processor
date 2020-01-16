@@ -1046,15 +1046,13 @@ def edit_processor_finish(processor_name):
             if follow_user:
                 follow_user.follow_processor(cur_proc)
                 db.session.commit()
-        """
-        msg_text = 'Setting conversions for {}'.format(processor_name)
-        task = cur_proc.launch_task(
-            '.set_processor_conversions', _(msg_text),
-            running_user=current_user.id, form_sources=form.conversions.data)
-        db.session.commit()
-        task.wait_and_get_job()
-        """
         if form.form_continue.data == 'continue':
+            msg_text = 'Sending request and attempting to build processor: {}' \
+                       ''.format(processor_name)
+            task = cur_proc.launch_task(
+                '.build_processor_from_request', _(msg_text),
+                running_user=current_user.id)
+            db.session.commit()
             return redirect(url_for('main.processor_page',
                                     processor_name=cur_proc.name))
         else:

@@ -1,0 +1,9 @@
+<p>Dear {{ user.username }},</p>
+<p>A report has recently been requested with you assigned as a follower.</p>
+<p>The processor can be found at : https://lqadata.com/processor/{{ processor_name }}</p>
+<p>The results of the automatic creation are listed below.</p>
+{% for x in progress %}
+    <p>{{ x }}</p>
+{% endfor %}
+<p>Sincerely,</p>
+<p>Liquid App</p>

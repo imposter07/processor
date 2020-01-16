@@ -670,6 +670,19 @@ class Account(db.Model):
         self.username = form['username']
         self.password = form['password']
 
+    def get_dict_for_processor(self, name, start_date):
+        proc_dict = {
+            'name': name,
+            'key': self.key,
+            'account_id': self.account_id,
+            'account_filter': self.campaign_id,
+            'start_date': start_date,
+            'api_fields': ''
+        }
+        if self.key == 'Facebook':
+            proc_dict['api_fields'] = 'Actions'
+        return proc_dict
+
 
 class Uploader(db.Model):
     id = db.Column(db.Integer, primary_key=True)

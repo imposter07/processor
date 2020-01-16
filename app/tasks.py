@@ -158,10 +158,12 @@ def run_processor(processor_id, current_user_id, processor_args):
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, msg_text)
         _set_task_progress(100)
+        return True
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
 
 
 def list_files(path, attempt=1):
@@ -252,10 +254,12 @@ def create_processor(processor_id, current_user_id, base_path):
         msg_text = "Processor {} was created.".format(new_processor.name)
         processor_post_message(new_processor, user_create, msg_text)
         _set_task_progress(100)
+        return True
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
 
 
 def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
@@ -334,10 +338,12 @@ def set_processor_imports(processor_id, current_user_id, form_imports):
         get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
         db.session.commit()
+        return True
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
 
 
 def set_data_sources(processor_id, current_user_id, form_sources):
@@ -865,10 +871,188 @@ def write_conversions(processor_id, current_user_id, new_data):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+def set_conversions(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        for key in set(x.key for x in cur_processor.conversions):
+            idx = matrix.vm_df[matrix.vm_df[vmc.vendorkey] == key].index
+            if len(idx) == 0:
+                continue
+            else:
+                idx = idx[0]
+            for col in set(x.conversion_type
+                           for x in cur_processor.conversions):
+                conv = [x for x in cur_processor.conversions
+                        if x.key == key and x.conversion_type == col]
+                if conv:
+                    if key == vmc.api_dc_key:
+                        total_conv = '|'.join(
+                            ['{} : {}: Total Conversions'.format(
+                             x.dcm_category, x.conversion_name) for x in conv])
+                        matrix.vm_change(idx, col, total_conv)
+                        pc_conv = '|'.join(
+                            ['{} : {}: Click-through Conversions'.format(
+                             x.dcm_category, x.conversion_name) for x in conv])
+                        matrix.vm_change(idx, col + vmc.postclick, pc_conv)
+                        pi_conv = '|'.join(
+                            ['{} : {}: View-through Conversions'.format(
+                             x.dcm_category, x.conversion_name) for x in conv])
+                        matrix.vm_change(idx, col + vmc.postimp, pi_conv)
+                    elif key == vmc.api_szk_key:
+                        total_conv = '|'.join(
+                            ['{} Total Conversions'.format(
+                             x.conversion_name) for x in conv])
+                        matrix.vm_change(idx, col, total_conv)
+                        pc_conv = '|'.join(
+                            ['{} Post Click Conversions'.format(
+                             x.conversion_name) for x in conv])
+                        matrix.vm_change(idx, col + vmc.postclick, pc_conv)
+                        pi_conv = '|'.join(
+                            ['{} Post Impression Conversions'.format(
+                             x.conversion_name) for x in conv])
+                        matrix.vm_change(idx, col + vmc.postimp, pi_conv)
+                    else:
+                        total_conv = '|'.join(['{}'.format(
+                            x.conversion_name) for x in conv])
+                        matrix.vm_change(idx, col, total_conv)
+        matrix.write()
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def set_processor_fees(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        rate_card = cur_processor.rate_card
+        import processor.reporting.dictcolumns as dctc
+        import processor.reporting.dictionary as dct
+        import numpy as np
+        os.chdir(adjust_path(cur_processor.local_path))
+        rate_list = []
+        for row in rate_card.rates:
+            rate_list.append(dict((col, getattr(row, col))
+                                  for col in row.__table__.columns.keys()
+                                  if 'id' not in col))
+
+        df = pd.DataFrame(rate_list)
+        df = df.rename(columns={'adserving_fee': dctc.AR,
+                                'reporting_fee': dctc.RFR,
+                                'type_name': dctc.SRV})
+        for col in [dctc.RFM, dctc.AM]:
+            df[col] = 'CPM'
+            df[col] = np.where(df[dctc.SRV].str.contains('Click'), 'CPC', 'CPM')
+        df = df[[dctc.SRV, dctc.AM, dctc.AR, dctc.RFM, dctc.RFR]]
+        rc = dct.RelationalConfig()
+        rc.read(dctc.filename_rel_config)
+        params = rc.get_relation_params('Serving')
+        dr = dct.DictRelational(**params)
+        dr.write(df)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def send_processor_build_email(processor_id, current_user_id, progress):
+    try:
+        progress = ['{}.....{}'.format(k, v)
+                    for k, v in progress.items()]
+        cur_processor = Processor.query.get(processor_id)
+        from urllib.parse import quote
+        processor_name = quote(cur_processor.name)
+        for user in cur_processor.processor_followers:
+            send_email('[Liquid App] New Processor Creation Request!',
+                       sender=app.config['ADMINS'][0],
+                       recipients=[user.email],
+                       text_body=render_template(
+                           'email/processor_request_build.txt', user=user,
+                           processor_name=processor_name,
+                           progress=progress),
+                       html_body=render_template(
+                           'email/processor_request_build.html', user=user,
+                           processor_name=processor_name,
+                           progress=progress),
+                       sync=True)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
 def build_processor_from_request(processor_id, current_user_id):
-    cur_processor = Processor.query.get(processor_id)
-    base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
-        cur_processor.campaign.product.client.name,
-        cur_processor.campaign.product.name, cur_processor.campaign.name,
-        cur_processor.name)
-    create_processor(processor_id, current_user_id, base_path)
+    progress = {
+        'create': 'Failed',
+        'set_apis': 'Failed',
+        'set_conversions': 'Failed',
+        'set_fees': 'Failed',
+        'run_processor': 'Failed',
+        'schedule_processor': 'Failed'
+    }
+    try:
+        _set_task_progress(0)
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        cur_processor = Processor.query.get(processor_id)
+        base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
+            cur_processor.campaign.product.client.name,
+            cur_processor.campaign.product.name, cur_processor.campaign.name,
+            cur_processor.name)
+        cur_processor.local_path = base_path
+        db.session.commit()
+        _set_task_progress(15)
+        result = create_processor(processor_id, current_user_id,
+                                  app.config['BASE_PROCESSOR_PATH'])
+        if result:
+            progress['create'] = 'Success!'
+        _set_task_progress(30)
+        import_names = (cur_processor.campaign.name.
+                        replace(' ', '').replace('_', '').replace('|', ''))
+        proc_dict = [
+            x.get_dict_for_processor(import_names, cur_processor.start_date)
+            for x in cur_processor.accounts]
+        os.chdir(cur_path)
+        result = set_processor_imports(processor_id, current_user_id, proc_dict)
+        if result:
+            progress['set_apis'] = 'Success!'
+        _set_task_progress(45)
+        os.chdir(cur_path)
+        result = set_conversions(processor_id, current_user_id)
+        if result:
+            progress['set_conversions'] = 'Success!'
+        _set_task_progress(60)
+        os.chdir(cur_path)
+        result = set_processor_fees(processor_id, current_user_id)
+        if result:
+            progress['set_fees'] = 'Success!'
+        _set_task_progress(75)
+        os.chdir(cur_path)
+        result = run_processor(processor_id, current_user_id, '--noprocess')
+        if result:
+            progress['run_processor'] = 'Success!'
+        _set_task_progress(90)
+        os.chdir(cur_path)
+        msg_text = 'Scheduling processor: {}'.format(cur_processor.name)
+        import datetime as dt
+        cur_processor.schedule_job('.full_run_processor', msg_text,
+                                   start_date=cur_processor.start_date,
+                                   end_date=cur_processor.end_date,
+                                   scheduled_time=dt.time(8, 0, 0),
+                                   interval=24)
+        db.session.commit()
+        progress['schedule_processor'] = 'Success!'
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+    finally:
+        send_processor_build_email(processor_id, current_user_id, progress)

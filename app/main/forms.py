@@ -242,6 +242,7 @@ class ProcessorRequestForm(FlaskForm):
     description = StringField(_l('Description'), validators=[
         DataRequired()])
     plan_path = StringField(_l('Media Plan Path'), validators=[DataRequired()])
+    media_plan = FileField('Media Plan')
     start_date = DateField(_l('Start Date'))
     end_date = DateField(_l('End Date'))
     first_report = DateField(_l('First Report Date'))

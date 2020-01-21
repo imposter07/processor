@@ -303,12 +303,13 @@ def processor():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     page = request.args.get('page', 1, type=int)
     current_clients = Client.query.order_by(Client.name)
-    processors = Processor.query.order_by(
+    processors = cur_user.processor_followed.order_by(
         Processor.last_run_time.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
-    current_processors = current_user.processor.order_by(
-        Processor.last_run_time.desc()).paginate(
-        page, current_app.config['POSTS_PER_PAGE'], False)
+    if len(processors.items) == 0:
+        processors = Processor.query.order_by(
+            Processor.last_run_time.desc()).paginate(
+            page, current_app.config['POSTS_PER_PAGE'], False)
     next_url = (url_for('main.processor', username=cur_user.username,
                         page=processors.next_num)
                 if processors.has_next else None)
@@ -317,7 +318,6 @@ def processor():
                 if processors.has_prev else None)
     return render_template('processor.html', title=_('Processor'),
                            user=cur_user, processors=processors.items,
-                           currrent_processors=current_processors.items,
                            next_url=next_url, prev_url=prev_url,
                            clients=current_clients)
 
@@ -357,6 +357,8 @@ def create_processor():
             tableau_workbook=form.tableau_workbook.data,
             tableau_view=form.tableau_view.data, campaign_id=form_campaign.id)
         db.session.add(new_processor)
+        db.session.commit()
+        cur_user.follow_processor(new_processor)
         db.session.commit()
         post_body = 'Create Processor {}...'.format(new_processor.name)
         new_processor.launch_task('.create_processor', _(post_body),
@@ -445,7 +447,7 @@ def edit_processor_import(processor_name):
         else:
             msg_text = ('Setting imports in '
                         'vendormatrix for {}').format(processor_name)
-            task = cur_proc.launch_task(
+            cur_proc.launch_task(
                 '.set_processor_imports', _(msg_text),
                 running_user=current_user.id, form_imports=form.apis.data)
             db.session.commit()
@@ -783,6 +785,23 @@ def edit_processor(processor_name):
     return render_template('create_processor.html',  **kwargs)
 
 
+
+ALLOWED_EXTENSIONS = {'xlsx'}
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@bp.route('/uploads/<filename>')
+@login_required
+def uploaded_file(filename):
+    from flask import send_from_directory
+    return send_from_directory(app.config['UPLOAD_FOLDER'],
+                               filename)
+
+
 @bp.route('/request_processor', methods=['GET', 'POST'])
 @login_required
 def request_processor():
@@ -851,6 +870,23 @@ def edit_request_processor(processor_name):
                     processor_id=processor_to_edit.id)
         db.session.add(post)
         db.session.commit()
+        """
+        from werkzeug.utils import secure_filename
+        import os
+        f = form.media_plan.data
+        json_file = json.dumps({'data': f})
+        filename = secure_filename(f.filename)
+        f.save(os.path.join(
+            '/mnt/c/Users/james/Documents/scripts/python/lqapp', filename
+        ))
+        msg_text = 'Attempting to save media plan for  processor: {}' \
+                   ''.format(processor_name)
+        processor_to_edit.launch_task(
+            '.save_media_plan', _(msg_text),
+            running_user=current_user.id,
+            media_plan=json_file)
+        db.session.commit()
+        """
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_account',
                                     processor_name=processor_to_edit.name))
@@ -1049,7 +1085,7 @@ def edit_processor_finish(processor_name):
         if form.form_continue.data == 'continue':
             msg_text = 'Sending request and attempting to build processor: {}' \
                        ''.format(processor_name)
-            task = cur_proc.launch_task(
+            cur_proc.launch_task(
                 '.build_processor_from_request', _(msg_text),
                 running_user=current_user.id)
             db.session.commit()

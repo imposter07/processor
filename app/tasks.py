@@ -1056,3 +1056,23 @@ def build_processor_from_request(processor_id, current_user_id):
             processor_id, current_user_id), exc_info=sys.exc_info())
     finally:
         send_processor_build_email(processor_id, current_user_id, progress)
+
+
+def save_media_plan(processor_id, current_user_id, media_plan):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        from werkzeug.utils import secure_filename
+        media_plan = media_plan['data']
+        filename = secure_filename(media_plan.filename)
+        base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
+            cur_processor.campaign.product.client.name,
+            cur_processor.campaign.product.name, cur_processor.campaign.name,
+            cur_processor.name)
+        os.mkdir(base_path)
+        media_plan.save(os.path.join(
+            base_path, filename
+        ))
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())

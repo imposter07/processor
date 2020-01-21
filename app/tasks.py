@@ -1035,7 +1035,8 @@ def build_processor_from_request(processor_id, current_user_id):
             progress['set_fees'] = 'Success!'
         _set_task_progress(75)
         os.chdir(cur_path)
-        result = run_processor(processor_id, current_user_id, '--noprocess')
+        result = run_processor(processor_id, current_user_id,
+                               '--api all --ftp all --dbi all --exp all --tab')
         if result:
             progress['run_processor'] = 'Success!'
         _set_task_progress(90)

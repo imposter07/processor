@@ -994,7 +994,10 @@ def edit_processor_fees(processor_name):
         form_rate_card = RateCard.query.filter_by(
             id=cur_proc.rate_card_id).first()
         form.rate_card.data = form_rate_card
-        dcm_fee = '{}%'.format(round(cur_proc.dcm_service_fees * 100))
+        if cur_proc.dcm_service_fees:
+            dcm_fee = '{}%'.format(round(cur_proc.dcm_service_fees * 100))
+        else:
+            dcm_fee = '0%'
         form.dcm_service_fees.data = dcm_fee
     kwargs['form'] = form
     return render_template('create_processor.html', **kwargs)

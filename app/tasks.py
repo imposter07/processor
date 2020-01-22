@@ -308,26 +308,31 @@ def get_processor_sources(processor_id, current_user_id):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def set_processor_imports(processor_id, current_user_id, form_imports):
+def set_processor_imports(processor_id, current_user_id, form_imports,
+                          set_in_db=True):
     try:
         cur_processor = Processor.query.get(processor_id)
         old_imports = ProcessorDatasources.query.filter_by(
             processor_id=cur_processor.id).all()
         user_that_ran = User.query.get(current_user_id)
         _set_task_progress(0)
-        proc_imports = []
-        for imp in form_imports:
-            proc_import = ProcessorDatasources()
-            proc_import.set_from_form(imp, cur_processor)
-            proc_imports.append(proc_import)
-        for imp in old_imports:
-            if imp not in proc_imports:
-                db.session.delete(imp)
-        for imp in proc_imports:
-            if imp not in old_imports:
-                db.session.add(imp)
-        db.session.commit()
-        processor_dicts = [x.get_import_processor_dict() for x in proc_imports]
+        if set_in_db:
+            proc_imports = []
+            for imp in form_imports:
+                proc_import = ProcessorDatasources()
+                proc_import.set_from_form(imp, cur_processor)
+                proc_imports.append(proc_import)
+            for imp in old_imports:
+                if imp not in proc_imports:
+                    db.session.delete(imp)
+            for imp in proc_imports:
+                if imp not in old_imports:
+                    db.session.add(imp)
+            db.session.commit()
+            processor_dicts = [x.get_import_processor_dict() for x in
+                               proc_imports]
+        else:
+            processor_dicts = form_imports
         processor_path = adjust_path(cur_processor.local_path)
         from processor.reporting.vendormatrix import ImportConfig
         os.chdir(processor_path)

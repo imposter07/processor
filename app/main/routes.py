@@ -403,6 +403,27 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
     return args
 
 
+def set_processor_imports_in_db(processor_id, form_imports):
+    cur_processor = Processor.query.get(processor_id)
+    old_imports = ProcessorDatasources.query.filter_by(
+        processor_id=cur_processor.id).all()
+    proc_imports = []
+    for imp in form_imports:
+        proc_import = ProcessorDatasources()
+        proc_import.set_from_form(imp, cur_processor)
+        proc_imports.append(proc_import)
+    for imp in old_imports:
+        if imp not in proc_imports:
+            db.session.delete(imp)
+    for imp in proc_imports:
+        if imp not in old_imports:
+            db.session.add(imp)
+    db.session.commit()
+    processor_dicts = [x.get_import_processor_dict() for x in
+                       proc_imports]
+    return processor_dicts
+
+
 @bp.route('/processor/<processor_name>/edit/import', methods=['GET', 'POST'])
 @login_required
 def edit_processor_import(processor_name):
@@ -445,11 +466,14 @@ def edit_processor_import(processor_name):
         if cur_proc.get_task_in_progress('.set_processor_imports'):
             flash(_('The data sources are already being set.'))
         else:
+            form_imports = set_processor_imports_in_db(
+                processor_id=cur_proc.id, form_imports=form.apis.data)
             msg_text = ('Setting imports in '
                         'vendormatrix for {}').format(processor_name)
             cur_proc.launch_task(
                 '.set_processor_imports', _(msg_text),
-                running_user=current_user.id, form_imports=form.apis.data)
+                running_user=current_user.id, form_imports=form_imports,
+                set_in_db=False)
             db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_clean',
@@ -798,7 +822,7 @@ def allowed_file(filename):
 @login_required
 def uploaded_file(filename):
     from flask import send_from_directory
-    return send_from_directory(app.config['UPLOAD_FOLDER'],
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'],
                                filename)
 
 

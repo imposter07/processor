@@ -9,7 +9,8 @@ from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
-    ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion
+    ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
+    TaskScheduler
 
 app = create_app()
 app.app_context().push()
@@ -1079,12 +1080,15 @@ def build_processor_from_request(processor_id, current_user_id):
         os.chdir(cur_path)
         msg_text = 'Scheduling processor: {}'.format(cur_processor.name)
         import datetime as dt
-        cur_processor.schedule_job('.full_run_processor', msg_text,
-                                   start_date=cur_processor.start_date,
-                                   end_date=cur_processor.end_date,
-                                   scheduled_time=dt.time(8, 0, 0),
-                                   interval=24)
-        db.session.commit()
+        sched = TaskScheduler.query.filter_by(
+            processor_id=cur_processor.id).first()
+        if not sched:
+            cur_processor.schedule_job('.full_run_processor', msg_text,
+                                       start_date=cur_processor.start_date,
+                                       end_date=cur_processor.end_date,
+                                       scheduled_time=dt.time(8, 0, 0),
+                                       interval=24)
+            db.session.commit()
         progress['schedule_processor'] = 'Success!'
         _set_task_progress(100)
     except:

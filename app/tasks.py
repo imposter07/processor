@@ -234,9 +234,11 @@ def set_initial_constant_file(cur_processor):
     dcc = dct.DictConstantConfig(None)
     dcc.read_raw_df(dctc.filename_con_config)
     for col in [(dctc.CLI, cur_processor.campaign.product.client.name),
-                (dctc.PRN, cur_processor.campaign.product.name)]:
+                (dctc.PRN, cur_processor.campaign.product.name),
+                (dctc.AGF, cur_processor.digital_agency_fees)]:
         idx = dcc.df[dcc.df[dctc.DICT_COL_NAME] == col[0]].index[0]
-        if dcc.df.loc[idx, dctc.DICT_COL_VALUE] == 'None':
+        if ((dcc.df.loc[idx, dctc.DICT_COL_VALUE] == 'None') or
+                (col[0] == dctc.AGF and cur_processor.digital_agency_fees)):
             dcc.df.loc[idx, dctc.DICT_COL_VALUE] = col[1]
     dcc.write(dcc.df, dctc.filename_con_config)
 
@@ -946,7 +948,6 @@ def set_processor_fees(processor_id, current_user_id):
             rate_list.append(dict((col, getattr(row, col))
                                   for col in row.__table__.columns.keys()
                                   if 'id' not in col))
-
         df = pd.DataFrame(rate_list)
         df = df.rename(columns={'adserving_fee': dctc.AR,
                                 'reporting_fee': dctc.RFR,
@@ -960,6 +961,12 @@ def set_processor_fees(processor_id, current_user_id):
         params = rc.get_relation_params('Serving')
         dr = dct.DictRelational(**params)
         dr.write(df)
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.vendormatrix as vm
+        matrix = vm.VendorMatrix()
+        index = matrix.vm_df[matrix.vm_df[vmc.vendorkey] == 'DCM'].index[0]
+        matrix.vm_change(index, 'RULE_3_FACTOR', cur_processor.dcm_service_fees)
+        matrix.write()
         return True
     except:
         _set_task_progress(100)
@@ -994,6 +1001,27 @@ def send_processor_build_email(processor_id, current_user_id, progress):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+def set_processor_twitter_config(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        client_name = cur_processor.campaign.product.client.name
+        import processor.reporting.utils as utl
+        os.chdir(adjust_path(cur_processor.local_path))
+        file_path = os.path.join(utl.config_path, 'twitter_api_cred')
+        df = pd.read_csv(os.path.join(file_path, 'twitter_dict.csv'))
+        file_name = df[df['client'] == client_name]['file'].values
+        if file_name:
+            file_name = file_name[0]
+            copy_file(os.path.join(file_path, file_name),
+                      os.path.join(utl.config_path, 'twconfig.json'))
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def build_processor_from_request(processor_id, current_user_id):
     progress = {
         'create': 'Failed',
@@ -1024,6 +1052,9 @@ def build_processor_from_request(processor_id, current_user_id):
         proc_dict = [
             x.get_dict_for_processor(import_names, cur_processor.start_date)
             for x in cur_processor.accounts]
+        if [x for x in proc_dict if 'Twitter' in x['key']]:
+            os.chdir(cur_path)
+            set_processor_twitter_config(processor_id, current_user_id)
         os.chdir(cur_path)
         result = set_processor_imports(processor_id, current_user_id, proc_dict)
         if result:

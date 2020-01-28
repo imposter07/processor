@@ -530,7 +530,8 @@ def post_table():
                  'Relation': '.write_relational_config',
                  'dictionary': '.write_dictionary',
                  'rate_card': '.write_rate_card',
-                 'edit_conversions': '.write_conversions'}
+                 'edit_conversions': '.write_conversions',
+                 'raw_data': '.write_raw_data'}
     job_name = arg_trans[table_name]
     cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()

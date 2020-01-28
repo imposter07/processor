@@ -477,6 +477,28 @@ def get_raw_data(processor_id, current_user_id, vk):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+def write_raw_data(processor_id, current_user_id, new_data, vk):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        user_that_ran = User.query.get(current_user_id)
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk)
+        df = pd.read_json(new_data)
+        df = df.drop('index', axis=1)
+        df = df.replace('NaN', '')
+        data_source.write(df)
+        msg_text = ('{} processor raw_data: {} was updated.'
+                    ''.format(cur_processor.name, vk))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
 def get_dictionary(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)

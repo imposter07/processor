@@ -576,6 +576,19 @@ def get_table():
     else:
         job = task.wait_and_get_job(force_return=True)
         df = job.result[0]
+    if proc_arg['parameter'] == 'FullOutput':
+        from flask import send_file
+        import io
+        proxy = io.StringIO()
+        df.to_csv(proxy)
+        mem = io.BytesIO()
+        mem.write(proxy.getvalue().encode('utf-8'))
+        mem.seek(0)
+        return send_file(mem,
+                         as_attachment=True,
+                         attachment_filename='test.csv',
+                         mimetype='text/csv'
+                         )
     pd.set_option('display.max_colwidth', -1)
     cols = json.dumps(df.reset_index().columns.tolist())
     table_name = "modalTable{}".format(table_name)

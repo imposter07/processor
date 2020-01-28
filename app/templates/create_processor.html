@@ -479,10 +479,19 @@
                     processor:  "{{ processor_name }}",
                     vendorkey: vendorKey
             }).done(function(data, status) {
-                show_modal_table('tableModalButton');
-                let newTableName = data['data']['name'];
-                createTable(data['data']['cols'], data['data']['data'],
-                    newTableName);
+                console.log(tableName);
+                if (tableName === 'OutputDataFullOutput') {
+                  let blob = new Blob([data], {type: 'text/csv'});
+                  let link = document.createElement('a');
+                  link.href = window.URL.createObjectURL(blob);
+                  link.download = 'Raw Data Output.csv';
+                  link.click();
+                }
+                else {
+                    show_modal_table('tableModalButton');
+                    let newTableName = data['data']['name'];
+                    createTable(data['data']['cols'], data['data']['data'],
+                        newTableName);}
             }).fail(function(jqXHR, textStatus ) {
                 console.log("Request failed: " + textStatus)
             }).always(function(){

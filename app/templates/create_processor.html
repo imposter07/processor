@@ -420,6 +420,38 @@
                         {{ _('Constant') }}</a>
                     <a class="dropdown-item" id="editTableRelation" href="#">
                         {{ _('Relation') }}</a>
+                    <div class="card">
+                        <button class="btn btn-outline-info btn-lg btn-block
+                                       dropdown-toggle text-left"
+                                type="button" data-toggle="collapse"
+                                id="editTableRelationDropdownButton"
+                                data-target="#collapseTwoOne" aria-expanded="true"
+                                aria-controls="collapseTwoOne">
+                            <i class="fas fa-ellipsis-v" href="#" role="button"></i>
+                            {{ _('Edit Relational Dictionaries') }}
+                            <span class="caret"></span>
+                        </button>
+                        <div id="collapseTwoOne" class="collapse"
+                             aria-labelledby="headingTwoOne"
+                             data-parent="#editTableRelationDropdownButton">
+                            <div class="card-body">
+                                <a class="dropdown-item" id="editTableRelationCampaign" href="#">
+                                    {{ _('Relation - Campaign') }}</a>
+                                <a class="dropdown-item" id="editTableRelationTargeting" href="#">
+                                    {{ _('Relation - Targeting') }}</a>
+                                <a class="dropdown-item" id="editTableRelationCreative" href="#">
+                                    {{ _('Relation - Creative') }}</a>
+                                <a class="dropdown-item" id="editTableRelationVendor" href="#">
+                                    {{ _('Relation - Vendor') }}</a>
+                                <a class="dropdown-item" id="editTableRelationCountry" href="#">
+                                    {{ _('Relation - Country') }}</a>
+                                <a class="dropdown-item" id="editTableRelationServing" href="#">
+                                    {{ _('Relation - Serving') }}</a>
+                                <a class="dropdown-item" id="editTableRelationCopy" href="#">
+                                    {{ _('Relation - Copy') }}</a>
+                            </div>
+                        </div>
+                    </div>
                  </div>
             </div>
         </div>

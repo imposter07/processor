@@ -621,7 +621,7 @@ def write_constant_dict(processor_id, current_user_id, new_data):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def get_relational_config(processor_id, current_user_id):
+def get_relational_config(processor_id, current_user_id, parameter=None):
     try:
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.dictionary as dct
@@ -629,15 +629,23 @@ def get_relational_config(processor_id, current_user_id):
         os.chdir(adjust_path(cur_processor.local_path))
         rc = dct.RelationalConfig()
         rc.read(dctc.filename_rel_config)
+        if not parameter:
+            df = rc.df
+        else:
+            params = rc.get_relation_params(parameter)
+            dr = dct.DictRelational(**params)
+            dr.read()
+            df = dr.df
         _set_task_progress(100)
-        return [rc.df]
+        return [df]
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def write_relational_config(processor_id, current_user_id, new_data):
+def write_relational_config(processor_id, current_user_id, new_data,
+                            parameter=None):
     try:
         cur_processor = Processor.query.get(processor_id)
         user_that_ran = User.query.get(current_user_id)
@@ -648,10 +656,17 @@ def write_relational_config(processor_id, current_user_id, new_data):
         df = pd.read_json(new_data)
         df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
-        df = df[[dctc.RK, dctc.FN, dctc.KEY, dctc.DEP, dctc.AUTO]]
-        rc.write(df, dctc.filename_rel_config)
-        msg_text = ('{} processor constant dict was updated.'
-                    ''.format(cur_processor.name))
+        if not parameter:
+            df = df[[dctc.RK, dctc.FN, dctc.KEY, dctc.DEP, dctc.AUTO]]
+            rc.write(df, dctc.filename_rel_config)
+        else:
+            rc.read(dctc.filename_rel_config)
+            params = rc.get_relation_params(parameter)
+            dr = dct.DictRelational(**params)
+            dr.write(df)
+        msg_text = ('{} processor relational dict {} was updated.'
+                    ''.format(cur_processor.name,
+                              parameter if parameter else 'config'))
         processor_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
     except:

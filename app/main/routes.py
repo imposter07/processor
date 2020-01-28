@@ -521,6 +521,9 @@ def post_table():
         proc_arg['vk'] = vendor_key
     msg_text = 'Updating {} table for {}'.format(table_name, proc_name)
     cur_proc = Processor.query.filter_by(name=proc_name).first_or_404()
+    if 'Relation' in table_name:
+        proc_arg['parameter'] = table_name.replace('Relation', '')
+        table_name = 'Relation'
     arg_trans = {'Translate': '.write_translational_dict',
                  'Vendormatrix': '.write_vendormatrix',
                  'Constant': '.write_constant_dict',
@@ -545,6 +548,9 @@ def get_table():
     if 'OutputData' in table_name:
         proc_arg['parameter'] = table_name.replace('OutputData', '')
         table_name = 'OutputData'
+    if 'Relation' in table_name:
+        proc_arg['parameter'] = table_name.replace('Relation', '')
+        table_name = 'Relation'
     arg_trans = {'Translate': '.get_translation_dict',
                  'Vendormatrix': '.get_vendormatrix',
                  'Constant': '.get_constant_dict',
@@ -593,6 +599,8 @@ def get_table():
     df = df.reset_index()
     df = df[[x for x in df.columns if x != 'index'] + ['index']]
     cols = json.dumps(df.columns.tolist())
+    if 'Relation' in table_name:
+        table_name = 'Relation{}'.format(proc_arg['parameter'])
     table_name = "modalTable{}".format(table_name)
     data = df.to_html(index=False, table_id=table_name,
                       classes="table table-dark")

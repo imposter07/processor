@@ -576,7 +576,7 @@ def get_table():
     else:
         job = task.wait_and_get_job(force_return=True)
         df = job.result[0]
-    if proc_arg['parameter'] == 'FullOutput':
+    if 'parameter' in proc_arg and proc_arg['parameter'] == 'FullOutput':
         from flask import send_file
         import io
         proxy = io.StringIO()
@@ -590,10 +590,12 @@ def get_table():
                          mimetype='text/csv'
                          )
     pd.set_option('display.max_colwidth', -1)
-    cols = json.dumps(df.reset_index().columns.tolist())
+    df = df.reset_index()
+    df = df[[x for x in df.columns if x != 'index'] + ['index']]
+    cols = json.dumps(df.columns.tolist())
     table_name = "modalTable{}".format(table_name)
-    data = df.reset_index().to_html(index=False, table_id=table_name,
-                                    classes="table table-dark")
+    data = df.to_html(index=False, table_id=table_name,
+                      classes="table table-dark")
     return jsonify({'data': {'data': data, 'cols': cols, 'name': table_name}})
 
 

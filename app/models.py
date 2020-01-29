@@ -606,6 +606,8 @@ class ProcessorDatasources(db.Model):
 
     def set_from_form(self, form, current_processor):
         if 'name' in form:
+            if 'vendor_key' in form:
+                self.vendor_key = form['vendor_key']
             self.name = form['name']
             self.processor_id = current_processor.id
             self.key = form['key']

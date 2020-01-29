@@ -532,6 +532,8 @@ def post_table():
                  'rate_card': '.write_rate_card',
                  'edit_conversions': '.write_conversions',
                  'raw_data': '.write_raw_data'}
+    if table_name in 'delete_dict':
+        return jsonify({'data': 'success'})
     job_name = arg_trans[table_name]
     cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()

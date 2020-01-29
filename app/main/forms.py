@@ -119,14 +119,7 @@ class ProcessorForm(FlaskForm):
 
 class APIForm(FlaskForm):
     name = StringField('Name')
-    key = SelectField(
-        'API Type', choices=[
-            ('Facebook', 'Facebook'), ('Adwords', 'Adwords'),
-            ('Sizmek', 'Sizmek'), ('Twitter', 'Twitter'), ('TTD', 'TTD'),
-            ('Snapchat', 'Snapchat'), ('DCM', 'DCM'), ('DBM', 'DBM'),
-            ('Redshell', 'Redshell'), ('Reddit', 'Reddit'),
-            ('Netbase', 'Netbase'), ('GA', 'GA'), ('Revcontent', 'Revcontent'),
-            ('AppsFlyer', 'AppsFlyer')])
+    key = SelectField('API Type', choices=[(x, x) for x in vmc.api_keys])
     account_id = StringField('Account ID')
     start_date = DateField('Start Date', format='%Y-%m-%d')
     account_filter = StringField('Filter')
@@ -145,7 +138,8 @@ class ImportForm(FlaskForm):
 
     def set_apis(self, data_source, cur_proc):
         imp_dict = []
-        proc_imports = data_source.query.filter_by(processor_id=cur_proc.id).all()
+        proc_imports = data_source.query.filter_by(
+            processor_id=cur_proc.id).all()
         for imp in proc_imports:
             if imp.name is not None:
                 form_dict = imp.get_import_form_dict()
@@ -197,7 +191,7 @@ class ProcessorCleanForm(FlaskForm):
         for source in ds:
             form_dict = source.get_ds_form_dict()
             imp_dict.append(form_dict)
-        self.apis = imp_dict
+        self.datasources = imp_dict
         return imp_dict
 
 
@@ -315,13 +309,7 @@ class EditProcessorRequestForm(ProcessorRequestForm):
 
 class AccountForm(FlaskForm):
     key = SelectField(
-        'Account Type', choices=[
-            ('Facebook', 'Facebook'), ('Adwords', 'Adwords'),
-            ('Sizmek', 'Sizmek'), ('Twitter', 'Twitter'), ('TTD', 'TTD'),
-            ('Snapchat', 'Snapchat'), ('DCM', 'DCM'), ('DBM', 'DBM'),
-            ('Redshell', 'Redshell'), ('Reddit', 'Reddit'),
-            ('Netbase', 'Netbase'), ('GA', 'GA'), ('Revcontent', 'Revcontent'),
-            ('AppsFlyer', 'AppsFlyer')])
+        'Account Type', choices=[(x, x) for x in vmc.api_keys])
     account_id = StringField('Account ID')
     username = StringField('Username',
                            description='Only include if shared login.')
@@ -365,12 +353,7 @@ class ConversionForm(FlaskForm):
     conversion_type = SelectField('Conversion Type',
                                   choices=[(x, x) for x in vmc.datafloatcol])
     key = SelectField(
-        'Conversion Platform', choices=[
-            ('DCM', 'DCM'), ('Sizmek', 'Sizmek'), ('Facebook', 'Facebook'),
-            ('Adwords', 'Adwords'), ('Twitter', 'Twitter'), ('TTD', 'TTD'),
-            ('Snapchat', 'Snapchat'), ('DBM', 'DBM'), ('Redshell', 'Redshell'),
-            ('Reddit', 'Reddit'), ('Netbase', 'Netbase'), ('GA', 'GA'),
-            ('Revcontent', 'Revcontent'), ('AppsFlyer', 'AppsFlyer')])
+        'Conversion Platform', choices=[(x, x) for x in vmc.api_keys])
     dcm_category = StringField('DCM Category')
     delete = SubmitField('Delete')
 

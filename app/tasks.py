@@ -73,7 +73,13 @@ def adjust_path(path):
     return path
 
 
-def processor_post_message(proc, usr, text):
+def get_processor_and_user_from_id(processor_id, current_user_id):
+    processor_to_run = Processor.query.get(processor_id)
+    user_that_ran = User.query.get(current_user_id)
+    return processor_to_run, user_that_ran
+
+
+def processor_post_message(proc, usr, text, run_complete=False):
     try:
         msg = Message(author=usr, recipient=usr, body=text)
         db.session.add(msg)
@@ -86,6 +92,9 @@ def processor_post_message(proc, usr, text):
                               'timestamp': post.timestamp.isoformat(),
                               'post_id': post.id})
         db.session.commit()
+        if run_complete:
+            proc.last_run_time = datetime.utcnow()
+            db.session.commit()
     except:
         db.session.rollback()
         processor_post_message(proc, usr, text)
@@ -142,8 +151,8 @@ def copy_processor_local(file_path, copy_back=False):
 
 def run_processor(processor_id, current_user_id, processor_args):
     try:
-        processor_to_run = Processor.query.get(processor_id)
-        user_that_ran = User.query.get(current_user_id)
+        processor_to_run, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
         post_body = ('Running {} for processor: {}...'.format(
             processor_args, processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, post_body)
@@ -158,15 +167,16 @@ def run_processor(processor_id, current_user_id, processor_args):
             main()
         copy_processor_local(old_file_path, copy_back=True)
         msg_text = ("{} finished running.".format(processor_to_run.name))
-        processor_to_run.last_run_time = datetime.utcnow()
-        db.session.commit()
-        processor_post_message(processor_to_run, user_that_ran, msg_text)
+        processor_post_message(proc=processor_to_run, usr=user_that_ran,
+                               text=msg_text, run_complete=True)
         _set_task_progress(100)
         return True
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+        processor_to_run = Processor.query.get(processor_id)
+        user_that_ran = User.query.get(current_user_id)
         msg_text = ("{} run failed.".format(processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, msg_text)
         return False
@@ -211,8 +221,8 @@ def copy_tree_no_overwrite(old_path, new_path, first_run=True, overwrite=False):
 
 def write_translational_dict(processor_id, current_user_id, new_data):
     try:
-        cur_processor = Processor.query.get(processor_id)
-        user_that_ran = User.query.get(current_user_id)
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
         import processor.reporting.dictionary as dct
         import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
@@ -251,8 +261,8 @@ def set_initial_constant_file(cur_processor):
 
 def create_processor(processor_id, current_user_id, base_path):
     try:
-        new_processor = Processor.query.get(processor_id)
-        user_create = User.query.get(current_user_id)
+        new_processor, user_create = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
         old_path = adjust_path(base_path)
         new_path = adjust_path(new_processor.local_path)
         if not os.path.exists(new_path):
@@ -283,7 +293,7 @@ def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
             vendor_key=source.vendor_key).first()
         if old_source:
             for k, v in source.full_dict.items():
-                if (hasattr(old_source, k) and getattr(old_source, k) != v):
+                if hasattr(old_source, k) and getattr(old_source, k) != v:
                     setattr(old_source, k, v)
         else:
             db.session.add(source)
@@ -309,8 +319,8 @@ def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
 
 def get_processor_sources(processor_id, current_user_id):
     try:
-        cur_processor = Processor.query.get(processor_id)
-        user_that_ran = User.query.get(current_user_id)
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
         _set_task_progress(0)
         import processor.reporting.vendormatrix as vm
         processor_path = adjust_path(cur_processor.local_path)
@@ -331,8 +341,8 @@ def get_processor_sources(processor_id, current_user_id):
 def set_processor_imports(processor_id, current_user_id, form_imports,
                           set_in_db=True):
     try:
-        cur_processor = Processor.query.get(processor_id)
-        user_that_ran = User.query.get(current_user_id)
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
         _set_task_progress(0)
         if set_in_db:
             from app.main.routes import set_processor_imports_in_db
@@ -360,10 +370,10 @@ def set_processor_imports(processor_id, current_user_id, form_imports,
 
 def set_data_sources(processor_id, current_user_id, form_sources):
     try:
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
         old_sources = ProcessorDatasources.query.filter_by(
             processor_id=cur_processor.id).all()
-        user_that_ran = User.query.get(current_user_id)
         import processor.reporting.vmcolumns as vmc
         _set_task_progress(0)
         for source in form_sources:
@@ -483,8 +493,8 @@ def get_raw_data(processor_id, current_user_id, vk):
 
 def write_raw_data(processor_id, current_user_id, new_data, vk):
     try:
-        cur_processor = Processor.query.get(processor_id)
-        user_that_ran = User.query.get(current_user_id)
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
         import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
@@ -524,8 +534,8 @@ def get_dictionary(processor_id, current_user_id, vk):
 
 def write_dictionary(processor_id, current_user_id, new_data, vk):
     try:
-        cur_processor = Processor.query.get(processor_id)
-        user_that_ran = User.query.get(current_user_id)
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
         import processor.reporting.vmcolumns as vmc
         import processor.reporting.dictionary as dct
         import processor.reporting.vendormatrix as vm
@@ -584,8 +594,8 @@ def get_vendormatrix(processor_id, current_user_id):
 
 def write_vendormatrix(processor_id, current_user_id, new_data):
     try:
-        cur_processor = Processor.query.get(processor_id)
-        user_that_ran = User.query.get(current_user_id)
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
         import processor.reporting.vmcolumns as vmc
         import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
@@ -758,8 +768,8 @@ def get_rate_card(processor_id, current_user_id, vk):
 
 def write_rate_card(processor_id, current_user_id, new_data, vk):
     try:
-        cur_processor = Processor.query.get(processor_id)
-        user_that_ran = User.query.get(current_user_id)
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
         rate_card_name = '{}|{}'.format(cur_processor.name,
                                         user_that_ran.username)
         rate_card = RateCard.query.filter_by(name=rate_card_name).first()
@@ -840,10 +850,10 @@ def create_uploader(uploader_id, current_user_id, base_path):
 
 
 def set_processor_values(processor_id, current_user_id, form_sources, table):
-    cur_processor = Processor.query.get(processor_id)
+    cur_processor, user_that_ran = get_processor_and_user_from_id(
+        processor_id=processor_id, current_user_id=current_user_id)
     old_items = table.query.filter_by(
         processor_id=cur_processor.id).all()
-    user_that_ran = User.query.get(current_user_id)
     _set_task_progress(0)
     if old_items:
         for item in old_items:

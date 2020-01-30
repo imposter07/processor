@@ -227,6 +227,7 @@ class Post(SearchableMixin, db.Model):
     def processor_run_failed(self):
         return self.body[-11:] == 'run failed.'
 
+
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'))

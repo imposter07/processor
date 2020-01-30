@@ -17,6 +17,8 @@
           <div class="media-body">
             <h6 class="mt-0">{{ _('%(username)s said %(when)s',
             username=user_link, when=moment(post.timestamp).fromNow()) }}</h6>
+          <div class="media">
+          <div class="media-body">
             {% if post.processor_id %}
                 <span class="processor_popup">
                     <a href="{{ url_for('main.processor_page',
@@ -44,7 +46,15 @@
                                 '{{ g.locale }}');">{{ _('Translate') }}</a>
                 </span>
              {% endif %}
+            </div>
+            {% if post.processor_run_success() %}
+                <i class="fas fa-check btn-secondary btn-lg btn-success"></i>
+            {% endif %}
+            {% if post.processor_run_failed() %}
+                <i class="fas fa-times btn-secondary btn-lg btn-danger"></i>
+            {% endif %}
           </div>
+            </div>
         </div></div>
     </td></tr>
 </table>

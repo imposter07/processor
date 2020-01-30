@@ -40,5 +40,10 @@
                 Description: {{ processor.description}}</span>
         </p>
         </div>
+        <div class="card-footer">
+            {% with post = processor.get_last_post() %}
+                {% include '_post.html' %}
+            {% endwith %}
+        </div>
     </div>
 </div>

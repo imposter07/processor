@@ -221,6 +221,11 @@ class Post(SearchableMixin, db.Model):
     def __repr__(self):
         return '<Post {}>'.format(self.body)
 
+    def processor_run_success(self):
+        return self.body[-17:] == 'finished running.'
+
+    def processor_run_failed(self):
+        return self.body[-11:] == 'run failed.'
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -485,6 +490,9 @@ class Processor(db.Model):
                          processor_args=processor_args)
         self.last_run_time = datetime.utcnow()
         db.session.commit()
+
+    def get_last_post(self):
+        return self.posts.order_by(Post.timestamp.desc()).first()
 
 
 class TaskScheduler(db.Model):

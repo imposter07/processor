@@ -36,6 +36,12 @@
 {% endblock %}
 
 {% block app_content %}
+<div class="card-deck">
+{% for processor in processors %}
+    {% include 'processor_popup.html' %}
+{% endfor %}
+</div>
+
 <div id="carousel" class="carousel slide" data-ride="carousel">
     <div class="carousel-inner text-center">
     <div class="carousel-item active">

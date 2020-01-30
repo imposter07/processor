@@ -4,6 +4,7 @@ import json
 import time
 import shutil
 import pandas as pd
+from datetime import datetime
 from flask import render_template
 from rq import get_current_job
 from app import create_app, db
@@ -157,6 +158,8 @@ def run_processor(processor_id, current_user_id, processor_args):
             main()
         copy_processor_local(old_file_path, copy_back=True)
         msg_text = ("{} finished running.".format(processor_to_run.name))
+        processor_to_run.last_run_time = datetime.utcnow()
+        db.session.commit()
         processor_post_message(processor_to_run, user_that_ran, msg_text)
         _set_task_progress(100)
         return True
@@ -164,6 +167,8 @@ def run_processor(processor_id, current_user_id, processor_args):
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+        msg_text = ("{} run failed.".format(processor_to_run.name))
+        processor_post_message(processor_to_run, user_that_ran, msg_text)
         return False
 
 

@@ -41,6 +41,10 @@ def index():
         db.session.commit()
         flash(_('Your post is now live!'))
         return redirect(url_for('main.index'))
+    live_processors = []
+    for x in current_user.processor_followed:
+        if x.end_date and x.end_date < datetime.today().date():
+            live_processors.append(x)
     page = request.args.get('page', 1, type=int)
     posts = current_user.followed_posts().paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -50,7 +54,7 @@ def index():
         if posts.has_prev else None
     return render_template('index.html', title=_('Home'), form=form,
                            posts=posts.items, next_url=next_url,
-                           prev_url=prev_url)
+                           prev_url=prev_url, processors=live_processors)
 
 
 @bp.route('/health_check', methods=['GET'])
@@ -61,6 +65,11 @@ def health_check():
 @bp.route('/explore')
 @login_required
 def explore():
+    live_processors = []
+    for x in Processor.query.order_by(Processor.created_at.desc()):
+        if x.end_date and x.end_date < datetime.today().date():
+            live_processors.append(x)
+    live_processors = live_processors[:5]
     page = request.args.get('page', 1, type=int)
     posts = Post.query.order_by(Post.timestamp.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -70,7 +79,7 @@ def explore():
         if posts.has_prev else None
     return render_template('index.html', title=_('Explore'),
                            posts=posts.items, next_url=next_url,
-                           prev_url=prev_url)
+                           prev_url=prev_url, processors=live_processors)
 
 
 @bp.route('/get_processor_by_date', methods=['GET', 'POST'])

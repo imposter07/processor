@@ -415,6 +415,7 @@ def set_processor_imports_in_db(processor_id, form_imports):
         proc_imports.append(proc_import)
     proc_import_dicts = [x.form_dict for x in proc_imports]
     for imp in old_imports:
+        imp.get_full_dict()
         if imp.key and imp.form_dict not in proc_import_dicts:
             db.session.delete(imp)
     old_import_dicts = [x.form_dict for x in old_imports]
@@ -445,10 +446,12 @@ def edit_processor_import(processor_name):
         return render_template('create_processor.html', **kwargs)
     for api in form.apis:
         if api.delete.data:
+            print(api.name)
             ds = ProcessorDatasources.query.filter_by(
                 account_id=api.account_id.data, start_date=api.start_date.data,
                 api_fields=api.api_fields.data, key=api.key.data,
                 account_filter=api.account_filter.data).first()
+
             if ds:
                 db.session.delete(ds)
                 db.session.commit()
@@ -462,11 +465,12 @@ def edit_processor_import(processor_name):
                 processor_id=cur_proc.id, form_imports=form.apis.data)
             msg_text = ('Setting imports in '
                         'vendormatrix for {}').format(processor_name)
-            cur_proc.launch_task(
+            task = cur_proc.launch_task(
                 '.set_processor_imports', _(msg_text),
                 running_user=current_user.id, form_imports=form_imports,
                 set_in_db=False)
             db.session.commit()
+            task.wait_and_get_job(loops=20)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_clean',
                                     processor_name=cur_proc.name))
@@ -527,8 +531,10 @@ def post_table():
     if table_name in ['delete_dict', 'imports', 'data_sources']:
         return jsonify({'data': 'success'})
     job_name = arg_trans[table_name]
-    cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
+    task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
+    if table_name == 'Vendormatrix':
+        task.wait_and_get_job(loops=20)
     return jsonify({'data': 'success'})
 
 
@@ -626,6 +632,7 @@ def edit_processor_clean(processor_name):
                                         running_user=current_user.id,
                                         form_sources=form.datasources.data)
             db.session.commit()
+            task.wait_and_get_job(loops=20)
             if form.form_continue.data == 'continue':
                 return redirect(url_for('main.edit_processor_export',
                                         processor_name=cur_proc.name))

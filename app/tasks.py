@@ -595,6 +595,7 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
         msg_text = ('{} processor vendormatrix was updated.'
                     ''.format(cur_processor.name))
         processor_post_message(cur_processor, user_that_ran, msg_text)
+        get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

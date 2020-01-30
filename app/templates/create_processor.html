@@ -328,6 +328,18 @@
                     let data = sendTable
                         .data().toArray();
                     let json = JSON.stringify(data);
+                    if (sendTableName === 'Vendormatrix'){
+                        $('#refresh_data_sources').parent().html('' +
+                            '<button class="btn btn-primary" type="button" disabled>' +
+                              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                              'Loading...' +
+                            '</button>');
+                        $('#refresh_imports').parent().html('' +
+                            '<button class="btn btn-primary" type="button" disabled>' +
+                              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                              'Loading...' +
+                            '</button>');
+                    };
                     $.post('/post_table',
                         {
                             data: json,

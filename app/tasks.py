@@ -266,10 +266,28 @@ def create_processor(processor_id, current_user_id, base_path):
 
 
 def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
+    proc_sources = []
     for source in data_sources:
-        proc_import = ProcessorDatasources()
-        proc_import.set_from_processor(source, cur_processor)
-        db.session.add(proc_import)
+        proc_source = ProcessorDatasources()
+        proc_source.set_from_processor(source, cur_processor)
+        proc_source.get_full_dict()
+        proc_sources.append(proc_source)
+    for source in proc_sources:
+        old_source = ProcessorDatasources.query.filter_by(
+            processor_id=source.processor_id,
+            vendor_key=source.vendor_key).first()
+        if old_source:
+            for k, v in source.full_dict.items():
+                if (hasattr(old_source, k) and getattr(old_source, k) != v):
+                    setattr(old_source, k, v)
+        else:
+            db.session.add(source)
+    old_sources = ProcessorDatasources.query.filter_by(
+        processor_id=cur_processor.id).all()
+    proc_source_vks = [x.vendor_key for x in proc_sources]
+    for source in old_sources:
+        if source.vendor_key not in proc_source_vks:
+            db.session.delete(source)
     try:
         db.session.commit()
     except:
@@ -287,14 +305,8 @@ def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
 def get_processor_sources(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
-        old_imports = ProcessorDatasources.query.filter_by(
-            processor_id=cur_processor.id).all()
         user_that_ran = User.query.get(current_user_id)
         _set_task_progress(0)
-        if old_imports:
-            for imp in old_imports:
-                db.session.delete(imp)
-            db.session.commit()
         import processor.reporting.vendormatrix as vm
         processor_path = adjust_path(cur_processor.local_path)
         os.chdir(processor_path)
@@ -315,25 +327,12 @@ def set_processor_imports(processor_id, current_user_id, form_imports,
                           set_in_db=True):
     try:
         cur_processor = Processor.query.get(processor_id)
-        old_imports = ProcessorDatasources.query.filter_by(
-            processor_id=cur_processor.id).all()
         user_that_ran = User.query.get(current_user_id)
         _set_task_progress(0)
         if set_in_db:
-            proc_imports = []
-            for imp in form_imports:
-                proc_import = ProcessorDatasources()
-                proc_import.set_from_form(imp, cur_processor)
-                proc_imports.append(proc_import)
-            for imp in old_imports:
-                if imp not in proc_imports:
-                    db.session.delete(imp)
-            for imp in proc_imports:
-                if imp not in old_imports:
-                    db.session.add(imp)
-            db.session.commit()
-            processor_dicts = [x.get_import_processor_dict() for x in
-                               proc_imports]
+            from app.main.routes import set_processor_imports_in_db
+            processor_dicts = set_processor_imports_in_db(
+                processor_id, form_imports)
         else:
             processor_dicts = form_imports
         processor_path = adjust_path(cur_processor.local_path)

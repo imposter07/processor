@@ -19,7 +19,7 @@
              aria-valuemax="100">{{ edit_name }}</div>
     </div><br>
     <nav aria-label="...">
-        <ul class="pagination pagination-lg justify-content-center">
+        <ul id='listTabs' class="pagination pagination-lg justify-content-center">
             <li class="page-item{% if not form %} page-item disabled{% endif %}">
                 <button id=loadRefresh type="submit" class="page-link" href=""
                         onclick="SubmitForm('', 'form_continue')">
@@ -318,6 +318,9 @@
           </div>
           <div class="modal-footer">
              <script type="text/javascript">
+                 function reloadPage(){
+                    $('#listTabs').find('li.active')[0].children[0].click();
+                }
                 function SendDataTable() {
                     let sourceElem = $('table[id^="modalTable"]')[0].id;
                     let sendTable = $('#' + sourceElem).DataTable();
@@ -331,7 +334,7 @@
                             processor:  "{{ processor_name }}",
                             table: sendTableName
                         }).done(function(data, status) {
-                            location.reload();
+                            reloadPage();
                     });
                 }
             </script>
@@ -669,8 +672,8 @@
         $(document).ready(function() {
             $('.list-group-item-linkable').on('click', function () {
                 // same window/tab:
-                var clickedHref = $(this).attr('href');
-                window.location.href = clickedHref;
+                // let clickedHref = $(this).attr('href');
+                window.location.href = $(this).attr('href');
             });
         });
         function animateBar(){
@@ -716,6 +719,17 @@
                   'Loading...' +
                 '</button>');
             });
+        });
+        $(document).ready(function() {
+            $('#tableModal').on('hidden.bs.modal', function () {
+                let sourceElem = $('table[id^="modalTable"]')[0].id;
+                console.log(sourceElem);
+                if ((sourceElem === "modalTableimports") ||
+                    (sourceElem === "modalTabledata_sources")) {
+                    console.log('reloading');
+                    reloadPage();
+                }
+            })
         });
     </script>
 {% endblock %}

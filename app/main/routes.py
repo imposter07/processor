@@ -411,16 +411,18 @@ def set_processor_imports_in_db(processor_id, form_imports):
     for imp in form_imports:
         proc_import = ProcessorDatasources()
         proc_import.set_from_form(imp, cur_processor)
+        proc_import.get_full_dict()
         proc_imports.append(proc_import)
+    proc_import_dicts = [x.form_dict for x in proc_imports]
     for imp in old_imports:
-        if imp not in proc_imports:
+        if imp.key and imp.form_dict not in proc_import_dicts:
             db.session.delete(imp)
+    old_import_dicts = [x.form_dict for x in old_imports]
     for imp in proc_imports:
-        if imp not in old_imports:
+        if imp.form_dict not in old_import_dicts:
             db.session.add(imp)
     db.session.commit()
-    processor_dicts = [x.get_import_processor_dict() for x in
-                       proc_imports]
+    processor_dicts = [x.get_import_processor_dict() for x in proc_imports]
     return processor_dicts
 
 
@@ -441,16 +443,6 @@ def edit_processor_import(processor_name):
         form.apis.pop_entry()
         kwargs['form'] = form
         return render_template('create_processor.html', **kwargs)
-    if form.refresh_imports.data:
-        if cur_proc.get_task_in_progress('.get_processor_sources'):
-            flash(_('The data sources are already refreshing.'))
-        else:
-            msg_text = 'Refreshing data for {}'.format(processor_name)
-            cur_proc.launch_task('.get_processor_sources', _(msg_text),
-                                 running_user=current_user.id)
-            db.session.commit()
-        return redirect(url_for('main.edit_processor_import',
-                                processor_name=processor_name))
     for api in form.apis:
         if api.delete.data:
             ds = ProcessorDatasources.query.filter_by(
@@ -532,7 +524,7 @@ def post_table():
                  'rate_card': '.write_rate_card',
                  'edit_conversions': '.write_conversions',
                  'raw_data': '.write_raw_data'}
-    if table_name in 'delete_dict':
+    if table_name in ['delete_dict', 'imports', 'data_sources']:
         return jsonify({'data': 'success'})
     job_name = arg_trans[table_name]
     cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
@@ -580,8 +572,11 @@ def get_table():
     db.session.commit()
     import pandas as pd
     if job_name in ['.get_processor_sources']:
-        df = pd.DataFrame([{
-            'Result': 'Data for the requested processor is being refreshed.'}])
+        job = task.wait_and_get_job(loops=20)
+        if job:
+            df = pd.DataFrame([{'Result': 'DATA WAS REFRESHED.'}])
+        else:
+            df = pd.DataFrame([{'Result': 'DATA IS REFRESHING.'}])
     else:
         job = task.wait_and_get_job(force_return=True)
         df = job.result[0]
@@ -600,7 +595,8 @@ def get_table():
                          )
     pd.set_option('display.max_colwidth', -1)
     df = df.reset_index()
-    df = df[[x for x in df.columns if x != 'index'] + ['index']]
+    if 'index' in df.columns:
+        df = df[[x for x in df.columns if x != 'index'] + ['index']]
     cols = json.dumps(df.columns.tolist())
     if 'Relation' in table_name:
         table_name = 'Relation{}'.format(proc_arg['parameter'])
@@ -616,20 +612,9 @@ def edit_processor_clean(processor_name):
     kwargs = get_current_processor(processor_name, 'edit_processor_clean',
                                    edit_progress=75, edit_name='Clean')
     cur_proc = kwargs['processor']
-    proc_arg = {'running_user': kwargs['user'].id}
     ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
     form = ProcessorCleanForm(datasources=ds)
     kwargs['form'] = form
-    if form.refresh_data_sources.data:
-        if cur_proc.get_task_in_progress('.get_processor_sources'):
-            flash(_('The data sources are already refreshing.'))
-        else:
-            msg_text = 'Refreshing data for {}'.format(processor_name)
-            cur_proc.launch_task(
-                '.get_processor_sources', _(msg_text), **proc_arg)
-            db.session.commit()
-        return redirect(url_for('main.edit_processor_clean',
-                                processor_name=processor_name))
     if request.method == 'POST':
         form.validate()
         if cur_proc.get_task_in_progress('.set_data_sources'):

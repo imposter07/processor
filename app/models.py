@@ -267,9 +267,10 @@ class Task(db.Model):
     def wait_for_job(self, loops=1000):
         for x in range(loops):
             if self.get_progress() == 100:
-                break
+                return True
             else:
                 time.sleep(1)
+        return False
 
     def check_return_value(self, job, force_return):
         if force_return and not job.result:
@@ -279,9 +280,12 @@ class Task(db.Model):
         return job
 
     def wait_and_get_job(self, loops=1000, force_return=False):
-        self.wait_for_job(loops=loops)
-        job = self.get_rq_job()
-        job = self.check_return_value(job, force_return)
+        completed = self.wait_for_job(loops=loops)
+        if completed:
+            job = self.get_rq_job()
+            job = self.check_return_value(job, force_return)
+        else:
+            job = None
         return job
 
 
@@ -544,8 +548,11 @@ class ProcessorDatasources(db.Model):
         return form_dict
 
     def convert_string_to_list(self, string_value):
-        new_list = string_value.strip('{').strip('}').split(',')
-        new_list = [y.strip('"') for y in new_list]
+        if isinstance(string_value, list):
+            new_list = string_value
+        else:
+            new_list = string_value.strip('{').strip('}').split(',')
+            new_list = [y.strip('"') for y in new_list]
         return new_list
 
     def get_ds_form_dict(self):
@@ -571,14 +578,16 @@ class ProcessorDatasources(db.Model):
             'ID': self.account_id,
             'START DATE': self.start_date,
             'Filter': self.account_filter,
-            'API_FIELDS': self.api_fields
+            'API_FIELDS': self.api_fields,
+            vmc.vendorkey: self.vendor_key
         }
         return form_dict
 
     def set_from_processor(self, source, current_processor):
         self.processor_id = current_processor.id
-        self.start_date = source.p[vmc.startdate]
-        self.api_fields = ['' if x == 'nan' else x for x in source.p[vmc.apifields]][0]
+        self.start_date = source.p[vmc.startdate].date()
+        self.api_fields = ['' if x == 'nan' else x
+                           for x in source.p[vmc.apifields]][0]
         self.vendor_key = source.key
         self.full_placement_columns = source.p[vmc.fullplacename]
         self.placement_columns = source.p[vmc.placement]

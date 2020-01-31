@@ -10,7 +10,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
     ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
     GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
-    GeneralConversionForm, ProcessorRequestFinishForm
+    GeneralConversionForm, ProcessorRequestFinishForm, ProcessorRequestFixForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion
@@ -1147,6 +1147,35 @@ def edit_processor_finish(processor_name):
                                     processor_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_finish',
+                                    processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/edit/fix',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_request_fix(processor_name):
+    kwargs = get_current_processor(processor_name=processor_name,
+                                   current_page='edit_processor_request_fix',
+                                   edit_progress=100, edit_name='Finish',
+                                   buttons='ProcessorRequest')
+    cur_proc = kwargs['processor']
+    form = ProcessorRequestFixForm()
+    kwargs['form'] = form
+    if form.add_child_fix.data:
+        form.current_fixes.append_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
+    if form.remove_fix.data:
+        form.current_fixes.pop_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.processor_page',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_request_fix',
                                     processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 

@@ -405,6 +405,24 @@ class ProcessorRequestFinishForm(FlaskForm):
         return usr_dict
 
 
+class ProcessorFixDimensionForm(FlaskForm):
+    column_name = SelectField('Column Name',
+                              choices=[(x, x) for x in dctc.COLS])
+    old_value = StringField(_l('Wrong Value'))
+    new_value = StringField(_l('Correct Value'))
+    delete = SubmitField('Delete')
+
+
+class ProcessorRequestFixForm(FlaskForm):
+    add_child_fix = SubmitField(label='Add Fix')
+    remove_fix = SubmitField('Remove Last Fix')
+    form_continue = HiddenField('form_continue')
+    key = SelectField('Fix Type', choices=[
+        ('Change Dimension', 'Change Dimension'),
+        ('Change Metric', 'Change Metric')])
+    current_fixes = FieldList(FormField(ProcessorFixDimensionForm, label=''))
+
+
 class UploaderForm(FlaskForm):
     name = StringField(_l('Name'), validators=[
         DataRequired()])

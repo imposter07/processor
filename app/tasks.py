@@ -598,6 +598,7 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
             processor_id=processor_id, current_user_id=current_user_id)
         import processor.reporting.vmcolumns as vmc
         import processor.reporting.vendormatrix as vm
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         df = pd.read_json(new_data)
@@ -610,6 +611,7 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
         msg_text = ('{} processor vendormatrix was updated.'
                     ''.format(cur_processor.name))
         processor_post_message(cur_processor, user_that_ran, msg_text)
+        os.chdir(cur_path)
         get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
     except:

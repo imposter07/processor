@@ -519,7 +519,9 @@
                      href="{{ url_for('main.edit_request_processor',
                         processor_name=processor_name) }}">
                         {{ _('View Initial Request') }}</a>
-                    <a class="dropdown-item" id="">
+                    <a class="dropdown-item" id=""
+                        href="{{ url_for('main.edit_processor_request_fix',
+                        processor_name=processor_name) }}">
                         {{ _('Request Data Fix') }}</a>
                 </div>
             </div>
@@ -623,6 +625,7 @@
                         newTableName);}
             }).fail(function(jqXHR, textStatus ) {
                 console.log("Request failed: " + textStatus)
+                location.reload()
             }).always(function(){
                 $(clickElem).prop("disabled", false);
                 $(clickElem).html(oldHtml);
@@ -740,6 +743,8 @@
                     (sourceElem === "modalTabledata_sources")) {
                     console.log('reloading');
                     reloadPage();
+                } else {
+                    location.reload()
                 }
             })
         });

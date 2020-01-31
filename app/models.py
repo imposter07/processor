@@ -238,6 +238,12 @@ class Message(db.Model):
     def __repr__(self):
         return '<Message {}>'.format(self.body)
 
+    def processor_run_success(self):
+        return self.body[-17:] == 'finished running.'
+
+    def processor_run_failed(self):
+        return self.body[-11:] == 'run failed.'
+
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)

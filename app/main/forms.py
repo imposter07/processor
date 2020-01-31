@@ -419,7 +419,8 @@ class ProcessorRequestFixForm(FlaskForm):
     form_continue = HiddenField('form_continue')
     key = SelectField('Fix Type', choices=[
         ('Change Dimension', 'Change Dimension'),
-        ('Change Metric', 'Change Metric')])
+        ('Change Metric', 'Change Metric'),
+        ('Custom', 'Custom')])
     current_fixes = FieldList(FormField(ProcessorFixDimensionForm, label=''))
 
 

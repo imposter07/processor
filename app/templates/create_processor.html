@@ -90,49 +90,17 @@
           </div>
           <div class="modal-body">
               <div class="list-group" id="list-tab" role="tablist">
-                  <a class="list-group-item list-group-item-action
-                            list-group-item-linkable active"
-                     id="list-all" data-toggle="list"
-                     href="{{ url_for('main.run_processor',
-                     processor_name=processor_name, redirect_dest=edit_name,
-                     processor_args='import') }}"
-                     role="tab" aria-controls="home">All</a>
-                  <a class="list-group-item list-group-item-action list-group-item-linkable"
-                     id="list-fb" data-toggle="list"
-                     href="{{ url_for('main.run_processor',
-                     processor_name=processor_name, redirect_dest=edit_name,
-                     processor_args='fb') }}"
-                     role="tab" aria-controls="profile">Facebook</a>
-                  <a class="list-group-item list-group-item-action list-group-item-linkable"
-                     id="list-aw" data-toggle="list"
-                     href="{{ url_for('main.run_processor',
-                     processor_name=processor_name, redirect_dest=edit_name,
-                     processor_args='aw') }}"
-                     role="tab" aria-controls="profile">Adwords</a>
-                  <a class="list-group-item list-group-item-action list-group-item-linkable"
-                     id="list-dc" data-toggle="list"
-                     href="{{ url_for('main.run_processor',
-                     processor_name=processor_name,
-                     redirect_dest=edit_name, processor_args='dc') }}"
-                     role="tab" aria-controls="profile">DCM</a>
-                  <a class="list-group-item list-group-item-action list-group-item-linkable"
-                     id="list-szk" data-toggle="list"
-                     href="{{ url_for('main.run_processor',
-                      processor_name=processor_name, redirect_dest=edit_name,
-                      processor_args='szk') }}"
-                     role="tab" aria-controls="profile">Sizmek</a>
-                  <a class="list-group-item list-group-item-action list-group-item-linkable"
-                     id="list-tw" data-toggle="list"
-                     href="{{ url_for('main.run_processor',
-                     processor_name=processor_name, redirect_dest=edit_name,
-                     processor_args='tw') }}"
-                     role="tab" aria-controls="profile">Twitter</a>
-                  <a class="list-group-item list-group-item-action list-group-item-linkable"
-                     id="list-dc" data-toggle="list"
-                     href="{{ url_for('main.run_processor',
-                     processor_name=processor_name, redirect_dest=edit_name,
-                     processor_args='db') }}"
-                     role="tab" aria-controls="profile">DBM</a>
+                {% for api in api_imports %}
+                  {% for api_name, api_arg in api_imports[api].items() %}
+                     <a class="list-group-item list-group-item-action
+                         list-group-item-linkable"
+                         id="list-all" data-toggle="list"
+                         href="{{ url_for('main.run_processor',
+                         processor_name=processor_name, redirect_dest=edit_name,
+                         processor_args=api_arg) }}"
+                         role="tab" aria-controls="home">{{ api_name }}</a>
+                  {% endfor %}
+                {% endfor %}
               </div>
           </div>
           <div class="modal-footer">
@@ -744,7 +712,8 @@
                     console.log('reloading');
                     reloadPage();
                 } else {
-                    location.reload()
+                    if (!$("[class*='DTED DTED_Lightbox_Wrapper']")[0]){
+                        location.reload()}
                 }
             })
         });

@@ -16,6 +16,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Uploader, Account, RateCard, Conversion
 from app.translate import translate
 from app.main import bp
+import processor.reporting.vmcolumns as vmc
 
 
 @bp.before_app_request
@@ -398,10 +399,13 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
              filter_by(processor_id=cur_proc.id).
              order_by(Post.timestamp.desc()).
              paginate(page, 5, False))
+    api_imports = {0: {'All': 'import'}}
+    for idx, (k, v) in enumerate(vmc.api_translation.items()):
+        api_imports[idx + 1] = {k: v}
     args = {'processor': cur_proc, 'posts': posts.items,
             'title': _('Processor'), 'processor_name': cur_proc.name,
             'user': cur_user, 'edit_progress': edit_progress,
-            'edit_name': edit_name}
+            'edit_name': edit_name, 'api_imports': api_imports}
     args['buttons'] = get_navigation_buttons(buttons)
     next_url = url_for('main.' + current_page, processor_name=cur_proc.name,
                        page=posts.next_num) if posts.has_next else None

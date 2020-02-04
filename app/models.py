@@ -6,6 +6,7 @@ import json
 import time
 import redis
 from datetime import datetime, timedelta
+from datetime import time as datetime_time
 from hashlib import md5
 from flask import current_app
 from flask_login import UserMixin
@@ -217,6 +218,7 @@ class Post(SearchableMixin, db.Model):
     language = db.Column(db.String(5))
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
     uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
+    request_id = db.Column(db.Integer, db.ForeignKey('requests.id'))
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
@@ -258,8 +260,8 @@ class Notification(db.Model):
 
 class Task(db.Model):
     id = db.Column(db.String(36), primary_key=True)
-    name = db.Column(db.String(128), index=True)
-    description = db.Column(db.String(128))
+    name = db.Column(db.Text, index=True)
+    description = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     complete = db.Column(db.Boolean, default=False)
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
@@ -436,6 +438,7 @@ class Processor(db.Model):
     processor_datasources = db.relationship('ProcessorDatasources',
                                             backref='processor', lazy='dynamic')
     accounts = db.relationship('Account', backref='processor', lazy='dynamic')
+    requests = db.relationship('Requests', backref='processor', lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -450,6 +453,8 @@ class Processor(db.Model):
                      scheduled_time, interval):
         eastern = pytz.timezone('US/Eastern')
         today = eastern.localize(datetime.today())
+        if not scheduled_time:
+            scheduled_time = datetime_time(8, 0, 0)
         first_run = datetime.combine(start_date, scheduled_time)
         first_run = eastern.localize(first_run)
         if first_run < today:
@@ -708,6 +713,22 @@ class Account(db.Model):
         if self.key == 'Facebook':
             proc_dict['api_fields'] = 'Actions'
         return proc_dict
+
+
+class Requests(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    fix_type = db.Column(db.String(128), index=True)
+    column_name = db.Column(db.Text)
+    wrong_value = db.Column(db.Text)
+    correct_value = db.Column(db.Text)
+    filter_column_name = db.Column(db.Text)
+    filter_column_value = db.Column(db.Text)
+    fix_description = db.Column(db.Text)
+    complete = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    fixed_time = db.Column(db.DateTime)
+    posts = db.relationship('Post', backref='requests', lazy='dynamic')
 
 
 class Uploader(db.Model):

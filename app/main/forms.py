@@ -405,23 +405,29 @@ class ProcessorRequestFinishForm(FlaskForm):
         return usr_dict
 
 
-class ProcessorFixDimensionForm(FlaskForm):
+class ProcessorFixForm(FlaskForm):
+    fix_type = SelectField('Fix Type', choices=[
+        ('Change Dimension', 'Change Dimension'),
+        ('Change Metric', 'Change Metric'),
+        ('Change Tableau', 'Change Tableau'),
+        ('Custom', 'Custom')])
     column_name = SelectField('Column Name',
                               choices=[(x, x) for x in dctc.COLS])
     old_value = StringField(_l('Wrong Value'))
     new_value = StringField(_l('Correct Value'))
-    delete = SubmitField('Delete')
+    filter_column_name = SelectField('Filter Column Name',
+                                     choices=[(x, x) for x in dctc.COLS])
+    filter_column_value = StringField('Filter Column Value')
+    fix_description = TextAreaField(_l('Describe Fix'))
+    new_file = FileField(_l('New File'))
+    delete = SubmitField(_l('Delete'))
 
 
 class ProcessorRequestFixForm(FlaskForm):
     add_child_fix = SubmitField(label='Add Fix')
     remove_fix = SubmitField('Remove Last Fix')
     form_continue = HiddenField('form_continue')
-    key = SelectField('Fix Type', choices=[
-        ('Change Dimension', 'Change Dimension'),
-        ('Change Metric', 'Change Metric'),
-        ('Custom', 'Custom')])
-    current_fixes = FieldList(FormField(ProcessorFixDimensionForm, label=''))
+    current_fixes = FieldList(FormField(ProcessorFixForm, label=''))
 
 
 class UploaderForm(FlaskForm):

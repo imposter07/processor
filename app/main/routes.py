@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
-    jsonify, current_app
+    jsonify, current_app, render_template_string
 from flask_login import current_user, login_required
 from flask_babel import _, get_locale
 from guess_language import guess_language
@@ -10,7 +10,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
     ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
     GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
-    GeneralConversionForm, ProcessorRequestFinishForm, ProcessorRequestFixForm
+    GeneralConversionForm, ProcessorRequestFinishForm,\
+    ProcessorRequestFixForm, ProcessorFixForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion
@@ -541,7 +542,7 @@ def post_table():
                  'rate_card': '.write_rate_card',
                  'edit_conversions': '.write_conversions',
                  'raw_data': '.write_raw_data'}
-    if table_name in ['delete_dict', 'imports', 'data_sources']:
+    if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData']:
         return jsonify({'data': 'success'})
     job_name = arg_trans[table_name]
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
@@ -614,8 +615,8 @@ def get_table():
                          )
     pd.set_option('display.max_colwidth', -1)
     df = df.reset_index()
-    if 'index' in df.columns:
-        df = df[[x for x in df.columns if x != 'index'] + ['index']]
+    # if 'index' in df.columns:
+        # df = df[[x for x in df.columns if x != 'index'] + ['index']]
     cols = json.dumps(df.columns.tolist())
     if 'Relation' in table_name:
         table_name = 'Relation{}'.format(proc_arg['parameter'])
@@ -755,7 +756,8 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
                      'rc': '--api rc',
                      'szk': '--api szk',
                      'red': '--api red',
-                     'dcm': '--api dc'}
+                     'dcm': '--api dc',
+                     'dv': '--api dv'}
         processor_to_run.launch_task('.run_processor', _(post_body),
                                      running_user=current_user.id,
                                      processor_args=arg_trans[processor_args])
@@ -775,6 +777,9 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
                                 processor_name=processor_to_run.name))
     elif redirect_dest == 'Export':
         return redirect(url_for('main.edit_processor_export',
+                                processor_name=processor_to_run.name))
+    else:
+        return redirect(url_for('main.processor_page',
                                 processor_name=processor_to_run.name))
 
 
@@ -838,7 +843,6 @@ def edit_processor(processor_name):
         form.cur_client.data = form_client
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
-
 
 
 ALLOWED_EXTENSIONS = {'xlsx'}

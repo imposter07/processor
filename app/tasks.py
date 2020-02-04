@@ -545,7 +545,8 @@ def write_dictionary(processor_id, current_user_id, new_data, vk):
         data_source = matrix.get_data_source(vk)
         dic = dct.Dict(data_source.p[vmc.filenamedict])
         df = pd.read_json(new_data)
-        df = df.drop('index', axis=1)
+        if 'index' in df.columns:
+            df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
         if vk == vm.plan_key:
             df = df[dctc.PCOLS]

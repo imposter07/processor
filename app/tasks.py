@@ -603,7 +603,8 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         df = pd.read_json(new_data)
-        df = df.drop('index', axis=1)
+        if 'index' in df.columns:
+            df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
         rule_cols = [x for x in df.columns if x not in vmc.vmkeys]
         df = df[[vmc.vendorkey] + vmc.vmkeys + rule_cols]

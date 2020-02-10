@@ -417,6 +417,19 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
     return args
 
 
+def add_df_to_processor_dict(form_import, processor_dicts):
+    for fi in form_import:
+        if fi['raw_file']:
+            df = convert_file_to_df(fi['raw_file'])
+            new_dict = [x for x in processor_dicts
+                        if x[vmc.vendorkey] == fi['vendor_key']][0]
+            processor_dicts = [x for x in processor_dicts
+                               if x[vmc.vendorkey] != fi['vendor_key']]
+            new_dict['raw_file'] = df
+            processor_dicts.append(new_dict)
+    return processor_dicts
+
+
 def set_processor_imports_in_db(processor_id, form_imports):
     cur_processor = Processor.query.get(processor_id)
     old_imports = ProcessorDatasources.query.filter_by(
@@ -438,7 +451,14 @@ def set_processor_imports_in_db(processor_id, form_imports):
             db.session.add(imp)
     db.session.commit()
     processor_dicts = [x.get_import_processor_dict() for x in proc_imports]
+    processor_dicts = add_df_to_processor_dict(form_imports, processor_dicts)
     return processor_dicts
+
+
+def convert_file_to_df(current_file):
+    import pandas as pd
+    df = pd.read_csv(current_file)
+    return df
 
 
 @bp.route('/processor/<processor_name>/edit/import', methods=['GET', 'POST'])
@@ -460,12 +480,11 @@ def edit_processor_import(processor_name):
         return render_template('create_processor.html', **kwargs)
     for api in form.apis:
         if api.delete.data:
-            print(api.name)
             ds = ProcessorDatasources.query.filter_by(
                 account_id=api.account_id.data, start_date=api.start_date.data,
                 api_fields=api.api_fields.data, key=api.key.data,
-                account_filter=api.account_filter.data).first()
-
+                account_filter=api.account_filter.data,
+                name=api.__dict__['object_data']['name']).first()
             if ds:
                 db.session.delete(ds)
                 db.session.commit()
@@ -475,8 +494,10 @@ def edit_processor_import(processor_name):
         if cur_proc.get_task_in_progress('.set_processor_imports'):
             flash(_('The data sources are already being set.'))
         else:
+            print(form.apis.data)
             form_imports = set_processor_imports_in_db(
                 processor_id=cur_proc.id, form_imports=form.apis.data)
+            print(form_imports)
             msg_text = ('Setting imports in '
                         'vendormatrix for {}').format(processor_name)
             task = cur_proc.launch_task(
@@ -615,8 +636,8 @@ def get_table():
                          )
     pd.set_option('display.max_colwidth', -1)
     df = df.reset_index()
-    # if 'index' in df.columns:
-        # df = df[[x for x in df.columns if x != 'index'] + ['index']]
+    if 'index' in df.columns:
+        df = df[[x for x in df.columns if x != 'index'] + ['index']]
     cols = json.dumps(df.columns.tolist())
     if 'Relation' in table_name:
         table_name = 'Relation{}'.format(proc_arg['parameter'])
@@ -812,7 +833,7 @@ def edit_processor(processor_name):
         processor_to_edit.launch_task('.create_processor', _(post_body),
                                       current_user.id,
                                       current_app.config['BASE_PROCESSOR_PATH'])
-        creation_text = 'Processor was requested for creation.'
+        creation_text = 'Processor basic information was edited.'
         flash(_(creation_text))
         post = Post(body=creation_text, author=current_user,
                     processor_id=processor_to_edit.id)

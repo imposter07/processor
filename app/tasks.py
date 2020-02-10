@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import time
+import copy
 import shutil
 import pandas as pd
 from datetime import datetime
@@ -350,11 +351,23 @@ def set_processor_imports(processor_id, current_user_id, form_imports,
                 processor_id, form_imports)
         else:
             processor_dicts = form_imports
+        full_processor_dicts = copy.deepcopy(processor_dicts)
+        for processor_dict in processor_dicts:
+            if 'raw_file' in processor_dict:
+                processor_dict.pop('raw_file', None)
         processor_path = adjust_path(cur_processor.local_path)
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.vendormatrix as vm
         from processor.reporting.vendormatrix import ImportConfig
         os.chdir(processor_path)
         ic = ImportConfig()
         ic.add_and_remove_from_vm(processor_dicts, matrix=True)
+        matrix = vm.VendorMatrix()
+        for processor_dict in full_processor_dicts:
+            if 'raw_file' in processor_dict:
+                data_source = matrix.get_data_source(
+                    vk=processor_dict[vmc.vendorkey])
+                data_source.write(processor_dict['raw_file'])
         msg_text = "Processor {} imports set.".format(cur_processor.name)
         processor_post_message(cur_processor, user_that_ran, msg_text)
         get_processor_sources(processor_id, current_user_id)

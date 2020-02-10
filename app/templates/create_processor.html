@@ -226,8 +226,11 @@
                         var table = $(tableJquery).DataTable({
                             dom: "Bfrtip",
                             columns: tableCols,
+                            "deferRender": true,
+                            "orderClasses": false,
                             "scrollX": true,
                             autoFill: true,
+                            responsive: true,
                             keys: {
                                 columns: ':not(:first-child)',
                                 editor:  editor
@@ -715,6 +718,12 @@
                     if (!$("[class*='DTED DTED_Lightbox_Wrapper']")[0]){
                         location.reload()}
                 }
+            })
+        });
+        $(document).ready(function() {
+            $('#tableModal').on('shown.bs.modal', function () {
+                $($.fn.dataTable.tables(true)).DataTable()
+                    .columns.adjust();
             })
         });
     </script>

@@ -494,10 +494,8 @@ def edit_processor_import(processor_name):
         if cur_proc.get_task_in_progress('.set_processor_imports'):
             flash(_('The data sources are already being set.'))
         else:
-            print(form.apis.data)
             form_imports = set_processor_imports_in_db(
                 processor_id=cur_proc.id, form_imports=form.apis.data)
-            print(form_imports)
             msg_text = ('Setting imports in '
                         'vendormatrix for {}').format(processor_name)
             task = cur_proc.launch_task(

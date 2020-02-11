@@ -324,10 +324,13 @@ def get_processor_sources(processor_id, current_user_id):
             processor_id=processor_id, current_user_id=current_user_id)
         _set_task_progress(0)
         import processor.reporting.vendormatrix as vm
+        os.chdir('processor')
+        default_param_ic = vm.ImportConfig(matrix=True)
         processor_path = adjust_path(cur_processor.local_path)
         os.chdir(processor_path)
         matrix = vm.VendorMatrix()
-        data_sources = matrix.get_all_data_sources()
+        data_sources = matrix.get_all_data_sources(
+            default_param=default_param_ic)
         add_data_sources_from_processor(cur_processor, data_sources)
         msg_text = "Processor {} sources refreshed.".format(cur_processor.name)
         processor_post_message(cur_processor, user_that_ran, msg_text)
@@ -356,20 +359,28 @@ def set_processor_imports(processor_id, current_user_id, form_imports,
             if 'raw_file' in processor_dict:
                 processor_dict.pop('raw_file', None)
         processor_path = adjust_path(cur_processor.local_path)
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
         import processor.reporting.vmcolumns as vmc
         import processor.reporting.vendormatrix as vm
         from processor.reporting.vendormatrix import ImportConfig
+        os.chdir('processor')
+        default_param_ic = ImportConfig(matrix=True)
         os.chdir(processor_path)
-        ic = ImportConfig()
+        ic = ImportConfig(default_param_ic=default_param_ic)
         ic.add_and_remove_from_vm(processor_dicts, matrix=True)
         matrix = vm.VendorMatrix()
         for processor_dict in full_processor_dicts:
             if 'raw_file' in processor_dict:
-                data_source = matrix.get_data_source(
-                    vk=processor_dict[vmc.vendorkey])
+                vk = processor_dict[vmc.vendorkey]
+                if not vk:
+                    vk = 'API_{}'.format(processor_dict['Key'])
+                    if processor_dict['name']:
+                        vk = '{}_{}'.format(vk, processor_dict['name'])
+                data_source = matrix.get_data_source(vk=vk)
                 data_source.write(processor_dict['raw_file'])
         msg_text = "Processor {} imports set.".format(cur_processor.name)
         processor_post_message(cur_processor, user_that_ran, msg_text)
+        os.chdir(cur_path)
         get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
         db.session.commit()

@@ -630,7 +630,8 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
         if 'index' in df.columns:
             df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
-        rule_cols = [x for x in df.columns if x not in vmc.vmkeys]
+        rule_cols = [x for x in df.columns
+                     if x not in vmc.vmkeys + [vmc.vendorkey]]
         df = df[[vmc.vendorkey] + vmc.vmkeys + rule_cols]
         matrix.vm_df = df
         matrix.write()

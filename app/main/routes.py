@@ -539,9 +539,10 @@ def get_log():
 @bp.route('/post_table', methods=['GET', 'POST'])
 @login_required
 def post_table():
+    import html
     proc_name = request.form['processor']
     proc_arg = {'running_user': current_user.id,
-                'new_data': request.form['data']}
+                'new_data': html.unescape(request.form['data'])}
     table_name = request.form['table']
     if 'vendorkey' in table_name:
         split_table_name = table_name.split('vendorkey')

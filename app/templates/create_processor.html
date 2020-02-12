@@ -311,6 +311,11 @@
                               'Loading...' +
                             '</button>');
                     };
+                    $('#tableModalSaveButton').parent().html('' +
+                            '<button class="btn btn-success btn-lg btn-block" type="button" disabled>' +
+                              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                              'Loading...' +
+                            '</button>');
                     $.post('/post_table',
                         {
                             data: json,
@@ -321,11 +326,13 @@
                     });
                 }
             </script>
-            <button type="button" class="btn btn-success"
-                    data-dismiss="modal"
-                    onclick="SendDataTable()">Save</button>
-            <button type="button" class="btn btn-secondary"
-                    data-dismiss="modal">Close</button>
+            <div class="btn-group btn-group-lg btn-block" role="group" aria-label="Basic example">
+                <button type="button" class="btn btn-success"
+                        id="tableModalSaveButton"
+                        onclick="SendDataTable()">Save</button>
+                <button type="button" class="btn btn-secondary"
+                        data-dismiss="modal">Close</button>
+            </div>
           </div>
         </div>
       </div>

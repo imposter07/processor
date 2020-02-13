@@ -340,6 +340,10 @@ def get_navigation_buttons(buttons=None):
                    {'Fees': 'main.edit_processor_fees'},
                    {'Conversions': 'main.edit_processor_conversions'},
                    {'Finish': 'main.edit_processor_finish'}]
+    elif buttons == 'ProcessorRequestFix':
+        buttons = [{'New Fix': 'main.edit_processor_request_fix'},
+                   {'Submit Fixes': 'main.edit_processor_account'},
+                   {'Open Fixes': 'main.edit_processor_finish'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
                    {'Import': 'main.edit_processor_import'},
@@ -1185,19 +1189,15 @@ def edit_processor_finish(processor_name):
 def edit_processor_request_fix(processor_name):
     kwargs = get_current_processor(processor_name=processor_name,
                                    current_page='edit_processor_request_fix',
-                                   edit_progress=100, edit_name='Finish',
-                                   buttons='ProcessorRequest')
+                                   edit_progress=33, edit_name='New Fix',
+                                   buttons='ProcessorRequestFix')
     cur_proc = kwargs['processor']
-    form = ProcessorRequestFixForm()
+    form = ProcessorFixForm()
+    choices = [('', '')]
+    choices.extend([(x.vendor_key, x.vendor_key) for x in
+              ProcessorDatasources.query.filter_by(processor_id=73).all()])
+    form.data_source.choices = choices
     kwargs['form'] = form
-    if form.add_child_fix.data:
-        form.current_fixes.append_entry()
-        kwargs['form'] = form
-        return render_template('create_processor.html', **kwargs)
-    if form.remove_fix.data:
-        form.current_fixes.pop_entry()
-        kwargs['form'] = form
-        return render_template('create_processor.html', **kwargs)
     if request.method == 'POST':
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_page',

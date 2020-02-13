@@ -8,7 +8,7 @@ from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
 from flask_babel import _, lazy_gettext as _l
 from app.models import User, Processor, Client, Product, Campaign, Uploader,\
-    RateCard
+    RateCard, ProcessorDatasources
 import processor.reporting.dictcolumns as dctc
 import processor.reporting.vmcolumns as vmc
 
@@ -409,18 +409,21 @@ class ProcessorFixForm(FlaskForm):
     fix_type = SelectField('Fix Type', choices=[
         ('Change Dimension', 'Change Dimension'),
         ('Change Metric', 'Change Metric'),
+        ('New File', 'New File'),
+        ('Upload File', 'Upload File'),
         ('Change Tableau', 'Change Tableau'),
         ('Custom', 'Custom')])
-    column_name = SelectField('Column Name',
-                              choices=[(x, x) for x in dctc.COLS])
+    column_name = SelectField(
+        'Column Name',  choices=[('', '')] + [(x, x) for x in dctc.COLS])
     old_value = StringField(_l('Wrong Value'))
     new_value = StringField(_l('Correct Value'))
-    filter_column_name = SelectField('Filter Column Name',
-                                     choices=[(x, x) for x in dctc.COLS])
+    filter_column_name = SelectField(
+        'Filter Column Name', choices=[('', '')] + [(x, x) for x in dctc.COLS])
     filter_column_value = StringField('Filter Column Value')
     fix_description = TextAreaField(_l('Describe Fix'))
+    data_source = SelectField(_l('Processor Data Source'))
     new_file = FileField(_l('New File'))
-    delete = SubmitField(_l('Delete'))
+    # delete = SubmitField(_l('Delete'))
 
 
 class ProcessorRequestFixForm(FlaskForm):

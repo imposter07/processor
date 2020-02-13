@@ -1183,16 +1183,14 @@ def build_processor_from_request(processor_id, current_user_id):
 def save_media_plan(processor_id, current_user_id, media_plan):
     try:
         cur_processor = Processor.query.get(processor_id)
-        from werkzeug.utils import secure_filename
-        media_plan = media_plan['data']
-        filename = secure_filename(media_plan.filename)
         base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
             cur_processor.campaign.product.client.name,
             cur_processor.campaign.product.name, cur_processor.campaign.name,
             cur_processor.name)
-        os.mkdir(base_path)
-        media_plan.save(os.path.join(
-            base_path, filename
+        if not os.path.exists(base_path):
+            os.makedirs(base_path)
+        media_plan.to_csv(os.path.join(
+            base_path, 'mediaplan.csv'
         ))
     except:
         _set_task_progress(100)

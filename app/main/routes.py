@@ -18,6 +18,7 @@ from app.models import User, Post, Message, Notification, Processor, \
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
+import uploader.upload.creator as cre
 
 
 @bp.before_app_request
@@ -885,6 +886,23 @@ def uploaded_file(filename):
                                filename)
 
 
+def convert_media_plan_to_df(current_file):
+    mp = cre.MediaPlan(current_file)
+    return mp.df
+
+
+def check_and_add_media_plan(media_plan_data, processor_to_edit):
+    if media_plan_data:
+        df = convert_media_plan_to_df(media_plan_data)
+        msg_text = ('Attempting to save media plan for  processor: {}'
+                    ''.format(processor_to_edit.name))
+        processor_to_edit.launch_task(
+            '.save_media_plan', _(msg_text),
+            running_user=current_user.id,
+            media_plan=df)
+        db.session.commit()
+
+
 @bp.route('/request_processor', methods=['GET', 'POST'])
 @login_required
 def request_processor():
@@ -911,6 +929,7 @@ def request_processor():
                     processor_id=new_processor.id)
         db.session.add(post)
         db.session.commit()
+        check_and_add_media_plan(form.media_plan.data, new_processor)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_account',
                                     processor_name=new_processor.name))
@@ -953,23 +972,7 @@ def edit_request_processor(processor_name):
                     processor_id=processor_to_edit.id)
         db.session.add(post)
         db.session.commit()
-        """
-        from werkzeug.utils import secure_filename
-        import os
-        f = form.media_plan.data
-        json_file = json.dumps({'data': f})
-        filename = secure_filename(f.filename)
-        f.save(os.path.join(
-            '/mnt/c/Users/james/Documents/scripts/python/lqapp', filename
-        ))
-        msg_text = 'Attempting to save media plan for  processor: {}' \
-                   ''.format(processor_name)
-        processor_to_edit.launch_task(
-            '.save_media_plan', _(msg_text),
-            running_user=current_user.id,
-            media_plan=json_file)
-        db.session.commit()
-        """
+        check_and_add_media_plan(form.media_plan.data, processor_to_edit)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_account',
                                     processor_name=processor_to_edit.name))
@@ -1208,7 +1211,7 @@ def edit_processor_request_fix(processor_name):
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/uploader')
+@bp.route('/upload')
 @login_required
 def uploader():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
@@ -1216,10 +1219,10 @@ def uploader():
     uploaders = current_user.uploader.order_by(
         Uploader.last_run_time.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
-    next_url = (url_for('main.uploader', username=cur_user.username,
+    next_url = (url_for('main.upload', username=cur_user.username,
                         page=uploaders.next_num)
                 if uploaders.has_next else None)
-    prev_url = (url_for('main.uploader', username=cur_user.username,
+    prev_url = (url_for('main.upload', username=cur_user.username,
                         page=uploaders.prev_num)
                 if uploaders.has_prev else None)
     return render_template('uploader.html', title=_('Uploader'),
@@ -1260,7 +1263,7 @@ def create_uploader():
             return redirect(url_for('main.edit_uploader',
                                     uploader_name=new_uploader.name))
         else:
-            return redirect(url_for('main.uploader'))
+            return redirect(url_for('main.upload'))
     return render_template('create_uploader.html', user=cur_user,
                            title=_('Uploader'), form=form, edit_progress="25",
                            edit_name='Basic')
@@ -1275,7 +1278,7 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
              filter_by(uploader_id=cur_up.id).
              order_by(Post.timestamp.desc()).
              paginate(page, 5, False))
-    args = {'uploader': cur_up, 'posts': posts.items,
+    args = {'upload': cur_up, 'posts': posts.items,
             'title': _('Uploader'), 'uploader_name': cur_up.name,
             'user': cur_user, 'edit_progress': edit_progress,
             'edit_name': edit_name}
@@ -1288,7 +1291,7 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
     return args
 
 
-@bp.route('/uploader/<uploader_name>')
+@bp.route('/upload/<uploader_name>')
 @login_required
 def uploader_page(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'uploader_page',
@@ -1296,12 +1299,12 @@ def uploader_page(uploader_name):
     return render_template('create_uploader.html', **kwargs)
 
 
-@bp.route('/uploader/<uploader_name>/edit', methods=['GET', 'POST'])
+@bp.route('/upload/<uploader_name>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_uploader(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
                                   edit_progress=25, edit_name='Basic')
-    uploader_to_edit = kwargs['uploader']
+    uploader_to_edit = kwargs['upload']
     form = EditUploaderForm(uploader_name)
     if request.method == 'POST':
         form.validate()

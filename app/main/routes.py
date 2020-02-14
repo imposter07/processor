@@ -14,7 +14,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorRequestFixForm, ProcessorFixForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
-    Uploader, Account, RateCard, Conversion
+    Uploader, Account, RateCard, Conversion, Requests
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -424,7 +424,7 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
 
 def add_df_to_processor_dict(form_import, processor_dicts):
     for fi in form_import:
-        if fi['raw_file']:
+        if 'raw_file' in fi and fi['raw_file']:
             df = convert_file_to_df(fi['raw_file'])
             new_dict = [x for x in processor_dicts
                         if x[vmc.vendorkey] == fi['vendor_key']][0]
@@ -1198,10 +1198,24 @@ def edit_processor_request_fix(processor_name):
     form = ProcessorFixForm()
     choices = [('', '')]
     choices.extend([(x.vendor_key, x.vendor_key) for x in
-              ProcessorDatasources.query.filter_by(processor_id=73).all()])
+                    ProcessorDatasources.query.filter_by(
+                        processor_id=cur_proc.id).all()])
     form.data_source.choices = choices
     kwargs['form'] = form
     if request.method == 'POST':
+        new_processor_request = Requests(
+            processor_id=cur_proc.id, fix_type=form.fix_type.data,
+            column_name=form.column_name.data, wrong_value=form.wrong_value.data,
+            correct_value=form.correct_value.data,
+            filter_column_name=form.filter_column_name.data,
+            filter_column_value=form.filter_column_value.data,
+            fix_description=form.fix_description.data
+        )
+        db.session.add(new_processor_request)
+        db.session.commit()
+        if form.new_file.data:
+            if form.fix_type.data == 'Update Plan':
+                check_and_add_media_plan(form.new_file.data, cur_proc)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_page',
                                     processor_name=cur_proc.name))
@@ -1210,6 +1224,54 @@ def edit_processor_request_fix(processor_name):
                                     processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
+
+@bp.route('/processor/<processor_name>/edit/fix/submit',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_submit_fix(processor_name):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_submit_fix',
+                                   edit_progress=66, edit_name='Submit Fix',
+                                   buttons='ProcessorRequest')
+    cur_proc = kwargs['processor']
+    cur_users = ProcessorRequestFinishForm().set_users(Processor, cur_proc)
+    form = ProcessorRequestFinishForm(assigned_users=cur_users)
+    kwargs['form'] = form
+    if form.add_child.data:
+        form.assigned_users.append_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
+    if form.remove_user.data:
+        form.assigned_users.pop_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
+    for usr in form.assigned_users:
+        if usr.delete.data:
+            delete_user = usr.assigned_user.data
+            if delete_user:
+                delete_user.unfollow_processor(cur_proc)
+                db.session.commit()
+            return redirect(url_for('main.edit_processor_finish',
+                                    processor_name=processor_name))
+    if request.method == 'POST':
+        for usr in form.assigned_users:
+            follow_user = usr.assigned_user.data
+            if follow_user:
+                follow_user.follow_processor(cur_proc)
+                db.session.commit()
+        if form.form_continue.data == 'continue':
+            msg_text = 'Sending request and attempting to build processor: {}' \
+                       ''.format(processor_name)
+            cur_proc.launch_task(
+                '.build_processor_from_request', _(msg_text),
+                running_user=current_user.id)
+            db.session.commit()
+            return redirect(url_for('main.processor_page',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_finish',
+                                    processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
 
 @bp.route('/upload')
 @login_required

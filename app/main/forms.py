@@ -409,20 +409,24 @@ class ProcessorFixForm(FlaskForm):
     fix_type = SelectField('Fix Type', choices=[
         ('Change Dimension', 'Change Dimension'),
         ('Change Metric', 'Change Metric'),
+        ('Missing Metric', 'Missing Metric'),
         ('New File', 'New File'),
         ('Upload File', 'Upload File'),
+        ('Update Plan', 'Update Plan'),
         ('Change Tableau', 'Change Tableau'),
         ('Custom', 'Custom')])
     column_name = SelectField(
-        'Column Name',  choices=[('', '')] + [(x, x) for x in dctc.COLS])
-    old_value = StringField(_l('Wrong Value'))
-    new_value = StringField(_l('Correct Value'))
+        'Column Name',  choices=[('', '')] + [(x, x) for x in dctc.COLS] +
+                                [(x, x) for x in vmc.datacol])
+    wrong_value = StringField(_l('Wrong Value'))
+    correct_value = StringField(_l('Correct Value'))
     filter_column_name = SelectField(
         'Filter Column Name', choices=[('', '')] + [(x, x) for x in dctc.COLS])
     filter_column_value = StringField('Filter Column Value')
     fix_description = TextAreaField(_l('Describe Fix'))
     data_source = SelectField(_l('Processor Data Source'))
     new_file = FileField(_l('New File'))
+    form_continue = HiddenField('form_continue')
     # delete = SubmitField(_l('Delete'))
 
 

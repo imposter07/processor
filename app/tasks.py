@@ -1057,6 +1057,38 @@ def set_processor_fees(processor_id, current_user_id):
         return False
 
 
+def set_processor_plan_net(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        from uploader.upload.creator import MediaPlan
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.vmcolumnas as vmc
+        import processor.reporting.dictionary as dct
+        import processor.reporting.dictcolumns as dctc
+        os.chdir(adjust_path(cur_processor.local_path))
+        if not os.path.exists('mediaplan.csv'):
+            return False
+        df = pd.read_csv('mediaplan.csv')
+        df = df.groupby([MediaPlan.placement_phase, MediaPlan.partner_name])[
+            dctc.PNC].sum().reset_index()
+        df = df.rename(columns={MediaPlan.placement_phase: dctc.CAM,
+                                MediaPlan.partner_name: dctc.VEN})
+        df[dctc.FPN] = df[dctc.CAM] + '_' + df[dctc.VEN]
+        matrix = vm.VendorMatrix()
+        param = matrix.vendor_set('DCM')
+        uncapped_partners = param['RULE_1_QUERY'].split('::')[1].split(',')
+        df[dctc.UNC] = df[dctc.VEN].isin(uncapped_partners).replace(False, '')
+        data_source = matrix.get_data_source(vm.plan_key)
+        dic = dct.Dict(data_source.p[vmc.filenamedict])
+        dic.write(df)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def send_processor_build_email(processor_id, current_user_id, progress):
     try:
         progress = ['{}.....{}'.format(k, v)
@@ -1110,6 +1142,7 @@ def build_processor_from_request(processor_id, current_user_id):
         'set_apis': 'Failed',
         'set_conversions': 'Failed',
         'set_fees': 'Failed',
+        'set_planned_net': 'Failed',
         'run_processor': 'Failed',
         'schedule_processor': 'Failed'
     }
@@ -1123,12 +1156,12 @@ def build_processor_from_request(processor_id, current_user_id):
             cur_processor.name)
         cur_processor.local_path = base_path
         db.session.commit()
-        _set_task_progress(15)
+        _set_task_progress(12)
         result = create_processor(processor_id, current_user_id,
                                   app.config['BASE_PROCESSOR_PATH'])
         if result:
             progress['create'] = 'Success!'
-        _set_task_progress(30)
+        _set_task_progress(25)
         import_names = (cur_processor.campaign.name.
                         replace(' ', '').replace('_', '').replace('|', ''))
         proc_dict = [
@@ -1141,23 +1174,28 @@ def build_processor_from_request(processor_id, current_user_id):
         result = set_processor_imports(processor_id, current_user_id, proc_dict)
         if result:
             progress['set_apis'] = 'Success!'
-        _set_task_progress(45)
+        _set_task_progress(37)
         os.chdir(cur_path)
         result = set_conversions(processor_id, current_user_id)
         if result:
             progress['set_conversions'] = 'Success!'
-        _set_task_progress(60)
+        _set_task_progress(50)
         os.chdir(cur_path)
         result = set_processor_fees(processor_id, current_user_id)
         if result:
             progress['set_fees'] = 'Success!'
+        _set_task_progress(62)
+        os.chdir(cur_path)
+        result = set_processor_plan_net(processor_id, current_user_id)
+        if result:
+            progress['set_planned_net'] = 'Success!'
         _set_task_progress(75)
         os.chdir(cur_path)
         result = run_processor(processor_id, current_user_id,
                                '--api all --ftp all --dbi all --exp all --tab')
         if result:
             progress['run_processor'] = 'Success!'
-        _set_task_progress(90)
+        _set_task_progress(88)
         os.chdir(cur_path)
         msg_text = 'Scheduling processor: {}'.format(cur_processor.name)
         import datetime as dt
@@ -1183,15 +1221,24 @@ def build_processor_from_request(processor_id, current_user_id):
 def save_media_plan(processor_id, current_user_id, media_plan):
     try:
         cur_processor = Processor.query.get(processor_id)
-        base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
-            cur_processor.campaign.product.client.name,
-            cur_processor.campaign.product.name, cur_processor.campaign.name,
-            cur_processor.name)
+        cur_user = User.query.get(current_user_id)
+        if not cur_processor.local_path:
+            base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
+                cur_processor.campaign.product.client.name,
+                cur_processor.campaign.product.name,
+                cur_processor.campaign.name,
+                cur_processor.name)
+        else:
+            base_path = cur_processor.local_path
         if not os.path.exists(base_path):
             os.makedirs(base_path)
         media_plan.to_csv(os.path.join(
             base_path, 'mediaplan.csv'
         ))
+        msg_text = ('{} processor media plan was updated.'
+                    ''.format(cur_processor.name))
+        processor_post_message(cur_processor, cur_user, msg_text)
+        _set_task_progress(100)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(

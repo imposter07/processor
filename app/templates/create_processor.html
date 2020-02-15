@@ -544,6 +544,11 @@
     {% if form %}
         {% include '_form.html' %}
     {% endif %}
+    {% if fixes %}
+        {% for fix in fixes %}
+            {% include '_fix.html' %}
+        {% endfor %}
+    {% endif %}
     {% if tables %}
         <script type="text/javascript">
             $(document).ready(function() {

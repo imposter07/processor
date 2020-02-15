@@ -1,0 +1,45 @@
+<div class="card bg-light mb-3">
+    <div class="card-header">
+        <h3>
+            <span class="nowrap">
+            <a href="{{ url_for('main.edit_processor_view_fix',
+            processor_name=fix.processor.name, fix_id=fix.id) }}">
+            {{ processor.name }} - Fix Request {{ fix.id }}</a>
+            {% if not fix.complete %}
+                <a class="btn btn-danger rounded-pill" href="#"
+                style="float: right;">Open Fix</a>
+             {% else %}
+                <a class="btn btn-primary rounded-pill" href="#"
+                style="float: right;">Closed Fix</a>
+            {% endif %}
+            <h6 class="mt-0">{{ _('was created %(when)s',
+            when=moment(fix.created_at).fromNow()) }}</h6>
+            </span>
+        </h3>
+    </div>
+    <div class="card">
+        <div class="card-body">
+        <p class="card-text">
+            {% for col, value in fix.to_dict().items() %}
+                {% if value %}
+                    <span id="campaign{{ processor.id }}">
+                        {{ col }}: {{ value }}</span>
+                    <br>
+                {% endif %}
+            {% endfor %}
+        </p>
+        </div>
+        <div class="card-footer">
+            {% with post = fix.get_last_post() %}
+                {% if post %}
+                    {% include '_post.html' %}
+                {% else %}
+                    <h5 class="sidebar-heading d-flex
+                    justify-content-between align-items-center">
+                        <span>{{ _('Fix has no Posts') }}</span>
+                    </h5>
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+</div>

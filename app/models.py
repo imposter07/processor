@@ -730,6 +730,28 @@ class Requests(db.Model):
     fixed_time = db.Column(db.DateTime)
     posts = db.relationship('Post', backref='requests', lazy='dynamic')
 
+    def get_form_dict(self):
+        form_dict = {
+            'processor_id': self.processor_id,
+            'fix_type': self.fix_type,
+            'column_name': self.column_name,
+            'wrong_value': self.wrong_value,
+            'correct_value': self.correct_value,
+            'filter_column_name': self.filter_column_name,
+            'filter_column_value': self.filter_column_value,
+            'fix_description': self.fix_description,
+        }
+        return form_dict
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and 'id' not in k
+                     and k not in ['created_at', 'fixed_time', 'complete',
+                                   'processor']])
+
+    def get_last_post(self):
+        return self.posts.order_by(Post.timestamp.desc()).first()
+
 
 class Uploader(db.Model):
     id = db.Column(db.Integer, primary_key=True)

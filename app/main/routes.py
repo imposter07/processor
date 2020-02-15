@@ -343,7 +343,7 @@ def get_navigation_buttons(buttons=None):
                    {'Finish': 'main.edit_processor_finish'}]
     elif buttons == 'ProcessorRequestFix':
         buttons = [{'New Fix': 'main.edit_processor_request_fix'},
-                   {'Submit Fixes': 'main.edit_processor_account'},
+                   {'Submit Fixes': 'main.edit_processor_submit_fix'},
                    {'Open Fixes': 'main.edit_processor_finish'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
@@ -397,12 +397,15 @@ def create_processor():
 
 
 def get_current_processor(processor_name, current_page, edit_progress=0,
-                          edit_name='Page', buttons=None):
+                          edit_name='Page', buttons=None, fix_id=None):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     page = request.args.get('page', 1, type=int)
+    post_filter = {'processor_id': cur_proc.id}
+    if fix_id:
+        post_filter['request_id'] = fix_id
     posts = (Post.query.
-             filter_by(processor_id=cur_proc.id).
+             filter_by(post_filter).
              order_by(Post.timestamp.desc()).
              paginate(page, 5, False))
     api_imports = {0: {'All': 'import'}}
@@ -1192,15 +1195,11 @@ def edit_processor_finish(processor_name):
 def edit_processor_request_fix(processor_name):
     kwargs = get_current_processor(processor_name=processor_name,
                                    current_page='edit_processor_request_fix',
-                                   edit_progress=33, edit_name='New Fix',
+                                   edit_progress=50, edit_name='New Fix',
                                    buttons='ProcessorRequestFix')
     cur_proc = kwargs['processor']
     form = ProcessorFixForm()
-    choices = [('', '')]
-    choices.extend([(x.vendor_key, x.vendor_key) for x in
-                    ProcessorDatasources.query.filter_by(
-                        processor_id=cur_proc.id).all()])
-    form.data_source.choices = choices
+    form.set_vendor_key_choices(current_processor_id=cur_proc.id)
     kwargs['form'] = form
     if request.method == 'POST':
         new_processor_request = Requests(
@@ -1212,6 +1211,14 @@ def edit_processor_request_fix(processor_name):
             fix_description=form.fix_description.data
         )
         db.session.add(new_processor_request)
+        db.session.commit()
+        creation_text = "Processor {} fix request {} was created".format(
+            cur_proc.name, new_processor_request.id)
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    processor_id=cur_proc.id,
+                    request_id=new_processor_request.id)
+        db.session.add(post)
         db.session.commit()
         if form.new_file.data:
             if form.fix_type.data == 'Update Plan':
@@ -1231,47 +1238,59 @@ def edit_processor_request_fix(processor_name):
 def edit_processor_submit_fix(processor_name):
     kwargs = get_current_processor(processor_name,
                                    current_page='edit_processor_submit_fix',
-                                   edit_progress=66, edit_name='Submit Fix',
-                                   buttons='ProcessorRequest')
+                                   edit_progress=100, edit_name='Submit Fixes',
+                                   buttons='ProcessorRequestFix')
     cur_proc = kwargs['processor']
-    cur_users = ProcessorRequestFinishForm().set_users(Processor, cur_proc)
-    form = ProcessorRequestFinishForm(assigned_users=cur_users)
+    fixes = Requests.query.filter_by(processor_id=cur_proc.id).all()
+    form = ProcessorRequestFixForm()
+    kwargs['fixes'] = fixes
     kwargs['form'] = form
-    if form.add_child.data:
-        form.assigned_users.append_entry()
-        kwargs['form'] = form
-        return render_template('create_processor.html', **kwargs)
-    if form.remove_user.data:
-        form.assigned_users.pop_entry()
-        kwargs['form'] = form
-        return render_template('create_processor.html', **kwargs)
-    for usr in form.assigned_users:
-        if usr.delete.data:
-            delete_user = usr.assigned_user.data
-            if delete_user:
-                delete_user.unfollow_processor(cur_proc)
-                db.session.commit()
-            return redirect(url_for('main.edit_processor_finish',
-                                    processor_name=processor_name))
     if request.method == 'POST':
-        for usr in form.assigned_users:
-            follow_user = usr.assigned_user.data
-            if follow_user:
-                follow_user.follow_processor(cur_proc)
-                db.session.commit()
+        creation_text = ("Submitted {} fix request(s) for "
+                         "processor {}").format(len(fixes), cur_proc.name)
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    processor_id=cur_proc.id)
+        db.session.add(post)
+        db.session.commit()
+        msg_text = ('Attempting to fix requests and notifying followers '
+                   'for processor: {}').format(processor_name)
+        cur_proc.launch_task(
+            '.processor_fix_requests', _(msg_text),
+            running_user=current_user.id)
+        db.session.commit()
         if form.form_continue.data == 'continue':
-            msg_text = 'Sending request and attempting to build processor: {}' \
-                       ''.format(processor_name)
-            cur_proc.launch_task(
-                '.build_processor_from_request', _(msg_text),
-                running_user=current_user.id)
-            db.session.commit()
-            return redirect(url_for('main.processor_page',
+            return redirect(url_for('main.edit_processor_submit_fix',
                                     processor_name=cur_proc.name))
         else:
-            return redirect(url_for('main.edit_processor_finish',
+            return redirect(url_for('main.edit_processor_submit_fix',
                                     processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/edit/fix/<fix_id>',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_view_fix(processor_name, fix_id):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_view_fix',
+                                   edit_progress=100, edit_name='View Fixes',
+                                   buttons='ProcessorRequestFix',
+                                   fix_id=fix_id)
+    cur_proc = kwargs['processor']
+    fixes = Requests.query.filter_by(id=fix_id).all()
+    form = ProcessorRequestFixForm()
+    kwargs['fixes'] = fixes
+    kwargs['form'] = form
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_processor_submit_fix',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_submit_fix',
+                                    processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
+
 
 @bp.route('/upload')
 @login_required

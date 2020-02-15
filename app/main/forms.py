@@ -429,12 +429,29 @@ class ProcessorFixForm(FlaskForm):
     form_continue = HiddenField('form_continue')
     # delete = SubmitField(_l('Delete'))
 
+    def set_vendor_key_choices(self, current_processor_id):
+        choices = [('', '')]
+        choices.extend([(x.vendor_key, x.vendor_key) for x in
+                        ProcessorDatasources.query.filter_by(
+                            processor_id=current_processor_id).all()])
+        self.data_source.choices = choices
+
 
 class ProcessorRequestFixForm(FlaskForm):
-    add_child_fix = SubmitField(label='Add Fix')
-    remove_fix = SubmitField('Remove Last Fix')
+    # add_child = SubmitField(label='Add Fix')
+    # remove_fix = SubmitField('Remove Last Fix')
     form_continue = HiddenField('form_continue')
-    current_fixes = FieldList(FormField(ProcessorFixForm, label=''))
+    # current_fixes = FieldList(FormField(ProcessorFixForm, label=''))
+
+    def set_fixes(self, data_source, cur_proc):
+        fix_dict = []
+        proc_fixes = data_source.query.filter_by(processor_id=cur_proc.id).all()
+        for fix in proc_fixes:
+            if fix.fix_type is not None:
+                form_dict = fix.get_form_dict()
+                fix_dict.append(form_dict)
+        self.fixes = fix_dict
+        return fix_dict
 
 
 class UploaderForm(FlaskForm):

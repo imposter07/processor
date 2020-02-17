@@ -404,8 +404,10 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
     post_filter = {'processor_id': cur_proc.id}
     if fix_id:
         post_filter['request_id'] = fix_id
-    posts = (Post.query.
-             filter_by(post_filter).
+    query = Post.query
+    for attr, value in post_filter.items():
+        query = query.filter(getattr(Post, attr) == value)
+    posts = (query.
              order_by(Post.timestamp.desc()).
              paginate(page, 5, False))
     api_imports = {0: {'All': 'import'}}
@@ -1204,7 +1206,8 @@ def edit_processor_request_fix(processor_name):
     if request.method == 'POST':
         new_processor_request = Requests(
             processor_id=cur_proc.id, fix_type=form.fix_type.data,
-            column_name=form.column_name.data, wrong_value=form.wrong_value.data,
+            column_name=form.column_name.data,
+            wrong_value=form.wrong_value.data,
             correct_value=form.correct_value.data,
             filter_column_name=form.filter_column_name.data,
             filter_column_value=form.filter_column_value.data,

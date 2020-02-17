@@ -1062,7 +1062,7 @@ def set_processor_plan_net(processor_id, current_user_id):
         cur_processor = Processor.query.get(processor_id)
         from uploader.upload.creator import MediaPlan
         import processor.reporting.vendormatrix as vm
-        import processor.reporting.vmcolumnas as vmc
+        import processor.reporting.vmcolumns as vmc
         import processor.reporting.dictionary as dct
         import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))

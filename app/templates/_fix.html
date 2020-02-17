@@ -4,13 +4,37 @@
             <span class="nowrap">
             <a href="{{ url_for('main.edit_processor_view_fix',
             processor_name=fix.processor.name, fix_id=fix.id) }}">
-            {{ processor.name }} - Fix Request {{ fix.id }}</a>
+            {{ processor.name }} - Fix Request #{{ fix.id }}</a>
             {% if not fix.complete %}
-                <a class="btn btn-danger rounded-pill" href="#"
-                style="float: right;">Open Fix</a>
+                <div class="dropdown" style="float: right;">
+                  <button class="btn btn-danger rounded-pill dropdown-toggle
+                                 dropdown-toggle-split"
+                          type="button" id="dropdownMenu2"
+                          data-toggle="dropdown" aria-haspopup="true"
+                          aria-expanded="false" style="float: right;">
+                    Unresolved
+                  </button>
+                  <div class="dropdown-menu" aria-labelledby="dropdownMenu2">
+                    <a class="dropdown-item"
+                       href="{{  url_for('main.resolve_fix', fix_id=fix.id) }}"
+                       type="button">Mark Resolved</a>
+                  </div>
+                </div>
              {% else %}
-                <a class="btn btn-primary rounded-pill" href="#"
-                style="float: right;">Closed Fix</a>
+                <div class="dropdown" style="float: right;">
+                  <button class="btn btn-success rounded-pill dropdown-toggle
+                                 dropdown-toggle-split"
+                          type="button" id="dropdownMenu2"
+                          data-toggle="dropdown" aria-haspopup="true"
+                          aria-expanded="false" style="float: right;">
+                    Resolved
+                  </button>
+                  <div class="dropdown-menu" aria-labelledby="dropdownMenu2">
+                    <a class="dropdown-item"
+                       href="{{ url_for('main.unresolve_fix', fix_id=fix.id) }}"
+                       type="button">Mark Unresolved</a>
+                  </div>
+                </div>
             {% endif %}
             <h6 class="mt-0">{{ _('was created %(when)s',
             when=moment(fix.created_at).fromNow()) }}</h6>

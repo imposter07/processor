@@ -567,7 +567,8 @@ class ProcessorDatasources(db.Model):
         }
         return form_dict
 
-    def convert_string_to_list(self, string_value):
+    @staticmethod
+    def convert_string_to_list(string_value):
         if isinstance(string_value, list):
             new_list = string_value
         else:
@@ -751,6 +752,13 @@ class Requests(db.Model):
 
     def get_last_post(self):
         return self.posts.order_by(Post.timestamp.desc()).first()
+
+    def mark_resolved(self):
+        self.complete = True
+        self.fixed_time = datetime.utcnow()
+
+    def mark_unresolved(self):
+        self.complete = False
 
 
 class Uploader(db.Model):

@@ -437,11 +437,14 @@ class ProcessorFixForm(FlaskForm):
         self.data_source.choices = choices
 
 
-class ProcessorRequestFixForm(FlaskForm):
-    # add_child = SubmitField(label='Add Fix')
-    # remove_fix = SubmitField('Remove Last Fix')
+class ProcessorRequestCommentForm(FlaskForm):
+    post = TextAreaField(_l('Comment on Fix'))
     form_continue = HiddenField('form_continue')
-    # current_fixes = FieldList(FormField(ProcessorFixForm, label=''))
+
+
+class ProcessorRequestFixForm(FlaskForm):
+    # post = TextAreaField(_l('Comment on Fix'))
+    form_continue = HiddenField('form_continue')
 
     def set_fixes(self, data_source, cur_proc):
         fix_dict = []

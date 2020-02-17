@@ -12,7 +12,7 @@ from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
-    TaskScheduler
+    TaskScheduler, Requests
 
 app = create_app()
 app.app_context().push()
@@ -50,7 +50,6 @@ def export_posts(user_id):
         for post in user.posts.order_by(Post.timestamp.asc()):
             data.append({'body': post.body,
                          'timestamp': post.timestamp.isoformat() + 'Z'})
-            time.sleep(5)
             i += 1
             _set_task_progress(100 * i // total_posts)
         send_email('[Liquid App] Your blog posts',
@@ -1236,6 +1235,52 @@ def save_media_plan(processor_id, current_user_id, media_plan):
             base_path, 'mediaplan.csv'
         ))
         msg_text = ('{} processor media plan was updated.'
+                    ''.format(cur_processor.name))
+        processor_post_message(cur_processor, cur_user, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
+def processor_fix_request(processor_id, current_user_id, fix):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        aly_user = User.query.get(4)
+        fixed = False
+        if fix.fix_type == 'Update Plan':
+            fixed = set_processor_plan_net(processor_id, current_user_id)
+        elif fix.fix_type == 'Change Dimension':
+            pass
+        elif fix.fix_type == 'Change Metric':
+            pass
+        if fixed:
+            fix.mark_resolved()
+            msg_text = ('{} processor request #{} was auto completed by ALY,'
+                        'and marked as resolved!'
+                        ''.format(cur_processor.name, fix.id))
+            processor_post_message(cur_processor, aly_user, msg_text)
+            db.session.commit()
+        return fixed
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def processor_fix_requests(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        cur_user = User.query.get(current_user_id)
+        fixes = (Requests.query.filter_by(processor_id=cur_processor.id).
+                 order_by(Requests.created_at.desc()).all())
+        fix_result_dict = {}
+        for fix in fixes:
+            result = processor_fix_request(processor_id, current_user_id, fix)
+            fix_result_dict[fix.id] = result
+        msg_text = ('{} processor requests were updated.'
                     ''.format(cur_processor.name))
         processor_post_message(cur_processor, cur_user, msg_text)
         _set_task_progress(100)

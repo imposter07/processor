@@ -35,6 +35,15 @@
                     </a>
                 </span>
             {% endif %}
+            {% if post.request_id %}
+                <span class="uploader_popup">
+                    <a href="{{ url_for('main.edit_processor_view_fix',
+                     processor_name=post.processor.name,
+                     fix_id=post.request_id) }}">
+                        #{{ post.request_id }}
+                    </a>
+                </span>
+            {% endif %}
             <span id="post{{ post.id }}">{{ post.body }}</span>
                 {% if post.language and post.language != g.locale %}
                 <br><br>

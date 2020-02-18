@@ -11,7 +11,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
     GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
-    ProcessorRequestFixForm, ProcessorFixForm
+    ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests
@@ -1244,8 +1244,7 @@ def edit_processor_submit_fix(processor_name):
                                    edit_progress=66, edit_name='Submit Fixes',
                                    buttons='ProcessorRequestFix')
     cur_proc = kwargs['processor']
-    fixes = Requests.query.filter_by(processor_id=cur_proc.id,
-                                     complete=False).all()
+    fixes = cur_proc.get_open_requests()
     form = ProcessorRequestFixForm()
     kwargs['fixes'] = fixes
     kwargs['form'] = form
@@ -1281,8 +1280,7 @@ def edit_processor_all_fix(processor_name):
                                    edit_progress=100, edit_name='All Fixes',
                                    buttons='ProcessorRequestFix')
     cur_proc = kwargs['processor']
-    fixes = (Requests.query.filter_by(processor_id=cur_proc.id).
-             order_by(Requests.created_at.desc()).all())
+    fixes = cur_proc.get_all_requests()
     form = ProcessorRequestFixForm()
     kwargs['fixes'] = fixes
     kwargs['form'] = form
@@ -1349,7 +1347,7 @@ def edit_processor_view_fix(processor_name, fix_id):
                                    fix_id=fix_id)
     cur_proc = kwargs['processor']
     fixes = Requests.query.filter_by(id=fix_id).all()
-    form = ProcessorRequestFixForm()
+    form = ProcessorRequestCommentForm()
     kwargs['fixes'] = fixes
     kwargs['form'] = form
     if request.method == 'POST':

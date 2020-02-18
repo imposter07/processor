@@ -506,6 +506,13 @@ class Processor(db.Model):
     def get_last_post(self):
         return self.posts.order_by(Post.timestamp.desc()).first()
 
+    def get_all_requests(self):
+        return self.requests.order_by(Requests.created_at.desc()).all()
+
+    def get_open_requests(self):
+        return (self.requests.filter_by(complete=False).
+                order_by(Requests.created_at.desc()).all())
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)

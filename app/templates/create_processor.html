@@ -290,7 +290,12 @@
           <div class="modal-footer">
              <script type="text/javascript">
                  function reloadPage(){
-                    $('#listTabs').find('li.active')[0].children[0].click();
+                     try {
+                         $('#listTabs').find('li.active')[0].children[0].click();
+                     }
+                     catch(err) {
+                         location.reload()
+                     }
                 }
                 function SendDataTable() {
                     let sourceElem = $('table[id^="modalTable"]')[0].id;

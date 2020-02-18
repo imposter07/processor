@@ -17,7 +17,7 @@
     {% if not posts %}
         <h3 class="sidebar-heading d-flex justify-content-between align-items-center
            text-dark text-center">
-              <span>{{ _('No posts as you are not following anything') }}</span>
+              <span>{{ _('No posts.  Follow something.') }}</span>
         </h3>
         <h3 class="sidebar-heading d-flex justify-content-between align-items-center
            text-dark text-center">
@@ -47,11 +47,12 @@
 {% endblock %}
 
 {% block app_content %}
-<div class="card-deck">
-{% for processor in processors %}
-    {% include 'processor_popup.html' %}
-{% endfor %}
-</div>
+<nav aria-label="Page navigation example">
+  <ul id="processorsPage" class="pagination justify-content-center">
+  </ul>
+</nav>
+
+<div id="processors" class="card-deck"></div>
 
 <div id="carousel" class="carousel slide" data-ride="carousel">
     <div class="carousel-inner text-center">
@@ -118,4 +119,63 @@
             <span class="sr-only">Next</span>
     </a>
 </div>
+<script>
+    function addNavLinks(procNav, pageNum, newText, hasAnother, followed){
+        let navItem = '<li id="page'+ newText +'" class="page-item">' +
+          '<a class="page-link" href="#" tabindex="-1" ' +
+            'onclick="getProcessors(' + pageNum + ','+ followed+')"  >'+newText+'</a>' +
+        '</li>';
+        procNav.append(navItem);
+        if (!(hasAnother)) {
+           document.getElementById("page" + newText).classList.add("disabled");
+        }
+    }
+    function getProcessors(pageNum, followed){
+        let proc = $('#processors');
+        let procNav = $('#processorsPage');
+        proc.html('' +
+            '<button class="btn btn-primary btn-block btn-lg" type="button" disabled>' +
+              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+              'Loading Live Processors...' +
+            '</button>');
+        procNav.html('');
+        $.post('/get_live_processors',
+            {
+                page: pageNum,
+                followed: followed
+        }).done(function(data) {
+            procNav.html('<ul id="processorsPage" class="pagination justify-content-center">\n' +
+                '  </ul>');
+            proc.html('<div id="processors" class="card-deck"></div>');
+            for (let i = 0; i < data['items'].length; i++) {
+                proc.append(data['items'][i])}
+            addNavLinks(procNav, pageNum - 1, "Previous", data['has_prev'], followed);
+            for (let i = 1; i < data['pages'] + 1; i++){
+                procNav.append('<li id="page' + i + '" class="page-item"><a class="page-link" ' +
+                    'onclick="getProcessors(' + i + ','+ followed+')" href=#>' + i + '</a></li>');
+                if (pageNum === i) {
+                    document.getElementById("page" + i).classList.add("active");
+                }
+            }
+            addNavLinks(procNav, pageNum + 1, "Next", data['has_next'], followed);
+            if (data['pages'] === 0) {
+            proc.html('<h3 class="text-dark text-center">' +
+                '{{ _('No processors you follow are live') }}' +
+            '</h3><br>')
+            }
+        }).fail(function(jqXHR, textStatus ) {
+            console.log("Request failed: " + textStatus);
+            location.reload();
+        }).always(function(){
+        });
+    }
+    $(document).ready(function() {
+       if (window.location.pathname === "/explore"){
+           getProcessors(1, false);
+       }
+       else {
+           getProcessors(1, true);
+       }
+    });
+</script>
 {% endblock %}

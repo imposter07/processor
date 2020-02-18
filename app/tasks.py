@@ -1278,6 +1278,7 @@ def processor_fix_requests(processor_id, current_user_id):
                  order_by(Requests.created_at.desc()).all())
         fix_result_dict = {}
         for fix in fixes:
+            print(fix)
             result = processor_fix_request(processor_id, current_user_id, fix)
             fix_result_dict[fix.id] = result
         msg_text = ('{} processor requests were updated.'

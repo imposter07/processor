@@ -70,7 +70,7 @@ def health_check():
 def explore():
     live_processors = []
     for x in Processor.query.order_by(Processor.created_at.desc()):
-        if x.end_date and x.end_date < datetime.today().date():
+        if x.end_date and x.end_date > datetime.today().date():
             live_processors.append(x)
     live_processors = live_processors[:5]
     page = request.args.get('page', 1, type=int)
@@ -107,6 +107,28 @@ def get_processor_by_date():
           'borderColor': 'DimGray'}
          for x in processors if x.start_date and x.end_date])
     return jsonify(event_response)
+
+
+@bp.route('/get_live_processors', methods=['GET', 'POST'])
+@login_required
+def get_live_processors():
+    page_num = int(request.form['page'])
+    page = request.args.get('page', page_num, type=int)
+    if request.form['followed'] == 'true':
+        processors = current_user.processor_followed
+    else:
+        processors = Processor.query
+    print(request.form['followed'])
+    processors = processors.filter(
+        Processor.end_date > datetime.today().date()).order_by(
+        Processor.created_at.desc()).paginate(
+        page, 5, False)
+    processor_html = [render_template('processor_popup.html', processor=x)
+                      for x in processors.items]
+    return jsonify({'items': processor_html,
+                    'pages': processors.pages,
+                    'has_next': processors.has_next,
+                    'has_prev': processors.has_prev})
 
 
 @bp.route('/clients')

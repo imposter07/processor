@@ -1,0 +1,9 @@
+<p>Dear {{ user.username }},</p>
+<p>A processor fix has recently been requested for a processor you follow.</p>
+<p>The fixes can be found at: https://lqadata.com/processor/{{ processor_name }}/edit/fix/submit</p>
+<p>The results of ALI's automated fix attempts are listed below:</p>
+{% for x in progress %}
+    <p>{{ x }}</p>
+{% endfor %}
+<p>Sincerely,</p>
+<p>Liquid App</p>

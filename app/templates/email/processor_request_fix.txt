@@ -1,0 +1,15 @@
+Dear {{ user.username }},
+
+A processor fix has recently been requested for a processor you follow.
+
+The fixes can be found at: https://lqadata.com/processor/{{ processor_name }}/edit/fix/submit
+
+The results of ALI's automated fix attempts are listed below:
+
+{% for x in progress %}
+    {{ x }}
+{% endfor %}
+
+Sincerely,
+
+Liquid App

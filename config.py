@@ -12,7 +12,7 @@ class Config(object):
         'sqlite:///' + os.path.join(basedir, 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     ADMINS = ['james@liquidadvertising.com']
-    POSTS_PER_PAGE = 25
+    POSTS_PER_PAGE = 10
     LANGUAGES = ['en', 'es']
     MAIL_SERVER = None
     MAIL_PORT = 25

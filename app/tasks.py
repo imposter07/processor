@@ -747,7 +747,7 @@ def full_run_processor(processor_id, current_user_id, processor_args):
     try:
         _set_task_progress(0)
         run_processor(processor_id, current_user_id,
-                      '--api all --ftp all --dbi all --exp all --tab')
+                      '--api all --ftp all --dbi all --exp all --tab --analyze')
         _set_task_progress(100)
     except:
         _set_task_progress(100)

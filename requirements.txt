@@ -1,4 +1,4 @@
-flask-babel==0.12.2
+flask-babel==1.0.0
 flask-mail==0.9.1
 pyjwt==1.7.1
 flask==1.0.3

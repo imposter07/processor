@@ -7,12 +7,18 @@
 
 {% block vertical_navbar %}
 <div id="list-example" class="list-group bd-sidebar">
+  <a class="navbar-brand" href="#">Navigate Help</a>
   <a class="list-group-item list-group-item-action" href="#Homepage">Homepage</a>
   <a class="list-group-item list-group-item-action" href="#processor">Processor</a>
   <a class="list-group-item list-group-item-action" href="#processorPage">Processor Page</a>
   <a class="list-group-item list-group-item-action" href="#processorBasic">Processor - Basic</a>
   <a class="list-group-item list-group-item-action" href="#processorImport">Processor - Import</a>
   <a class="list-group-item list-group-item-action" href="#processorClean">Processor - Clean</a>
+  <a class="list-group-item list-group-item-action" href="#processorTable">Processor - DataTable</a>
+  <a class="list-group-item list-group-item-action" href="#processorRequestAcccount">Processor - Request - Account</a>
+  <a class="list-group-item list-group-item-action" href="#processorRequestFees">Processor - Request - Fees</a>
+  <a class="list-group-item list-group-item-action" href="#processorRequestConversions">Processor - Request - Conversions</a>
+
 </div>
 {% endblock %}
 
@@ -35,10 +41,13 @@
            href="#" role="button" aria-haspopup="true" aria-expanded="false">More Processor Pages</a>
         <div class="dropdown-menu">
           <a class="dropdown-item" href="#processorBasic">Processor - Basic</a>
-          <a class="dropdown-item active" href="#processorImport">Processor - Import</a>
-          <a class="dropdown-item active" href="#processorClean">Processor - Clean</a>
+          <a class="dropdown-item" href="#processorImport">Processor - Import</a>
+          <a class="dropdown-item" href="#processorClean">Processor - Clean</a>
+          <a class="dropdown-item" href="#processorTable">Processor - Clean</a>
           <div role="separator" class="dropdown-divider"></div>
-          <a class="dropdown-item" href="#three">three</a>
+          <a class="dropdown-item" href="#processorRequestAcccount">Processor - Request - Account</a>
+          <a class="dropdown-item" href="#processorRequestFees">Processor - Request - Fees</a>
+          <a class="dropdown-item" href="#processorRequestConversions">Processor - Request - Conversions</a>
         </div>
       </li>
     </ul>
@@ -366,7 +375,7 @@
         </span>
     </div>
     <hr><hr>
-    <h2 id="processorClean">Processor - Request - Accounts</h2>
+    <h2 id="processorRequestAcccount">Processor - Request - Accounts</h2>
     <h5><a href="{{ url_for('main.edit_processor_account',  processor_name='Reporting Request - Test') }}">
         {{ url_for('main.edit_processor_account',  processor_name='PROCESSOR_NAME') }}</a></h5>
     <div class="media">
@@ -397,7 +406,7 @@
         </span>
     </div>
     <hr><hr>
-    <h2 id="processorClean">Processor - Request - Fees</h2>
+    <h2 id="processorRequestFees">Processor - Request - Fees</h2>
     <h5><a href="{{ url_for('main.edit_processor_fees',  processor_name='Reporting Request - Test') }}">
         {{ url_for('main.edit_processor_fees',  processor_name='PROCESSOR_NAME') }}</a></h5>
     <div class="media">
@@ -419,7 +428,7 @@
         </span>
     </div>
     <hr><hr>
-    <h2 id="processorClean">Processor - Request - Conversions</h2>
+    <h2 id="processorRequestConversions">Processor - Request - Conversions</h2>
     <h5><a href="{{ url_for('main.edit_processor_conversions',  processor_name='Reporting Request - Test') }}">
         {{ url_for('main.edit_processor_conversions',  processor_name='PROCESSOR_NAME') }}</a></h5>
     <div class="media">

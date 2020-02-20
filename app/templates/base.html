@@ -81,6 +81,10 @@
                     href="{{ url_for('main.user', username=current_user.username) }}">
                 <i class="fas fa-user btn btn-dark btn-lg" href="#"
                    role="button"></i></a></li>
+            <li class="nav-item"><a class="nav-link" title={{ _('Help') }}
+                    href="{{ url_for('main.help') }}">
+                <i class="fas fa-question btn btn-dark btn-lg" href="#"
+                   role="button"></i></a></li>
             <li class="nav-item"><a class="nav-link" title={{ _('Logout') }}
                     href="{{ url_for('auth.logout') }}">
                 <i class="fas fa-sign-out-alt btn-dark btn-lg" href="#"

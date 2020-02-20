@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block app_header %}
+    <h1>{{ _('Help') }}</h1>
+
+{% endblock %}
+
+{% block vertical_navbar %}
+<div id="list-example" class="list-group bd-sidebar">
+  <a class="list-group-item list-group-item-action" href="#Homepage">Homepage</a>
+  <a class="list-group-item list-group-item-action" href="#processor">Processor</a>
+  <a class="list-group-item list-group-item-action" href="#processorPage">Processor Page</a>
+  <a class="list-group-item list-group-item-action" href="#processorBasic">Processor - Basic</a>
+  <a class="list-group-item list-group-item-action" href="#processorImport">Processor - Import</a>
+  <a class="list-group-item list-group-item-action" href="#processorClean">Processor - Clean</a>
+</div>
+{% endblock %}
+
+{% block app_content %}
+<div class="bd-example">
+  <nav id="navbar-example2" class="navbar navbar-light bg-light">
+    <a class="navbar-brand" href="#">Navigate Help</a>
+    <ul class="nav nav-pills">
+      <li class="nav-item">
+        <a class="nav-link" href="#Homepage">Homepage</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#processor">Processor</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#processor">Processor Page</a>
+      </li>
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle active" data-toggle="dropdown"
+           href="#" role="button" aria-haspopup="true" aria-expanded="false">More Processor Pages</a>
+        <div class="dropdown-menu">
+          <a class="dropdown-item" href="#processorBasic">Processor - Basic</a>
+          <a class="dropdown-item active" href="#processorImport">Processor - Import</a>
+          <a class="dropdown-item active" href="#processorClean">Processor - Clean</a>
+          <div role="separator" class="dropdown-divider"></div>
+          <a class="dropdown-item" href="#three">three</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+  <div data-spy="scroll" data-target="#navbar-example2 #list-example" data-offset="0" class="scrollspy-example">
+    <h2 id="Homepage">Homepage</h2>
+    <h5><a href="{{ url_for('main.index') }}">{{ url_for('main.index') }}</a></h5>
+    <div class="media">
+         <div class="media-body">
+             <h6>1 - Navbar - Explore</h6>
+             <p>Goes to the explore page, this is identical to this page but
+                 contains all posts/processors, not just ones you follow.</p>
+             <h6>2 - Navbar - Processor</h6>
+             <p>Goes to the processor page.</p>
+             <h6>3 - Navbar - Search</h6>
+             <p>Search all posts using text.
+             </p>
+             <h6>4 - Navbar - Clients</h6>
+             <p>Go to the client page, which contains all clients, and the live calendar.
+             </p>
+             <h6>5 - Navbar - Messages</h6>
+             <p>Goes to the private messages page.  Number displays unread messages.
+             </p>
+             <h6>6 - Navbar - Profile</h6>
+             <p>Goes to the current user profile.
+             </p>
+             <h6>7 - Navbar - Logout</h6>
+             <p>Logs the current user out of the application.
+             </p>
+             <h6>8 - Post</h6>
+             <p>Posts a new generic message.
+             </p>
+             <h6>9 - Latest Posts</h6>
+             <p>Shows the latest posts from users & processors you follow.
+                Can navigate to older posts with the left and right toggles at the bottom.
+             </p>
+             <h6>10 - Processor Cards</h6>
+             <p>A card of each processor that you follow and is currently live.
+             </p>
+             <h6>11 - Processor Cards - Follow/Unfollow</h6>
+             <p>Button to follow or unfollow a processor instance.
+             </p>
+             <h6>12 - Processor Cards - Open Requests</h6>
+             <p>Open requests for the processor instance.
+             </p>
+             <h6>13 - Processor Cards - Last Post</h6>
+             <p>The most recent post for the processor instance.
+             </p>
+             <h6>14 - Processor Cards - Paginate</h6>
+             <p>Go to the next/previous or specific page of processor cards.
+             </p>
+             <h6>15 - Hompeage Carousel</h6>
+             <p>Carousel that has links to processor/clients/uploader.</p>
+        </div>
+        <span class="media-left">
+            <img style="float:right" src='static/homepage.JPG'>
+        </span>
+    </div>
+    <hr><hr>
+    <h2 id="processor">Processor</h2>
+    <h5><a href="{{ url_for('main.processor') }}">{{ url_for('main.processor') }}</a></h5>
+    <div class="media">
+         <div class="media-body">
+             <h6>1 - Create Processor</h6>
+             <p>Creates a processor from scratch.</p>
+             <h6>2 - Request Processor</h6>
+             <p>Makes a new processor request.
+                 Should largely be used over Create Processor (1)</p>
+             <h6>3 - Select Processor</h6>
+             <p>Dropdown menu that changes the processor displayed in carousel (5).
+                Only displays processors that you are following.
+             </p>
+             <h6>4 - Client Directory</h6>
+             <p>List of clients to view/navigate to various processor instances.
+                The format is Client > Product > Campaign > Processor.
+                Click on an element to expand.
+             </p>
+             <h6>5 - Processor Carousel</h6>
+             <p>A carousel of processors you are following.
+                Displays basic information on top, and a tableau workbook (if added below).
+                Can cycle through processors with the arrow buttons to the left/right.
+                Directly select a processor with the dropdown (3)
+             </p>
+        </div>
+        <span class="media-left">
+            <img style="float:right" src='static/processor.JPG'>
+        </span>
+    </div>
+    <hr><hr>
+    <h2 id="processorPage">Processor Page</h2>
+    <h5><a href="{{ url_for('main.processor_page', processor_name='Reporting Request - Test') }}">
+        {{ url_for('main.processor_page', processor_name='PROCESSOR_NAME') }}</a></h5>
+    <div class="media">
+         <div class="media-body">
+             <h6>1 - Run Processor</h6>
+             <p>Runs the current processor instance. Options are:</p>
+             <p style="margin-left: 40px">
+                 a)  Full - Runs all processor modes from import to export.
+                 Equivalent of specifying 'python main.py --api all --ftp all --exp all --tab'.
+             </p>
+             <p style="margin-left: 40px">
+                 b)  Import - Runs api import.  A modal will popup specifying a specific API or all.
+                 Equivalent of specifying '--api all' or 'python main.py --api specific_api'.
+             </p>
+             <p style="margin-left: 40px">
+                 c)  Basic - Runs regular processor that cleans all data and generates Raw Data Output.
+                 Equivalent of specifying no arguments - ie 'python main.py'.
+             </p>
+             <p style="margin-left: 40px">
+                 d)  Export - Runs export to database and tableau refresh.
+                 Equivalent of specifying 'python main.py --exp all --tab'.
+             </p>
+             <p style="margin-left: 40px">
+                 e)  Update - Runs processor update on vendormatrix and dictionaries.
+                 Only used when processor code is changed to add columns to vendormatrix or dictionaries.
+                 Equivalent of specifying 'python main.py --update all --noprocess'.
+             </p>
+             <h6>2 - Edit Processor Files</h6>
+             <p>Pops open a modal that allows edits of processor files. Options are:</p>
+             <p style="margin-left: 40px">
+                 a)  Vendormatrix - Directly edit the vendormatrix.
+                 This is the config file for all datasources.
+             </p>
+             <p style="margin-left: 40px">
+                 b)  Translate - Directly edit the translation config.
+                 This config file changes a dictionary value into another.
+             </p>
+             <p style="margin-left: 40px">
+                 c)  Constant - Directly edit the constant config.
+                 This config file sets a dictionary value for all dictionaries in the processor instance.
+             </p>
+             <p style="margin-left: 40px">
+                 d)  Relation - Directly edit relation config.
+                 This config file specifies relations between dictionary values.
+             </p>
+             <h6>3 - View Output Data</h6>
+             <p>View the raw data output or various slices of data.
+                 The raw data output option starts a download.
+                 The other options display a modal of the pivoted data. </p>
+             <h6>4 - Requests</h6>
+             <p>View or create new requests for this processor</p>
+              <p style="margin-left: 40px">
+                 a)  View Initial Request - View/Edits the initial request
+                  that made this processor instance.
+             </p>
+             <p style="margin-left: 40px">
+                 b)  Request Data Fix - Request a fix for the current processor
+                 data set,including changing values, adding files etc.
+             </p>
+             <h6>5 - Show Logs</h6>
+             <p>Toggles a modal that show the logfile for the current processor instance.
+                Used to tell where the current processor is in its run.</p>
+             <h6>6 - Posts</h6>
+             <p>Most recent posts by the current proessor.  Can view older posts by toggling.</p>
+             <h6>7 - Processor tabs - Basic</h6>
+             <p>View/edit basic information about the current processor.</p>
+             <h6>8 - Processor tabs - Import</h6>
+             <p>View/edit import information for the processor.
+                 Specify APIs/datasources here. </p>
+             <h6>9 - Processor tabs - Clean</h6>
+             <p>View/edit cleaning information for the processor.
+                View individual raw data files, dictionaries, metric mapping here.</p>
+             <h6>10 - Processor tabs - Export</h6>
+             <p>View/Edit export information here.  Includes scheduling/tableua workbook.</p>
+        </div>
+        <span class="media-left">
+            <img style="float:right" src='static/processor_page.JPG'>
+        </span>
+    </div>
+    <hr><hr>
+    <h2 id="processorBasic">Processor - Basic</h2>
+    <h5><a href="{{ url_for('main.edit_processor',  processor_name='Reporting Request - Test') }}">
+        {{ url_for('main.edit_processor',  processor_name='PROCESSOR_NAME') }}</a></h5>
+    <div class="media">
+         <div class="media-body">
+             <h6>1 - Name & Description</h6>
+             <p>Decorative name and description for this processor.
+             Name will be the name of for the processor URL.</p>
+             <h6>3 - Local Path</h6>
+             <p>Physiacl location of the processor.
+                 If it is /mnt/c or C:\ this means the apps own file system.</p>
+             <h6>4 - Tableau Workbook & Tableau View</h6>
+             <p>Tableau Workbook and Tableau View used to generate
+                 the tableau view to see in carousel/processor page.  Copy from the tableau URL.
+             </p>
+             <h6>5 - Start Date & End Date</h6>
+             <p>Start and end dates of the campaign.  Used in the client calendar.
+             </p>
+             <h6>6 - Client/Add New Client, Product/Add New Product, Camapign/Add New Campaign</h6>
+             <p>Client/Product/Campaign information for classification/organization.
+                 If client exists in 'Client' dropdown select it there.
+                 If not fill in new value to 'Add New Client'.  Same appiles for Product/Campaign.
+             </p>
+             <h6>7 - Save & Refresh</h6>
+             <p>Saves any changed data and attempts to create the processor.  Will refresh the current page.
+             </p>
+             <h6>2 - Save & Continue</h6>
+             <p>Saves any changed data and attempts to create the processor.
+                 Will go to import tab.
+             </p>
+        </div>
+        <span class="media-left">
+            <img style="float:right" src='static/processor_basic.JPG'>
+        </span>
+    </div>
+    <hr><hr>
+    <h2 id="processorImport">Processor - Import</h2>
+    <h5><a href="{{ url_for('main.edit_processor_import',  processor_name='Reporting Request - Test') }}">
+        {{ url_for('main.edit_processor_import',  processor_name='PROCESSOR_NAME') }}</a></h5>
+    <div class="media">
+         <div class="media-body">
+             <h6>1 - Adds a new API/Datasource card</h6>
+             <h6>2 - Refresh from Processor.</h6>
+             <p>Gets all imports from data processor, to ensure the card
+                 forms are the same as what is there.</p>
+             <h6>3 - Import Card - Name</h6>
+             <p>Descriptive name for the import, will be used in vendor key,
+                 dictionary name raw file name etc.
+             </p>
+             <h6>4 - Import Card - API Type</h6>
+             <p>The API to use for this import. If no API specify Rawfile.
+             </p>
+             <h6>5 - Import Card - Account ID</h6>
+             <p>Account ID for the API.  View import_config.csv in processor
+                 for what each API account ID value corresponds to.
+             </p>
+             <h6>6 - Import Card - Start Date</h6>
+             <p>Required date for when the API should start pulling data from.
+             </p>
+             <h6>7 - Import Card - Filter & API Fields</h6>
+             <p>Filter and API Fields value for the processor.  View import_config.csv.
+             </p>
+             <h6>8 - Import Card - Raw File</h6>
+             <p>Adds a raw csv for this import card.
+             </p>
+             <h6>9 - Save & Continue/Refresh</h6>
+             <p>Saves all added/deleted imports and sends to the processor.
+                 Will then refresh from processor.
+             </p>
+        </div>
+        <span class="media-left">
+            <img style="float:right" src='static/processor_import.JPG'>
+        </span>
+    </div>
+    <hr><hr>
+    <h2 id="processorClean">Processor - Clean</h2>
+    <h5><a href="{{ url_for('main.edit_processor_clean',  processor_name='Reporting Request - Test') }}">
+        {{ url_for('main.edit_processor_clean',  processor_name='PROCESSOR_NAME') }}</a></h5>
+    <div class="media">
+         <div class="media-body">
+             <h6>1 - Refresh from Processor.</h6>
+             <p>Gets all datasources from data processor, to ensure the card
+                 forms are the same as what is there.</p>
+             <h6>2 - Clean Card - Show Raw Data</h6>
+             <p>Generates a modal that shows the raw data file
+                 for this data source.  Can be edited and saved.
+             </p>
+             <h6>3 - Clean Card - Full Placement Columns/Placement Columns/Auto Dictionary Placement</h6>
+             <p>Corresponds to the vendormatrix columns for the data source.
+             </p>
+             <h6>4 - Clean Card - Show Dictionary Order</h6>
+             <p>Generates a modal that shows example of the auto dictionary placement
+                 for this data source being split into
+                 specified auto dictionary columns.
+             </p>
+             <h6>5 - Clean Card - Delete Dictionary</h6>
+             <p>Deletes the dictionary for this data source.
+                 The dictionary then will repopulate based on auto dictionary order.
+                 Shows a non-editable modal of the new dictionary.
+             </p>
+             <h6>6 - Clean Card - Show Dictionary</h6>
+             <p>Filter and API Fields value for the processor.  View import_config.csv.
+             </p>
+             <h6>8 - Import Card - Raw File</h6>
+             <p>Generates a modal that shows the dictionary file
+                 for this data source.  Can be edited and saved.
+             </p>
+             <h6>7 - Save & Continue/Refresh</h6>
+             <p>Saves all edited data sources and sends to the processor.
+                 Will then refresh from processor.
+             </p>
+        </div>
+        <span class="media-left">
+            <img style="float:right" src='static/processor_clean.JPG'>
+        </span>
+    </div>
+    <hr><hr>
+    <h2 id="processorTable">Processor - DataTable</h2>
+    <div class="media">
+         <div class="media-body">
+             <h6>1 - DataTable.</h6>
+             <p>A excel like table of the requested data.
+                Data can be edited inline by double-clicking.
+                Rows are selected form the left most column.</p>
+             <h6>2 - Export</h6>
+             <p>Dropdown with various export options including csv/pdf.
+             </p>
+             <h6>3 - New</h6>
+             <p>Generates modal to create a new row.
+             </p>
+             <h6>4 - Edit</h6>
+             <p>Edit selected row from a modal. A row must be selected to click.
+             </p>
+             <h6>5 - Delete</h6>
+             <p>Deletes the selected row.  A row must be selected to click.
+             </p>
+             <h6>6 - Import CSV</h6>
+             <p>Starts a series of modals to import new data from a csv.
+                Note that this appends data.  Delete all data first if you want it to replace.
+             </p>
+             <h6>7 - Select All</h6>
+             <p>Selects all data rows.  Mainly to conveniently delete.
+             </p>
+             <h6>8 - Search</h6>
+             <p>Search table with text, will filter to rows with text.
+                For example searching API_ will show only the API rows.
+             </p>
+             <h6>9 - Save</h6>
+             <p>MUST BE CLICK TO SAVE ANY CHANGES TO THE DATA.  Will send
+                 the edited file back to the processor.
+             </p>
+        </div>
+        <span class="media-left">
+            <img style="float:right" src='static/processor_datatable.JPG'>
+        </span>
+    </div>
+    <hr><hr>
+    <h2 id="processorClean">Processor - Request - Accounts</h2>
+    <h5><a href="{{ url_for('main.edit_processor_account',  processor_name='Reporting Request - Test') }}">
+        {{ url_for('main.edit_processor_account',  processor_name='PROCESSOR_NAME') }}</a></h5>
+    <div class="media">
+         <div class="media-body">
+             <h6>1 - Add Account/Remove Last Account</h6>
+             <p>Adds or a removes an account card from the below forms.</p>
+             <h6>2 - Account Type/Account ID</h6>
+             <p>The account type of the data source.  Corresponds to API type.
+                Account ID of the account.  Varies by account Type.
+                Check import_config.csv if not sure on which value.
+             </p>
+             <h6>3 - Username/Password</h6>
+             <p>Username and password for the account.
+                 Only informative and will not contribute to the build.
+             </p>
+             <h6>5 - Campaign ID</h6>
+             <p>Campaign ID of the account.  Varies by account Type.
+                Check import_config.csv if not sure on which value.
+                Can be left blank for many account types.
+             </p>
+             <h6>6 - Save & Continue/Refresh</h6>
+             <p>Saves the changes made to accounts.
+                Continue goes to Fees page, Refresh, refershes the page.
+             </p>
+        </div>
+        <span class="media-left">
+            <img style="float:right" src='static/processor_request_account.JPG'>
+        </span>
+    </div>
+    <hr><hr>
+    <h2 id="processorClean">Processor - Request - Fees</h2>
+    <h5><a href="{{ url_for('main.edit_processor_fees',  processor_name='Reporting Request - Test') }}">
+        {{ url_for('main.edit_processor_fees',  processor_name='PROCESSOR_NAME') }}</a></h5>
+    <div class="media">
+         <div class="media-body">
+             <h6>1 - Digital Agency Fees/Traditional Agency Fees</h6>
+             <p>Set the agency fee value as decimal.</p>
+             <h6>2 - Rate Card/View Rate Card</h6>
+             <p>Rate Card to use for the campaign.
+                Previous rate cards can be selected form drop down.
+                Press View Rate Card to edit as spreadsheet.
+                Edited rate cards will have the format ProcessorName|Username
+             </p>
+             <h6>3 - DCM Service Fee</h6>
+             <p>Dropdown of the service fee percentage to be used.
+             </p>
+        </div>
+        <span class="media-left">
+            <img style="float:right" src='static/processor_request_fees.JPG'>
+        </span>
+    </div>
+    <hr><hr>
+    <h2 id="processorClean">Processor - Request - Conversions</h2>
+    <h5><a href="{{ url_for('main.edit_processor_conversions',  processor_name='Reporting Request - Test') }}">
+        {{ url_for('main.edit_processor_conversions',  processor_name='PROCESSOR_NAME') }}</a></h5>
+    <div class="media">
+         <div class="media-body">
+             <h6>1 - Add Conversion</h6>
+             <p>Adds a new conversion card.</p>
+             <h6>2 - Edit as Spreadsheet</h6>
+             <p>Edits as spreadsheet with each card as row.
+             </p>
+             <h6>3 - Conversion Name</h6>
+             <p>Conversion name as it appears in the platform.
+             </p>
+             <h6>4 - Conversion Type</h6>
+             <p>Conversion name as it appears in the vendormatrix.
+             </p>
+             <h6>5 - Conversion Platform</h6>
+             <p>Conversion platform, corresponds to the account previously specified.
+             </p>
+             <h6>5 - DCM Category</h6>
+             <p>String before conversion in DCM.  Leave blank if not DCM.
+             </p>
+        </div>
+        <span class="media-left">
+            <img style="float:right" src='static/processor_request_conversions.JPG'>
+        </span>
+    </div>
+    <hr><hr>
+</div>
+</div>
+
+{% endblock %}

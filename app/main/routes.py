@@ -1515,3 +1515,9 @@ def edit_uploader(uploader_name):
         form.cur_client.data = form_client
     kwargs['form'] = form
     return render_template('create_uploader.html',  **kwargs)
+
+
+@bp.route('/help')
+@login_required
+def help():
+    return render_template('help.html', title=_('Help'))

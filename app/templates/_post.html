@@ -1,21 +1,23 @@
 <table class="table table-hover">
     <tr><td>
-    <div class="bg-light text-dark">
+    <div class="bg-light text-dark" style="word-wrap: break-word; overflow-wrap: break-word;">
         {% set user_link %}
-            <span class="user_popup">
+            <span class="user_popup"
+                  style="word-wrap: break-word; overflow-wrap: break-word;">
                 <a href="{{ url_for('main.user',
-                username=post.author.username) }}">
+                  username=post.author.username) }}"
+                   style="word-wrap: break-word; overflow-wrap: break-word;">
                     {{ post.author.username }}
                 </a>
             </span>
         {% endset %}
-            <div class="media">
-                <a href="{{ url_for('main.user', username=post.author.username) }}">
+            <div class="media" style="word-wrap: break-word; overflow-wrap: break-word;">
+                <a href="{{ url_for('main.user', username=post.author.username) }}" style="word-wrap: break-word; overflow-wrap: break-word;">
                     <img class="mr-3"
                        src="{{ post.author.avatar(70) }}"
                        alt="Generic placeholder image"></a>
-          <div class="media-body">
-            <h6 class="mt-0">{{ _('%(username)s said %(when)s',
+          <div class="media-body" style="word-wrap: break-word; overflow-wrap: break-word;">
+            <h6 class="mt-0" style="word-wrap: break-word; overflow-wrap: break-word;"> {{ _('%(username)s said %(when)s',
             username=user_link, when=moment(post.timestamp).fromNow()) }}</h6>
           <div class="media">
           <div class="media-body">

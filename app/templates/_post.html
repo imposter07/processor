@@ -1,6 +1,7 @@
 <table class="table table-hover">
     <tr><td>
-    <div class="bg-light text-dark" style="word-wrap: break-word; overflow-wrap: break-word;">
+    <div class="bg-light text-dark"
+         style="word-wrap: break-word; overflow-wrap: break-word;">
         {% set user_link %}
             <span class="user_popup"
                   style="word-wrap: break-word; overflow-wrap: break-word;">
@@ -12,13 +13,15 @@
             </span>
         {% endset %}
             <div class="media" style="word-wrap: break-word; overflow-wrap: break-word;">
-                <a href="{{ url_for('main.user', username=post.author.username) }}" style="word-wrap: break-word; overflow-wrap: break-word;">
+                <a href="{{ url_for('main.user', username=post.author.username) }}"
+                   style="word-wrap: break-word; overflow-wrap: break-word;">
                     <img class="mr-3"
-                       src="{{ post.author.avatar(70) }}"
+                       src="{{ post.author.avatar(40) }}"
                        alt="Generic placeholder image"></a>
+
           <div class="media-body" style="word-wrap: break-word; overflow-wrap: break-word;">
-            <h6 class="mt-0" style="word-wrap: break-word; overflow-wrap: break-word;"> {{ _('%(username)s said %(when)s',
-            username=user_link, when=moment(post.timestamp).fromNow()) }}</h6>
+            <h7 class="mt-0" style="word-wrap: break-word; overflow-wrap: break-word;"> {{ _('%(username)s said %(when)s',
+            username=user_link, when=moment(post.timestamp).fromNow()) }}</h7>
           <div class="media">
           <div class="media-body">
             {% if post.processor_id %}
@@ -46,7 +49,7 @@
                     </a>
                 </span>
             {% endif %}
-            <span id="post{{ post.id }}">{{ post.body }}</span>
+            <span id="post{{ post.id }}" style="font-size: 90%;">{{ post.body }}</span>
                 {% if post.language and post.language != g.locale %}
                 <br><br>
                 <span id="translation{{ post.id }}">
@@ -59,13 +62,13 @@
              {% endif %}
             </div>
             {% if post.processor_run_success() %}
-                <i class="fas fa-check btn-secondary btn-lg btn-success"></i>
+                <i class="fas fa-check btn-secondary btn-sm btn-success"></i>
             {% endif %}
             {% if post.processor_run_failed() %}
-                <i class="fas fa-times btn-secondary btn-lg btn-danger"></i>
+                <i class="fas fa-times btn-secondary btn-sm btn-danger"></i>
             {% endif %}
           </div>
             </div>
-        </div></div>
+              </div></div>
     </td></tr>
 </table>

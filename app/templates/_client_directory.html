@@ -1,12 +1,12 @@
-<h3 class="sidebar-heading d-flex justify-content-between align-items-center
+<h4 class="sidebar-heading d-flex justify-content-between align-items-center
            text-dark text-center">
               <span>{{ _('Client Directory') }}</span>
-</h3>
+</h4>
 <div class="accordion" id="accordionClient">
     {% for client in clients %}
         {% set client_loop = loop %}
         <div class="card">
-            <button class="btn btn-dark btn-lg btn-block
+            <button class="btn btn-dark btn-block
                            collapsed text-left"
                     id="heading{{ loop.index }}"
                     type="button"
@@ -25,7 +25,7 @@
                     {% set product_loop = loop %}
                     <div class="card">
                         <button class="btn btn-outline-primary
-                                       btn-lg btn-block text-left collapsed"
+                                       btn-block text-left collapsed"
                                 type="button"
                                 data-toggle="collapse"
                                 data-target="#collapse{{ client_loop.index }}_{{ product_loop.index }}"
@@ -43,7 +43,7 @@
                                   {% for campaign in product.campaign.order_by('name') %}
                                       <div class="card">
                                         <button class="btn btn-outline-info
-                                                       btn-lg btn-block text-left collapsed"
+                                                       btn-block text-left collapsed"
                                                 type="button"
                                                 data-toggle="collapse"
                                                 data-target="#collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"

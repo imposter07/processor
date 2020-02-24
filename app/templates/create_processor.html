@@ -6,15 +6,12 @@
     <meta http-equiv="Expires" content="0"/>
     <script>
         function SubmitForm(form_continue, elemId) {
-         console.log('submitting form');
-         console.log(form_continue);
-         console.log(elemId);
          document.getElementById(elemId).setAttribute("value", form_continue);
          document.getElementById("base_form_id").submit();
         }
     </script>
-    <h1>{{ _('Processor - {}'.format(processor_name)) }}</h1>
-    <div class="progress mx-auto" style="height: 30px; width: 50%;">
+    <h3>{{ _('Processor - {}'.format(processor_name)) }}</h3>
+    <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
              class="progress-bar progress-bar-striped bg-info"
              role="progressbar" style="width: {{ edit_progress }}%;"
@@ -22,7 +19,7 @@
              aria-valuemax="100">{{ edit_name }}</div>
     </div><br>
     <nav aria-label="...">
-        <ul id='listTabs' class="pagination pagination-lg justify-content-center">
+        <ul id='listTabs' class="pagination pagination justify-content-center">
             <li class="page-item{% if not form %} page-item disabled{% endif %}">
                 <button id=loadRefresh type="submit" class="page-link" href=""
                         onclick="SubmitForm('', 'form_continue')">
@@ -57,7 +54,7 @@
     </button>
     <div class="modal hide fade" id="logModal" tabindex="-1" role="dialog"
          aria-labelledby="exampleModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-xl mw-100 w-75" role="document">
+      <div class="modal-dialog modal-xl mw-100 w-90" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
@@ -81,7 +78,7 @@
     </button>
     <div class="modal fade bd-example-modal-xl" id="importModal"
          tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel">
-      <div class="modal-dialog modal-xl mw-100 w-75" role="document">
+      <div class="modal-dialog modal-xl mw-100 w-90" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
@@ -119,7 +116,7 @@
     </button>
     <div class="modal fade bd-example-modal-xl" id="tableModal" tabindex="-1"
          role="dialog" aria-labelledby="exampleModalLabel">
-      <div class="modal-dialog modal-xl mw-100 w-75" role="document">
+      <div class="modal-dialog modal-xl mw-100 w-90" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
@@ -191,9 +188,6 @@
                             fields: tableFields
                         });
                         editor.on( 'open', function ( e, type, mode, action ) {
-                            console.log(type);
-                            console.log(mode);
-                            console.log(action);
                             if (type === "main") {
                               $('#tableModal').modal('hide');
                             }
@@ -214,7 +208,6 @@
                                         skipEmptyLines: true,
                                         complete: function (results) {
                                             if ( results.errors.length ) {
-                                                console.log( results );
                                                 uploadEditor.field('csv').error( 'CSV parsing error: '+ results.errors[0].message );
                                             }
                                             else {
@@ -309,12 +302,12 @@
                     let json = JSON.stringify(data);
                     if (sendTableName === 'Vendormatrix'){
                         $('#refresh_data_sources').parent().html('' +
-                            '<button class="btn btn-primary" type="button" disabled>' +
+                            '<button class="btn btn-primary btn-block" type="button" disabled>' +
                               '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
                               'Loading...' +
                             '</button>');
                         $('#refresh_imports').parent().html('' +
-                            '<button class="btn btn-primary" type="button" disabled>' +
+                            '<button class="btn btn-primary btn-block" type="button" disabled>' +
                               '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
                               'Loading...' +
                             '</button>');
@@ -352,7 +345,6 @@
     </script>
 {% endblock %}
 {% block vertical_navbar %}
-    <br>
     {% if processor %}
         {% with processor=processor %}
             {% include 'processor_popup.html' %}
@@ -360,7 +352,7 @@
     {% endif %}
     <div class="accordion" id="accordionExample">
         <div class="card">
-            <button class="btn btn-outline-success btn-lg btn-block
+            <button class="btn btn-outline-success btn-block
                            dropdown-toggle text-left"
                     type="button" data-toggle="collapse"
                     data-target="#collapseOne" aria-expanded="false"
@@ -399,7 +391,7 @@
             </div>
         </div>
         <div class="card">
-            <button class="btn btn-outline-info btn-lg btn-block
+            <button class="btn btn-outline-info btn-block
                            dropdown-toggle text-left"
                     type="button" data-toggle="collapse"
                     id="editTableDropdownButton"
@@ -422,7 +414,7 @@
                     <a class="dropdown-item" id="editTableRelation" href="#">
                         {{ _('Relation') }}</a>
                     <div class="card">
-                        <button class="btn btn-outline-info btn-lg btn-block
+                        <button class="btn btn-outline-info btn-block
                                        dropdown-toggle text-left"
                                 type="button" data-toggle="collapse"
                                 id="editTableRelationDropdownButton"
@@ -457,7 +449,7 @@
             </div>
         </div>
         <div class="card">
-            <button class="btn btn-outline-primary btn-lg btn-block
+            <button class="btn btn-outline-primary btn-block
                            dropdown-toggle text-left"
                     type="button" data-toggle="collapse"
                     id="editTableDropdownButtonView"
@@ -487,7 +479,7 @@
             </div>
         </div>
         <div class="card">
-            <button class="btn btn-outline-danger btn-lg btn-block
+            <button class="btn btn-outline-danger btn-block
                            dropdown-toggle text-left"
                     type="button" data-toggle="collapse"
                     id="editTableDropdownButtonView"
@@ -514,7 +506,7 @@
         </div>
         <div class="card">
             <button type="button"
-                    class="btn btn-outline-secondary btn-lg btn-block text-left"
+                    class="btn btn-outline-secondary btn-block text-left"
                     id="getLog"
                     data-toggle="modal" data-target="#exampleModal">
                 <i class="fas fa-file-alt" href="#" role="button"></i>
@@ -601,7 +593,6 @@
                     processor:  "{{ processor_name }}",
                     vendorkey: vendorKey
             }).done(function(data, status) {
-                console.log(tableName);
                 if (tableName === 'OutputDataFullOutput') {
                   let blob = new Blob([data], {type: 'text/csv'});
                   let link = document.createElement('a');
@@ -692,10 +683,8 @@
         }
         $(document).ready(function() {
             $('button[id^="load"]').click(function() {
-              // disable button
               animateBar();
               $(this).prop("disabled", true);
-              // add spinner to button
               $(this).html(
                 `<span class="spinner-grow spinner-grow-sm"
                     role="status" aria-hidden="true"></span> Loading...`
@@ -707,20 +696,19 @@
               let tableName = $(this)[0].id.split('refresh_')[1];
               if (tableName === 'rate_card') {
                   var vendorKey = $('#' + tableName)[0].value;
-              } else {
-              try {
-                vendorKey = $(this).parent().parent()[0].elements[0].value;
               }
-              catch(err) {
-                vendorKey = 'None';
-              }}
+              else {
+                  try {
+                    vendorKey = $(this).parent().parent()[0].elements[0].value;
+                  }
+                  catch(err) {
+                    vendorKey = 'None';
+                  }}
               let oldHtml = $(this).parent().html();
-              console.log($(this));
-              console.log(tableName);
               getTable(tableName, $(this).parent(), oldHtml, vendorKey);
               animateBar();
               $(this).parent().html('' +
-                '<button class="btn btn-primary" type="button" disabled>' +
+                '<button class="btn btn-primary btn-block" type="button" disabled>' +
                   '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
                   'Loading...' +
                 '</button>');
@@ -729,10 +717,8 @@
         $(document).ready(function() {
             $('#tableModal').on('hidden.bs.modal', function () {
                 let sourceElem = $('table[id^="modalTable"]')[0].id;
-                console.log(sourceElem);
                 if ((sourceElem === "modalTableimports") ||
                     (sourceElem === "modalTabledata_sources")) {
-                    console.log('reloading');
                     reloadPage();
                 } else {
                     if (!$("[class*='DTED DTED_Lightbox_Wrapper']")[0]){

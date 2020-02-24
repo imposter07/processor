@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
 {% block vertical_navbar %}
-    <h3 class="sidebar-heading d-flex justify-content-between align-items-center">
+    <h4 class="sidebar-heading d-flex justify-content-between align-items-center">
                   <span>{{ _('Data Processor') }}</span>
-    </h3>
+    </h4>
     <a href="{{ url_for('main.create_processor') }}">
-        <button class="btn btn-outline-success btn-lg btn-block text-left"
+        <button class="btn btn-outline-success btn-block text-left"
             type="button" href="{{ url_for('main.create_processor') }}">
                 <i class="fas fa-plus-circle"
                    role="button"></i>
                 {{ _('Create Processor') }}
     </button></a>
     <a href="{{ url_for('main.request_processor') }}">
-        <button class="btn btn-outline-info btn-lg btn-block text-left"
+        <button class="btn btn-outline-info btn-block text-left"
             type="button" href="{{ url_for('main.request_processor') }}">
                 <i class="fas fa-blender-phone"
                    role="button"></i>

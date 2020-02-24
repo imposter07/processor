@@ -112,7 +112,7 @@ def get_live_processors():
     processors = processors.filter(
         Processor.end_date > datetime.today().date()).order_by(
         Processor.created_at.desc()).paginate(
-        page, 4, False)
+        page, 3, False)
     processor_html = [render_template('processor_popup.html', processor=x)
                       for x in processors.items]
     return jsonify({'items': processor_html,
@@ -489,17 +489,17 @@ def edit_processor_import(processor_name):
         form.apis.append_entry()
         kwargs['form'] = form
         return render_template('create_processor.html', **kwargs)
-    if form.remove_api.data:
-        form.apis.pop_entry()
-        kwargs['form'] = form
-        return render_template('create_processor.html', **kwargs)
     for api in form.apis:
         if api.delete.data:
+            if api.__dict__['object_data']:
+                delete_name = api.__dict__['object_data']['name']
+            else:
+                delete_name = ''
             ds = ProcessorDatasources.query.filter_by(
                 account_id=api.account_id.data, start_date=api.start_date.data,
                 api_fields=api.api_fields.data, key=api.key.data,
                 account_filter=api.account_filter.data,
-                name=api.__dict__['object_data']['name']).first()
+                name=delete_name).first()
             if ds:
                 db.session.delete(ds)
                 db.session.commit()
@@ -1024,10 +1024,6 @@ def edit_processor_account(processor_name):
         form.accounts.append_entry()
         kwargs['form'] = form
         return render_template('create_processor.html', **kwargs)
-    if form.remove_account.data:
-        form.accounts.pop_entry()
-        kwargs['form'] = form
-        return render_template('create_processor.html', **kwargs)
     for act in form.accounts:
         if act.delete.data:
             act = Account.query.filter_by(
@@ -1115,10 +1111,6 @@ def edit_processor_conversions(processor_name):
         form.conversions.append_entry()
         kwargs['form'] = form
         return render_template('create_processor.html', **kwargs)
-    if form.remove_conversion.data:
-        form.conversions.pop_entry()
-        kwargs['form'] = form
-        return render_template('create_processor.html', **kwargs)
     for conv in form.conversions:
         if conv.delete.data:
             conv = Conversion.query.filter_by(
@@ -1161,10 +1153,6 @@ def edit_processor_finish(processor_name):
     kwargs['form'] = form
     if form.add_child.data:
         form.assigned_users.append_entry()
-        kwargs['form'] = form
-        return render_template('create_processor.html', **kwargs)
-    if form.remove_user.data:
-        form.assigned_users.pop_entry()
         kwargs['form'] = form
         return render_template('create_processor.html', **kwargs)
     for usr in form.assigned_users:

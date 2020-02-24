@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block app_header %}
-    <h1>{{ _('Client Calendar') }}</h1>
+    <h4>{{ _('Client Calendar') }}</h4>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
@@ -23,7 +23,6 @@
 {% endblock %}
 
 {% block vertical_navbar %}
-    <br><br>
     {% include '_client_directory.html' %}
 {% endblock %}
 

@@ -130,9 +130,8 @@ class APIForm(FlaskForm):
 
 
 class ImportForm(FlaskForm):
-    add_child = SubmitField(label='Add API')
-    remove_api = SubmitField('Remove Last API')
     refresh_imports = SubmitField('Refresh From Processor')
+    add_child = SubmitField(label='Add API')
     form_continue = HiddenField('form_continue')
     apis = FieldList(FormField(APIForm, label='{}'.format(APIForm.name)))
 
@@ -321,7 +320,6 @@ class AccountForm(FlaskForm):
 
 class GeneralAccountForm(FlaskForm):
     add_child = SubmitField(label='Add Account')
-    remove_account = SubmitField('Remove Last Account')
     form_continue = HiddenField('form_continue')
     accounts = FieldList(FormField(AccountForm, label=''))
 
@@ -360,7 +358,6 @@ class ConversionForm(FlaskForm):
 
 class GeneralConversionForm(FlaskForm):
     add_child = SubmitField(label='Add Conversion')
-    remove_conversion = SubmitField('Remove Last Conversion')
     refresh_edit_conversions = SubmitField('Edit As Spreadsheet')
     form_continue = HiddenField('form_continue')
     conversions = FieldList(FormField(ConversionForm, label=''))
@@ -387,7 +384,6 @@ class AssignUserForm(FlaskForm):
 
 class ProcessorRequestFinishForm(FlaskForm):
     add_child = SubmitField(label='Add User')
-    remove_user = SubmitField('Remove Last User')
     form_continue = HiddenField('form_continue')
     assigned_users = FieldList(FormField(AssignUserForm, label=''))
 

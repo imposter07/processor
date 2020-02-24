@@ -614,8 +614,9 @@ class ProcessorDatasources(db.Model):
     def set_from_processor(self, source, current_processor):
         self.processor_id = current_processor.id
         self.start_date = source.p[vmc.startdate].date()
-        self.api_fields = ['' if x == 'nan' else x
-                           for x in source.p[vmc.apifields]][0]
+        print(source.p[vmc.apifields])
+        self.api_fields = '|'.join(['' if x == 'nan' else x
+                                    for x in source.p[vmc.apifields]])
         self.vendor_key = source.key
         self.full_placement_columns = source.p[vmc.fullplacename]
         self.placement_columns = source.p[vmc.placement]

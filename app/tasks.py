@@ -674,7 +674,8 @@ def write_constant_dict(processor_id, current_user_id, new_data):
         os.chdir(adjust_path(cur_processor.local_path))
         dcc = dct.DictConstantConfig(None)
         df = pd.read_json(new_data)
-        df = df.drop('index', axis=1)
+        if 'index' in df.columns:
+            df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
         df = df[[dctc.DICT_COL_NAME, dctc.DICT_COL_VALUE,
                  dctc.DICT_COL_DICTNAME]]
@@ -722,7 +723,8 @@ def write_relational_config(processor_id, current_user_id, new_data,
         os.chdir(adjust_path(cur_processor.local_path))
         rc = dct.RelationalConfig()
         df = pd.read_json(new_data)
-        df = df.drop('index', axis=1)
+        if 'index' in df.columns:
+            df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
         if not parameter:
             df = df[[dctc.RK, dctc.FN, dctc.KEY, dctc.DEP, dctc.AUTO]]

@@ -4,12 +4,6 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
     <meta http-equiv="Pragma" content="no-cache"/>
     <meta http-equiv="Expires" content="0"/>
-    <script>
-        function SubmitForm(form_continue, elemId) {
-         document.getElementById(elemId).setAttribute("value", form_continue);
-         document.getElementById("base_form_id").submit();
-        }
-    </script>
     <h3>{{ _('Processor - {}'.format(processor_name)) }}</h3>
     <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
@@ -120,7 +114,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
-                Data Tables - {{ processor_name }}</h5>
+                Data Tables - {{ processor_name }} - TESTSITSNTISNTSINTE</h5>
             <button type="button" class="close" data-dismiss="modal"
                     aria-label="Close">
               <span aria-hidden="true">&times;</span>
@@ -128,205 +122,8 @@
           </div>
           <div class="modal-body">
               <div id="modal-body-table"></div>
-                <script>
-                    function selectColumns ( editor, csv, header ) {
-                    let selectEditor = new $.fn.dataTable.Editor();
-                    let fields = editor.order();
-
-                    for ( let i=0 ; i<fields.length ; i++ ) {
-                        let field = editor.field( fields[i] );
-
-                        selectEditor.add( {
-                            label: field.label(),
-                            name: field.name(),
-                            type: 'select',
-                            options: header,
-                            def: header[i]
-                        } );
-                    }
-                    selectEditor.create({
-                        title: 'Map CSV fields',
-                        buttons: 'Import '+csv.length+' records',
-                        message: 'Select the CSV column you want to use the data from for each field.'
-                    });
-                    selectEditor.on('submitComplete', function (e, json, data, action) {
-                        // Use the host Editor instance to show a multi-row create form allowing the user to submit the data.
-                        editor.create( csv.length, {
-                            title: 'Confirm import',
-                            buttons: 'Submit',
-                            message: 'Click the <i>Submit</i> button to confirm the import of '+csv.length+' rows of data. Optionally, override the value for a field to set a common value by clicking on the field below.'
-                        } );
-                        editor.on( 'close', function () {
-                          $('#tableModal').modal('show');
-                        } );
-
-                        for ( let i=0 ; i<fields.length ; i++ ) {
-                            let field = editor.field( fields[i] );
-                            let mapped = data[ field.name() ];
-
-                            for ( let j=0 ; j<csv.length ; j++ ) {
-                                field.multiSet( j, csv[j][mapped] );
-                            }
-                        }
-
-                    });
-                }
-                function createTable(colData, rawData, tableName) {
-                    let cols = JSON.parse(colData);
-                    let tableFields = cols.map(function(e) {
-                      return {label: e, name: e}
-                    });
-                    let tableCols = cols.map(function(e) {
-                      return {data: e}
-                    });
-                    let tableJquery = '#' + tableName;
-                    document.getElementById("modal-body-table").innerHTML = rawData;
-                    $(document).ready( function () {
-                        let editor = new $.fn.dataTable.Editor({
-                            table: tableJquery,
-                            idSrc: 'index',
-                            fields: tableFields
-                        });
-                        editor.on( 'open', function ( e, type, mode, action ) {
-                            if (type === "main") {
-                              $('#tableModal').modal('hide');
-                            }
-                        } );
-                         editor.on( 'close', function () {
-                          $('#tableModal').modal('show');
-                        } );
-                        let uploadEditor = new $.fn.dataTable.Editor( {
-                            fields: [ {
-                                label: 'CSV file:',
-                                name: 'csv',
-                                type: 'upload',
-                                ajax: function ( files ) {
-                                    // Ajax override of the upload so we can handle the file locally. Here we use Papa
-                                    // to parse the CSV.
-                                    Papa.parse(files[0], {
-                                        header: true,
-                                        skipEmptyLines: true,
-                                        complete: function (results) {
-                                            if ( results.errors.length ) {
-                                                uploadEditor.field('csv').error( 'CSV parsing error: '+ results.errors[0].message );
-                                            }
-                                            else {
-                                                uploadEditor.close();
-                                                selectColumns( editor, results.data, results.meta.fields );
-                                            }
-                                        }
-                                    });
-                                }
-                            } ]
-                        } );
-                        var table = $(tableJquery).DataTable({
-                            dom: "Bfrtip",
-                            columns: tableCols,
-                            "deferRender": true,
-                            "orderClasses": false,
-                            "scrollX": true,
-                            autoFill: true,
-                            responsive: true,
-                            keys: {
-                                columns: ':not(:first-child)',
-                                editor:  editor
-                            },
-                            select: {
-                                style:    'os',
-                                selector: 'td:first-child',
-                                blurable: true
-                            },
-                            buttons: [
-                                {
-                                    extend: 'collection',
-                                    text: 'Export',
-                                    buttons: [
-                                        'copy',
-                                        'excel',
-                                        'csv',
-                                        'pdf'
-                                    ]
-                                },
-                                { extend: 'create', editor: editor },
-                                { extend: 'edit',   editor: editor },
-                                {
-                                    extend: "selected",
-                                    text: 'Duplicate',
-                                    action: function ( e, dt, node, config ) {
-                                        // Start in edit mode, and then change to create
-                                        editor
-                                            .edit(table.rows( {selected: true} ).indexes(), {
-                                                title: 'Duplicate record',
-                                                buttons: 'Create from existing'
-                                            } )
-                                            .mode( 'create' );
-                                    }
-                                },
-                                { extend: 'remove', editor: editor },
-                                {
-                                text: 'Import CSV',
-                                action: function () {
-                                    uploadEditor.create( {
-                                        title: 'CSV file import'
-                                    } );
-                                    $('#tableModal').modal('hide');
-                                }
-                            },
-                            {
-                                extend: 'selectAll',
-                                className: 'btn-space'
-                            },
-                            ]
-                        });
-                        table.columns.adjust().draw();
-                    });
-                }
-                </script>
           </div>
           <div class="modal-footer">
-             <script type="text/javascript">
-                 function reloadPage(){
-                     try {
-                         $('#listTabs').find('li.active')[0].children[0].click();
-                     }
-                     catch(err) {
-                         location.reload()
-                     }
-                }
-                function SendDataTable() {
-                    let sourceElem = $('table[id^="modalTable"]')[0].id;
-                    let sendTable = $('#' + sourceElem).DataTable();
-                    let sendTableName = sourceElem.replace('modalTable', '');
-                    let data = sendTable
-                        .data().toArray();
-                    let json = JSON.stringify(data);
-                    if (sendTableName === 'Vendormatrix'){
-                        $('#refresh_data_sources').parent().html('' +
-                            '<button class="btn btn-primary btn-block" type="button" disabled>' +
-                              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                              'Loading...' +
-                            '</button>');
-                        $('#refresh_imports').parent().html('' +
-                            '<button class="btn btn-primary btn-block" type="button" disabled>' +
-                              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                              'Loading...' +
-                            '</button>');
-                    };
-                    $('#tableModalSaveButton').parent().html('' +
-                            '<button class="btn btn-success btn-lg btn-block" type="button" disabled>' +
-                              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                              'Loading...' +
-                            '</button>');
-                    $.post('/post_table',
-                        {
-                            data: json,
-                            processor:  "{{ processor_name }}",
-                            table: sendTableName
-                        }).done(function(data, status) {
-                            reloadPage();
-                    });
-                }
-            </script>
             <div class="btn-group btn-group-lg btn-block" role="group" aria-label="Basic example">
                 <button type="button" class="btn btn-success"
                         id="tableModalSaveButton"
@@ -571,7 +368,212 @@
             </object>
         </div>
     {% endif %}
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/jszip-2.5.0/dt-1.10.20/b-1.6.1/b-html5-1.6.1/sl-1.3.1/af-2.3.4/kt-2.5.1/datatables.min.css"/>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jszip-2.5.0/dt-1.10.20/b-1.6.1/b-html5-1.6.1/sl-1.3.1/af-2.3.4/kt-2.5.1/datatables.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='Editor/css/editor.dataTables.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='Editor/js/dataTables.editor.js') }}"></script>
+    <script src="{{ url_for('static', filename='papaparse/papaparse.js') }}"></script>
     <script>
+        function SubmitForm(form_continue, elemId) {
+             document.getElementById(elemId).setAttribute("value", form_continue);
+             document.getElementById("base_form_id").submit();
+        }
+        function selectColumns ( editor, csv, header ) {
+            let selectEditor = new $.fn.dataTable.Editor();
+            let fields = editor.order();
+
+            for ( let i=0 ; i<fields.length ; i++ ) {
+                let field = editor.field( fields[i] );
+
+                selectEditor.add( {
+                    label: field.label(),
+                    name: field.name(),
+                    type: 'select',
+                    options: header,
+                    def: header[i]
+                } );
+            }
+            selectEditor.create({
+                title: 'Map CSV fields',
+                buttons: 'Import '+csv.length+' records',
+                message: 'Select the CSV column you want to use the data from for each field.'
+            });
+            selectEditor.on('submitComplete', function (e, json, data, action) {
+                // Use the host Editor instance to show a multi-row create form allowing the user to submit the data.
+                editor.create( csv.length, {
+                    title: 'Confirm import',
+                    buttons: 'Submit',
+                    message: 'Click the <i>Submit</i> button to confirm the import of '+csv.length+' rows of data. Optionally, override the value for a field to set a common value by clicking on the field below.'
+                } );
+                editor.on( 'close', function () {
+                  $('#tableModal').modal('show');
+                } );
+
+                for ( let i=0 ; i<fields.length ; i++ ) {
+                    let field = editor.field( fields[i] );
+                    let mapped = data[ field.name() ];
+
+                    for ( let j=0 ; j<csv.length ; j++ ) {
+                        field.multiSet( j, csv[j][mapped] );
+                    }
+                }
+
+            });
+        }
+        function createTable(colData, rawData, tableName) {
+            let cols = JSON.parse(colData);
+            let tableFields = cols.map(function(e) {
+              return {label: e, name: e}
+            });
+            let tableCols = cols.map(function(e) {
+              return {data: e}
+            });
+            let tableJquery = '#' + tableName;
+            document.getElementById("modal-body-table").innerHTML = rawData;
+            $(document).ready( function () {
+                let editor = new $.fn.dataTable.Editor({
+                    table: tableJquery,
+                    idSrc: 'index',
+                    fields: tableFields
+                });
+                editor.on( 'open', function ( e, type, mode, action ) {
+                    if (type === "main") {
+                      $('#tableModal').modal('hide');
+                    }
+                } );
+                 editor.on( 'close', function () {
+                  $('#tableModal').modal('show');
+                } );
+                let uploadEditor = new $.fn.dataTable.Editor( {
+                    fields: [ {
+                        label: 'CSV file:',
+                        name: 'csv',
+                        type: 'upload',
+                        ajax: function ( files ) {
+                            // Ajax override of the upload so we can handle the file locally. Here we use Papa
+                            // to parse the CSV.
+                            Papa.parse(files[0], {
+                                header: true,
+                                skipEmptyLines: true,
+                                complete: function (results) {
+                                    if ( results.errors.length ) {
+                                        uploadEditor.field('csv').error( 'CSV parsing error: '+ results.errors[0].message );
+                                    }
+                                    else {
+                                        uploadEditor.close();
+                                        selectColumns( editor, results.data, results.meta.fields );
+                                    }
+                                }
+                            });
+                        }
+                    } ]
+                } );
+                var table = $(tableJquery).DataTable({
+                    dom: "Bfrtip",
+                    columns: tableCols,
+                    "deferRender": true,
+                    "orderClasses": false,
+                    "scrollX": true,
+                    autoFill: true,
+                    responsive: true,
+                    keys: {
+                        columns: ':not(:first-child)',
+                        editor:  editor
+                    },
+                    select: {
+                        style:    'os',
+                        selector: 'td:first-child',
+                        blurable: true
+                    },
+                    buttons: [
+                        {
+                            extend: 'collection',
+                            text: 'Export',
+                            buttons: [
+                                'copy',
+                                'excel',
+                                'csv',
+                                'pdf'
+                            ]
+                        },
+                        { extend: 'create', editor: editor },
+                        { extend: 'edit',   editor: editor },
+                        {
+                            extend: "selected",
+                            text: 'Duplicate',
+                            action: function ( e, dt, node, config ) {
+                                // Start in edit mode, and then change to create
+                                editor
+                                    .edit(table.rows( {selected: true} ).indexes(), {
+                                        title: 'Duplicate record',
+                                        buttons: 'Create from existing'
+                                    } )
+                                    .mode( 'create' );
+                            }
+                        },
+                        { extend: 'remove', editor: editor },
+                        {
+                        text: 'Import CSV',
+                        action: function () {
+                            uploadEditor.create( {
+                                title: 'CSV file import'
+                            } );
+                            $('#tableModal').modal('hide');
+                        }
+                    },
+                    {
+                        extend: 'selectAll',
+                        className: 'btn-space'
+                    },
+                    ]
+                });
+                table.columns.adjust().draw();
+            });
+        }
+        function reloadPage(){
+             try {
+                 $('#listTabs').find('li.active')[0].children[0].click();
+             }
+             catch(err) {
+                 location.reload()
+             }
+        }
+        function SendDataTable() {
+            let sourceElem = $('table[id^="modalTable"]')[0].id;
+            let sendTable = $('#' + sourceElem).DataTable();
+            let sendTableName = sourceElem.replace('modalTable', '');
+            let data = sendTable
+                .data().toArray();
+            let json = JSON.stringify(data);
+            if (sendTableName === 'Vendormatrix'){
+                $('#refresh_data_sources').parent().html('' +
+                    '<button class="btn btn-primary btn-block" type="button" disabled>' +
+                      '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                      'Loading...' +
+                    '</button>');
+                $('#refresh_imports').parent().html('' +
+                    '<button class="btn btn-primary btn-block" type="button" disabled>' +
+                      '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                      'Loading...' +
+                    '</button>');
+            };
+            $('#tableModalSaveButton').parent().html('' +
+                    '<button class="btn btn-success btn-lg btn-block" type="button" disabled>' +
+                      '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                      'Loading...' +
+                    '</button>');
+            $.post('/post_table',
+                {
+                    data: json,
+                    processor:  "{{ processor_name }}",
+                    table: sendTableName
+                }).done(function(data, status) {
+                    reloadPage();
+            });
+        }
         $(document).ready(function() {
             $('a[id^="editTable"]').click(function () {
                 let tableName = this.id.replace('editTable', '');

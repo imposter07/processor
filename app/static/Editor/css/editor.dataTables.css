@@ -687,11 +687,15 @@ div.DTE_Inline div.DTE_Form_Error:empty {
 span.dtr-data div.DTE_Inline {
   display: inline-table;
 }
+div.DTE_Action_Create {
+  max-height: 93vh;
+}
+div.DTED_Lightbox_Wrapper{
+  position:fixed;padding-top: 45px; top:0;left:5%;margin-left:0;width:90%;height:90%;z-index:11}
 
-div.DTED_Lightbox_Wrapper{position:fixed;top:0;left:5%;margin-left:0;width:90%;height:90%;z-index:11}
 div.DTED_Lightbox_Wrapper div.DTED_Lightbox_Container div.DTED_Lightbox_Content_Wrapper div.DTED_Lightbox_Content div.DTE div.DTE_Body_Content {
-  min-height: 60vh;
-  max-height: 80vh;
+  min-height: 20vh;
+  max-height: 90vh;
 }
 div.DTED_Lightbox_Wrapper div.DTED_Lightbox_Container {
   display: table;

@@ -657,7 +657,7 @@ def get_table():
         table_name = 'Relation{}'.format(proc_arg['parameter'])
     table_name = "modalTable{}".format(table_name)
     data = df.to_html(index=False, table_id=table_name,
-                      classes="table table-dark")
+                      classes="table table-responsive-sm small table-dark")
     return jsonify({'data': {'data': data, 'cols': cols, 'name': table_name}})
 
 

@@ -1170,6 +1170,34 @@ def set_processor_twitter_config(processor_id, current_user_id):
         return False
 
 
+def make_database_view(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.utils as utl
+        import processor.reporting.export as exp
+        os.chdir(adjust_path(cur_processor.local_path))
+        product_name = cur_processor.campaign.product.name
+        sb = exp.ScriptBuilder()
+        script_text = sb.get_full_script(
+            filter_col='productname',
+            filter_val=product_name,
+            filter_table='product')
+        for x in [' ', ',', '.', '-', ':', '&', '+', '/']:
+            product_name = product_name.replace(x, '')
+        view_name = 'lqadb.lqapp_{}'.format(product_name)
+        view_script = "CREATE OR REPLACE VIEW {} AS \n".format(view_name)
+        view_script = view_script + script_text
+        report_db = exp.DB('dbconfig.json')
+        report_db.connect()
+        report_db.cursor.execute(view_script)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def build_processor_from_request(processor_id, current_user_id):
     progress = {
         'create': 'Failed',

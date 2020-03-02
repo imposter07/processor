@@ -58,8 +58,9 @@
                                          data-parent="#accordionCampaign">
                                       <div class="card-body">
                                       {% for processor in campaign.processor.order_by('name') %}
-                                      <a class="dropdown-item" href=
-                                              "{{ url_for('main.processor_page', processor_name=processor.name) }}">
+                                      <a class="btn btn-outline-success btn-block text-center"
+                                         style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;"
+                                         href="{{ url_for('main.processor_page', processor_name=processor.name) }}">
                                           {{ processor.name }}</a>
                                       {% endfor %}
                                       </div>

@@ -1,33 +1,31 @@
-<table class="table table-hover">
+<table class="table table-hover text-wrap">
     <tr><td>
-    <div class="bg-light text-dark"
+    <div class="bg-light text-dark text-wrap"
          style="word-wrap: break-word; overflow-wrap: break-word;">
         {% set user_link %}
-            <span class="user_popup"
-                  style="word-wrap: break-word; overflow-wrap: break-word;">
+            <span class="user_popup">
                 <a href="{{ url_for('main.user',
-                  username=post.author.username) }}"
-                   style="word-wrap: break-word; overflow-wrap: break-word;">
+                   username=post.author.username) }}"
+                   style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
                     {{ post.author.username }}
                 </a>
             </span>
         {% endset %}
-            <div class="media" style="word-wrap: break-word; overflow-wrap: break-word;">
-                <a href="{{ url_for('main.user', username=post.author.username) }}"
-                   style="word-wrap: break-word; overflow-wrap: break-word;">
+            <div class="media">
+                <a href="{{ url_for('main.user', username=post.author.username) }}">
                     <img class="mr-3"
                        src="{{ post.author.avatar(40) }}"
                        alt="Generic placeholder image"></a>
-
-          <div class="media-body" style="word-wrap: break-word; overflow-wrap: break-word;">
-            <h7 class="mt-0" style="word-wrap: break-word; overflow-wrap: break-word;"> {{ _('%(username)s said %(when)s',
-            username=user_link, when=moment(post.timestamp).fromNow()) }}</h7>
+          <div class="media-body">
+            <a class="mt-0">{{ _('%(username)s said %(when)s',
+            username=user_link, when=moment(post.timestamp).fromNow()) }}</a>
           <div class="media">
           <div class="media-body">
             {% if post.processor_id %}
                 <span class="processor_popup">
                     <a href="{{ url_for('main.processor_page',
-                     processor_name=post.processor.name) }}">
+                     processor_name=post.processor.name) }}"
+                     style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
                         {{ post.processor.name }}
                     </a>
                 </span>
@@ -49,7 +47,10 @@
                     </a>
                 </span>
             {% endif %}
-            <span id="post{{ post.id }}" style="font-size: 90%;">{{ post.body }}</span>
+            <span id="post{{ post.id }}"
+                  style="font-size: 90%; word-wrap: break-word;
+                  word-break: break-word; overflow-wrap: break-word;">
+                {{ post.body }}</span>
                 {% if post.language and post.language != g.locale %}
                 <br><br>
                 <span id="translation{{ post.id }}">

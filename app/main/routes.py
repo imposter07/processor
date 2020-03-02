@@ -1,5 +1,4 @@
 import json
-import copy
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
     jsonify, current_app
@@ -12,7 +11,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
     GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
-    ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm
+    ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm,\
+    ProcessorDuplicateForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests
@@ -351,6 +351,8 @@ def get_navigation_buttons(buttons=None):
         buttons = [{'New Fix': 'main.edit_processor_request_fix'},
                    {'Submit Fixes': 'main.edit_processor_submit_fix'},
                    {'All Fixes': 'main.edit_processor_all_fix'}]
+    elif buttons == 'ProcessorDuplicate':
+        buttons = [{'Duplicate': 'main.edit_processor_duplication'}]
     elif buttons == 'Uploader':
         buttons = [{'Basic': 'main.edit_uploader'},
                    {'Campaigns': 'main.edit_uploader'},
@@ -450,7 +452,11 @@ def get_processor_request_links(processor_name):
                                      processor_name=processor_name)},
                  1: {'title': 'Request Data Fix',
                      'href': url_for('main.edit_processor_request_fix',
-                                     processor_name=processor_name)}}
+                                     processor_name=processor_name)},
+                 2: {'title': 'Request Duplication',
+                     'href': url_for('main.edit_processor_duplication',
+                                     processor_name=processor_name)}
+                 }
     return run_links
 
 
@@ -1571,3 +1577,26 @@ def edit_uploader(uploader_name):
 @login_required
 def help():
     return render_template('help.html', title=_('Help'))
+
+
+@bp.route('/processor/<processor_name>/edit/duplicate',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_duplication(processor_name):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_duplication',
+                                   edit_progress=100, edit_name='Duplicate',
+                                   buttons='ProcessorDuplicate')
+    cur_proc = kwargs['processor']
+    form = ProcessorDuplicateForm()
+    kwargs['form'] = form
+    if request.method == 'POST':
+        msg_text = 'Sending request and attempting to duplicate processor: {}' \
+                   ''.format(processor_name)
+        cur_proc.launch_task(
+            '.duplicate_processor', _(msg_text),
+            running_user=current_user.id, form_data=form.data)
+        db.session.commit()
+        return redirect(url_for('main.processor_page',
+                                processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)

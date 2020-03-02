@@ -524,3 +524,12 @@ class EditUploaderForm(UploaderForm):
             uploader = Uploader.query.filter_by(name=self.name.data).first()
             if uploader is not None:
                 raise ValidationError(_l('Please use a different name.'))
+
+
+class ProcessorDuplicateForm(FlaskForm):
+    new_name = StringField(_('New Name'), validators=[DataRequired()])
+    new_start_date = DateField('New Start Date', format='%Y-%m-%d',
+                               validators=[DataRequired()])
+    new_end_date = DateField('New End Date', format='%Y-%m-%d',
+                             validators=[DataRequired()])
+    form_continue = HiddenField('form_continue')

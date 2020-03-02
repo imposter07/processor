@@ -1097,7 +1097,9 @@ def set_processor_plan_net(processor_id, current_user_id):
         return False
 
 
-def send_processor_build_email(processor_id, current_user_id, progress):
+def send_processor_build_email(
+        processor_id, current_user_id, progress,
+        title='[Liquid App] New Processor Creation Request!'):
     try:
         progress = ['{}.....{}'.format(k, v)
                     for k, v in progress.items()]
@@ -1105,7 +1107,7 @@ def send_processor_build_email(processor_id, current_user_id, progress):
         from urllib.parse import quote
         processor_name = quote(cur_processor.name)
         for user in cur_processor.processor_followers:
-            send_email('[Liquid App] New Processor Creation Request!',
+            send_email(title,
                        sender=app.config['ADMINS'][0],
                        recipients=[user.email],
                        text_body=render_template(
@@ -1362,3 +1364,170 @@ def processor_fix_requests(processor_id, current_user_id):
     finally:
         send_processor_request_email(processor_id, current_user_id,
                                      fix_result_dict)
+
+
+def duplicate_processor_in_db(processor_id, current_user_id, form_data):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        proc_dict = cur_processor.to_dict()
+        new_processor = Processor()
+        for k, v in proc_dict.items():
+            new_processor.__setattr__(k, v)
+        new_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
+            cur_processor.campaign.product.client.name,
+            cur_processor.campaign.product.name, cur_processor.campaign.name,
+            form_data['new_name'])
+        new_processor.local_path = new_path
+        new_processor.name = form_data['new_name']
+        new_processor.start_date = form_data['new_start_date']
+        new_processor.end_date = form_data['new_end_date']
+        db.session.add(new_processor)
+        db.session.commit()
+        return new_processor.id
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def set_vendormatrix_dates(processor_id, current_user_id, start_date=None,
+                           end_date=None):
+    try:
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
+        import numpy as np
+        import processor.reporting.utils as utl
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.vendormatrix as vm
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        if start_date:
+            matrix.vm_df[vmc.startdate] = np.where(
+                matrix.vm_df[vmc.startdate].isnull(),
+                start_date, matrix.vm_df[vmc.startdate])
+            start_date = np.datetime64(start_date)
+            matrix.vm_df = utl.data_to_type(df=matrix.vm_df,
+                                            date_col=[vmc.startdate])
+            matrix.vm_df[vmc.startdate] = np.where(
+                matrix.vm_df[vmc.startdate] < pd.Timestamp(start_date),
+                start_date, matrix.vm_df[vmc.startdate])
+        if end_date:
+            matrix.vm_df[vmc.enddate] = np.where(
+                matrix.vm_df[vmc.enddate].isnull(),
+                end_date, matrix.vm_df[vmc.enddate])
+            matrix.vm_df = utl.data_to_type(df=matrix.vm_df,
+                                            date_col=[vmc.enddate])
+            end_date = np.datetime64(end_date)
+            matrix.vm_df[vmc.enddate] = np.where(
+                matrix.vm_df[vmc.enddate] > end_date,
+                end_date, matrix.vm_df[vmc.enddate])
+        matrix.write()
+        msg_text = ('{} processor vendormatrix dates were updated.'
+                    ''.format(cur_processor.name))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        os.chdir(cur_path)
+        get_processor_sources(processor_id, current_user_id)
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def remove_upload_id_file(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.utils as utl
+        import processor.reporting.expcolumns as exp
+        os.chdir(adjust_path(cur_processor.local_path))
+        os.remove(os.path.join(utl.config_path, exp.upload_id_file))
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def duplicate_processor(processor_id, current_user_id, form_data):
+    progress = {
+        'duplicate_in_db': 'Failed',
+        'duplicate_in_server': 'Failed',
+        'old_processor_set_dates': 'Failed',
+        'new_processor_set_dates': 'Failed',
+        'new_processor_remove_upload_id': 'Failed',
+        'new_processor_run': 'Failed',
+        'old_processor_run': 'Failed',
+        'schedule_processor': 'Failed'
+    }
+    try:
+        import datetime as dt
+        _set_task_progress(0)
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        cur_processor = Processor.query.get(processor_id)
+        new_processor_id = duplicate_processor_in_db(
+            processor_id, current_user_id, form_data)
+        if new_processor_id:
+            progress['duplicate_in_db'] = 'Success!'
+        _set_task_progress(12)
+        result = create_processor(new_processor_id, current_user_id,
+                                  cur_processor.local_path)
+        if result:
+            progress['duplicate_in_server'] = 'Success!'
+        _set_task_progress(25)
+        os.chdir(cur_path)
+        result = set_vendormatrix_dates(cur_processor.id, current_user_id,
+                                        end_date=(form_data['new_start_date'] -
+                                                  dt.timedelta(days=1)))
+        if result:
+            progress['old_processor_set_dates'] = 'Success!'
+        _set_task_progress(37)
+        os.chdir(cur_path)
+        result = set_vendormatrix_dates(new_processor_id, current_user_id,
+                                        start_date=form_data['new_start_date'])
+        if result:
+            progress['new_processor_set_dates'] = 'Success!'
+        _set_task_progress(50)
+        os.chdir(cur_path)
+        result = remove_upload_id_file(new_processor_id, current_user_id)
+        if result:
+            progress['new_processor_remove_upload_id'] = 'Success!'
+        _set_task_progress(62)
+        os.chdir(cur_path)
+        result = run_processor(new_processor_id, current_user_id,
+                               '--api all --ftp all --dbi all --exp all --tab')
+        if result:
+            progress['new_processor_run'] = 'Success!'
+        _set_task_progress(75)
+        os.chdir(cur_path)
+        result = run_processor(processor_id, current_user_id,
+                               '--api all --ftp all --dbi all --exp all --tab')
+        if result:
+            progress['old_processor_run'] = 'Success!'
+        _set_task_progress(88)
+        os.chdir(cur_path)
+        cur_processor = Processor.query.get(new_processor_id)
+        msg_text = 'Scheduling processor: {}'.format(cur_processor.name)
+        sched = TaskScheduler.query.filter_by(
+            processor_id=cur_processor.id).first()
+        if not sched:
+            cur_processor.schedule_job('.full_run_processor', msg_text,
+                                       start_date=cur_processor.start_date,
+                                       end_date=cur_processor.end_date,
+                                       scheduled_time=dt.time(8, 0, 0),
+                                       interval=24)
+            db.session.commit()
+        progress['schedule_processor'] = 'Success!'
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+    finally:
+        send_processor_build_email(
+            processor_id, current_user_id, progress,
+            title='[Liquid App] New Processor Duplication Request!')

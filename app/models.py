@@ -513,6 +513,10 @@ class Processor(db.Model):
         return (self.requests.filter_by(complete=False).
                 order_by(Requests.created_at.desc()).all())
 
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)

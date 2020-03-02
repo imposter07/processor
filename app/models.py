@@ -789,3 +789,22 @@ class Uploader(db.Model):
                     user_id=self.user_id, uploader=self)
         db.session.add(task)
         return task
+
+    def get_tasks_in_progress(self):
+        return Task.query.filter_by(uploader=self, complete=False).all()
+
+    def get_task_in_progress(self, name):
+        return Task.query.filter_by(name=name, uploader=self,
+                                    complete=False).first()
+
+    def get_last_post(self):
+        return self.posts.order_by(Post.timestamp.desc()).first()
+
+    def get_all_requests(self):
+        return []
+
+    def get_open_requests(self):
+        return []
+
+    def get_main_page(self):
+        return url_for('main.uploader_page')

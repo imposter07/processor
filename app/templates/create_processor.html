@@ -4,7 +4,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
     <meta http-equiv="Pragma" content="no-cache"/>
     <meta http-equiv="Expires" content="0"/>
-    <h3>{{ _('Processor - {}'.format(processor_name)) }}</h3>
+    <h3>{{ _('{} - {}'.format(title, object_name)) }}</h3>
     <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
              class="progress-bar progress-bar-striped bg-info"
@@ -23,11 +23,14 @@
             </li>
             {% for button in buttons %}
                 {% for button_name, button_link in button.items() %}
-                    <li class="page-item{% if edit_name == button_name %} active{% endif %}">
-                        <a class="page-link"
-                           href="{{ url_for(button_link, processor_name=processor_name) }}">
-                            {{ button_name }}
-                        </a>
+                    <li class="page-item{% if edit_name == button_name %} active{% endif %}
+                      {% if not object_function_call %} disabled{% endif %}">
+                            <a class="page-link"
+                               href="{% if object_function_call %}
+                                     {{ url_for(button_link, **object_function_call) }}
+                                     {% endif %}">
+                                {{ button_name }}
+                            </a>
                     </li>
                 {% endfor %}
             {% endfor %}
@@ -52,7 +55,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
-                Logfile - {{processor_name }}</h5>
+                Logfile - {{object_name }}</h5>
             <button type="button" class="close" data-dismiss="modal"
                     aria-label="Close">
               <span aria-hidden="true">&times;</span>
@@ -76,7 +79,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
-                Import - {{ processor_name }}</h5>
+                Import - {{ object_name }}</h5>
             <button type="button" class="close"
                     data-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
@@ -84,17 +87,19 @@
           </div>
           <div class="modal-body">
               <div class="list-group" id="list-tab" role="tablist">
+              {% if api_imports %}
                 {% for api in api_imports %}
                   {% for api_name, api_arg in api_imports[api].items() %}
                      <a class="list-group-item list-group-item-action
                          list-group-item-linkable"
                          id="list-all" data-toggle="list"
                          href="{{ url_for('main.run_processor',
-                         processor_name=processor_name, redirect_dest=edit_name,
+                         processor_name=object_name, redirect_dest=edit_name,
                          processor_args=api_arg) }}"
                          role="tab" aria-controls="home">{{ api_name }}</a>
                   {% endfor %}
                 {% endfor %}
+              {% endif %}
               </div>
           </div>
           <div class="modal-footer">
@@ -114,7 +119,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
-                Data Tables - {{ processor_name }}</h5>
+                Data Tables - {{ object_name }}</h5>
             <button type="button" class="close" data-dismiss="modal"
                     aria-label="Close">
               <span aria-hidden="true">&times;</span>
@@ -142,8 +147,8 @@
     </script>
 {% endblock %}
 {% block vertical_navbar %}
-    {% if processor %}
-        {% with processor=processor %}
+    {% if object %}
+        {% with processor=object %}
             {% include 'processor_popup.html' %}
         {% endwith %}
     {% endif %}
@@ -155,35 +160,18 @@
                     data-target="#collapseOne" aria-expanded="false"
                     aria-controls="collapseOne">
                 <i class="fas fa-play-circle" href="#" role="button"></i>
-                {{ _('Run Processor') }}
+                {{ _('Run {}'.format(title)) }}
                 <span class="caret"></span>
             </button>
             <div id="collapseOne" class="collapse"
                  aria-labelledby="headingOne" data-parent="#accordionExample">
                 <div class="card-body">
-                    <a class="dropdown-item"
-                           href="{{ url_for('main.run_processor',
-                           processor_name=processor_name,
-                           redirect_dest=edit_name, processor_args='full') }}">
-                        {{ _('Full') }}</a>
-                    <a class="dropdown-item"
-                           href="javascript: show_modal_table('importRunButton');">
-                        {{ _('Import') }}</a>
-                    <a class="dropdown-item"
-                           href="{{ url_for('main.run_processor',
-                           processor_name=processor_name,
-                           redirect_dest=edit_name, processor_args='basic') }}">
-                        {{ _('Basic') }}</a>
-                    <a class="dropdown-item"
-                           href="{{ url_for('main.run_processor',
-                           processor_name=processor_name,
-                           redirect_dest=edit_name, processor_args='export') }}">
-                        {{ _('Export') }}</a>
-                    <a class="dropdown-item"
-                           href="{{ url_for('main.run_processor',
-                           processor_name=processor_name,
-                           redirect_dest=edit_name, processor_args='update') }}">
-                        {{ _('Update') }}</a>
+                    {% if run_links %}
+                        {% for run_link_idx in run_links %}
+                          <a class="dropdown-item" href="{{ run_links[run_link_idx]['href'] }}">
+                              {{ run_links[run_link_idx]['title'] }}</a>
+                        {% endfor %}
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -195,52 +183,45 @@
                     data-target="#collapseTwo" aria-expanded="true"
                     aria-controls="collapseTwo">
                 <i class="fas fa-edit" href="#" role="button"></i>
-                {{ _('Edit Processor Files') }}
+                {{ _('Edit {} Files'.format(title)) }}
                 <span class="caret"></span>
             </button>
             <div id="collapseTwo" class="collapse"
                  aria-labelledby="headingTwo"
                  data-parent="#accordionExample">
                 <div class="card-body">
-                    <a class="dropdown-item" id="editTableVendormatrix" href="#">
-                        {{ _('Vendormatrix') }}</a>
-                    <a class="dropdown-item" id="editTableTranslate" href="#">
-                        {{ _('Translate') }}</a>
-                    <a class="dropdown-item" id="editTableConstant" href="#">
-                        {{ _('Constant') }}</a>
-                    <a class="dropdown-item" id="editTableRelation" href="#">
-                        {{ _('Relation') }}</a>
-                    <div class="card">
-                        <button class="btn btn-outline-info btn-block
-                                       dropdown-toggle text-left"
-                                type="button" data-toggle="collapse"
-                                id="editTableRelationDropdownButton"
-                                data-target="#collapseTwoOne" aria-expanded="true"
-                                aria-controls="collapseTwoOne">
-                            <i class="fas fa-ellipsis-v" href="#" role="button"></i>
-                            {{ _('Edit Relational Dictionaries') }}
-                            <span class="caret"></span>
-                        </button>
-                        <div id="collapseTwoOne" class="collapse"
-                             aria-labelledby="headingTwoOne"
-                             data-parent="#editTableRelationDropdownButton">
-                            <div class="card-body">
-                                <a class="dropdown-item" id="editTableRelationCampaign" href="#">
-                                    {{ _('Relation - Campaign') }}</a>
-                                <a class="dropdown-item" id="editTableRelationTargeting" href="#">
-                                    {{ _('Relation - Targeting') }}</a>
-                                <a class="dropdown-item" id="editTableRelationCreative" href="#">
-                                    {{ _('Relation - Creative') }}</a>
-                                <a class="dropdown-item" id="editTableRelationVendor" href="#">
-                                    {{ _('Relation - Vendor') }}</a>
-                                <a class="dropdown-item" id="editTableRelationCountry" href="#">
-                                    {{ _('Relation - Country') }}</a>
-                                <a class="dropdown-item" id="editTableRelationServing" href="#">
-                                    {{ _('Relation - Serving') }}</a>
-                                <a class="dropdown-item" id="editTableRelationCopy" href="#">
-                                    {{ _('Relation - Copy') }}</a>
-                            </div>
-                        </div>
+                    {% if edit_links %}
+                        {% for edit_link_idx in edit_links %}
+                              <a class="dropdown-item" href="#"
+                                 id="{{ 'editTable{}'.format(edit_links[edit_link_idx]['title']) }}">
+                                  {{ edit_links[edit_link_idx]['title'] }}</a>
+                              {% if edit_links[edit_link_idx]['nest'] %}
+                              <div class="card">
+                                    <button class="btn btn-outline-info btn-block
+                                                   dropdown-toggle text-left"
+                                            type="button" data-toggle="collapse"
+                                            id="{{ "editTable{}DropdownButton".format(edit_links[edit_link_idx]['title']) }}"
+                                            data-target="#collapseTwoOne" aria-expanded="true"
+                                            aria-controls="collapseTwoOne">
+                                        <i class="fas fa-ellipsis-v" href="#" role="button"></i>
+                                        {{ _('Edit {} Dictionaries'.format(edit_links[edit_link_idx]['title'])) }}
+                                        <span class="caret"></span>
+                                    </button>
+                                    <div id="collapseTwoOne" class="collapse"
+                                     aria-labelledby="headingTwoOne"
+                                     data-parent="#editTableRelationDropdownButton">
+                                        <div class="card-body">
+                                  {% for nested_link in edit_links[edit_link_idx]['nest'] %}
+                                    <a class="dropdown-item"
+                                       id="{{'editTable{}{}'.format(edit_links[edit_link_idx]['title'], nested_link)}}" href="#">
+                                        {{ _('{} - {}'.format(edit_links[edit_link_idx]['title'], nested_link)) }}</a>
+                                  {% endfor %}
+                                        </div>
+                                    </div>
+                              </div>
+                              {% endif %}
+                        {% endfor %}
+                    {% endif %}
                     </div>
                  </div>
             </div>
@@ -260,18 +241,14 @@
                  aria-labelledby="headingThree"
                  data-parent="#accordionExample">
                 <div class="card-body">
-                    <a class="dropdown-item" id="editTableOutputDataFullOutput">
-                        {{ _('Raw Data Output') }}</a>
-                    <a class="dropdown-item" id="editTableOutputDataVendor">
-                        {{ _('Campaign & Vendor') }}</a>
-                    <a class="dropdown-item" id="editTableOutputDataTarget">
-                        {{ _('Campaign & Vendor & Targeting') }}</a>
-                    <a class="dropdown-item" id="editTableOutputDataCreative">
-                        {{ _('Campaign & Vendor & Creative') }}</a>
-                    <a class="dropdown-item" id="editTableOutputDataCopy">
-                        {{ _('Campaign & Vendor & Copy') }}</a>
-                    <a class="dropdown-item" id="editTableOutputDataBuyModel">
-                        {{ _('Campaign & Vendor & Buy Model') }}</a>
+                    {% if output_links %}
+                        {% for out_link_idx in output_links %}
+                          <a class="dropdown-item"
+                             id="{{ 'editTableOutputData{}'.format(output_links[out_link_idx]['title']) }}"
+                             href="#">
+                              {{ output_links[out_link_idx]['title'] }}</a>
+                        {% endfor %}
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -290,14 +267,12 @@
                  aria-labelledby="headingFour"
                  data-parent="#accordionExample">
                 <div class="card-body">
-                    <a class="dropdown-item" id=""
-                     href="{{ url_for('main.edit_request_processor',
-                        processor_name=processor_name) }}">
-                        {{ _('View Initial Request') }}</a>
-                    <a class="dropdown-item" id=""
-                        href="{{ url_for('main.edit_processor_request_fix',
-                        processor_name=processor_name) }}">
-                        {{ _('Request Data Fix') }}</a>
+                    {% if request_links %}
+                        {% for request_link_idx in request_links %}
+                          <a class="dropdown-item" href="{{ request_links[request_link_idx]['href'] }}">
+                              {{ request_links[request_link_idx]['title'] }}</a>
+                        {% endfor %}
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -568,7 +543,7 @@
             $.post('/post_table',
                 {
                     data: json,
-                    processor:  "{{ processor_name }}",
+                    processor:  "{{ object_name }}",
                     table: sendTableName
                 }).done(function(data, status) {
                     reloadPage();
@@ -592,7 +567,7 @@
             $.post('/get_table',
                 {
                     table: tableName,
-                    processor:  "{{ processor_name }}",
+                    processor:  "{{ object_name }}",
                     vendorkey: vendorKey
             }).done(function(data, status) {
                 if (tableName === 'OutputDataFullOutput') {
@@ -641,7 +616,7 @@
         function getLog(clickElem, oldHtml){
             $.post('/get_log',
                 {
-                    processor:  "{{ processor_name }}"
+                    processor:  "{{ object_name }}"
             }).done(function(data, status) {
                 show_modal_table('logModalButton');
                 parseLog(data);
@@ -659,7 +634,7 @@
                 logRefresh = setInterval(function () {
                     $.post('/get_log',
                         {
-                            processor: "{{ processor_name }}"
+                            processor: "{{ object_name }}"
                         }).done(function (data, status) {
                         parseLog(data);
                     });

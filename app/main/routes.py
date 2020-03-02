@@ -1,4 +1,5 @@
 import json
+import copy
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
     jsonify, current_app
@@ -350,6 +351,12 @@ def get_navigation_buttons(buttons=None):
         buttons = [{'New Fix': 'main.edit_processor_request_fix'},
                    {'Submit Fixes': 'main.edit_processor_submit_fix'},
                    {'All Fixes': 'main.edit_processor_all_fix'}]
+    elif buttons == 'Uploader':
+        buttons = [{'Basic': 'main.edit_uploader'},
+                   {'Campaigns': 'main.edit_uploader'},
+                   {'Adsets': 'main.edit_uploader'},
+                   {'Creative': 'main.edit_uploader'},
+                   {'Ads': 'main.edit_uploader'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
                    {'Import': 'main.edit_processor_import'},
@@ -401,6 +408,52 @@ def create_processor():
                            edit_name='Basic', buttons=get_navigation_buttons())
 
 
+def get_processor_run_links(processor_name, edit_name):
+    run_links = {}
+    for idx, run_arg in enumerate(
+            ('full', 'import', 'basic', 'export', 'update')):
+        run_url = url_for('main.run_processor', processor_name=processor_name,
+                          redirect_dest=edit_name, processor_args=run_arg)
+        if run_arg == 'import':
+            run_href = "javascript: show_modal_table('importRunButton');"
+        else:
+            run_href = run_url
+        run_link = dict(title=run_arg.capitalize(),
+                        url=run_url,
+                        href=run_href)
+        run_links[idx] = run_link
+    return run_links
+
+
+def get_processor_edit_links():
+    edit_links = {}
+    for idx, edit_file in enumerate(
+            ('Vendormatrix', 'Translate', 'Constant', 'Relation')):
+        edit_links[idx] = dict(title=edit_file, nest=[])
+        if edit_file == 'Relation':
+            edit_links[idx]['nest'] = ['Campaign', 'Targeting', 'Creative',
+                                       'Vendor', 'Country', 'Serving', 'Copy']
+    return edit_links
+
+
+def get_processor_output_links():
+    output_links = {}
+    for idx, out_file in enumerate(
+            ('FullOutput', 'Vendor', 'Target', 'Creative', 'Copy', 'BuyModel')):
+        output_links[idx] = dict(title=out_file, nest=[])
+    return output_links
+
+
+def get_processor_request_links(processor_name):
+    run_links = {0: {'title': 'View Initial Request',
+                     'href': url_for('main.edit_request_processor',
+                                     processor_name=processor_name)},
+                 1: {'title': 'Request Data Fix',
+                     'href': url_for('main.edit_processor_request_fix',
+                                     processor_name=processor_name)}}
+    return run_links
+
+
 def get_current_processor(processor_name, current_page, edit_progress=0,
                           edit_name='Page', buttons=None, fix_id=None):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
@@ -418,10 +471,18 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
     api_imports = {0: {'All': 'import'}}
     for idx, (k, v) in enumerate(vmc.api_translation.items()):
         api_imports[idx + 1] = {k: v}
-    args = {'processor': cur_proc, 'posts': posts.items,
-            'title': _('Processor'), 'processor_name': cur_proc.name,
-            'user': cur_user, 'edit_progress': edit_progress,
-            'edit_name': edit_name, 'api_imports': api_imports}
+    run_links = get_processor_run_links(processor_name, edit_name)
+    edit_links = get_processor_edit_links()
+    output_links = get_processor_output_links()
+    request_links = get_processor_request_links(processor_name)
+    args = dict(object=cur_proc, processor=cur_proc,
+                posts=posts.items, title=_('Processor'),
+                object_name=cur_proc.name, user=cur_user,
+                edit_progress=edit_progress, edit_name=edit_name,
+                api_imports=api_imports,
+                object_function_call={'processor_name': cur_proc.name},
+                run_links=run_links, edit_links=edit_links,
+                output_links=output_links, request_links=request_links)
     args['buttons'] = get_navigation_buttons(buttons)
     next_url = url_for('main.' + current_page, processor_name=cur_proc.name,
                        page=posts.next_num) if posts.has_next else None
@@ -1364,7 +1425,7 @@ def edit_processor_view_fix(processor_name, fix_id):
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/upload')
+@bp.route('/uploader')
 @login_required
 def uploader():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
@@ -1417,13 +1478,13 @@ def create_uploader():
                                     uploader_name=new_uploader.name))
         else:
             return redirect(url_for('main.upload'))
-    return render_template('create_uploader.html', user=cur_user,
+    return render_template('create_processor.html', user=cur_user,
                            title=_('Uploader'), form=form, edit_progress="25",
                            edit_name='Basic')
 
 
 def get_current_uploader(uploader_name, current_page, edit_progress=0,
-                         edit_name='Page'):
+                         edit_name='Page', buttons='Uploader'):
     cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     page = request.args.get('page', 1, type=int)
@@ -1431,10 +1492,11 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
              filter_by(uploader_id=cur_up.id).
              order_by(Post.timestamp.desc()).
              paginate(page, 5, False))
-    args = {'upload': cur_up, 'posts': posts.items,
-            'title': _('Uploader'), 'uploader_name': cur_up.name,
-            'user': cur_user, 'edit_progress': edit_progress,
-            'edit_name': edit_name}
+    args = {'object': cur_up, 'posts': posts.items, 'title': _('Uploader'),
+            'object_name': cur_up.name, 'user': cur_user,
+            'edit_progress': edit_progress, 'edit_name': edit_name,
+            'buttons': get_navigation_buttons(buttons),
+            'object_function_call': {'uploader_name': cur_up.name}}
     next_url = url_for('main.' + current_page, uploader_name=cur_up.name,
                        page=posts.next_num) if posts.has_next else None
     prev_url = url_for('main.' + current_page, uploader_name=cur_up.name,
@@ -1444,15 +1506,15 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
     return args
 
 
-@bp.route('/upload/<uploader_name>')
+@bp.route('/uploader/<uploader_name>')
 @login_required
 def uploader_page(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'uploader_page',
                                   edit_progress=100, edit_name='Page')
-    return render_template('create_uploader.html', **kwargs)
+    return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/upload/<uploader_name>/edit', methods=['GET', 'POST'])
+@bp.route('/uploader/<uploader_name>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_uploader(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
@@ -1502,7 +1564,7 @@ def edit_uploader(uploader_name):
         form.cur_product.data = form_product
         form.cur_client.data = form_client
     kwargs['form'] = form
-    return render_template('create_uploader.html',  **kwargs)
+    return render_template('create_processor.html',  **kwargs)
 
 
 @bp.route('/help')

@@ -458,7 +458,7 @@ class UploaderForm(FlaskForm):
         DataRequired()])
     description = StringField(_l('Description'), validators=[
         DataRequired()])
-    local_path = StringField(_l('Local Path'), validators=[DataRequired()])
+    # local_path = StringField(_l('Local Path'), validators=[DataRequired()])
     cur_client = QuerySelectField(_l('Client'), allow_blank=True,
                                   query_factory=lambda: Client.query.all(),
                                   get_label='name')

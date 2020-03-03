@@ -108,7 +108,8 @@ class User(UserMixin, db.Model):
     processor_request_user = db.relationship(
         'Processor', foreign_keys='Processor.requesting_user_id',
         backref='request_user', lazy='dynamic')
-    uploader = db.relationship('Uploader', backref='user', lazy='dynamic')
+    uploader = db.relationship('Uploader', foreign_keys='Uploader.user_id',
+                               backref='user', lazy='dynamic')
     schedule = db.relationship('TaskScheduler', backref='user', lazy='dynamic')
 
     def __repr__(self):

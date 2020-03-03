@@ -80,12 +80,15 @@ def get_processor_and_user_from_id(processor_id, current_user_id):
 
 
 def processor_post_message(proc, usr, text, run_complete=False,
-                           request_id=False):
+                           request_id=False, object_name='Processor'):
     try:
         msg = Message(author=usr, recipient=usr, body=text)
         db.session.add(msg)
         usr.add_notification('unread_message_count', usr.new_messages())
-        post = Post(body=text, author=usr, processor_id=proc.id)
+        if object_name == 'Uploader':
+            post = Post(body=text, author=usr, uploader_id=proc.id)
+        else:
+            post = Post(body=text, author=usr, processor_id=proc.id)
         if request_id:
             post.request_id = request_id
         db.session.add(post)
@@ -100,7 +103,8 @@ def processor_post_message(proc, usr, text, run_complete=False,
             db.session.commit()
     except:
         db.session.rollback()
-        processor_post_message(proc, usr, text)
+        processor_post_message(proc, usr, text, request_id=request_id,
+                               object_name=object_name)
 
 
 def copy_file(old_file, new_file, attempt=1):
@@ -846,24 +850,6 @@ def get_logfile_uploader(uploader_id, current_user_id):
             uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
-def uploader_post_message(uploader, usr, text):
-    try:
-        msg = Message(author=usr, recipient=usr, body=text)
-        db.session.add(msg)
-        usr.add_notification('unread_message_count', usr.new_messages())
-        post = Post(body=text, author=usr, uploader_id=uploader.id)
-        db.session.add(post)
-        db.session.commit()
-        usr.add_notification(
-            'task_complete', {'text': text,
-                              'timestamp': post.timestamp.isoformat(),
-                              'post_id': post.id})
-        db.session.commit()
-    except:
-        db.session.rollback()
-        uploader_post_message(uploader, usr, text)
-
-
 def create_uploader(uploader_id, current_user_id, base_path):
     try:
         new_uploader = Uploader.query.get(uploader_id)
@@ -874,12 +860,50 @@ def create_uploader(uploader_id, current_user_id, base_path):
             os.makedirs(new_path)
         copy_tree_no_overwrite(old_path, new_path)
         msg_text = "Uploader was created."
-        uploader_post_message(new_uploader, user_create, msg_text)
+        processor_post_message(new_uploader, user_create, msg_text,
+                               object_name='Uploader')
         _set_task_progress(100)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Uploader {} User {}'.format(
             uploader_id, current_user_id), exc_info=sys.exc_info())
+
+
+def get_uploader_and_user_from_id(uploader_id, current_user_id):
+    uploader_to_run = Uploader.query.get(uploader_id)
+    user_that_ran = User.query.get(current_user_id)
+    return uploader_to_run, user_that_ran
+
+
+def run_uploader(uploader_id, current_user_id, uploader_args):
+    try:
+        uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
+            processor_id=uploader_id, current_user_id=current_user_id)
+        post_body = ('Running {} for uploader: {}...'.format(
+            uploader_args, uploader_to_run.name))
+        processor_post_message(uploader_to_run, user_that_ran, post_body,
+                               object_name='Uploader')
+        _set_task_progress(0)
+        file_path = adjust_path(uploader_to_run.local_path)
+        from uploader.main import main
+        os.chdir(file_path)
+        main(uploader_args)
+        msg_text = ("{} finished running.".format(uploader_to_run.name))
+        processor_post_message(proc=uploader_to_run, usr=user_that_ran,
+                               text=msg_text, run_complete=True,
+                               object_name='Uploader')
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+        uploader_to_run = Uploader.query.get(uploader_id)
+        user_that_ran = User.query.get(current_user_id)
+        msg_text = ("{} run failed.".format(uploader_to_run.name))
+        processor_post_message(uploader_to_run, user_that_ran, msg_text,
+                               object_name='Uploader')
+        return False
 
 
 def set_processor_values(processor_id, current_user_id, form_sources, table):

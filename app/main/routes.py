@@ -1462,10 +1462,13 @@ def create_uploader():
             name=form.product_name, client_id=form_client.id).check_and_add()
         form_campaign = Campaign(
             name=form.campaign_name, product_id=form_product.id).check_and_add()
+        new_path = '/mnt/c/clients/{}/{}/{}/{}/uploader'.format(
+            form_client.name, form_product.name, form_campaign.name,
+            form.name.data)
         new_uploader = Uploader(
             name=form.name.data, description=form.description.data,
             user_id=current_user.id, created_at=datetime.utcnow(),
-            local_path=form.local_path.data, campaign_id=form_campaign.id)
+            local_path=new_path, campaign_id=form_campaign.id)
         db.session.add(new_uploader)
         db.session.commit()
         post_body = 'Create Uploader {}...'.format(new_uploader.name)
@@ -1476,7 +1479,7 @@ def create_uploader():
                          ''.format(new_uploader.name))
         flash(_(creation_text))
         post = Post(body=creation_text, author=current_user,
-                    uploader_id=uploader.id)
+                    uploader_id=new_uploader.id)
         db.session.add(post)
         db.session.commit()
         if form.form_continue.data == 'continue':
@@ -1489,6 +1492,48 @@ def create_uploader():
                            edit_name='Basic')
 
 
+@bp.route('/processor/<uploader_name>/run/<redirect_dest>/<uploader_args>',
+          methods=['GET', 'POST'])
+@login_required
+def run_uploader(uploader_name, uploader_args='', redirect_dest=None):
+    uploader_to_run = Uploader.query.filter_by(
+        name=uploader_name).first_or_404()
+    if uploader_to_run.get_task_in_progress('.run_uploader'):
+        flash(_('The uploader is already running.'))
+    else:
+        post_body = ('Running {} for uploader: {}...'.format(
+            uploader_args, uploader_name))
+        arg_trans = {'create': '--create',
+                     'campaign': '--api fb --upload c',
+                     'adset': '--api fb --upload as',
+                     'ad': '--api fb --upload ad'}
+        uploader_to_run.launch_task('.run_processor', _(post_body),
+                                    running_user=current_user.id,
+                                    uploader_args=arg_trans[uploader_args])
+        uploader_to_run.last_run_time = datetime.utcnow()
+        db.session.commit()
+    if not redirect_dest or redirect_dest == 'Page':
+        return redirect(url_for('main.uploader_page',
+                                uploader_name=uploader_to_run.name))
+    elif redirect_dest == 'Basic':
+        return redirect(url_for('main.edit_uploader',
+                                uploader_name=uploader_to_run.name))
+
+
+def get_uploader_run_links(uploader_name, edit_name):
+    run_links = {}
+    for idx, run_arg in enumerate(
+            ('create', 'campaign', 'adset', 'ad')):
+        run_url = url_for('main.run_uploader', uploader_name=uploader_name,
+                          redirect_dest=edit_name, uploader_args=run_arg)
+        run_href = run_url
+        run_link = dict(title=run_arg.capitalize(),
+                        url=run_url,
+                        href=run_href)
+        run_links[idx] = run_link
+    return run_links
+
+
 def get_current_uploader(uploader_name, current_page, edit_progress=0,
                          edit_name='Page', buttons='Uploader'):
     cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
@@ -1498,11 +1543,16 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
              filter_by(uploader_id=cur_up.id).
              order_by(Post.timestamp.desc()).
              paginate(page, 5, False))
+    run_links = get_uploader_run_links(uploader_name, edit_name)
+    # edit_links = get_uploader_edit_links()
+    # output_links = get_uploader_output_links()
+    # request_links = get_uploader_request_links(processor_name)
     args = {'object': cur_up, 'posts': posts.items, 'title': _('Uploader'),
             'object_name': cur_up.name, 'user': cur_user,
             'edit_progress': edit_progress, 'edit_name': edit_name,
             'buttons': get_navigation_buttons(buttons),
-            'object_function_call': {'uploader_name': cur_up.name}}
+            'object_function_call': {'uploader_name': cur_up.name},
+            'run_links': run_links}
     next_url = url_for('main.' + current_page, uploader_name=cur_up.name,
                        page=posts.next_num) if posts.has_next else None
     prev_url = url_for('main.' + current_page, uploader_name=cur_up.name,
@@ -1525,7 +1575,7 @@ def uploader_page(uploader_name):
 def edit_uploader(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
                                   edit_progress=25, edit_name='Basic')
-    uploader_to_edit = kwargs['upload']
+    uploader_to_edit = kwargs['object']
     form = EditUploaderForm(uploader_name)
     if request.method == 'POST':
         form.validate()
@@ -1536,7 +1586,6 @@ def edit_uploader(uploader_name):
                                  product_id=form_product.id).check_and_add()
         uploader_to_edit.name = form.name.data
         uploader_to_edit.description = form.description.data
-        uploader_to_edit.local_path = form.local_path.data
         uploader_to_edit.campaign_id = form_campaign.id
         db.session.commit()
         flash(_('Your changes have been saved.'))
@@ -1559,7 +1608,6 @@ def edit_uploader(uploader_name):
     elif request.method == 'GET':
         form.name.data = uploader_to_edit.name
         form.description.data = uploader_to_edit.description
-        form.local_path.data = uploader_to_edit.local_path
         form_campaign = Campaign.query.filter_by(
             id=uploader_to_edit.campaign_id).first_or_404()
         form_product = Product.query.filter_by(

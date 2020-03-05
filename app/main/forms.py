@@ -339,7 +339,7 @@ class FeeForm(FlaskForm):
     trad_agency_fees = DecimalField(_('Traditional Agency Fees'))
     rate_card = QuerySelectField(_l('Rate Card'), allow_blank=True,
                                  query_factory=lambda: RateCard.query.all(),
-                                 get_label='name')
+                                 get_label='name', validators=[DataRequired()])
     refresh_rate_card = SubmitField('View Rate Card')
     dcm_service_fees = SelectField('DCM Service Fee', choices=[
         ('0%', '0%'), ('10%', '10%'), ('15%', '15%')])

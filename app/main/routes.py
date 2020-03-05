@@ -704,11 +704,13 @@ def get_table():
         df = job.result[0]
     if 'parameter' in proc_arg and proc_arg['parameter'] == 'FullOutput':
         from flask import send_file
+        import zipfile
         import io
-        proxy = io.StringIO()
-        df.to_csv(proxy)
+        z = zipfile.ZipFile(df)
+        df = z.read('raw.csv')
+        z.close()
         mem = io.BytesIO()
-        mem.write(proxy.getvalue().encode('utf-8'))
+        mem.write(df)
         mem.seek(0)
         return send_file(mem,
                          as_attachment=True,

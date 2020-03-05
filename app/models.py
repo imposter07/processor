@@ -284,14 +284,19 @@ class Task(db.Model):
             if self.get_progress() == 100:
                 return True
             else:
-                time.sleep(1)
+                time.sleep(1.5)
         return False
 
     def check_return_value(self, job, force_return):
+        print('Check Return')
         if force_return and not job.result:
             job = self.get_rq_job()
+            time.sleep(5)
             if not job.result:
+                print('No result')
+                time.sleep(1)
                 self.check_return_value(job, force_return)
+        print('Return job')
         return job
 
     def wait_and_get_job(self, loops=1000, force_return=False):

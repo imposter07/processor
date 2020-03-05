@@ -455,13 +455,23 @@ def get_data_tables(processor_id, current_user_id, parameter):
         if parameter:
             tables = [tables.groupby(parameter)[metrics].sum()]
         else:
-            tables = [tables]
+            import io
+            import zipfile
+            mem = io.BytesIO()
+            with zipfile.ZipFile(mem, mode='w') as f:
+                data = zipfile.ZipInfo('raw.csv')
+                data.date_time = time.localtime(time.time())[:6]
+                data.compress_type = zipfile.ZIP_DEFLATED
+                f.writestr(data, data=tables.to_csv())
+            mem.seek(0)
+            tables = [mem]
         _set_task_progress(100)
         return tables
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
 def get_dict_order(processor_id, current_user_id, vk):
@@ -1340,7 +1350,6 @@ def processor_fix_request(processor_id, current_user_id, fix):
         fixed = False
         if fix.fix_type == 'Update Plan':
             fixed = set_processor_plan_net(processor_id, current_user_id)
-            print(fixed)
         elif fix.fix_type == 'Change Dimension':
             pass
         elif fix.fix_type == 'Change Metric':

@@ -12,7 +12,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
     ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm,\
-    ProcessorDuplicateForm
+    ProcessorDuplicateForm, EditUploaderCampaignForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests
@@ -355,7 +355,7 @@ def get_navigation_buttons(buttons=None):
         buttons = [{'Duplicate': 'main.edit_processor_duplication'}]
     elif buttons == 'Uploader':
         buttons = [{'Basic': 'main.edit_uploader'},
-                   {'Campaigns': 'main.edit_uploader'},
+                   {'Campaigns': 'main.edit_uploader_campaign'},
                    {'Adsets': 'main.edit_uploader'},
                    {'Creative': 'main.edit_uploader'},
                    {'Ads': 'main.edit_uploader'}]
@@ -657,8 +657,14 @@ def post_table():
 @bp.route('/get_table', methods=['GET', 'POST'])
 @login_required
 def get_table():
-    cur_proc = Processor.query.filter_by(
-        name=request.form['processor']).first_or_404()
+    print(request.form)
+    cur_obj = request.form['object_type']
+    if cur_obj == 'Processor':
+        cur_obj = Processor
+    else:
+        cur_obj = Uploader
+    cur_proc = cur_obj.query.filter_by(
+        name=request.form['object_name']).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     proc_arg = {'running_user': cur_user.id}
     table_name = request.form['table']
@@ -680,7 +686,11 @@ def get_table():
                  'rate_card': '.get_rate_card',
                  'edit_conversions': '.get_processor_conversions',
                  'data_sources': '.get_processor_sources',
-                 'imports': '.get_processor_sources'}
+                 'imports': '.get_processor_sources',
+                 'Creator': '.get_creator_config',
+                 'Campaign': '.get_campaign_upload',
+                 'Adset': '.get_adset_upload',
+                 'Ad': '.get_ad_upload'}
     job_name = arg_trans[table_name]
     if cur_proc.get_task_in_progress(job_name):
         flash(_('This job: {} is already running!').format(table_name))
@@ -1536,6 +1546,17 @@ def get_uploader_run_links(uploader_name, edit_name):
     return run_links
 
 
+def get_uploader_edit_links():
+    edit_links = {}
+    for idx, edit_file in enumerate(
+            ('Creator', 'Campaign', 'Adset', 'Ad')):
+        edit_links[idx] = dict(title=edit_file, nest=[])
+        if edit_file == 'Relation':
+            edit_links[idx]['nest'] = ['Campaign', 'Targeting', 'Creative',
+                                       'Vendor', 'Country', 'Serving', 'Copy']
+    return edit_links
+
+
 def get_current_uploader(uploader_name, current_page, edit_progress=0,
                          edit_name='Page', buttons='Uploader'):
     cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
@@ -1546,7 +1567,7 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
              order_by(Post.timestamp.desc()).
              paginate(page, 5, False))
     run_links = get_uploader_run_links(uploader_name, edit_name)
-    # edit_links = get_uploader_edit_links()
+    edit_links = get_uploader_edit_links()
     # output_links = get_uploader_output_links()
     # request_links = get_uploader_request_links(processor_name)
     args = {'object': cur_up, 'posts': posts.items, 'title': _('Uploader'),
@@ -1554,7 +1575,7 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
             'edit_progress': edit_progress, 'edit_name': edit_name,
             'buttons': get_navigation_buttons(buttons),
             'object_function_call': {'uploader_name': cur_up.name},
-            'run_links': run_links}
+            'run_links': run_links, 'edit_links': edit_links}
     next_url = url_for('main.' + current_page, uploader_name=cur_up.name,
                        page=posts.next_num) if posts.has_next else None
     prev_url = url_for('main.' + current_page, uploader_name=cur_up.name,
@@ -1619,6 +1640,17 @@ def edit_uploader(uploader_name):
         form.cur_campaign.data = form_campaign
         form.cur_product.data = form_product
         form.cur_client.data = form_client
+    kwargs['form'] = form
+    return render_template('create_processor.html',  **kwargs)
+
+
+@bp.route('/uploader/<uploader_name>/edit/campaign', methods=['GET', 'POST'])
+@login_required
+def edit_uploader_campaign(uploader_name):
+    kwargs = get_current_uploader(uploader_name, 'edit_uploader',
+                                  edit_progress=25, edit_name='Campaigns')
+    uploader_to_edit = kwargs['object']
+    form = EditUploaderCampaignForm(uploader_name)
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
 

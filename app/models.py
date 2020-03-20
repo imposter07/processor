@@ -467,7 +467,6 @@ class Processor(db.Model):
             tomorrow = today.date() + timedelta(days=1)
             first_run = datetime.combine(tomorrow, scheduled_time)
             first_run = eastern.localize(first_run)
-            print(first_run)
         first_run = first_run.astimezone(pytz.utc)
         interval_sec = int(interval) * 60 * 60
         repeat = (end_date - start_date).days * (24 / int(interval))
@@ -790,6 +789,8 @@ class Uploader(db.Model):
     tasks = db.relationship('Task', backref='uploader', lazy='dynamic')
     posts = db.relationship('Post', backref='uploader', lazy='dynamic')
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
+    uploader_objects = db.relationship('UploaderObjects',
+                                       backref='uploader', lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -810,11 +811,31 @@ class Uploader(db.Model):
     def get_last_post(self):
         return self.posts.order_by(Post.timestamp.desc()).first()
 
-    def get_all_requests(self):
+    @staticmethod
+    def get_all_requests():
         return []
 
-    def get_open_requests(self):
+    @staticmethod
+    def get_open_requests():
         return []
 
-    def get_main_page(self):
-        return url_for('main.uploader_page')
+    @staticmethod
+    def get_main_page():
+        return []
+
+
+class UploaderObjects(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
+    key = db.Column(db.Text)
+    account_id = db.Column(db.Text)
+    account_filter = db.Column(db.String(128))
+    start_date = db.Column(db.Date)
+    api_fields = db.Column(db.String(128))
+    vendor_key = db.Column(db.String(128))
+    full_placement_columns = db.Column(db.Text)
+    placement_columns = db.Column(db.Text)
+    auto_dictionary_placement = db.Column(db.Text)
+    auto_dictionary_order = db.Column(db.Text)
+    active_metrics = db.Column(db.Text)
+    vm_rules = db.Column(db.Text)

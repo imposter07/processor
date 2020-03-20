@@ -2,7 +2,7 @@ from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
     FormField, FieldList, HiddenField, DateTimeField, FileField, BooleanField, \
-    DecimalField
+    DecimalField, SelectMultipleField
 from wtforms.fields.html5 import DateField, TimeField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
@@ -11,6 +11,7 @@ from app.models import User, Processor, Client, Product, Campaign, Uploader,\
     RateCard, ProcessorDatasources
 import processor.reporting.dictcolumns as dctc
 import processor.reporting.vmcolumns as vmc
+import uploader.upload.creator as cre
 
 
 class EditProfileForm(FlaskForm):
@@ -524,6 +525,29 @@ class EditUploaderForm(UploaderForm):
             uploader = Uploader.query.filter_by(name=self.name.data).first()
             if uploader is not None:
                 raise ValidationError(_l('Please use a different name.'))
+
+
+class EditUploaderCampaignForm(FlaskForm):
+    create_type = SelectField(_l('Create Type'), choices=[
+        (x, x) for x in ['Media Plan', 'CSV']])
+    create_file = FileField(_l('Create File'))
+    media_plan_cols = [
+        (x, x) for x in [cre.MediaPlan.campaign_id,
+                         cre.MediaPlan.campaign_name,
+                         cre.MediaPlan.placement_phase,
+                         cre.MediaPlan.campaign_phase,
+                         cre.MediaPlan.partner_name,
+                         cre.MediaPlan.country_name]]
+    media_plan_columns = SelectMultipleField(
+        _l('Media Plan Columns'), choices=media_plan_cols,
+        default=[cre.MediaPlan.partner_name, cre.MediaPlan.campaign_id])
+    spend_type = SelectField(_l('Spend Type'), choices=[
+        (x, x) for x in ['From Plan', 'Single Value', 'Equal Split']],
+        validators=[DataRequired()])
+    spend_value = StringField(_l('Spend Value'))
+    campaign_objective = SelectField(_l('Campaign Objective'), choices=[
+        (x, x) for x in ['From Plan', 'LINK_CLICKS', 'Various']])
+    form_continue = HiddenField('form_continue')
 
 
 class ProcessorDuplicateForm(FlaskForm):

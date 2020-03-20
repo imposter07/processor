@@ -888,7 +888,7 @@ def get_uploader_and_user_from_id(uploader_id, current_user_id):
 def run_uploader(uploader_id, current_user_id, uploader_args):
     try:
         uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
-            processor_id=uploader_id, current_user_id=current_user_id)
+            uploader_id=uploader_id, current_user_id=current_user_id)
         post_body = ('Running {} for uploader: {}...'.format(
             uploader_args, uploader_to_run.name))
         processor_post_message(uploader_to_run, user_that_ran, post_body,
@@ -914,6 +914,67 @@ def run_uploader(uploader_id, current_user_id, uploader_args):
         processor_post_message(uploader_to_run, user_that_ran, msg_text,
                                object_name='Uploader')
         return False
+
+
+def get_uploader_file(uploader_id, current_user_id, uploader_file):
+    try:
+        uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
+            uploader_id=uploader_id, current_user_id=current_user_id)
+        _set_task_progress(0)
+        file_path = adjust_path(uploader_to_run.local_path)
+        os.chdir(file_path)
+        df = pd.read_excel(uploader_file)
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def get_creator_config(uploader_id, current_user_id):
+    try:
+        file_name = 'config/create/creator_config.xlsx'
+        df = get_uploader_file(uploader_id, current_user_id, file_name)
+        return df
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+
+
+def get_campaign_upload(uploader_id, current_user_id):
+    try:
+        file_name = 'config/fb/campaign_upload.xlsx'
+        df = get_uploader_file(uploader_id, current_user_id, file_name)
+        return df
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+
+
+def get_adset_upload(uploader_id, current_user_id):
+    try:
+        file_name = 'config/fb/adset_upload.xlsx'
+        df = get_uploader_file(uploader_id, current_user_id, file_name)
+        return df
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+
+
+def get_ad_upload(uploader_id, current_user_id):
+    try:
+        file_name = 'config/fb/ad_upload.xlsx'
+        df = get_uploader_file(uploader_id, current_user_id, file_name)
+        return df
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
 def set_processor_values(processor_id, current_user_id, form_sources, table):

@@ -505,7 +505,6 @@
                     },
                     ]
                 });
-                table.columns.adjust().draw();
             });
         }
         function reloadPage(){
@@ -567,7 +566,8 @@
             $.post('/get_table',
                 {
                     table: tableName,
-                    processor:  "{{ object_name }}",
+                    object_name: "{{ object_name }}",
+                    object_type:  "{{ title }}",
                     vendorkey: vendorKey
             }).done(function(data, status) {
                 if (tableName === 'OutputDataFullOutput') {

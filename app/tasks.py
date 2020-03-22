@@ -1377,9 +1377,10 @@ def build_processor_from_request(processor_id, current_user_id):
         send_processor_build_email(processor_id, current_user_id, progress)
 
 
-def save_media_plan(processor_id, current_user_id, media_plan):
+def save_media_plan(processor_id, current_user_id, media_plan,
+                    object_type=Processor):
     try:
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = object_type.query.get(processor_id)
         cur_user = User.query.get(current_user_id)
         if not cur_processor.local_path:
             base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
@@ -1394,7 +1395,7 @@ def save_media_plan(processor_id, current_user_id, media_plan):
         media_plan.to_csv(os.path.join(
             base_path, 'mediaplan.csv'
         ))
-        msg_text = ('{} processor media plan was updated.'
+        msg_text = ('{} media plan was updated.'
                     ''.format(cur_processor.name))
         processor_post_message(cur_processor, cur_user, msg_text)
         _set_task_progress(100)

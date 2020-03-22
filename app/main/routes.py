@@ -12,7 +12,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
     ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm,\
-    ProcessorDuplicateForm, EditUploaderCampaignForm
+    ProcessorDuplicateForm, EditUploaderCampaignMediaPlanForm,\
+    EditUploaderCampaignCreateForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests
@@ -980,7 +981,8 @@ def convert_media_plan_to_df(current_file):
     return mp.df
 
 
-def check_and_add_media_plan(media_plan_data, processor_to_edit):
+def check_and_add_media_plan(media_plan_data, processor_to_edit,
+                             object_type=Processor):
     if media_plan_data:
         df = convert_media_plan_to_df(media_plan_data)
         msg_text = ('Attempting to save media plan for  processor: {}'
@@ -988,7 +990,7 @@ def check_and_add_media_plan(media_plan_data, processor_to_edit):
         processor_to_edit.launch_task(
             '.save_media_plan', _(msg_text),
             running_user=current_user.id,
-            media_plan=df)
+            media_plan=df, object_type=object_type)
         db.session.commit()
 
 
@@ -1494,6 +1496,11 @@ def create_uploader():
                     uploader_id=new_uploader.id)
         db.session.add(post)
         db.session.commit()
+        check_and_add_media_plan(form.media_plan.data, new_uploader,
+                                 object_type=Uploader)
+        if form.media_plan.data:
+            new_uploader.media_plan = True
+            db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_uploader',
                                     uploader_name=new_uploader.name))
@@ -1610,6 +1617,7 @@ def edit_uploader(uploader_name):
         uploader_to_edit.name = form.name.data
         uploader_to_edit.description = form.description.data
         uploader_to_edit.campaign_id = form_campaign.id
+        uploader_to_edit.fb_account_id = form.account_id.data
         db.session.commit()
         flash(_('Your changes have been saved.'))
         post_body = ('Create Uploader {}...'.format(uploader_to_edit.name))
@@ -1622,11 +1630,16 @@ def edit_uploader(uploader_name):
                     uploader_id=uploader_to_edit.id)
         db.session.add(post)
         db.session.commit()
+        check_and_add_media_plan(form.media_plan.data, uploader_to_edit,
+                                 object_type=Uploader)
+        if form.media_plan.data:
+            uploader_to_edit.media_plan = True
+            db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_uploader',
+            return redirect(url_for('main.edit_uploader_campaign',
                                     uploader_name=uploader_to_edit.name))
         else:
-            return redirect(url_for('main.uploader_page',
+            return redirect(url_for('main.edit_uploader',
                                     uploader_name=uploader_to_edit.name))
     elif request.method == 'GET':
         form.name.data = uploader_to_edit.name
@@ -1640,6 +1653,7 @@ def edit_uploader(uploader_name):
         form.cur_campaign.data = form_campaign
         form.cur_product.data = form_product
         form.cur_client.data = form_client
+        form.account_id.data = uploader_to_edit.fb_account_id
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
 
@@ -1650,7 +1664,11 @@ def edit_uploader_campaign(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
                                   edit_progress=25, edit_name='Campaigns')
     uploader_to_edit = kwargs['object']
-    form = EditUploaderCampaignForm(uploader_name)
+    if uploader_to_edit.media_plan:
+        form_object = EditUploaderCampaignMediaPlanForm
+    else:
+        form_object = EditUploaderCampaignCreateForm
+    form = form_object(uploader_name)
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
 

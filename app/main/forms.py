@@ -459,7 +459,8 @@ class UploaderForm(FlaskForm):
         DataRequired()])
     description = StringField(_l('Description'), validators=[
         DataRequired()])
-    # local_path = StringField(_l('Local Path'), validators=[DataRequired()])
+    account_id = StringField(_l('Account ID'))
+    media_plan = FileField('Media Plan')
     cur_client = QuerySelectField(_l('Client'), allow_blank=True,
                                   query_factory=lambda: Client.query.all(),
                                   get_label='name')
@@ -527,11 +528,8 @@ class EditUploaderForm(UploaderForm):
                 raise ValidationError(_l('Please use a different name.'))
 
 
-class EditUploaderCampaignForm(FlaskForm):
-    create_type = SelectField(_l('Create Type'), choices=[
-        (x, x) for x in ['Media Plan', 'CSV']])
-    create_file = FileField(_l('Create File'))
-    media_plan_cols = [
+class EditUploaderCampaignMediaPlanForm(FlaskForm):
+    media_plan_column_choices = [
         (x, x) for x in [cre.MediaPlan.campaign_id,
                          cre.MediaPlan.campaign_name,
                          cre.MediaPlan.placement_phase,
@@ -539,14 +537,22 @@ class EditUploaderCampaignForm(FlaskForm):
                          cre.MediaPlan.partner_name,
                          cre.MediaPlan.country_name]]
     media_plan_columns = SelectMultipleField(
-        _l('Media Plan Columns'), choices=media_plan_cols,
-        default=[cre.MediaPlan.partner_name, cre.MediaPlan.campaign_id])
+        _l('Media Plan Columns'), choices=media_plan_column_choices,
+        default=[(x, x) for x in
+                 [cre.MediaPlan.partner_name, cre.MediaPlan.campaign_id]])
+    partner_name_filter = TextAreaField(
+        _l('Partner Name Filter'), default='Facebook|Instagram')
+    form_continue = HiddenField('form_continue')
+
+
+class EditUploaderCampaignCreateForm(FlaskForm):
+    create_file = FileField(_l('Create File'))
     spend_type = SelectField(_l('Spend Type'), choices=[
-        (x, x) for x in ['From Plan', 'Single Value', 'Equal Split']],
+        (x, x) for x in ['Single Value', 'Equal Split']],
         validators=[DataRequired()])
     spend_value = StringField(_l('Spend Value'))
     campaign_objective = SelectField(_l('Campaign Objective'), choices=[
-        (x, x) for x in ['From Plan', 'LINK_CLICKS', 'Various']])
+        (x, x) for x in ['LINK_CLICKS', 'Various']])
     form_continue = HiddenField('form_continue')
 
 

@@ -2,7 +2,7 @@ from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
     FormField, FieldList, HiddenField, DateTimeField, FileField, BooleanField, \
-    DecimalField, SelectMultipleField
+    DecimalField, SelectMultipleField, MultipleFileField
 from wtforms.fields.html5 import DateField, TimeField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
@@ -236,7 +236,6 @@ class ProcessorRequestForm(FlaskForm):
     description = StringField(_l('Description'), validators=[
         DataRequired()])
     plan_path = StringField(_l('Media Plan Path'), validators=[DataRequired()])
-    media_plan = FileField('Media Plan')
     start_date = DateField(_l('Start Date'))
     end_date = DateField(_l('End Date'))
     first_report = DateField(_l('First Report Date'))
@@ -252,6 +251,7 @@ class ProcessorRequestForm(FlaskForm):
                                     query_factory=lambda: Campaign.query.all(),
                                     get_label='name')
     new_campaign = StringField(_l('Add New Campaign'))
+    media_plan = FileField('Media Plan')
     client_name = None
     product_name = None
     campaign_name = None
@@ -460,7 +460,6 @@ class UploaderForm(FlaskForm):
     description = StringField(_l('Description'), validators=[
         DataRequired()])
     account_id = StringField(_l('Account ID'))
-    media_plan = FileField('Media Plan')
     cur_client = QuerySelectField(_l('Client'), allow_blank=True,
                                   query_factory=lambda: Client.query.all(),
                                   get_label='name')
@@ -473,6 +472,7 @@ class UploaderForm(FlaskForm):
                                     query_factory=lambda: Campaign.query.all(),
                                     get_label='name')
     new_campaign = StringField(_l('Add New Campaign'))
+    media_plan = FileField('Media Plan')
     client_name = None
     product_name = None
     campaign_name = None
@@ -553,6 +553,11 @@ class EditUploaderCampaignCreateForm(FlaskForm):
     spend_value = StringField(_l('Spend Value'))
     campaign_objective = SelectField(_l('Campaign Objective'), choices=[
         (x, x) for x in ['LINK_CLICKS', 'Various']])
+    form_continue = HiddenField('form_continue')
+
+
+class EditUploaderCreativeForm(FlaskForm):
+    creative_file = FileField(_l('Creative File'))
     form_continue = HiddenField('form_continue')
 
 

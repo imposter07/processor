@@ -977,6 +977,24 @@ def get_ad_upload(uploader_id, current_user_id):
             uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
+def uploader_save_creative(uploader_id, current_user_id, file, file_name):
+    try:
+        cur_up, user_that_ran = get_uploader_and_user_from_id(
+            uploader_id=uploader_id, current_user_id=current_user_id)
+        _set_task_progress(0)
+        file_path = adjust_path(cur_up.local_path)
+        os.chdir(file_path)
+        file.seek(0)
+        with open(os.path.join('creative', file_name), 'wb') as f:
+            shutil.copyfileobj(file, f, length=131072)
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+
+
 def set_processor_values(processor_id, current_user_id, form_sources, table):
     cur_processor, user_that_ran = get_processor_and_user_from_id(
         processor_id=processor_id, current_user_id=current_user_id)
@@ -1441,7 +1459,6 @@ def processor_fix_requests(processor_id, current_user_id):
                                           complete=False).
                  order_by(Requests.created_at.desc()).all())
         for fix in fixes:
-            print(fix)
             result = processor_fix_request(processor_id, current_user_id, fix)
             if result:
                 result = 'Successfully fixed!'

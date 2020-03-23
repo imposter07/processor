@@ -288,15 +288,12 @@ class Task(db.Model):
         return False
 
     def check_return_value(self, job, force_return):
-        print('Check Return')
         if force_return and not job.result:
             job = self.get_rq_job()
             time.sleep(5)
             if not job.result:
-                print('No result')
                 time.sleep(1)
                 self.check_return_value(job, force_return)
-        print('Return job')
         return job
 
     def wait_and_get_job(self, loops=1000, force_return=False):
@@ -623,7 +620,6 @@ class ProcessorDatasources(db.Model):
     def set_from_processor(self, source, current_processor):
         self.processor_id = current_processor.id
         self.start_date = source.p[vmc.startdate].date()
-        print(source.p[vmc.apifields])
         self.api_fields = '|'.join(['' if x == 'nan' else x
                                     for x in source.p[vmc.apifields]])
         self.vendor_key = source.key

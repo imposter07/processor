@@ -1,3 +1,4 @@
+import io
 import json
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
@@ -13,7 +14,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
     ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm,\
     ProcessorDuplicateForm, EditUploaderCampaignMediaPlanForm,\
-    EditUploaderCampaignCreateForm
+    EditUploaderCampaignCreateForm, EditUploaderCreativeForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests
@@ -358,7 +359,7 @@ def get_navigation_buttons(buttons=None):
         buttons = [{'Basic': 'main.edit_uploader'},
                    {'Campaigns': 'main.edit_uploader_campaign'},
                    {'Adsets': 'main.edit_uploader'},
-                   {'Creative': 'main.edit_uploader'},
+                   {'Creative': 'main.edit_uploader_creative'},
                    {'Ads': 'main.edit_uploader'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
@@ -544,6 +545,19 @@ def convert_file_to_df(current_file):
     return df
 
 
+
+@bp.route('/processor/<processor_name>/edit/import/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_import_upload_file(processor_name):
+    file = request.files['creative_file']
+    mem = io.BytesIO()
+    mem.write(file.read())
+    mem.seek(0)
+    db.session.commit()
+    return jsonify({'data': 'success'})
+
+
 @bp.route('/processor/<processor_name>/edit/import', methods=['GET', 'POST'])
 @login_required
 def edit_processor_import(processor_name):
@@ -658,7 +672,6 @@ def post_table():
 @bp.route('/get_table', methods=['GET', 'POST'])
 @login_required
 def get_table():
-    print(request.form)
     cur_obj = request.form['object_type']
     if cur_obj == 'Processor':
         cur_obj = Processor
@@ -958,22 +971,6 @@ def edit_processor(processor_name):
         form.cur_client.data = form_client
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
-
-
-ALLOWED_EXTENSIONS = {'xlsx'}
-
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-@bp.route('/uploads/<filename>')
-@login_required
-def uploaded_file(filename):
-    from flask import send_from_directory
-    return send_from_directory(current_app.config['UPLOAD_FOLDER'],
-                               filename)
 
 
 def convert_media_plan_to_df(current_file):
@@ -1673,9 +1670,38 @@ def edit_uploader_campaign(uploader_name):
     return render_template('create_processor.html',  **kwargs)
 
 
+@bp.route('/uploader/<uploader_name>/edit/creative', methods=['GET', 'POST'])
+@login_required
+def edit_uploader_creative(uploader_name):
+    kwargs = get_current_uploader(uploader_name, 'edit_uploader_creative',
+                                  edit_progress=25, edit_name='Creative')
+    # uploader_to_edit = kwargs['object']
+    form = EditUploaderCreativeForm(uploader_name)
+    kwargs['form'] = form
+    return render_template('create_processor.html',  **kwargs)
+
+
+@bp.route('/uploader/<uploader_name>/edit/creative/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def uploader_file_upload(uploader_name):
+    cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
+    file = request.files['creative_file']
+    mem = io.BytesIO()
+    mem.write(file.read())
+    mem.seek(0)
+    msg_text = 'Saving file {} for {}'.format(file.filename, cur_up.name)
+    cur_up.launch_task(
+        '.uploader_save_creative', _(msg_text),
+        running_user=current_user.id, file=mem, file_name=file.filename
+    )
+    db.session.commit()
+    return jsonify({'data': 'success'})
+
+
 @bp.route('/help')
 @login_required
-def help():
+def app_help():
     return render_template('help.html', title=_('Help'))
 
 

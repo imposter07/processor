@@ -531,21 +531,47 @@ def get_raw_data(processor_id, current_user_id, vk):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def write_raw_data(processor_id, current_user_id, new_data, vk):
+def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
+                   new_name=False):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
+        import processor.reporting.utils as utl
+        import processor.reporting.vmcolumns as vmc
         import processor.reporting.vendormatrix as vm
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        os.chdir('processor')
+        default_param_ic = vm.ImportConfig(matrix=True)
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
+        if not vk:
+            new_ds = ProcessorDatasources()
+            new_ds.key = 'Rawfile'
+            new_ds.name = new_name
+            new_ds.processor_id = cur_processor.id
+            db.session.add(new_ds)
+            db.session.commit()
+            proc_dict = [new_ds.get_import_processor_dict()]
+            ic = vm.ImportConfig(matrix=True, default_param_ic=default_param_ic)
+            vk = ic.add_imports_to_vm(proc_dict)[0]
+            matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
-        df = pd.read_json(new_data)
-        df = df.drop('index', axis=1)
-        df = df.replace('NaN', '')
-        data_source.write(df)
+        utl.dir_check(utl.raw_path)
+        if mem_file:
+            new_data.seek(0)
+            file_name = data_source.p[vmc.filename]
+            with open(file_name, 'wb') as f:
+                shutil.copyfileobj(new_data, f, length=131072)
+        else:
+            df = pd.read_json(new_data)
+            df = df.drop('index', axis=1)
+            df = df.replace('NaN', '')
+            data_source.write(df)
         msg_text = ('{} processor raw_data: {} was updated.'
                     ''.format(cur_processor.name, vk))
         processor_post_message(cur_processor, user_that_ran, msg_text)
+        os.chdir(cur_path)
+        get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

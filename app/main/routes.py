@@ -545,15 +545,56 @@ def convert_file_to_df(current_file):
     return df
 
 
+def get_file_in_memory_from_request(current_request, current_key):
+    file = current_request.files[current_key]
+    file_name = file.filename
+    mem = io.BytesIO()
+    mem.write(file.read())
+    mem.seek(0)
+    return mem, file_name
+
+
+def parse_upload_file_request(current_request):
+    current_form = current_request.form.to_dict()
+    current_key = list(current_form.keys())[0]
+    current_form = json.loads(current_form[current_key])
+    object_name = current_form['object_name']
+    object_form = current_form['object_form']
+    return current_key, object_name, object_form
+
 
 @bp.route('/processor/<processor_name>/edit/import/upload_file',
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_import_upload_file(processor_name):
-    file = request.files['creative_file']
-    mem = io.BytesIO()
-    mem.write(file.read())
-    mem.seek(0)
+    current_key, object_name, object_form = parse_upload_file_request(request)
+    print(current_key)
+    print(object_name)
+    print(object_form)
+    cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
+    mem, file_name = get_file_in_memory_from_request(request, current_key)
+    search_dict = {}
+    for col in ['account_id', 'start_date', 'api_fields', 'key',
+                'account_filter', 'name']:
+        col_val = [x for x in object_form if x['name'] ==
+                   current_key.replace('raw_file', col)][0]['value']
+        if col_val:
+            search_dict[col] = col_val
+    search_dict['processor_id'] = cur_proc.id
+    ds = ProcessorDatasources.query.filter_by(**search_dict).first()
+    if not ds:
+        new_name = search_dict['name']
+        msg_text = 'Adding new raw data file for {}'.format(new_name)
+        cur_proc.launch_task(
+            '.write_raw_data', _(msg_text),
+            running_user=current_user.id, new_data=mem,
+            vk=None, mem_file=True, new_name=new_name)
+    else:
+        msg_text = 'Adding raw data for {}'.format(ds.vendor_key)
+        cur_proc.launch_task(
+            '.write_raw_data', _(msg_text),
+            running_user=current_user.id, new_data=mem,
+            vk=ds.vendor_key, mem_file=True)
     db.session.commit()
     return jsonify({'data': 'success'})
 
@@ -1306,6 +1347,36 @@ def edit_processor_request_fix(processor_name):
     return render_template('create_processor.html', **kwargs)
 
 
+@bp.route('/processor/<processor_name>/edit/fix/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_request_fix_upload_file(processor_name):
+    current_key, object_name, object_form = parse_upload_file_request(request)
+    cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
+    fix_type = [x['value'] for x in object_form if x['name'] == 'fix_type'][0]
+    mem, file_name = get_file_in_memory_from_request(request, current_key)
+    if fix_type == 'New File':
+        new_name = file_name
+        new_name = new_name.replace('.csv', '')
+        msg_text = 'Adding new raw_data data for {}'.format(new_name)
+        cur_proc.launch_task(
+            '.write_raw_data', _(msg_text),
+            running_user=current_user.id, new_data=mem,
+            vk=None, mem_file=True, new_name=new_name)
+    elif fix_type == 'Upload File':
+        vk = [x['value'] for x in object_form if x['name'] == 'data_source'][0]
+        ds = ProcessorDatasources.query.filter_by(vendor_key=vk).first()
+        msg_text = 'Adding raw data for {}'.format(ds.vendor_key)
+        cur_proc.launch_task(
+            '.write_raw_data', _(msg_text),
+            running_user=current_user.id, new_data=mem,
+            vk=ds.vendor_key, mem_file=True)
+    elif fix_type == 'Update Plan':
+        check_and_add_media_plan(mem, cur_proc)
+    db.session.commit()
+    return jsonify({'data': 'success'})
+
+
 @bp.route('/processor/<processor_name>/edit/fix/submit',
           methods=['GET', 'POST'])
 @login_required
@@ -1686,15 +1757,11 @@ def edit_uploader_creative(uploader_name):
 @login_required
 def uploader_file_upload(uploader_name):
     cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
-    file = request.files['creative_file']
-    mem = io.BytesIO()
-    mem.write(file.read())
-    mem.seek(0)
+    mem, file_name = get_file_in_memory_from_request(request, 'creative_file')
     msg_text = 'Saving file {} for {}'.format(file.filename, cur_up.name)
     cur_up.launch_task(
         '.uploader_save_creative', _(msg_text),
-        running_user=current_user.id, file=mem, file_name=file.filename
-    )
+        running_user=current_user.id, file=mem, file_name=file_name)
     db.session.commit()
     return jsonify({'data': 'success'})
 

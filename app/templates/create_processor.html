@@ -354,24 +354,38 @@
 
     <link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
     <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css" rel="stylesheet">
-
-    <!-- add before </body> -->
     <script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.js"></script>
+    <script src="https://unpkg.com/filepond-plugin-file-metadata/dist/filepond-plugin-file-metadata.js"></script>
+    <script src="https://unpkg.com/filepond-plugin-file-rename/dist/filepond-plugin-file-rename.js"></script>
     <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
 
     <script>
         $(document).ready(function() {
             FilePond.registerPlugin(
                 FilePondPluginImagePreview,
+                FilePondPluginFileMetadata,
             );
-            // Select the file input and use
-            // create() to turn it into a pond
-            // FilePond.create(
-            //     document.querySelectorAll('input[type="file"]'),
-            // );
             FilePond.parse(document.body);
             FilePond.setOptions({
-                server: window.location.href  + '/upload_file'
+                server: {
+                    url: window.location.href  + '/upload_file',
+                    method: 'POST',
+                },
+                fileMetadataObject: {
+                    object_name: "{{ object_name }}",
+                    object_type:  "{{ title }}",
+                    object_form: $('#base_form_id').serializeArray()
+                }
+            });
+        });
+        $(document).ready(function() {
+            const ponds = document.querySelectorAll('.filepond--root');
+            ponds.forEach((pond) => {
+                pond.addEventListener('FilePond:addfilestart', e => {
+                    console.log('File added', e.detail);
+                    e.detail['file'].setMetadata(
+                        'object_form', $('#base_form_id').serializeArray());
+                });
             });
         });
         function SubmitForm(form_continue, elemId) {

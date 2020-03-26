@@ -528,6 +528,19 @@ class EditUploaderForm(UploaderForm):
                 raise ValidationError(_l('Please use a different name.'))
 
 
+class RelationForm(FlaskForm):
+    impacted_column_name = StringField(
+        'Column Name', render_kw={'readonly': True})
+    relation_constant = StringField(
+        'Relation Constant', description='Only populate if you want a '
+                                         'value to appear for all line items.')
+    position = SelectMultipleField(
+        'Position in Name', choices=[(x, x) for x in range(25)],
+        description='Ex. in the name Example_Name, Example is position 0,'
+                    'Name is position 1 etc.')
+    refresh_edit_relation = SubmitField('Edit as Spreadsheet')
+
+
 class EditUploaderCampaignMediaPlanForm(FlaskForm):
     media_plan_column_choices = [
         (x, x) for x in [cre.MediaPlan.campaign_id,
@@ -543,6 +556,17 @@ class EditUploaderCampaignMediaPlanForm(FlaskForm):
     partner_name_filter = TextAreaField(
         _l('Partner Name Filter'), default='Facebook|Instagram')
     form_continue = HiddenField('form_continue')
+    relations = FieldList(FormField(RelationForm, label=''))
+
+    def set_relations(self, data_source, cur_upo):
+        relation_dict = []
+        up_rel = data_source.query.filter_by(
+            uploader_objects_id=cur_upo.id).all()
+        for rel in up_rel:
+            form_dict = rel.get_form_dict()
+            relation_dict.append(form_dict)
+        # self.relations = relation_dict
+        return relation_dict
 
 
 class EditUploaderCampaignCreateForm(FlaskForm):

@@ -18,7 +18,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     EditUploaderCampaignCreateForm, EditUploaderCreativeForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
-    Uploader, Account, RateCard, Conversion, Requests, UploaderObjects
+    Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
+    UploaderRelations
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -1532,36 +1533,55 @@ def uploader():
 
 def check_base_uploader_object(uploader_id, object_level='Campaign'):
     new_uploader = Uploader.query.get(uploader_id)
-    upo = UploaderObjects.query.filter_by(object_level=object_level)
+    upo = UploaderObjects.query.filter_by(uploader_id=new_uploader.id,
+                                          object_level=object_level)
     if not upo:
         upo = UploaderObjects(uploader_id=new_uploader.id,
                               object_level=object_level)
+        if new_uploader.media_plan:
+            if object_level == 'Campaign':
+                upo.media_plan_columns = [
+                    'Campaign ID', 'Placement Phase\n(If Needed) ',
+                    'Partner Name', 'Country', 'Creative\n(If Needed)']
+            elif object_level == 'Adset':
+                upo.media_plan_columns = ['Placement Name']
+            upo.file_filter = 'Facebook|Instagram'
+        else:
+            pass
         db.session.add(upo)
         db.commit()
     return jsonify({'data': 'success'})
 
 
-def create_base_uploader_objects(uploader_id):
+def check_relation_uploader_objects(uploader_id, object_level='Campaign'):
+    import uploader.upload.fbapi as up_fbapi
     new_uploader = Uploader.query.get(uploader_id)
-    cam_upo = UploaderObjects(uploader_id=new_uploader.id,
-                              object_level='Campaign')
-    as_upo = UploaderObjects(uploader_id=new_uploader.id,
-                             object_level='Adset')
-    ad_upo = UploaderObjects(uploader_id=new_uploader.id,
-                             object_level='Ad')
-    if new_uploader.media_plan:
-        cam_upo.media_plan_columns = [
-            'Campaign ID', 'Placement Phase\n(If Needed) ',
-            'Partner Name', 'Country', 'Creative\n(If Needed)']
-        cam_upo.file_filter = 'Facebook|Instagram'
-        as_upo.media_plan_columns = ['Placement Name']
-        as_upo.file_filter = 'Facebook|Instagram'
+    upo = UploaderObjects.query.filter_by(uploader_id=new_uploader.id,
+                                          object_level=object_level).first()
+    if object_level == 'Campaign':
+        relation_column_names = {
+            up_fbapi.CampaignUpload.objective: 'PAUSED',
+            up_fbapi.CampaignUpload.spend_cap: '1000',
+            up_fbapi.CampaignUpload.status: 'LINK_CLICKS'}
+    elif object_level == 'Adset':
+        relation_column_names = []
     else:
-        pass
-    db.session.add(cam_upo)
-    db.session.add(as_upo)
-    db.session.add(ad_upo)
-    db.session.commit()
+        relation_column_names = []
+    for col in relation_column_names:
+        relation = UploaderRelations.query.filter_by(
+            uploader_objects_id=upo.id, impacted_column_name=col).first()
+        if not relation:
+            new_relation = UploaderRelations(
+                uploader_objects_id=upo.id, impacted_column_name=col,
+                relation_constant=relation_column_names[col])
+            db.session.add(new_relation)
+            db.session.commit()
+
+
+def create_base_uploader_objects(uploader_id):
+    for obj in ['Campaign', 'Adset', 'Ad']:
+        check_base_uploader_object(uploader_id, obj)
+        check_relation_uploader_objects(uploader_id, obj)
     return jsonify({'data': 'success'})
 
 
@@ -1783,20 +1803,32 @@ def edit_uploader(uploader_name):
 def edit_uploader_campaign(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
                                   edit_progress=25, edit_name='Campaigns')
-    uploader_to_edit = kwargs['object']
+    cur_up = kwargs['object']
     up_cam = UploaderObjects.query.filter_by(
-        uploader_id=uploader_to_edit.id, object_level='Campaign').first()
-    if uploader_to_edit.media_plan:
+        uploader_id=cur_up.id, object_level='Campaign').first()
+    if cur_up.media_plan:
         form_object = EditUploaderCampaignMediaPlanForm
-        form = form_object(uploader_name)
+        relations = form_object().set_relations(UploaderRelations, up_cam)
+        form = form_object(relations=relations)
         if request.method == 'POST':
             form.validate()
             up_cam.media_plan_columns = form.media_plan_columns.data
             up_cam.partner_filter = form.partner_name_filter.data
             db.session.commit()
+            msg_text = 'Creating and uploading campaigns for uploader.'
+            cur_up.launch_task(
+                '.uploader_create_campaigns', _(msg_text),
+                running_user=current_user.id)
+            db.session.commit()
+            if form.form_continue.data == 'continue':
+                return redirect(url_for('main.edit_uploader_campaign',
+                                        uploader_name=cur_up.name))
+            else:
+                return redirect(url_for('main.edit_uploader_campaign',
+                                        uploader_name=cur_up.name))
         elif request.method == 'GET':
-            form_object.media_plan_columns = up_cam.media_plan_columns
-            form_object.partner_name_filter = up_cam.partner_filter
+            form.media_plan_columns = up_cam.media_plan_columns
+            form.partner_name_filter = up_cam.partner_filter
     else:
         form_object = EditUploaderCampaignCreateForm
         form = form_object(uploader_name)
@@ -1819,7 +1851,8 @@ def edit_uploader_creative(uploader_name):
           methods=['GET', 'POST'])
 @login_required
 def uploader_file_upload(uploader_name):
-    cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
+    current_key, object_name, object_form = parse_upload_file_request(request)
+    cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     mem, file_name = get_file_in_memory_from_request(request, 'creative_file')
     msg_text = 'Saving file {} for {}'.format(file_name, cur_up.name)
     cur_up.launch_task(

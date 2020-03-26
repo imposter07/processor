@@ -1017,6 +1017,57 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None):
             uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
+def uploader_create_campaigns(uploader_id, current_user_id):
+    try:
+        cur_up, user_that_ran = get_uploader_and_user_from_id(
+            uploader_id=uploader_id, current_user_id=current_user_id)
+        up_cam = UploaderObjects.query.filter_by(
+            uploader_id=cur_up.id, object_level='Campaign').first()
+        _set_task_progress(0)
+        import uploader.upload.creator as cre
+        import uploader.upload.utils as utl
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        os.chdir(adjust_path(cur_up.local_path))
+        creator_column = '|'.join(
+            x.strip('"') for x in
+            up_cam.media_plan_columns.strip("}''{").split(','))
+        file_filter = 'Partner Name::{}'.format(up_cam.partner_filter)
+        if cur_up.media_plan:
+            new_dict = {
+                cre.CreatorConfig.col_file_name: [
+                    'mediaplan.xlsx', '/create/campaign_name_creator.xlsx',
+                    '/create/campaign_relation.xlsx'],
+                cre.CreatorConfig.col_new_file: [
+                    'create/campaign_name_creator.xlsx',
+                    'fb/campaign_upload.xlsx', 'fb/campaign_upload.xlsx'],
+                cre.CreatorConfig.col_create_type: [
+                    'mediaplan', 'create', 'relation'],
+                cre.CreatorConfig.col_column_name: [
+                    creator_column, 'campaign_name', ''],
+                cre.CreatorConfig.col_overwrite: [True, True, ''],
+                cre.CreatorConfig.col_filter: [file_filter, '', '']}
+            df = pd.DataFrame(new_dict)
+        else:
+            df = pd.DataFrame()
+        file_name = uploader_file_translation('Creator')
+        utl.write_df(df, file_name)
+        os.chdir(cur_path)
+        run_uploader(uploader_id, current_user_id, uploader_args='--create')
+        msg_text = ('{} uploader campaign creation file was updated.'
+                    ''.format(cur_up.name))
+        processor_post_message(cur_up, user_that_ran, msg_text,
+                               object_name='Uploader')
+        os.chdir(cur_path)
+        run_uploader(uploader_id, current_user_id,
+                     uploader_args='--api fb --upload c')
+        os.chdir(cur_path)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+
+
 def uploader_save_creative(uploader_id, current_user_id, file, file_name):
     try:
         cur_up, user_that_ran = get_uploader_and_user_from_id(

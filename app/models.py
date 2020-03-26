@@ -833,3 +833,28 @@ class UploaderObjects(db.Model):
     spend_value = db.Column(db.Numeric)
     objective = db.Column(db.Text)
     partner_filter = db.Column(db.Text)
+    uploader_relations = db.relationship(
+        'UploaderRelations', backref='uploader_objects', lazy='dynamic')
+
+
+class UploaderRelations(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    uploader_objects_id = db.Column(db.Integer,
+                                    db.ForeignKey('uploader_objects.id'))
+    impacted_column_name = db.Column(db.Text)
+    relation_constant = db.Column(db.Text)
+    position = db.Column(db.Text)
+
+    def get_form_dict(self):
+        form_dict = {
+            'impacted_column_name': self.impacted_column_name,
+            'relation_constant': self.relation_constant,
+            'position': self.position,
+        }
+        return form_dict
+
+    def set_from_form(self, form, cur_upo_id):
+        self.uploader_objects_id = cur_upo_id.id
+        self.impacted_column_name = form['impacted_column_name']
+        self.relation_constant = form['relation_constant']
+        self.position = form['position']

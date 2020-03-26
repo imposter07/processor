@@ -1,4 +1,5 @@
 import io
+import html
 import json
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
@@ -17,7 +18,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     EditUploaderCampaignCreateForm, EditUploaderCreativeForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
-    Uploader, Account, RateCard, Conversion, Requests
+    Uploader, Account, RateCard, Conversion, Requests, UploaderObjects
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -568,9 +569,6 @@ def parse_upload_file_request(current_request):
 @login_required
 def edit_processor_import_upload_file(processor_name):
     current_key, object_name, object_form = parse_upload_file_request(request)
-    print(current_key)
-    print(object_name)
-    print(object_form)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     mem, file_name = get_file_in_memory_from_request(request, current_key)
     search_dict = {}
@@ -654,16 +652,15 @@ def edit_processor_import(processor_name):
 @bp.route('/get_log', methods=['GET', 'POST'])
 @login_required
 def get_log():
-    if 'processor' in request.form:
-        item_name = request.form['processor']
+    if request.form['object_type'] == 'Processor':
         item_model = Processor
         task = '.get_logfile'
-    elif 'uploader' in request.form:
-        item_name = request.form['uploader']
+    elif request.form['object_type'] == 'Uploader':
         item_model = Uploader
         task = '.get_logfile_uploader'
     else:
         return jsonify({'data': 'Could not recognize request.'})
+    item_name = request.form['object_name']
     msg_text = 'Getting logfile for {}.'.format(item_name)
     cur_item = item_model.query.filter_by(name=item_name).first_or_404()
     task = cur_item.launch_task(task, _(msg_text),
@@ -677,21 +674,26 @@ def get_log():
 @bp.route('/post_table', methods=['GET', 'POST'])
 @login_required
 def post_table():
-    import html
-    proc_name = request.form['processor']
+    obj_name = request.form['object_name']
     proc_arg = {'running_user': current_user.id,
                 'new_data': html.unescape(request.form['data'])}
     table_name = request.form['table']
+    cur_obj = request.form['object_type']
+    if cur_obj == 'Processor':
+        cur_obj = Processor
+    else:
+        cur_obj = Uploader
     if 'vendorkey' in table_name:
         split_table_name = table_name.split('vendorkey')
         table_name = split_table_name[0]
         vendor_key = split_table_name[1].replace('___', ' ')
         proc_arg['vk'] = vendor_key
-    msg_text = 'Updating {} table for {}'.format(table_name, proc_name)
-    cur_proc = Processor.query.filter_by(name=proc_name).first_or_404()
-    if 'Relation' in table_name:
-        proc_arg['parameter'] = table_name.replace('Relation', '')
-        table_name = 'Relation'
+    msg_text = 'Updating {} table for {}'.format(table_name, obj_name)
+    cur_proc = cur_obj.query.filter_by(name=obj_name).first_or_404()
+    for base_name in ['Relation', 'Uploader']:
+        if base_name in table_name:
+            proc_arg['parameter'] = table_name.replace(base_name, '')
+            table_name = base_name
     arg_trans = {'Translate': '.write_translational_dict',
                  'Vendormatrix': '.write_vendormatrix',
                  'Constant': '.write_constant_dict',
@@ -699,7 +701,8 @@ def post_table():
                  'dictionary': '.write_dictionary',
                  'rate_card': '.write_rate_card',
                  'edit_conversions': '.write_conversions',
-                 'raw_data': '.write_raw_data'}
+                 'raw_data': '.write_raw_data',
+                 'Uploader': '.write_uploader_file'}
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData']:
         return jsonify({'data': 'success'})
     job_name = arg_trans[table_name]
@@ -713,22 +716,22 @@ def post_table():
 @bp.route('/get_table', methods=['GET', 'POST'])
 @login_required
 def get_table():
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    proc_arg = {'running_user': cur_user.id}
     cur_obj = request.form['object_type']
+    table_name = request.form['table']
     if cur_obj == 'Processor':
         cur_obj = Processor
     else:
         cur_obj = Uploader
+        proc_arg['parameter'] = table_name
+        table_name = 'Uploader'
     cur_proc = cur_obj.query.filter_by(
         name=request.form['object_name']).first_or_404()
-    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    proc_arg = {'running_user': cur_user.id}
-    table_name = request.form['table']
-    if 'OutputData' in table_name:
-        proc_arg['parameter'] = table_name.replace('OutputData', '')
-        table_name = 'OutputData'
-    if 'Relation' in table_name:
-        proc_arg['parameter'] = table_name.replace('Relation', '')
-        table_name = 'Relation'
+    for base_name in ['OutputData', 'Relation']:
+        if base_name in table_name:
+            proc_arg['parameter'] = table_name.replace(base_name, '')
+            table_name = base_name
     arg_trans = {'Translate': '.get_translation_dict',
                  'Vendormatrix': '.get_vendormatrix',
                  'Constant': '.get_constant_dict',
@@ -742,10 +745,7 @@ def get_table():
                  'edit_conversions': '.get_processor_conversions',
                  'data_sources': '.get_processor_sources',
                  'imports': '.get_processor_sources',
-                 'Creator': '.get_creator_config',
-                 'Campaign': '.get_campaign_upload',
-                 'Adset': '.get_adset_upload',
-                 'Ad': '.get_ad_upload'}
+                 'Uploader': '.get_uploader_file'}
     job_name = arg_trans[table_name]
     if cur_proc.get_task_in_progress(job_name):
         flash(_('This job: {} is already running!').format(table_name))
@@ -787,8 +787,9 @@ def get_table():
     if 'index' in df.columns:
         df = df[[x for x in df.columns if x != 'index'] + ['index']]
     cols = json.dumps(df.columns.tolist())
-    if 'Relation' in table_name:
-        table_name = 'Relation{}'.format(proc_arg['parameter'])
+    for base_name in ['Relation', 'Uploader']:
+        if base_name in table_name:
+            table_name = '{}{}'.format(base_name, proc_arg['parameter'])
     table_name = "modalTable{}".format(table_name)
     data = df.to_html(index=False, table_id=table_name,
                       classes="table table-responsive-sm small table-dark")
@@ -1335,9 +1336,6 @@ def edit_processor_request_fix(processor_name):
                     request_id=new_processor_request.id)
         db.session.add(post)
         db.session.commit()
-        if form.new_file.data:
-            if form.fix_type.data == 'Update Plan':
-                check_and_add_media_plan(form.new_file.data, cur_proc)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_page',
                                     processor_name=cur_proc.name))
@@ -1532,6 +1530,41 @@ def uploader():
                            next_url=next_url, prev_url=prev_url)
 
 
+def check_base_uploader_object(uploader_id, object_level='Campaign'):
+    new_uploader = Uploader.query.get(uploader_id)
+    upo = UploaderObjects.query.filter_by(object_level=object_level)
+    if not upo:
+        upo = UploaderObjects(uploader_id=new_uploader.id,
+                              object_level=object_level)
+        db.session.add(upo)
+        db.commit()
+    return jsonify({'data': 'success'})
+
+
+def create_base_uploader_objects(uploader_id):
+    new_uploader = Uploader.query.get(uploader_id)
+    cam_upo = UploaderObjects(uploader_id=new_uploader.id,
+                              object_level='Campaign')
+    as_upo = UploaderObjects(uploader_id=new_uploader.id,
+                             object_level='Adset')
+    ad_upo = UploaderObjects(uploader_id=new_uploader.id,
+                             object_level='Ad')
+    if new_uploader.media_plan:
+        cam_upo.media_plan_columns = [
+            'Campaign ID', 'Placement Phase\n(If Needed) ',
+            'Partner Name', 'Country', 'Creative\n(If Needed)']
+        cam_upo.file_filter = 'Facebook|Instagram'
+        as_upo.media_plan_columns = ['Placement Name']
+        as_upo.file_filter = 'Facebook|Instagram'
+    else:
+        pass
+    db.session.add(cam_upo)
+    db.session.add(as_upo)
+    db.session.add(ad_upo)
+    db.session.commit()
+    return jsonify({'data': 'success'})
+
+
 @bp.route('/create_uploader', methods=['GET', 'POST'])
 @login_required
 def create_uploader():
@@ -1553,6 +1586,7 @@ def create_uploader():
             local_path=new_path, campaign_id=form_campaign.id)
         db.session.add(new_uploader)
         db.session.commit()
+        create_base_uploader_objects(new_uploader.id)
         post_body = 'Create Uploader {}...'.format(new_uploader.name)
         new_uploader.launch_task('.create_uploader', _(post_body),
                                  current_user.id,
@@ -1579,7 +1613,7 @@ def create_uploader():
                            edit_name='Basic')
 
 
-@bp.route('/processor/<uploader_name>/run/<redirect_dest>/<uploader_args>',
+@bp.route('/uploader/<uploader_name>/run/<redirect_dest>/<uploader_args>',
           methods=['GET', 'POST'])
 @login_required
 def run_uploader(uploader_name, uploader_args='', redirect_dest=None):
@@ -1594,7 +1628,7 @@ def run_uploader(uploader_name, uploader_args='', redirect_dest=None):
                      'campaign': '--api fb --upload c',
                      'adset': '--api fb --upload as',
                      'ad': '--api fb --upload ad'}
-        uploader_to_run.launch_task('.run_processor', _(post_body),
+        uploader_to_run.launch_task('.run_uploader', _(post_body),
                                     running_user=current_user.id,
                                     uploader_args=arg_trans[uploader_args])
         uploader_to_run.last_run_time = datetime.utcnow()
@@ -1604,6 +1638,15 @@ def run_uploader(uploader_name, uploader_args='', redirect_dest=None):
                                 uploader_name=uploader_to_run.name))
     elif redirect_dest == 'Basic':
         return redirect(url_for('main.edit_uploader',
+                                uploader_name=uploader_to_run.name))
+    elif redirect_dest == 'Campaigns':
+        return redirect(url_for('main.edit_uploader_campaign',
+                                uploader_name=uploader_to_run.name))
+    elif redirect_dest == 'Creative':
+        return redirect(url_for('main.edit_uploader_creative',
+                                uploader_name=uploader_to_run.name))
+    else:
+        return redirect(url_for('main.uploader_page',
                                 uploader_name=uploader_to_run.name))
 
 
@@ -1668,6 +1711,19 @@ def uploader_page(uploader_name):
     return render_template('create_processor.html', **kwargs)
 
 
+@bp.route('/uploader/<uploader_name>/edit/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def edit_uploader_upload_file(uploader_name):
+    current_key, object_name, object_form = parse_upload_file_request(request)
+    cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
+    mem, file_name = get_file_in_memory_from_request(request, current_key)
+    check_and_add_media_plan(mem, cur_up, object_type=Uploader)
+    cur_up.media_plan = True
+    db.session.commit()
+    return jsonify({'data': 'success'})
+
+
 @bp.route('/uploader/<uploader_name>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_uploader(uploader_name):
@@ -1687,6 +1743,7 @@ def edit_uploader(uploader_name):
         uploader_to_edit.campaign_id = form_campaign.id
         uploader_to_edit.fb_account_id = form.account_id.data
         db.session.commit()
+        create_base_uploader_objects(uploader_to_edit.id)
         flash(_('Your changes have been saved.'))
         post_body = ('Create Uploader {}...'.format(uploader_to_edit.name))
         uploader_to_edit.launch_task('.create_uploader', _(post_body),
@@ -1698,11 +1755,6 @@ def edit_uploader(uploader_name):
                     uploader_id=uploader_to_edit.id)
         db.session.add(post)
         db.session.commit()
-        check_and_add_media_plan(form.media_plan.data, uploader_to_edit,
-                                 object_type=Uploader)
-        if form.media_plan.data:
-            uploader_to_edit.media_plan = True
-            db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_uploader_campaign',
                                     uploader_name=uploader_to_edit.name))
@@ -1732,11 +1784,22 @@ def edit_uploader_campaign(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
                                   edit_progress=25, edit_name='Campaigns')
     uploader_to_edit = kwargs['object']
+    up_cam = UploaderObjects.query.filter_by(
+        uploader_id=uploader_to_edit.id, object_level='Campaign').first()
     if uploader_to_edit.media_plan:
         form_object = EditUploaderCampaignMediaPlanForm
+        form = form_object(uploader_name)
+        if request.method == 'POST':
+            form.validate()
+            up_cam.media_plan_columns = form.media_plan_columns.data
+            up_cam.partner_filter = form.partner_name_filter.data
+            db.session.commit()
+        elif request.method == 'GET':
+            form_object.media_plan_columns = up_cam.media_plan_columns
+            form_object.partner_name_filter = up_cam.partner_filter
     else:
         form_object = EditUploaderCampaignCreateForm
-    form = form_object(uploader_name)
+        form = form_object(uploader_name)
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
 
@@ -1758,7 +1821,7 @@ def edit_uploader_creative(uploader_name):
 def uploader_file_upload(uploader_name):
     cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
     mem, file_name = get_file_in_memory_from_request(request, 'creative_file')
-    msg_text = 'Saving file {} for {}'.format(file.filename, cur_up.name)
+    msg_text = 'Saving file {} for {}'.format(file_name, cur_up.name)
     cur_up.launch_task(
         '.uploader_save_creative', _(msg_text),
         running_user=current_user.id, file=mem, file_name=file_name)

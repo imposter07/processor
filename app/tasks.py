@@ -12,7 +12,7 @@ from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
-    TaskScheduler, Requests
+    TaskScheduler, Requests, UploaderObjects
 
 app = create_app()
 app.app_context().push()
@@ -898,6 +898,7 @@ def create_uploader(uploader_id, current_user_id, base_path):
         msg_text = "Uploader was created."
         processor_post_message(new_uploader, user_create, msg_text,
                                object_name='Uploader')
+        set_uploader_config_file(uploader_id, current_user_id)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -942,14 +943,23 @@ def run_uploader(uploader_id, current_user_id, uploader_args):
         return False
 
 
-def get_uploader_file(uploader_id, current_user_id, uploader_file):
+def uploader_file_translation(uploader_file_name):
+    file_translation = {'Creator': 'config/create/creator_config.xlsx',
+                        'Campaign': 'config/fb/campaign_upload.xlsx',
+                        'Adset': 'config/fb/adset_upload.xlsx',
+                        'Ad': 'config/fb/ad_upload.xlsx'}
+    return file_translation[uploader_file_name]
+
+
+def get_uploader_file(uploader_id, current_user_id, parameter=None):
     try:
         uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
         _set_task_progress(0)
         file_path = adjust_path(uploader_to_run.local_path)
         os.chdir(file_path)
-        df = pd.read_excel(uploader_file)
+        file_name = uploader_file_translation(parameter)
+        df = pd.read_excel(file_name)
         _set_task_progress(100)
         return [df]
     except:
@@ -959,44 +969,48 @@ def get_uploader_file(uploader_id, current_user_id, uploader_file):
         return False
 
 
-def get_creator_config(uploader_id, current_user_id):
+def set_uploader_config_file(uploader_id, current_user_id):
     try:
-        file_name = 'config/create/creator_config.xlsx'
-        df = get_uploader_file(uploader_id, current_user_id, file_name)
-        return df
+        cur_up, user_that_ran = get_uploader_and_user_from_id(
+            uploader_id=uploader_id, current_user_id=current_user_id)
+        _set_task_progress(0)
+        import uploader.upload.fbapi as fbapi
+        file_path = adjust_path(cur_up.local_path)
+        os.chdir(file_path)
+        with open(os.path.join(fbapi.config_path, 'fbconfig.json'), 'r') as f:
+            config_file = json.load(f)
+        config_file['act_id'] = 'act_' + cur_up.fb_account_id
+        with open(os.path.join(fbapi.config_path, 'fbconfig.json'), 'w') as f:
+            json.dump(config_file, f)
+        _set_task_progress(100)
+        return True
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Uploader {} User {}'.format(
             uploader_id, current_user_id), exc_info=sys.exc_info())
+        return False
 
 
-def get_campaign_upload(uploader_id, current_user_id):
+def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None):
     try:
-        file_name = 'config/fb/campaign_upload.xlsx'
-        df = get_uploader_file(uploader_id, current_user_id, file_name)
-        return df
-    except:
+        cur_up, user_that_ran = get_uploader_and_user_from_id(
+            uploader_id=uploader_id, current_user_id=current_user_id)
+        _set_task_progress(0)
+        import uploader.upload.utils as utl
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        os.chdir(adjust_path(cur_up.local_path))
+        df = pd.read_json(new_data)
+        if 'index' in df.columns:
+            df = df.drop('index', axis=1)
+        df = df.replace('NaN', '')
+        file_name = uploader_file_translation(parameter)
+        utl.write_df(df, file_name)
+        msg_text = ('{} uploader {} was updated.'
+                    ''.format(file_name, cur_up.name))
+        processor_post_message(cur_up, user_that_ran, msg_text,
+                               object_name='Uploader')
+        os.chdir(cur_path)
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
-
-
-def get_adset_upload(uploader_id, current_user_id):
-    try:
-        file_name = 'config/fb/adset_upload.xlsx'
-        df = get_uploader_file(uploader_id, current_user_id, file_name)
-        return df
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
-
-
-def get_ad_upload(uploader_id, current_user_id):
-    try:
-        file_name = 'config/fb/ad_upload.xlsx'
-        df = get_uploader_file(uploader_id, current_user_id, file_name)
-        return df
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Uploader {} User {}'.format(
@@ -1441,7 +1455,12 @@ def save_media_plan(processor_id, current_user_id, media_plan,
         ))
         msg_text = ('{} media plan was updated.'
                     ''.format(cur_processor.name))
-        processor_post_message(cur_processor, cur_user, msg_text)
+        if object_type == Processor:
+            object_name = 'Processor'
+        else:
+            object_name = 'Uploader'
+        processor_post_message(cur_processor, cur_user, msg_text,
+                               object_name=object_name)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

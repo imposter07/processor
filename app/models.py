@@ -832,3 +832,4 @@ class UploaderObjects(db.Model):
     spend_type = db.Column(db.Text)
     spend_value = db.Column(db.Numeric)
     objective = db.Column(db.Text)
+    partner_filter = db.Column(db.Text)

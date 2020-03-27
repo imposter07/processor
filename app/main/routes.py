@@ -505,7 +505,8 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
 
 def add_df_to_processor_dict(form_import, processor_dicts):
     for fi in form_import:
-        if 'raw_file' in fi and fi['raw_file']:
+        if ('raw_file' in fi and fi['raw_file']
+                and fi['raw_file'] != '{"data":"success"}\r\n'):
             df = convert_file_to_df(fi['raw_file'])
             new_dict = [x for x in processor_dicts
                         if x[vmc.vendorkey] == fi['vendor_key']][0]

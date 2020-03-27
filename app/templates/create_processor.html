@@ -580,7 +580,7 @@
                 {
                     data: json,
                     object_name:  "{{ object_name }}",
-                    object_type: "{{ object_type }}",
+                    object_type: "{{ title }}",
                     table: sendTableName
                 }).done(function(data, status) {
                     reloadPage();
@@ -621,7 +621,7 @@
                     createTable(data['data']['cols'], data['data']['data'],
                         newTableName);}
             }).fail(function(jqXHR, textStatus ) {
-                console.log("Request failed: " + textStatus)
+                console.log("Request failed: " + textStatus);
                 location.reload()
             }).always(function(){
                 $(clickElem).prop("disabled", false);

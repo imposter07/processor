@@ -127,7 +127,7 @@ class APIForm(FlaskForm):
     api_fields = StringField('API Fields')
     raw_file = FileField('Raw File')
     delete = SubmitField('Delete')
-    vendor_key = HiddenField('Vendor Key')
+    vendor_key = StringField('Vendor Key', render_kw={'readonly': True})
 
 
 class ImportForm(FlaskForm):

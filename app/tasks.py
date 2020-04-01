@@ -436,10 +436,17 @@ def set_data_sources(processor_id, current_user_id, form_sources):
 
 def get_data_tables(processor_id, current_user_id, parameter):
     try:
+        _set_task_progress(0)
+        import time
+        start = time.time()
         cur_processor = Processor.query.get(processor_id)
         file_name = os.path.join(adjust_path(cur_processor.local_path),
                                  'Raw Data Output.csv')
+        print('Time before csv read {}'.format(time.time() - start))
+        _set_task_progress(15)
         tables = pd.read_csv(file_name)
+        _set_task_progress(30)
+        print('Time after csv read {}'.format(time.time() - start))
         metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
                    'Net Cost Final']
         param_translate = {
@@ -458,13 +465,16 @@ def get_data_tables(processor_id, current_user_id, parameter):
             import io
             import zipfile
             mem = io.BytesIO()
+            print('Time before zip read {}'.format(time.time() - start))
             with zipfile.ZipFile(mem, mode='w') as f:
                 data = zipfile.ZipInfo('raw.csv')
                 data.date_time = time.localtime(time.time())[:6]
                 data.compress_type = zipfile.ZIP_DEFLATED
                 f.writestr(data, data=tables.to_csv())
+            print('Time after zip read {}'.format(time.time() - start))
             mem.seek(0)
             tables = [mem]
+        print('Time end read {}'.format(time.time() - start))
         _set_task_progress(100)
         return tables
     except:

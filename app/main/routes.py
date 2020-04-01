@@ -227,6 +227,19 @@ def unfollow_processor(processor_name):
                             processor_name=processor_name))
 
 
+@bp.route('/get_processor_tasks', methods=['GET', 'POST'])
+@login_required
+def get_processor_tasks():
+    processor_name = request.form['object_name']
+    cur_proc = Processor.query.filter_by(name=processor_name).first()
+    task = cur_proc.get_task_in_progress(name='.get_data_tables')
+    if task:
+        percent = task.get_progress()
+    else:
+        percent = 90
+    return jsonify({'percent': percent})
+
+
 @bp.route('/translate', methods=['POST'])
 @login_required
 def translate_text():
@@ -580,6 +593,9 @@ def edit_processor_import_upload_file(processor_name):
                    current_key.replace('raw_file', col)][0]['value']
         if col_val:
             search_dict[col] = col_val
+        else:
+            if col != 'start_date':
+                search_dict[col] = ''
     search_dict['processor_id'] = cur_proc.id
     ds = ProcessorDatasources.query.filter_by(**search_dict).first()
     if not ds:

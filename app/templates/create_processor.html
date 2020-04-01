@@ -63,7 +63,7 @@
           </div>
           <div class="modal-body"></div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-block btn-secondary" data-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
@@ -103,7 +103,7 @@
               </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary"
+            <button type="button" class="btn btn-block btn-secondary"
                     data-dismiss="modal">Close</button>
           </div>
         </div>
@@ -269,7 +269,8 @@
                 <div class="card-body">
                     {% if request_links %}
                         {% for request_link_idx in request_links %}
-                          <a class="dropdown-item" href="{{ request_links[request_link_idx]['href'] }}">
+                          <a class="dropdown-item"
+                             href="{{ request_links[request_link_idx]['href'] }}">
                               {{ request_links[request_link_idx]['title'] }}</a>
                         {% endfor %}
                     {% endif %}
@@ -357,7 +358,6 @@
     <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css" rel="stylesheet">
     <script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.js"></script>
     <script src="https://unpkg.com/filepond-plugin-file-metadata/dist/filepond-plugin-file-metadata.js"></script>
-    <script src="https://unpkg.com/filepond-plugin-file-rename/dist/filepond-plugin-file-rename.js"></script>
     <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
 
     <script>
@@ -586,6 +586,53 @@
                     reloadPage();
             });
         }
+        var downloadingProgress = null;
+        function getDownloadProgress() {
+            downloadingProgress = setInterval(function() {
+                $.post('/get_processor_tasks',
+                {
+                    object_name:  "{{ object_name }}",
+                }).done(function(data, status) {
+                    let downloadProgress = $('#downloadProgress');
+                    let newPercent = data['percent'];
+                    let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
+                    if (newPercent > oldPercent) {
+                        downloadProgress.attr("style", "width: " + newPercent + "%")
+                    }
+                    else {
+                        let percent = oldPercent + 5;
+                        downloadProgress.attr("style", "width: " + percent + "%")
+                    }
+            });
+        }, 2500);
+        }
+        function setDownloadBar(currentElement, textContent) {
+            $(currentElement).html(
+                '<div class="progress">\n' +
+                '  <div id="downloadProgress" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" ' +
+                'style="width: 1%" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100"></div>\n' +
+                '</div>' +
+                '<div class="form-group" style="height:96px">' +
+                 '<label class="control-label">' + textContent + '</label>' +
+                 '<input type="file"></div>');
+            animateBar();
+            const inputElement = document.querySelector('input[type="file"]');
+            let pond = FilePond.create(inputElement,
+                {files: [
+                    {
+                        source: '12345',
+                        options: {
+                            type: 'local',
+                            file: {
+                                name: textContent + '.csv',
+                                type: 'text/csv'
+                            }
+                        }
+                    }
+                ]});
+            pond.instantUpload = false;
+            return pond
+        }
         $(document).ready(function() {
             $('a[id^="editTable"]').click(function () {
                 let tableName = this.id.replace('editTable', '');
@@ -596,23 +643,27 @@
                     `<span class="spinner-grow spinner-grow-sm" role="status"
                       aria-hidden="true"></span> Loading...`
                   );
-                animateBar();
-                getTable(tableName, dropdownButton, oldHtml);
+                let pond = setDownloadBar(this, this.textContent);
+                getTable(tableName, dropdownButton, oldHtml, 'None', pond)
             });
         });
-        function getTable(tableName, clickElem, oldHtml, vendorKey='None'){
-            $.post('/get_table',
-                {
+        function getTable(tableName, clickElem, oldHtml, vendorKey='None', pond='None'){
+            $.ajax({
+                type: "POST",
+                url: "/get_table",
+                data: {
                     table: tableName,
                     object_name: "{{ object_name }}",
                     object_type:  "{{ title }}",
                     vendorkey: vendorKey
+                },
             }).done(function(data, status) {
                 if (tableName === 'OutputDataFullOutput') {
                   let blob = new Blob([data], {type: 'text/csv'});
+                  pond.addFile(blob);
                   let link = document.createElement('a');
                   link.href = window.URL.createObjectURL(blob);
-                  link.download = 'Raw Data Output.csv';
+                  link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey +'.csv';
                   link.click();
                 }
                 else {
@@ -622,12 +673,20 @@
                         newTableName);}
             }).fail(function(jqXHR, textStatus ) {
                 console.log("Request failed: " + textStatus);
+                let downloadProgress = $('#downloadProgress');
+                downloadProgress.attr("style", "width: 100%");
                 location.reload()
             }).always(function(){
                 $(clickElem).prop("disabled", false);
                 $(clickElem).html(oldHtml);
                 unanimateBar();
+                clearInterval(downloadingProgress);
+                downloadingProgress = null;
+                let downloadProgress = $('#downloadProgress');
+                downloadProgress.attr("style", "width: 100%");
+                unanimateBar("downloadProgress");
             });
+            getDownloadProgress();
         }
         $(document).ready(function() {
             $('button[id^="getLog"]').click(function () {
@@ -694,8 +753,8 @@
           let d = document.getElementById("progressBar");
           d.className += " progress-bar-animated";
         }
-        function unanimateBar(){
-          let d = document.getElementById("progressBar");
+        function unanimateBar(barId = "progressBar"){
+          let d = document.getElementById(barId);
           d.className = d.className.replace( /(?:^|\s)progress-bar-animated(?!\S)/g , '' );
         }
         $(document).ready(function() {
@@ -724,11 +783,7 @@
               let oldHtml = $(this).parent().html();
               getTable(tableName, $(this).parent(), oldHtml, vendorKey);
               animateBar();
-              $(this).parent().html('' +
-                '<button class="btn btn-primary btn-block" type="button" disabled>' +
-                  '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                  'Loading...' +
-                '</button>');
+              setDownloadBar($(this).parent(), $(this).text());
             });
         });
         $(document).ready(function() {

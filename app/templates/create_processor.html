@@ -383,7 +383,6 @@
             const ponds = document.querySelectorAll('.filepond--root');
             ponds.forEach((pond) => {
                 pond.addEventListener('FilePond:addfilestart', e => {
-                    console.log('File added', e.detail);
                     e.detail['file'].setMetadata(
                         'object_form', $('#base_form_id').serializeArray());
                 });
@@ -587,11 +586,12 @@
             });
         }
         var downloadingProgress = null;
-        function getDownloadProgress() {
+        function getDownloadProgress(tableName) {
             downloadingProgress = setInterval(function() {
                 $.post('/get_processor_tasks',
                 {
                     object_name:  "{{ object_name }}",
+                    task_name: tableName,
                 }).done(function(data, status) {
                     let downloadProgress = $('#downloadProgress');
                     let newPercent = data['percent'];
@@ -606,32 +606,35 @@
             });
         }, 2500);
         }
-        function setDownloadBar(currentElement, textContent) {
-            $(currentElement).html(
-                '<div class="progress">\n' +
-                '  <div id="downloadProgress" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" ' +
+        function setDownloadBar(currentElement, textContent, pond = true) {
+            $(
+                '<div id="downloadProgressBaseClass" class="progress">\n' +
+                '  <div id="downloadProgress" ' +
+                       'class="progress-bar bg-success progress-bar-striped progress-bar-animated" ' +
+                       'role="progressbar" ' +
                 'style="width: 1%" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100"></div>\n' +
-                '</div>' +
-                '<div class="form-group" style="height:96px">' +
-                 '<label class="control-label">' + textContent + '</label>' +
-                 '<input type="file"></div>');
+                '</div>').insertAfter(currentElement);
             animateBar();
-            const inputElement = document.querySelector('input[type="file"]');
-            let pond = FilePond.create(inputElement,
-                {files: [
-                    {
-                        source: '12345',
-                        options: {
-                            type: 'local',
-                            file: {
-                                name: textContent + '.csv',
-                                type: 'text/csv'
+            if (pond) {
+                $('<div class="form-group" style="height:96px">' +
+                 '<input id="downloadBarPond" type="file"></div>)').insertAfter(currentElement);
+                const inputElement = document.querySelector('input[id="downloadBarPond"]');
+                let pondElem = FilePond.create(inputElement,
+                    {files: [
+                        {
+                            source: '12345',
+                            options: {
+                                type: 'local',
+                                file: {
+                                    name: textContent + '.csv',
+                                    type: 'text/csv'
+                                }
                             }
                         }
-                    }
-                ]});
-            pond.instantUpload = false;
-            return pond
+                    ]});
+                pondElem.instantUpload = false;
+                return pondElem
+            }
         }
         $(document).ready(function() {
             $('a[id^="editTable"]').click(function () {
@@ -640,7 +643,7 @@
                 $(dropdownButton).prop("disabled", true);
                 let oldHtml = $(dropdownButton).html();
                 $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
+                    `<span id="loadingBtn" class="spinner-grow spinner-grow-sm" role="status"
                       aria-hidden="true"></span> Loading...`
                   );
                 let pond = setDownloadBar(this, this.textContent);
@@ -658,13 +661,13 @@
                     vendorkey: vendorKey
                 },
             }).done(function(data, status) {
-                if (tableName === 'OutputDataFullOutput') {
+                if ((tableName === 'OutputDataFullOutput') || (tableName ==='download_raw_data')) {
                   let blob = new Blob([data], {type: 'text/csv'});
                   pond.addFile(blob);
                   let link = document.createElement('a');
                   link.href = window.URL.createObjectURL(blob);
                   link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey +'.csv';
-                  link.click();
+                  // link.click();
                 }
                 else {
                     show_modal_table('tableModalButton');
@@ -679,6 +682,7 @@
             }).always(function(){
                 $(clickElem).prop("disabled", false);
                 $(clickElem).html(oldHtml);
+                $('#loadingBtn').replaceWith(oldHtml);
                 unanimateBar();
                 clearInterval(downloadingProgress);
                 downloadingProgress = null;
@@ -686,7 +690,7 @@
                 downloadProgress.attr("style", "width: 100%");
                 unanimateBar("downloadProgress");
             });
-            getDownloadProgress();
+            getDownloadProgress(tableName);
         }
         $(document).ready(function() {
             $('button[id^="getLog"]').click(function () {
@@ -781,9 +785,21 @@
                     vendorKey = 'None';
                   }}
               let oldHtml = $(this).parent().html();
-              getTable(tableName, $(this).parent(), oldHtml, vendorKey);
+              let currentStyle = $(this).attr('style');
+              $(this).parent().html('' +
+                '<button id="loadingBtn" class="btn btn-primary btn-block"' +
+                    'style="' + currentStyle + '"type="button" disabled>' +
+                  '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                  'Loading...' +
+                '</button>');
+              if (tableName === 'download_raw_data') {
+                  var refreshPond = setDownloadBar($("#loadingBtn"), $(this).text());
+              }
+              else{
+                  var refreshPond = setDownloadBar($("#loadingBtn"), $(this).text(), false);
+              }
+              getTable(tableName, $(this).parent(), oldHtml, vendorKey, refreshPond);
               animateBar();
-              setDownloadBar($(this).parent(), $(this).text());
             });
         });
         $(document).ready(function() {
@@ -806,6 +822,19 @@
         });
         $(document).ready(function () {
             bsCustomFileInput.init()
+        });
+        $(document).ready(function() {
+            $('#data_source').on('change', function(e){
+                let selectedText = this.options[e.target.selectedIndex].text;
+                let divId  = $('input[value="' + selectedText + '"]')[0].id;
+                document.getElementById(divId).scrollIntoView();
+                let element = $('#' + divId).parent().parent().parent().parent()[0];
+                let origcolor = element.style.backgroundColor;
+                element.style.backgroundColor = "#b3ecff";
+                let t = setTimeout(function(){
+                   element.style.backgroundColor = origcolor;
+                },(2 *1000));
+            });
         });
     </script>
 {% endblock %}

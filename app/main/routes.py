@@ -231,8 +231,11 @@ def unfollow_processor(processor_name):
 @login_required
 def get_processor_tasks():
     processor_name = request.form['object_name']
+    task_name = request.form['task_name']
+    job_name, table_name, proc_arg = translate_table_name_to_job(
+        task_name, proc_arg={})
     cur_proc = Processor.query.filter_by(name=processor_name).first()
-    task = cur_proc.get_task_in_progress(name='.get_data_tables')
+    task = cur_proc.get_task_in_progress(name=job_name)
     if task:
         percent = task.get_progress()
     else:
@@ -623,6 +626,7 @@ def edit_processor_import(processor_name):
     cur_proc = kwargs['processor']
     apis = ImportForm().set_apis(ProcessorDatasources, kwargs['processor'])
     form = ImportForm(apis=apis)
+    form.set_vendor_key_choices(current_processor_id=cur_proc.id)
     kwargs['form'] = form
     if form.add_child.data:
         form.apis.append_entry()
@@ -731,6 +735,32 @@ def post_table():
     return jsonify({'data': 'success'})
 
 
+def translate_table_name_to_job(table_name, proc_arg):
+    for base_name in ['OutputData', 'Relation']:
+        if base_name in table_name:
+            proc_arg['parameter'] = table_name.replace(base_name, '')
+            table_name = base_name
+    if table_name == 'download_raw_data':
+        proc_arg['parameter'] = 'Download'
+    arg_trans = {'Translate': '.get_translation_dict',
+                 'Vendormatrix': '.get_vendormatrix',
+                 'Constant': '.get_constant_dict',
+                 'Relation': '.get_relational_config',
+                 'OutputData': '.get_data_tables',
+                 'dictionary_order': '.get_dict_order',
+                 'raw_data': '.get_raw_data',
+                 'download_raw_data': '.get_raw_data',
+                 'dictionary': '.get_dictionary',
+                 'delete_dict': '.delete_dict',
+                 'rate_card': '.get_rate_card',
+                 'edit_conversions': '.get_processor_conversions',
+                 'data_sources': '.get_processor_sources',
+                 'imports': '.get_processor_sources',
+                 'Uploader': '.get_uploader_file'}
+    job_name = arg_trans[table_name]
+    return job_name, table_name, proc_arg
+
+
 @bp.route('/get_table', methods=['GET', 'POST'])
 @login_required
 def get_table():
@@ -746,25 +776,8 @@ def get_table():
         table_name = 'Uploader'
     cur_proc = cur_obj.query.filter_by(
         name=request.form['object_name']).first_or_404()
-    for base_name in ['OutputData', 'Relation']:
-        if base_name in table_name:
-            proc_arg['parameter'] = table_name.replace(base_name, '')
-            table_name = base_name
-    arg_trans = {'Translate': '.get_translation_dict',
-                 'Vendormatrix': '.get_vendormatrix',
-                 'Constant': '.get_constant_dict',
-                 'Relation': '.get_relational_config',
-                 'OutputData': '.get_data_tables',
-                 'dictionary_order': '.get_dict_order',
-                 'raw_data': '.get_raw_data',
-                 'dictionary': '.get_dictionary',
-                 'delete_dict': '.delete_dict',
-                 'rate_card': '.get_rate_card',
-                 'edit_conversions': '.get_processor_conversions',
-                 'data_sources': '.get_processor_sources',
-                 'imports': '.get_processor_sources',
-                 'Uploader': '.get_uploader_file'}
-    job_name = arg_trans[table_name]
+    job_name, table_name, proc_arg = translate_table_name_to_job(
+        table_name, proc_arg)
     if cur_proc.get_task_in_progress(job_name):
         flash(_('This job: {} is already running!').format(table_name))
         return jsonify({'data': {'data': [], 'cols': [], 'name': table_name}})
@@ -785,7 +798,8 @@ def get_table():
     else:
         job = task.wait_and_get_job(force_return=True)
         df = job.result[0]
-    if 'parameter' in proc_arg and proc_arg['parameter'] == 'FullOutput':
+    if ('parameter' in proc_arg and (proc_arg['parameter'] == 'FullOutput' or
+                                     proc_arg['parameter'] =='Download')):
         from flask import send_file
         import zipfile
         import io
@@ -822,6 +836,7 @@ def edit_processor_clean(processor_name):
     cur_proc = kwargs['processor']
     ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
     form = ProcessorCleanForm(datasources=ds)
+    form.set_vendor_key_choices(current_processor_id=cur_proc.id)
     kwargs['form'] = form
     if request.method == 'POST':
         form.validate()

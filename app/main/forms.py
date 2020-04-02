@@ -126,11 +126,12 @@ class APIForm(FlaskForm):
     account_filter = StringField('Filter')
     api_fields = StringField('API Fields')
     raw_file = FileField('Raw File')
-    delete = SubmitField('Delete')
+    delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
     vendor_key = StringField('Vendor Key', render_kw={'readonly': True})
 
 
 class ImportForm(FlaskForm):
+    data_source = SelectField(_l('Processor Data Source Filter'))
     refresh_imports = SubmitField('Refresh From Processor')
     add_child = SubmitField(label='Add API')
     form_continue = HiddenField('form_continue')
@@ -146,6 +147,13 @@ class ImportForm(FlaskForm):
                 imp_dict.append(form_dict)
         self.apis = imp_dict
         return imp_dict
+
+    def set_vendor_key_choices(self, current_processor_id):
+        choices = [('', '')]
+        choices.extend([(x.vendor_key, x.vendor_key) for x in
+                        ProcessorDatasources.query.filter_by(
+                            processor_id=current_processor_id).all()])
+        self.data_source.choices = choices
 
 
 class EditProcessorForm(ProcessorForm):
@@ -163,13 +171,16 @@ class EditProcessorForm(ProcessorForm):
 class DataSourceForm(FlaskForm):
     vendor_key = StringField(_l('Vendor Key'))
     refresh_raw_data = SubmitField(_l('Show Raw Data'))
+    refresh_download_raw_data = SubmitField(
+        _l('Download Raw Data'), render_kw={'style': 'background-color:green'})
     full_placement_columns = TextAreaField(_l('Full Placement Columns'))
     placement_columns = StringField(_l('Placement Column'))
     auto_dictionary_placement = SelectField(_l('Auto Dict Placement'), choices=[
         (x, x) for x in [dctc.FPN, dctc.PN]])
     refresh_dictionary_order = SubmitField(_l('Show Dictionary Order'))
     auto_dictionary_order = TextAreaField(_l('Auto Dictionary Order'))
-    refresh_delete_dict = SubmitField(_l('Delete Dictionary'))
+    refresh_delete_dict = SubmitField(
+        _l('Delete Dictionary'), render_kw={'style': 'background-color:red'})
     refresh_dictionary = SubmitField(_l('Show Dictionary'))
     active_metrics = TextAreaField(_l('Active Metrics'))
     vm_rules = TextAreaField(_l('Vendor Matrix Rules'))
@@ -181,6 +192,7 @@ class DataSourceForm(FlaskForm):
 
 
 class ProcessorCleanForm(FlaskForm):
+    data_source = SelectField(_l('Processor Data Source Filter'))
     refresh_data_sources = SubmitField(_l('Refresh From Processor'))
     form_continue = HiddenField('form_continue')
     datasources = FieldList(FormField(DataSourceForm, label=''))
@@ -193,6 +205,13 @@ class ProcessorCleanForm(FlaskForm):
             imp_dict.append(form_dict)
         self.datasources = imp_dict
         return imp_dict
+
+    def set_vendor_key_choices(self, current_processor_id):
+        choices = [('', '')]
+        choices.extend([(x.vendor_key, x.vendor_key) for x in
+                        ProcessorDatasources.query.filter_by(
+                            processor_id=current_processor_id).all()])
+        self.data_source.choices = choices
 
 
 class TranslationForm(FlaskForm):
@@ -316,7 +335,7 @@ class AccountForm(FlaskForm):
     password = StringField('Password',
                            description='Only include if shared login.')
     campaign_id = StringField('Campaign ID or Name')
-    delete = SubmitField('Delete')
+    delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
 
 
 class GeneralAccountForm(FlaskForm):
@@ -354,7 +373,7 @@ class ConversionForm(FlaskForm):
     key = SelectField(
         'Conversion Platform', choices=[(x, x) for x in vmc.api_keys])
     dcm_category = StringField('DCM Category')
-    delete = SubmitField('Delete')
+    delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
 
 
 class GeneralConversionForm(FlaskForm):
@@ -380,7 +399,7 @@ class AssignUserForm(FlaskForm):
                                      get_label='username')
     user_level = SelectField(
         'User Level', choices=[(x, x) for x in ['Follower', 'Owner']])
-    delete = SubmitField('Delete')
+    delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
 
 
 class ProcessorRequestFinishForm(FlaskForm):

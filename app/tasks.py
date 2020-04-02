@@ -434,6 +434,19 @@ def set_data_sources(processor_id, current_user_id, form_sources):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+def get_file_in_memory(tables):
+    import io
+    import zipfile
+    mem = io.BytesIO()
+    with zipfile.ZipFile(mem, mode='w') as f:
+        data = zipfile.ZipInfo('raw.csv')
+        data.date_time = time.localtime(time.time())[:6]
+        data.compress_type = zipfile.ZIP_DEFLATED
+        f.writestr(data, data=tables.to_csv())
+    mem.seek(0)
+    return mem
+
+
 def get_data_tables(processor_id, current_user_id, parameter):
     try:
         _set_task_progress(0)
@@ -442,11 +455,9 @@ def get_data_tables(processor_id, current_user_id, parameter):
         cur_processor = Processor.query.get(processor_id)
         file_name = os.path.join(adjust_path(cur_processor.local_path),
                                  'Raw Data Output.csv')
-        print('Time before csv read {}'.format(time.time() - start))
         _set_task_progress(15)
         tables = pd.read_csv(file_name)
         _set_task_progress(30)
-        print('Time after csv read {}'.format(time.time() - start))
         metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
                    'Net Cost Final']
         param_translate = {
@@ -462,25 +473,16 @@ def get_data_tables(processor_id, current_user_id, parameter):
         if parameter:
             tables = [tables.groupby(parameter)[metrics].sum()]
         else:
-            import io
-            import zipfile
-            mem = io.BytesIO()
-            print('Time before zip read {}'.format(time.time() - start))
-            with zipfile.ZipFile(mem, mode='w') as f:
-                data = zipfile.ZipInfo('raw.csv')
-                data.date_time = time.localtime(time.time())[:6]
-                data.compress_type = zipfile.ZIP_DEFLATED
-                f.writestr(data, data=tables.to_csv())
-            print('Time after zip read {}'.format(time.time() - start))
-            mem.seek(0)
+            mem = get_file_in_memory(tables)
             tables = [mem]
-        print('Time end read {}'.format(time.time() - start))
         _set_task_progress(100)
         return tables
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Parameter {}'.format(
+                processor_id, current_user_id, parameter),
+            exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
@@ -496,8 +498,10 @@ def get_dict_order(processor_id, current_user_id, vk):
         return tables
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
 def delete_dict(processor_id, current_user_id, vk):
@@ -521,24 +525,34 @@ def delete_dict(processor_id, current_user_id, vk):
         return tables
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def get_raw_data(processor_id, current_user_id, vk):
+def get_raw_data(processor_id, current_user_id, vk, parameter=None):
     try:
         cur_processor = Processor.query.get(processor_id)
+        _set_task_progress(20)
         import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
+        _set_task_progress(40)
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
-        tables = [data_source.get_raw_df()]
+        _set_task_progress(60)
+        tables = data_source.get_raw_df()
+        if parameter:
+            tables = get_file_in_memory(tables)
+        tables = [tables]
         _set_task_progress(100)
         return tables
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
 def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
@@ -585,8 +599,9 @@ def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
 
 
 def get_dictionary(processor_id, current_user_id, vk):
@@ -604,8 +619,10 @@ def get_dictionary(processor_id, current_user_id, vk):
         return tables
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
 def write_dictionary(processor_id, current_user_id, new_data, vk):
@@ -635,8 +652,9 @@ def write_dictionary(processor_id, current_user_id, new_data, vk):
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
 
 
 def get_translation_dict(processor_id, current_user_id):
@@ -653,6 +671,7 @@ def get_translation_dict(processor_id, current_user_id):
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
 def get_vendormatrix(processor_id, current_user_id):
@@ -667,6 +686,7 @@ def get_vendormatrix(processor_id, current_user_id):
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
 def write_vendormatrix(processor_id, current_user_id, new_data):
@@ -713,6 +733,7 @@ def get_constant_dict(processor_id, current_user_id):
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
 def write_constant_dict(processor_id, current_user_id, new_data):
@@ -759,8 +780,11 @@ def get_relational_config(processor_id, current_user_id, parameter=None):
         return [df]
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Parameter {}'.format(
+                processor_id, current_user_id, parameter),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
 def write_relational_config(processor_id, current_user_id, new_data,

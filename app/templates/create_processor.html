@@ -667,7 +667,7 @@
                   let link = document.createElement('a');
                   link.href = window.URL.createObjectURL(blob);
                   link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey +'.csv';
-                  // link.click();
+                  link.click();
                 }
                 else {
                     show_modal_table('tableModalButton');

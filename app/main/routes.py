@@ -229,13 +229,18 @@ def unfollow_processor(processor_name):
 
 @bp.route('/get_processor_tasks', methods=['GET', 'POST'])
 @login_required
-def get_processor_tasks():
-    processor_name = request.form['object_name']
+def get_task_progress():
+    object_name = request.form['object_name']
     task_name = request.form['task_name']
+    cur_obj = request.form['object_type']
+    if cur_obj == 'Processor':
+        cur_obj = Processor
+    else:
+        cur_obj = Uploader
     job_name, table_name, proc_arg = translate_table_name_to_job(
         task_name, proc_arg={})
-    cur_proc = Processor.query.filter_by(name=processor_name).first()
-    task = cur_proc.get_task_in_progress(name=job_name)
+    cur_obj = cur_obj.query.filter_by(name=object_name).first()
+    task = cur_obj.get_task_in_progress(name=job_name)
     if task:
         percent = task.get_progress()
     else:
@@ -756,7 +761,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'edit_conversions': '.get_processor_conversions',
                  'data_sources': '.get_processor_sources',
                  'imports': '.get_processor_sources',
-                 'Uploader': '.get_uploader_file'}
+                 'Uploader': '.get_uploader_file',
+                 'edit_relation': '.get_uploader_file'}
     job_name = arg_trans[table_name]
     return job_name, table_name, proc_arg
 
@@ -799,7 +805,7 @@ def get_table():
         job = task.wait_and_get_job(force_return=True)
         df = job.result[0]
     if ('parameter' in proc_arg and (proc_arg['parameter'] == 'FullOutput' or
-                                     proc_arg['parameter'] =='Download')):
+                                     proc_arg['parameter'] == 'Download')):
         from flask import send_file
         import zipfile
         import io
@@ -1859,8 +1865,8 @@ def edit_uploader_campaign(uploader_name):
                 return redirect(url_for('main.edit_uploader_campaign',
                                         uploader_name=cur_up.name))
         elif request.method == 'GET':
-            form.media_plan_columns = up_cam.media_plan_columns
-            form.partner_name_filter = up_cam.partner_filter
+            form.media_plan_columns.data = up_cam.media_plan_columns
+            form.partner_name_filter.data = up_cam.partner_filter
     else:
         form_object = EditUploaderCampaignCreateForm
         form = form_object(uploader_name)

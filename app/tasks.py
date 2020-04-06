@@ -981,11 +981,34 @@ def uploader_file_translation(uploader_file_name):
     file_translation = {'Creator': 'config/create/creator_config.xlsx',
                         'Campaign': 'config/fb/campaign_upload.xlsx',
                         'Adset': 'config/fb/adset_upload.xlsx',
-                        'Ad': 'config/fb/ad_upload.xlsx'}
+                        'Ad': 'config/fb/ad_upload.xlsx',
+                        'edit_relation': 'config/create/campaign_relation.xlsx'}
     return file_translation[uploader_file_name]
 
 
-def get_uploader_file(uploader_id, current_user_id, parameter=None):
+def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None):
+    try:
+        uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
+            uploader_id=uploader_id, current_user_id=current_user_id)
+        _set_task_progress(0)
+        file_path = adjust_path(uploader_to_run.local_path)
+        os.chdir(file_path)
+        file_name = uploader_file_translation(parameter)
+        df = pd.read_excel(file_name)
+        if vk:
+            df = df.loc[df['impacted_column_name'] == vk]
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Uploader {} User {} Parameter: {} VK: {}'
+            ''.format(uploader_id, current_user_id, parameter, vk),
+            exc_info=sys.exc_info())
+        return False
+
+
+def get_uploader_campaign_relation_file(uploader_id, current_user_id, vk):
     try:
         uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)

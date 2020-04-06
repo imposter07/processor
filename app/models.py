@@ -836,6 +836,10 @@ class UploaderObjects(db.Model):
     uploader_relations = db.relationship(
         'UploaderRelations', backref='uploader_objects', lazy='dynamic')
 
+    @staticmethod
+    def string_to_list(string_value):
+        return ProcessorDatasources.convert_string_to_list(string_value)
+
 
 class UploaderRelations(db.Model):
     id = db.Column(db.Integer, primary_key=True)

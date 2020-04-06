@@ -588,8 +588,9 @@
         var downloadingProgress = null;
         function getDownloadProgress(tableName) {
             downloadingProgress = setInterval(function() {
-                $.post('/get_processor_tasks',
+                $.post('/get_task_progress',
                 {
+                    object_type: "{{ title }}",
                     object_name:  "{{ object_name }}",
                     task_name: tableName,
                 }).done(function(data, status) {
@@ -600,7 +601,7 @@
                         downloadProgress.attr("style", "width: " + newPercent + "%")
                     }
                     else {
-                        let percent = oldPercent + 5;
+                        let percent = oldPercent + 2;
                         downloadProgress.attr("style", "width: " + percent + "%")
                     }
             });

@@ -372,6 +372,7 @@
                     url: window.location.href  + '/upload_file',
                     method: 'POST',
                 },
+                allowPaste: false,
                 fileMetadataObject: {
                     object_name: "{{ object_name }}",
                     object_type:  "{{ title }}",
@@ -632,7 +633,9 @@
                                 }
                             }
                         }
-                    ]});
+                    ],
+                    allowPaste: false
+                    });
                 pondElem.instantUpload = false;
                 return pondElem
             }

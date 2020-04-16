@@ -227,7 +227,7 @@ def unfollow_processor(processor_name):
                             processor_name=processor_name))
 
 
-@bp.route('/get_processor_tasks', methods=['GET', 'POST'])
+@bp.route('/get_task_progress', methods=['GET', 'POST'])
 @login_required
 def get_task_progress():
     object_name = request.form['object_name']
@@ -721,6 +721,7 @@ def post_table():
         if base_name in table_name:
             proc_arg['parameter'] = table_name.replace(base_name, '')
             table_name = base_name
+    print(proc_arg)
     arg_trans = {'Translate': '.write_translational_dict',
                  'Vendormatrix': '.write_vendormatrix',
                  'Constant': '.write_constant_dict',
@@ -762,7 +763,9 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'data_sources': '.get_processor_sources',
                  'imports': '.get_processor_sources',
                  'Uploader': '.get_uploader_file',
-                 'edit_relation': '.get_uploader_file'}
+                 'edit_relation': '.get_uploader_file',
+                 'Campaign': '.get_uploader_file',
+                 'full_campaign_relation': '.get_uploader_file'}
     job_name = arg_trans[table_name]
     return job_name, table_name, proc_arg
 
@@ -1836,6 +1839,20 @@ def edit_uploader(uploader_name):
     return render_template('create_processor.html',  **kwargs)
 
 
+def set_uploader_relations_in_db(uploader_id, form_relations):
+    cur_up = Uploader.query.get(uploader_id)
+    up_cam = UploaderObjects.query.filter_by(
+        uploader_id=cur_up.id, object_level='Campaign').first()
+    for rel in form_relations:
+        up_rel = UploaderRelations.query.filter_by(
+            uploader_objects_id=up_cam.id,
+            impacted_column_name=rel['impacted_column_name']).first()
+        up_rel.relation_constant = rel['relation_constant']
+        up_rel.position = rel['position']
+        db.session.commit()
+    return True
+
+
 @bp.route('/uploader/<uploader_name>/edit/campaign', methods=['GET', 'POST'])
 @login_required
 def edit_uploader_campaign(uploader_name):
@@ -1853,15 +1870,21 @@ def edit_uploader_campaign(uploader_name):
             up_cam.media_plan_columns = form.media_plan_columns.data
             up_cam.partner_filter = form.partner_name_filter.data
             db.session.commit()
-            msg_text = 'Creating and uploading campaigns for uploader.'
-            cur_up.launch_task(
-                '.uploader_create_campaigns', _(msg_text),
-                running_user=current_user.id)
-            db.session.commit()
+            set_uploader_relations_in_db(cur_up.id, form.relations.data)
             if form.form_continue.data == 'continue':
+                msg_text = 'Creating and uploading campaigns for uploader.'
+                cur_up.launch_task(
+                    '.uploader_create_and_upload_campaigns', _(msg_text),
+                    running_user=current_user.id)
+                db.session.commit()
                 return redirect(url_for('main.edit_uploader_campaign',
                                         uploader_name=cur_up.name))
             else:
+                msg_text = 'Creating campaigns for uploader.'
+                cur_up.launch_task(
+                    '.uploader_create_campaigns', _(msg_text),
+                    running_user=current_user.id)
+                db.session.commit()
                 return redirect(url_for('main.edit_uploader_campaign',
                                         uploader_name=cur_up.name))
         elif request.method == 'GET':

@@ -12,7 +12,7 @@ from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
-    TaskScheduler, Requests, UploaderObjects
+    TaskScheduler, Requests, UploaderObjects, UploaderRelations
 
 app = create_app()
 app.app_context().push()
@@ -982,7 +982,8 @@ def uploader_file_translation(uploader_file_name):
                         'Campaign': 'config/fb/campaign_upload.xlsx',
                         'Adset': 'config/fb/adset_upload.xlsx',
                         'Ad': 'config/fb/ad_upload.xlsx',
-                        'edit_relation': 'config/create/campaign_relation.xlsx'}
+                        'edit_relation': 'config/create/campaign_relation.xlsx',
+                        'full_campaign_relation': 'config/create/campaign_relation.xlsx'}
     return file_translation[uploader_file_name]
 
 
@@ -996,7 +997,25 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None):
         file_name = uploader_file_translation(parameter)
         df = pd.read_excel(file_name)
         if vk:
-            df = df.loc[df['impacted_column_name'] == vk]
+            upo = UploaderObjects.query.filter_by(
+                uploader_id=uploader_to_run.id,
+                object_level='Campaign').first()
+            relation = UploaderRelations.query.filter_by(
+                uploader_objects_id=upo.id,
+                impacted_column_name=vk).first()
+            rel_pos = relation.position.strip('{}')
+            if rel_pos:
+                rel_pos = int(rel_pos)
+                df = df.loc[df['impacted_column_name'] == vk]
+                cdf = pd.read_excel(uploader_file_translation('Campaign'))
+                new_values = (cdf['campaign_name'].str.split('_').
+                              str[rel_pos].unique().tolist())
+                cdf = pd.DataFrame(new_values, columns=['column_value'])
+                cdf['column_name'] = 'campaign_name'
+                cdf['impacted_column_name'] = vk
+                cdf['impacted_column_new_value'] = ''
+                cdf['position'] = rel_pos
+                df = df.append(cdf, ignore_index=True)
         _set_task_progress(100)
         return [df]
     except:
@@ -1005,24 +1024,6 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None):
             'Unhandled exception - Uploader {} User {} Parameter: {} VK: {}'
             ''.format(uploader_id, current_user_id, parameter, vk),
             exc_info=sys.exc_info())
-        return False
-
-
-def get_uploader_campaign_relation_file(uploader_id, current_user_id, vk):
-    try:
-        uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
-            uploader_id=uploader_id, current_user_id=current_user_id)
-        _set_task_progress(0)
-        file_path = adjust_path(uploader_to_run.local_path)
-        os.chdir(file_path)
-        file_name = uploader_file_translation(parameter)
-        df = pd.read_excel(file_name)
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
         return False
 
 
@@ -1048,7 +1049,8 @@ def set_uploader_config_file(uploader_id, current_user_id):
         return False
 
 
-def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None):
+def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
+                        vk=None):
     try:
         cur_up, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
@@ -1061,6 +1063,10 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None):
             df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
         file_name = uploader_file_translation(parameter)
+        if vk:
+            odf = pd.read_excel(file_name)
+            odf = odf.loc[odf['impacted_column_name'] != vk]
+            df = odf.append(odf, ignore_index=True)
         utl.write_df(df, file_name)
         msg_text = ('{} uploader {} was updated.'
                     ''.format(file_name, cur_up.name))
@@ -1115,9 +1121,18 @@ def uploader_create_campaigns(uploader_id, current_user_id):
         processor_post_message(cur_up, user_that_ran, msg_text,
                                object_name='Uploader')
         os.chdir(cur_path)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+
+
+def uploader_create_and_upload_campaigns(uploader_id, current_user_id):
+    try:
+        uploader_create_campaigns(uploader_id, current_user_id)
         run_uploader(uploader_id, current_user_id,
                      uploader_args='--api fb --upload c')
-        os.chdir(cur_path)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

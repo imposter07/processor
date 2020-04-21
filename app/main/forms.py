@@ -555,7 +555,7 @@ class RelationForm(FlaskForm):
                                          'value to appear for all line items.')
     position = SelectMultipleField(
         'Position in Name', choices=[('', '')] + [(x, x) for x in range(25)],
-        description='Ex. in the name Example_Name, Example is position 0,'
+        description='Ex. in the name Example_Name, Example is position 0, '
                     'Name is position 1 etc.')
     refresh_edit_relation = SubmitField('Edit as Spreadsheet')
 
@@ -568,13 +568,13 @@ class EditUploaderCampaignMediaPlanForm(FlaskForm):
                          cre.MediaPlan.campaign_phase,
                          cre.MediaPlan.partner_name,
                          cre.MediaPlan.country_name]]
-    refresh_full_campaign_relation = SubmitField('View Full Relation File')
     media_plan_columns = SelectMultipleField(
         _l('Media Plan Columns'), choices=media_plan_column_choices,
         default=[(x, x) for x in
                  [cre.MediaPlan.partner_name, cre.MediaPlan.campaign_id]])
     partner_name_filter = TextAreaField(
         _l('Partner Name Filter'), default='Facebook|Instagram')
+    refresh_full_campaign_relation = SubmitField('View Full Relation File')
     form_continue = HiddenField('form_continue')
     relations = FieldList(FormField(RelationForm, label=''))
 

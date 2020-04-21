@@ -726,8 +726,8 @@
             }).done(function(data, status) {
                 show_modal_table('logModalButton');
                 parseLog(data);
-            }).fail(function() {
-                console.log('fail')
+            }).fail(function(jqXHR, textStatus ) {
+                console.log("Request failed: " + textStatus);
             }).always(function(){
                 $(clickElem).prop("disabled", false);
                 $(clickElem).html(oldHtml);

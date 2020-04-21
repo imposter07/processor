@@ -983,7 +983,8 @@ def uploader_file_translation(uploader_file_name):
                         'Adset': 'config/fb/adset_upload.xlsx',
                         'Ad': 'config/fb/ad_upload.xlsx',
                         'edit_relation': 'config/create/campaign_relation.xlsx',
-                        'full_campaign_relation': 'config/create/campaign_relation.xlsx'}
+                        'full_campaign_relation':
+                            'config/create/campaign_relation.xlsx'}
     return file_translation[uploader_file_name]
 
 
@@ -1010,12 +1011,15 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None):
                 cdf = pd.read_excel(uploader_file_translation('Campaign'))
                 new_values = (cdf['campaign_name'].str.split('_').
                               str[rel_pos].unique().tolist())
+                new_values = [x for x in new_values
+                              if x not in
+                              df['column_value'].unique().tolist()]
                 cdf = pd.DataFrame(new_values, columns=['column_value'])
                 cdf['column_name'] = 'campaign_name'
                 cdf['impacted_column_name'] = vk
                 cdf['impacted_column_new_value'] = ''
                 cdf['position'] = rel_pos
-                df = df.append(cdf, ignore_index=True)
+                df = df.append(cdf, ignore_index=True, sort=False)
         _set_task_progress(100)
         return [df]
     except:
@@ -1066,7 +1070,7 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
         if vk:
             odf = pd.read_excel(file_name)
             odf = odf.loc[odf['impacted_column_name'] != vk]
-            df = odf.append(odf, ignore_index=True)
+            df = odf.append(df, ignore_index=True)
         utl.write_df(df, file_name)
         msg_text = ('{} uploader {} was updated.'
                     ''.format(file_name, cur_up.name))
@@ -1074,6 +1078,34 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
                                object_name='Uploader')
         os.chdir(cur_path)
         _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+
+
+def set_campaign_relation_file(uploader_id, current_user_id):
+    try:
+        cur_up, user_that_ran = get_uploader_and_user_from_id(
+            uploader_id=uploader_id, current_user_id=current_user_id)
+        up_cam = UploaderObjects.query.filter_by(
+            uploader_id=cur_up.id, object_level='Campaign').first()
+        up_rel = UploaderRelations.query.filter_by(
+            uploader_objects_id=up_cam.id).all()
+        import uploader.upload.utils as utl
+        os.chdir(adjust_path(cur_up.local_path))
+        file_name = uploader_file_translation('full_campaign_relation')
+        df = pd.read_excel(file_name)
+        for rel in up_rel:
+            if rel.relation_constant:
+                df = df.loc[df['impacted_column_name'] !=
+                            rel.impacted_column_name]
+                ndf = pd.DataFrame(
+                    {'impacted_column_name': [rel.impacted_column_name],
+                     'impacted_column_new_value': [rel.relation_constant],
+                     'position': ['Constant']})
+                df = df.append(ndf, ignore_index=True, sort=False)
+        utl.write_df(df, file_name)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Uploader {} User {}'.format(
@@ -1114,6 +1146,8 @@ def uploader_create_campaigns(uploader_id, current_user_id):
             df = pd.DataFrame()
         file_name = uploader_file_translation('Creator')
         utl.write_df(df, file_name)
+        os.chdir(cur_path)
+        set_campaign_relation_file(uploader_id, current_user_id)
         os.chdir(cur_path)
         run_uploader(uploader_id, current_user_id, uploader_args='--create')
         msg_text = ('{} uploader campaign creation file was updated.'

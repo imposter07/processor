@@ -1,9 +1,11 @@
 import io
 import html
 import json
+import zipfile
+import pandas as pd
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
-    jsonify, current_app
+    jsonify, current_app, send_file
 from flask_login import current_user, login_required
 from flask_babel import _, get_locale
 from guess_language import guess_language
@@ -564,7 +566,6 @@ def set_processor_imports_in_db(processor_id, form_imports):
 
 
 def convert_file_to_df(current_file):
-    import pandas as pd
     df = pd.read_csv(current_file)
     return df
 
@@ -721,7 +722,6 @@ def post_table():
         if base_name in table_name:
             proc_arg['parameter'] = table_name.replace(base_name, '')
             table_name = base_name
-    print(proc_arg)
     arg_trans = {'Translate': '.write_translational_dict',
                  'Vendormatrix': '.write_vendormatrix',
                  'Constant': '.write_constant_dict',
@@ -797,7 +797,6 @@ def get_table():
     msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
-    import pandas as pd
     if job_name in ['.get_processor_sources']:
         job = task.wait_and_get_job(loops=20)
         if job:
@@ -809,9 +808,6 @@ def get_table():
         df = job.result[0]
     if ('parameter' in proc_arg and (proc_arg['parameter'] == 'FullOutput' or
                                      proc_arg['parameter'] == 'Download')):
-        from flask import send_file
-        import zipfile
-        import io
         z = zipfile.ZipFile(df)
         df = z.read('raw.csv')
         z.close()
@@ -831,6 +827,9 @@ def get_table():
     for base_name in ['Relation', 'Uploader']:
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])
+            if 'vk' in proc_arg:
+                table_name = '{}vendorkey{}'.format(
+                    table_name, request.form['vendorkey'].replace(' ', '___'))
     table_name = "modalTable{}".format(table_name)
     data = df.to_html(index=False, table_id=table_name,
                       classes="table table-responsive-sm small table-dark")

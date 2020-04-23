@@ -765,7 +765,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'Uploader': '.get_uploader_file',
                  'edit_relation': '.get_uploader_file',
                  'Campaign': '.get_uploader_file',
-                 'full_campaign_relation': '.get_uploader_file'}
+                 'full_campaign_relation': '.get_uploader_file',
+                 'uploader_campaign_name': '.get_uploader_file'}
     job_name = arg_trans[table_name]
     return job_name, table_name, proc_arg
 
@@ -1504,7 +1505,8 @@ def unresolve_fix(fix_id):
         flash(_('Request #{} not found.'.format(request_fix)))
         return redirect(url_for('main.edit_processor_submit_fix',
                                 processor_name=request_fix.processor.name))
-    msg_txt = 'The fix #{} has been marked as unresolved!'.format(request_fix.id)
+    msg_txt = 'The fix #{} has been marked as unresolved!'.format(
+        request_fix.id)
     request_fix.mark_unresolved()
     post = Post(body=msg_txt, author=current_user,
                 processor_id=request_fix.processor.id,
@@ -1852,6 +1854,22 @@ def set_uploader_relations_in_db(uploader_id, form_relations):
     return True
 
 
+@bp.route('/uploader/<uploader_name>/edit/campaign/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def uploader_campaign_name_file_upload(uploader_name):
+    current_key, object_name, object_form = parse_upload_file_request(request)
+    cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
+    mem, file_name = get_file_in_memory_from_request(request, 'create_file')
+    msg_text = 'Saving file {} for {}'.format(file_name, cur_up.name)
+    cur_up.launch_task(
+        '.write_uploader_file', _(msg_text),
+        running_user=current_user.id, new_data=mem,
+        parameter='campaign_name_create', mem_file=True)
+    db.session.commit()
+    return jsonify({'data': 'success'})
+
+
 @bp.route('/uploader/<uploader_name>/edit/campaign', methods=['GET', 'POST'])
 @login_required
 def edit_uploader_campaign(uploader_name):
@@ -1860,38 +1878,48 @@ def edit_uploader_campaign(uploader_name):
     cur_up = kwargs['object']
     up_cam = UploaderObjects.query.filter_by(
         uploader_id=cur_up.id, object_level='Campaign').first()
-    if cur_up.media_plan:
+    relations = EditUploaderCampaignMediaPlanForm.set_relations(
+        data_source=UploaderRelations, cur_upo=up_cam)
+    if up_cam.name_create_type == 'Media Plan':
         form_object = EditUploaderCampaignMediaPlanForm
-        relations = form_object().set_relations(UploaderRelations, up_cam)
         form = form_object(relations=relations)
         if request.method == 'POST':
             form.validate()
             up_cam.media_plan_columns = form.media_plan_columns.data
             up_cam.partner_filter = form.partner_name_filter.data
+            up_cam.name_create_type = form.name_create_type.data
             db.session.commit()
-            set_uploader_relations_in_db(cur_up.id, form.relations.data)
-            if form.form_continue.data == 'continue':
-                msg_text = 'Creating and uploading campaigns for uploader.'
-                cur_up.launch_task(
-                    '.uploader_create_and_upload_campaigns', _(msg_text),
-                    running_user=current_user.id)
-                db.session.commit()
-                return redirect(url_for('main.edit_uploader_campaign',
-                                        uploader_name=cur_up.name))
-            else:
-                msg_text = 'Creating campaigns for uploader.'
-                cur_up.launch_task(
-                    '.uploader_create_campaigns', _(msg_text),
-                    running_user=current_user.id)
-                db.session.commit()
-                return redirect(url_for('main.edit_uploader_campaign',
-                                        uploader_name=cur_up.name))
         elif request.method == 'GET':
+            form.name_create_type.data = up_cam.name_create_type
             form.media_plan_columns.data = up_cam.media_plan_columns
             form.partner_name_filter.data = up_cam.partner_filter
     else:
         form_object = EditUploaderCampaignCreateForm
-        form = form_object(uploader_name)
+        form = form_object(relations=relations)
+        if request.method == 'POST':
+            form.validate()
+            up_cam.name_create_type = form.name_create_type.data
+            db.session.commit()
+        if request.method == 'GET':
+            form.name_create_type.data = up_cam.name_create_type
+    if request.method == 'POST':
+        set_uploader_relations_in_db(cur_up.id, form.relations.data)
+        if form.form_continue.data == 'continue':
+            msg_text = 'Creating and uploading campaigns for uploader.'
+            cur_up.launch_task(
+                '.uploader_create_and_upload_campaigns', _(msg_text),
+                running_user=current_user.id)
+            db.session.commit()
+            return redirect(url_for('main.edit_uploader_campaign',
+                                    uploader_name=cur_up.name))
+        else:
+            msg_text = 'Creating campaigns for uploader.'
+            cur_up.launch_task(
+                '.uploader_create_campaigns', _(msg_text),
+                running_user=current_user.id)
+            db.session.commit()
+            return redirect(url_for('main.edit_uploader_campaign',
+                                    uploader_name=cur_up.name))
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
 

@@ -450,8 +450,6 @@ def get_file_in_memory(tables):
 def get_data_tables(processor_id, current_user_id, parameter):
     try:
         _set_task_progress(0)
-        import time
-        start = time.time()
         cur_processor = Processor.query.get(processor_id)
         file_name = os.path.join(adjust_path(cur_processor.local_path),
                                  'Raw Data Output.csv')
@@ -819,11 +817,13 @@ def write_relational_config(processor_id, current_user_id, new_data,
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def full_run_processor(processor_id, current_user_id, processor_args):
+def full_run_processor(processor_id, current_user_id, processor_args=None):
     try:
         _set_task_progress(0)
-        run_processor(processor_id, current_user_id,
-                      '--api all --ftp all --dbi all --exp all --tab --analyze')
+        if not processor_args:
+            processor_args = ('--api all --ftp all --dbi all '
+                              '--exp all --tab --analyze')
+        run_processor(processor_id, current_user_id, processor_args)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -978,39 +978,82 @@ def run_uploader(uploader_id, current_user_id, uploader_args):
 
 
 def uploader_file_translation(uploader_file_name):
-    file_translation = {'Creator': 'config/create/creator_config.xlsx',
-                        'Campaign': 'config/fb/campaign_upload.xlsx',
-                        'Adset': 'config/fb/adset_upload.xlsx',
-                        'Ad': 'config/fb/ad_upload.xlsx',
-                        'edit_relation': 'config/create/campaign_relation.xlsx',
-                        'full_campaign_relation':
-                            'config/create/campaign_relation.xlsx',
-                        'campaign_name_create':
-                            'config/create/campaign_name_creator.xlsx',
-                        'uploader_campaign_name':
-                            'config/fb/campaign_upload.xlsx'}
+    file_translation = {
+        'Creator': 'config/create/creator_config.xlsx',
+        'Campaign': 'config/fb/campaign_upload.xlsx',
+        'Adset': 'config/fb/adset_upload.xlsx',
+        'Ad': 'config/fb/ad_upload.xlsx',
+        'edit_relation': 'config/create/campaign_relation.xlsx',
+        'full_campaign_relation': 'config/create/campaign_relation.xlsx',
+        'campaign_name_create': 'config/create/campaign_name_creator.xlsx',
+        'uploader_campaign_name': 'config/fb/campaign_upload.xlsx',
+        'uploader_adset_name': 'config/fb/adset_upload.xlsx',
+        'adset_name_create': 'config/create/adset_name_creator.xlsx',
+        'full_adset_relation': 'config/create/adset_relation.xlsx'}
     return file_translation[uploader_file_name]
 
 
-def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None):
+def get_primary_column(object_level):
+    if object_level == 'Campaign':
+        col = 'campaign_name'
+    elif object_level == 'Adset':
+        col = 'adset_name'
+    elif object_level == 'Ad':
+        col = 'ad_name'
+    else:
+        col = ''
+    return col
+
+
+def get_current_uploader_obj_names(uploader_id, current_user_id, cur_path,
+                                   file_path, file_name, object_level):
+    col = get_primary_column(object_level=object_level)
+    os.chdir(cur_path)
+    uploader_create_objects(uploader_id, current_user_id,
+                            object_level=object_level)
+    os.chdir(file_path)
+    ndf = pd.read_excel(file_name)
+    df = ndf[col].str.split('_', expand=True)
+    df[col] = ndf[col]
+    return df
+
+
+def get_uploader_relation_values_from_position(rel_pos, df, vk, object_level):
+    rel_pos = int(rel_pos)
+    col = get_primary_column(object_level)
+    df = df.loc[df['impacted_column_name'] == vk]
+    cdf = pd.read_excel(uploader_file_translation(object_level))
+    new_values = (cdf[col].str.split('_').
+                  str[rel_pos].unique().tolist())
+    new_values = [x for x in new_values
+                  if x not in
+                  df['column_value'].unique().tolist()]
+    cdf = pd.DataFrame(new_values, columns=['column_value'])
+    cdf['column_name'] = col
+    cdf['impacted_column_name'] = vk
+    cdf['impacted_column_new_value'] = ''
+    df = df.append(cdf, ignore_index=True, sort=False)
+    df['position'] = rel_pos
+    return df
+
+
+def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
+                      object_level='Campaign'):
     try:
         uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
         _set_task_progress(0)
         upo = UploaderObjects.query.filter_by(
             uploader_id=uploader_to_run.id,
-            object_level='Campaign').first()
+            object_level=object_level).first()
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         file_path = adjust_path(uploader_to_run.local_path)
         os.chdir(file_path)
         file_name = uploader_file_translation(parameter)
-        if parameter == 'uploader_campaign_name':
-            os.chdir(cur_path)
-            uploader_create_campaigns(uploader_id, current_user_id)
-            os.chdir(file_path)
-            ndf = pd.read_excel(file_name)
-            df = ndf['campaign_name'].str.split('_', expand=True)
-            df['campaign_name'] = ndf['campaign_name']
+        if parameter in ['uploader_campaign_name', 'uploader_adset_name']:
+            df = get_current_uploader_obj_names(
+                uploader_id, current_user_id, cur_path, file_path, file_name,
+                object_level=object_level)
         else:
             df = pd.read_excel(file_name)
         if vk:
@@ -1019,20 +1062,8 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None):
                 impacted_column_name=vk).first()
             rel_pos = relation.position.strip('{}')
             if rel_pos:
-                rel_pos = int(rel_pos)
-                df = df.loc[df['impacted_column_name'] == vk]
-                cdf = pd.read_excel(uploader_file_translation('Campaign'))
-                new_values = (cdf['campaign_name'].str.split('_').
-                              str[rel_pos].unique().tolist())
-                new_values = [x for x in new_values
-                              if x not in
-                              df['column_value'].unique().tolist()]
-                cdf = pd.DataFrame(new_values, columns=['column_value'])
-                cdf['column_name'] = 'campaign_name'
-                cdf['impacted_column_name'] = vk
-                cdf['impacted_column_new_value'] = ''
-                df = df.append(cdf, ignore_index=True, sort=False)
-                df['position'] = rel_pos
+                df = get_uploader_relation_values_from_position(
+                    rel_pos=rel_pos, df=df, vk=vk, object_level=object_level)
         _set_task_progress(100)
         return [df]
     except:
@@ -1102,17 +1133,19 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
             uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
-def set_campaign_relation_file(uploader_id, current_user_id):
+def set_object_relation_file(uploader_id, current_user_id,
+                             object_level='Campaign'):
     try:
         cur_up, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
         up_cam = UploaderObjects.query.filter_by(
-            uploader_id=cur_up.id, object_level='Campaign').first()
+            uploader_id=cur_up.id, object_level=object_level).first()
         up_rel = UploaderRelations.query.filter_by(
             uploader_objects_id=up_cam.id).all()
         import uploader.upload.utils as utl
         os.chdir(adjust_path(cur_up.local_path))
-        file_name = uploader_file_translation('full_campaign_relation')
+        file_name = uploader_file_translation(
+            'full_{}_relation'.format(object_level.lower()))
         df = pd.read_excel(file_name)
         for rel in up_rel:
             if rel.relation_constant:
@@ -1130,73 +1163,147 @@ def set_campaign_relation_file(uploader_id, current_user_id):
             uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
-def uploader_create_campaigns(uploader_id, current_user_id):
+def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
+                             creator_column=None, file_filter=None):
+    import uploader.upload.creator as cre
+    if object_level == 'Campaign':
+        if create_type == 'Media Plan':
+            col_file_name = [
+                'mediaplan.xlsx', '/create/campaign_name_creator.xlsx',
+                '/create/campaign_relation.xlsx']
+            col_new_file = [
+                'create/campaign_name_creator.xlsx',
+                'fb/campaign_upload.xlsx', 'fb/campaign_upload.xlsx']
+            col_create_type = ['mediaplan', 'create', 'relation']
+            col_column_name = [creator_column, 'campaign_name', '']
+            col_overwrite = [True, True, '']
+            col_filter = [file_filter, '', '']
+        else:
+            col_file_name = [
+                '/create/campaign_name_creator.xlsx',
+                '/create/campaign_relation.xlsx'],
+            col_new_file = [
+                'fb/campaign_upload.xlsx', 'fb/campaign_upload.xlsx']
+            col_create_type = ['create', 'relation']
+            col_column_name = ['campaign_name', '']
+            col_overwrite = [True, '']
+            col_filter = ['', '']
+    elif object_level == 'Adset':
+        if create_type == 'Media Plan':
+            col_file_name = [
+                'mediaplan.xlsx', '/create/adset_name_creator.xlsx',
+                '/create/adset_relation.xlsx']
+            col_new_file = [
+                'create/adset_name_creator.xlsx',
+                'fb/adset_upload.xlsx', 'fb/adset_upload.xlsx']
+            col_create_type = ['mediaplan', 'create', 'relation']
+            col_column_name = [creator_column, 'adset_name', '']
+            col_overwrite = [True, True, '']
+            col_filter = [file_filter, '', '']
+        else:
+            col_file_name = ['/create/adset_name_creator.xlsx',
+                             '/create/adset_relation.xlsx']
+            col_new_file = ['fb/adset_upload.xlsx', 'fb/adset_upload.xlsx']
+            col_create_type = ['create', 'relation']
+            col_column_name = ['adset_name', '']
+            col_overwrite = [True, '']
+            col_filter = ['', '']
+    elif object_level == 'Ad':
+        if create_type == 'Media Plan':
+            col_file_name = [
+                'mediaplan.xlsx', '/create/ad_name_creator.xlsx',
+                '/create/ad_relation.xlsx']
+            col_new_file = [
+                'create/ad_name_creator.xlsx',
+                'fb/ad_upload.xlsx', 'fb/ad_upload.xlsx']
+            col_create_type = ['mediaplan', 'create', 'relation']
+            col_column_name = [creator_column, 'ad_name', '']
+            col_overwrite = [True, True, '']
+            col_filter = [file_filter, '', '']
+        else:
+            col_file_name = [
+                '/create/ad_name_creator.xlsx', '/fb/adset_upload.xlsx',
+                '/create/ad_relation.xlsx']
+            col_new_file = [
+                '/fb/ad_upload.xlsx', '/fb/ad_upload.xlsx',
+                '/fb/ad_upload.xlsx']
+            col_create_type = ['create', 'duplicate', 'relation']
+            col_column_name = ['ad_name', 'ad_name::campaign_name|adset_name',
+                               '']
+            col_overwrite = [True, '', '']
+            col_filter = ['', '', '']
+    else:
+        col_file_name = ['']
+        col_new_file = ['']
+        col_create_type = ['']
+        col_column_name = ['']
+        col_overwrite = ['']
+        col_filter = ['']
+    new_dict = {
+        cre.CreatorConfig.col_file_name: col_file_name,
+        cre.CreatorConfig.col_new_file: col_new_file,
+        cre.CreatorConfig.col_create_type: col_create_type,
+        cre.CreatorConfig.col_column_name: col_column_name,
+        cre.CreatorConfig.col_overwrite: col_overwrite,
+        cre.CreatorConfig.col_filter: col_filter}
+    return new_dict
+
+
+def uploader_create_objects(uploader_id, current_user_id,
+                            object_level='Campaign'):
     try:
         cur_up, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
-        up_cam = UploaderObjects.query.filter_by(
-            uploader_id=cur_up.id, object_level='Campaign').first()
+        up_obj = UploaderObjects.query.filter_by(
+            uploader_id=cur_up.id, object_level=object_level).first()
         _set_task_progress(0)
         import uploader.upload.creator as cre
         import uploader.upload.utils as utl
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        os.chdir(adjust_path(cur_up.local_path))
         creator_column = '|'.join(
             x.strip('"') for x in
-            up_cam.media_plan_columns.strip("}''{").split(','))
-        file_filter = 'Partner Name::{}'.format(up_cam.partner_filter)
-        if up_cam.name_create_type == 'Media Plan':
-            new_dict = {
-                cre.CreatorConfig.col_file_name: [
-                    'mediaplan.xlsx', '/create/campaign_name_creator.xlsx',
-                    '/create/campaign_relation.xlsx'],
-                cre.CreatorConfig.col_new_file: [
-                    'create/campaign_name_creator.xlsx',
-                    'fb/campaign_upload.xlsx', 'fb/campaign_upload.xlsx'],
-                cre.CreatorConfig.col_create_type: [
-                    'mediaplan', 'create', 'relation'],
-                cre.CreatorConfig.col_column_name: [
-                    creator_column, 'campaign_name', ''],
-                cre.CreatorConfig.col_overwrite: [True, True, ''],
-                cre.CreatorConfig.col_filter: [file_filter, '', '']}
-            df = pd.DataFrame(new_dict)
-        else:
-            new_dict = {
-                cre.CreatorConfig.col_file_name: [
-                    '/create/campaign_name_creator.xlsx',
-                    '/create/campaign_relation.xlsx'],
-                cre.CreatorConfig.col_new_file: [
-                    'fb/campaign_upload.xlsx', 'fb/campaign_upload.xlsx'],
-                cre.CreatorConfig.col_create_type: [
-                    'create', 'relation'],
-                cre.CreatorConfig.col_column_name: [
-                    'campaign_name', ''],
-                cre.CreatorConfig.col_overwrite: [True, ''],
-                cre.CreatorConfig.col_filter: ['', '']}
-            df = pd.DataFrame(new_dict)
+            up_obj.media_plan_columns.strip("}''{").split(','))
+        file_filter = 'Partner Name::{}'.format(up_obj.partner_filter)
+        new_dict = get_uploader_create_dict(
+            object_level=object_level, create_type=up_obj.name_create_type,
+            creator_column=creator_column, file_filter=file_filter)
+        df = pd.DataFrame(new_dict)
+        os.chdir(adjust_path(cur_up.local_path))
         file_name = uploader_file_translation('Creator')
         utl.write_df(df, file_name)
         os.chdir(cur_path)
-        set_campaign_relation_file(uploader_id, current_user_id)
+        set_object_relation_file(uploader_id, current_user_id,
+                                 object_level=object_level)
         os.chdir(cur_path)
         run_uploader(uploader_id, current_user_id, uploader_args='--create')
-        msg_text = ('{} uploader campaign creation file was updated.'
-                    ''.format(cur_up.name))
+        msg_text = ('{} uploader {} creation file was updated.'
+                    ''.format(cur_up.name, object_level))
         processor_post_message(cur_up, user_that_ran, msg_text,
                                object_name='Uploader')
         os.chdir(cur_path)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Uploader {} User {} Object Level {}'.format(
+                uploader_id, current_user_id, object_level),
+            exc_info=sys.exc_info())
 
 
-def uploader_create_and_upload_campaigns(uploader_id, current_user_id):
+def uploader_create_and_upload_objects(uploader_id, current_user_id,
+                                       object_level='Campaign'):
     try:
-        uploader_create_campaigns(uploader_id, current_user_id)
-        run_uploader(uploader_id, current_user_id,
-                     uploader_args='--api fb --upload c')
+        uploader_create_objects(uploader_id, current_user_id,
+                                object_level=object_level)
+        if object_level == 'Campaign':
+            uploader_args = '--api fb --upload c'
+        elif object_level == 'Adset':
+            uploader_args = '--api fb --upload as'
+        elif object_level == 'Ad':
+            uploader_args = '--api fb --upload ad'
+        else:
+            uploader_args = ''
+        run_uploader(uploader_id, current_user_id, uploader_args=uploader_args)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -1540,6 +1647,28 @@ def make_database_view(processor_id, current_user_id):
         return False
 
 
+def schedule_processor(processor_id, current_user_id):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        msg_text = 'Scheduling processor: {}'.format(cur_processor.name)
+        import datetime as dt
+        sched = TaskScheduler.query.filter_by(
+            processor_id=cur_processor.id).first()
+        if not sched:
+            cur_processor.schedule_job('.full_run_processor', msg_text,
+                                       start_date=cur_processor.start_date,
+                                       end_date=cur_processor.end_date,
+                                       scheduled_time=dt.time(8, 0, 0),
+                                       interval=24)
+            db.session.commit()
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def build_processor_from_request(processor_id, current_user_id):
     progress = {
         'create': 'Failed',
@@ -1601,18 +1730,9 @@ def build_processor_from_request(processor_id, current_user_id):
             progress['run_processor'] = 'Success!'
         _set_task_progress(88)
         os.chdir(cur_path)
-        msg_text = 'Scheduling processor: {}'.format(cur_processor.name)
-        import datetime as dt
-        sched = TaskScheduler.query.filter_by(
-            processor_id=cur_processor.id).first()
-        if not sched:
-            cur_processor.schedule_job('.full_run_processor', msg_text,
-                                       start_date=cur_processor.start_date,
-                                       end_date=cur_processor.end_date,
-                                       scheduled_time=dt.time(8, 0, 0),
-                                       interval=24)
-            db.session.commit()
-        progress['schedule_processor'] = 'Success!'
+        result = schedule_processor(processor_id, current_user_id)
+        if result:
+            progress['schedule_processor'] = 'Success!'
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -1854,18 +1974,9 @@ def duplicate_processor(processor_id, current_user_id, form_data):
             progress['old_processor_run'] = 'Success!'
         _set_task_progress(88)
         os.chdir(cur_path)
-        cur_processor = Processor.query.get(new_processor_id)
-        msg_text = 'Scheduling processor: {}'.format(cur_processor.name)
-        sched = TaskScheduler.query.filter_by(
-            processor_id=cur_processor.id).first()
-        if not sched:
-            cur_processor.schedule_job('.full_run_processor', msg_text,
-                                       start_date=cur_processor.start_date,
-                                       end_date=cur_processor.end_date,
-                                       scheduled_time=dt.time(8, 0, 0),
-                                       interval=24)
-            db.session.commit()
-        progress['schedule_processor'] = 'Success!'
+        result = schedule_processor(new_processor_id, current_user_id)
+        if result:
+            progress['schedule_processor'] = 'Success!'
         _set_task_progress(100)
     except:
         _set_task_progress(100)

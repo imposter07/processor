@@ -17,7 +17,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
     ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm,\
     ProcessorDuplicateForm, EditUploaderCampaignMediaPlanForm,\
-    EditUploaderCampaignCreateForm, EditUploaderCreativeForm
+    EditUploaderCampaignCreateForm, EditUploaderCreativeForm,\
+    EditUploaderAdsetMediaPlanForm, EditUploaderAdsetCreateForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -382,10 +383,10 @@ def get_navigation_buttons(buttons=None):
         buttons = [{'Duplicate': 'main.edit_processor_duplication'}]
     elif buttons == 'Uploader':
         buttons = [{'Basic': 'main.edit_uploader'},
-                   {'Campaigns': 'main.edit_uploader_campaign'},
-                   {'Adsets': 'main.edit_uploader'},
+                   {'Campaign': 'main.edit_uploader_campaign'},
+                   {'Adset': 'main.edit_uploader_adsets'},
                    {'Creative': 'main.edit_uploader_creative'},
-                   {'Ads': 'main.edit_uploader'}]
+                   {'Ad': 'main.edit_uploader'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
                    {'Import': 'main.edit_processor_import'},
@@ -766,7 +767,9 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'edit_relation': '.get_uploader_file',
                  'Campaign': '.get_uploader_file',
                  'full_campaign_relation': '.get_uploader_file',
-                 'uploader_campaign_name': '.get_uploader_file'}
+                 'uploader_campaign_name': '.get_uploader_file',
+                 'full_adset_relation': '.get_uploader_file',
+                 'uploader_adset_name': '.get_uploader_file'}
     job_name = arg_trans[table_name]
     return job_name, table_name, proc_arg
 
@@ -784,10 +787,11 @@ def get_table():
         cur_obj = Uploader
         proc_arg['parameter'] = table_name
         table_name = 'Uploader'
+        proc_arg['object_level'] = request.form['object_level']
     cur_proc = cur_obj.query.filter_by(
         name=request.form['object_name']).first_or_404()
     job_name, table_name, proc_arg = translate_table_name_to_job(
-        table_name, proc_arg)
+        table_name=table_name, proc_arg=proc_arg)
     if cur_proc.get_task_in_progress(job_name):
         flash(_('This job: {} is already running!').format(table_name))
         return jsonify({'data': {'data': [], 'cols': [], 'name': table_name}})
@@ -1596,17 +1600,88 @@ def check_base_uploader_object(uploader_id, object_level='Campaign'):
 
 
 def check_relation_uploader_objects(uploader_id, object_level='Campaign'):
+    import datetime as dt
     import uploader.upload.fbapi as up_fbapi
     new_uploader = Uploader.query.get(uploader_id)
     upo = UploaderObjects.query.filter_by(uploader_id=new_uploader.id,
                                           object_level=object_level).first()
+    constant_col = 'relation_constant'
+    position_col = 'position'
     if object_level == 'Campaign':
         relation_column_names = {
-            up_fbapi.CampaignUpload.objective: 'PAUSED',
-            up_fbapi.CampaignUpload.spend_cap: '1000',
-            up_fbapi.CampaignUpload.status: 'LINK_CLICKS'}
+            up_fbapi.CampaignUpload.objective:
+                {constant_col: 'PAUSED'},
+            up_fbapi.CampaignUpload.spend_cap:
+                {constant_col: '1000'},
+            up_fbapi.CampaignUpload.status:
+                {constant_col: 'LINK_CLICKS'}}
     elif object_level == 'Adset':
-        relation_column_names = []
+        relation_column_names = {
+            up_fbapi.AdSetUpload.cam_name:
+                {position_col: [0, 15, 1, 2, 4]},
+            up_fbapi.AdSetUpload.target:
+                {position_col: [22]},
+            up_fbapi.AdSetUpload.country:
+                {position_col: [2]},
+            up_fbapi.AdSetUpload.age_min:
+                {constant_col: '18'},
+            up_fbapi.AdSetUpload.age_max:
+                {constant_col: '44'},
+            up_fbapi.AdSetUpload.genders:
+                {constant_col: 'M'},
+            up_fbapi.AdSetUpload.device:
+                {position_col: [19]},
+            up_fbapi.AdSetUpload.pubs:
+                {position_col: [1]},
+            up_fbapi.AdSetUpload.pos:
+                {constant_col: ''},
+            up_fbapi.AdSetUpload.budget_type:
+                {constant_col: 'lifetime'},
+            up_fbapi.AdSetUpload.budget_value:
+                {constant_col: '10'},
+            up_fbapi.AdSetUpload.goal:
+                {constant_col: 'LINK_CLICKS'},
+            up_fbapi.AdSetUpload.bid:
+                {constant_col: '2'},
+            up_fbapi.AdSetUpload.start_time:
+                {constant_col: dt.datetime.today().strftime('%m/%d/%Y')},
+            up_fbapi.AdSetUpload.end_time:
+                {constant_col: (dt.datetime.today() +
+                                dt.timedelta(days=7)).strftime('%m/%d/%Y')},
+            up_fbapi.AdSetUpload.status:
+                {constant_col: 'PAUSED'},
+            up_fbapi.AdSetUpload.bill_evt:
+                {constant_col: 'IMPRESSIONS'},
+            up_fbapi.AdSetUpload.prom_page:
+                {constant_col: '_'}
+        }
+    elif object_level == 'Ad':
+        relation_column_names = {
+            up_fbapi.AdUpload.cam_name: {},
+            up_fbapi.AdUpload.adset_name: {},
+            up_fbapi.AdUpload.filename:
+                {position_col: [3, 0]},
+            up_fbapi.AdUpload.prom_page:
+                {constant_col: '_'},
+            up_fbapi.AdUpload.ig_id:
+                {constant_col: '_'},
+            up_fbapi.AdUpload.link:
+                {position_col: ''},
+            up_fbapi.AdUpload.d_link:
+                {constant_col: 'liquidadvertising.com'},
+            up_fbapi.AdUpload.title:
+                {position_col: [3, 1]},
+            up_fbapi.AdUpload.body:
+                {position_col: [3, 1]},
+            up_fbapi.AdUpload.desc:
+                {position_col: [3, 1]},
+            up_fbapi.AdUpload.cta:
+                {constant_col: 'DOWNLOAD'},
+            up_fbapi.AdUpload.view_tag:
+                {constant_col: ''},
+            up_fbapi.AdUpload.status:
+                {constant_col: 'PAUSED'},
+        }
     else:
         relation_column_names = []
     for col in relation_column_names:
@@ -1615,7 +1690,7 @@ def check_relation_uploader_objects(uploader_id, object_level='Campaign'):
         if not relation:
             new_relation = UploaderRelations(
                 uploader_objects_id=upo.id, impacted_column_name=col,
-                relation_constant=relation_column_names[col])
+                **relation_column_names[col])
             db.session.add(new_relation)
             db.session.commit()
 
@@ -1790,7 +1865,7 @@ def edit_uploader_upload_file(uploader_name):
 @login_required
 def edit_uploader(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
-                                  edit_progress=25, edit_name='Basic')
+                                  edit_progress=20, edit_name='Basic')
     uploader_to_edit = kwargs['object']
     form = EditUploaderForm(uploader_name)
     if request.method == 'POST':
@@ -1840,13 +1915,14 @@ def edit_uploader(uploader_name):
     return render_template('create_processor.html',  **kwargs)
 
 
-def set_uploader_relations_in_db(uploader_id, form_relations):
+def set_uploader_relations_in_db(uploader_id, form_relations,
+                                 object_level='Campaign'):
     cur_up = Uploader.query.get(uploader_id)
-    up_cam = UploaderObjects.query.filter_by(
-        uploader_id=cur_up.id, object_level='Campaign').first()
+    up_obj = UploaderObjects.query.filter_by(
+        uploader_id=cur_up.id, object_level=object_level).first()
     for rel in form_relations:
         up_rel = UploaderRelations.query.filter_by(
-            uploader_objects_id=up_cam.id,
+            uploader_objects_id=up_obj.id,
             impacted_column_name=rel['impacted_column_name']).first()
         up_rel.relation_constant = rel['relation_constant']
         up_rel.position = rel['position']
@@ -1874,7 +1950,7 @@ def uploader_campaign_name_file_upload(uploader_name):
 @login_required
 def edit_uploader_campaign(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
-                                  edit_progress=25, edit_name='Campaigns')
+                                  edit_progress=40, edit_name='Campaign')
     cur_up = kwargs['object']
     up_cam = UploaderObjects.query.filter_by(
         uploader_id=cur_up.id, object_level='Campaign').first()
@@ -1908,17 +1984,72 @@ def edit_uploader_campaign(uploader_name):
             msg_text = 'Creating and uploading campaigns for uploader.'
             cur_up.launch_task(
                 '.uploader_create_and_upload_campaigns', _(msg_text),
-                running_user=current_user.id)
+                running_user=current_user.id, object_level='Campaign')
             db.session.commit()
             return redirect(url_for('main.edit_uploader_campaign',
                                     uploader_name=cur_up.name))
         else:
             msg_text = 'Creating campaigns for uploader.'
             cur_up.launch_task(
-                '.uploader_create_campaigns', _(msg_text),
-                running_user=current_user.id)
+                '.uploader_create_objects', _(msg_text),
+                running_user=current_user.id, object_level='Campaign')
             db.session.commit()
             return redirect(url_for('main.edit_uploader_campaign',
+                                    uploader_name=cur_up.name))
+    kwargs['form'] = form
+    return render_template('create_processor.html',  **kwargs)
+
+
+@bp.route('/uploader/<uploader_name>/edit/adsets', methods=['GET', 'POST'])
+@login_required
+def edit_uploader_adsets(uploader_name):
+    kwargs = get_current_uploader(uploader_name, 'edit_uploader',
+                                  edit_progress=60, edit_name='Adset')
+    cur_up = kwargs['object']
+    up_obj = UploaderObjects.query.filter_by(
+        uploader_id=cur_up.id, object_level='Adset').first()
+    relations = EditUploaderCampaignMediaPlanForm.set_relations(
+        data_source=UploaderRelations, cur_upo=up_obj)
+    if up_obj.name_create_type == 'Media Plan':
+        form_object = EditUploaderAdsetMediaPlanForm
+        form = form_object(relations=relations)
+        if request.method == 'POST':
+            form.validate()
+            up_obj.media_plan_columns = form.media_plan_columns.data
+            up_obj.partner_filter = form.partner_name_filter.data
+            up_obj.name_create_type = form.name_create_type.data
+            db.session.commit()
+        elif request.method == 'GET':
+            form.name_create_type.data = up_obj.name_create_type
+            form.media_plan_columns.data = up_obj.media_plan_columns
+            form.partner_name_filter.data = up_obj.partner_filter
+    else:
+        form_object = EditUploaderAdsetCreateForm
+        form = form_object(relations=relations)
+        if request.method == 'POST':
+            form.validate()
+            up_obj.name_create_type = form.name_create_type.data
+            db.session.commit()
+        if request.method == 'GET':
+            form.name_create_type.data = up_obj.name_create_type
+    if request.method == 'POST':
+        set_uploader_relations_in_db(cur_up.id, form.relations.data,
+                                     object_level='Adset')
+        if form.form_continue.data == 'continue':
+            msg_text = 'Creating and uploading adsets for uploader.'
+            cur_up.launch_task(
+                '.uploader_create_and_upload_objects', _(msg_text),
+                running_user=current_user.id)
+            db.session.commit()
+            return redirect(url_for('main.edit_uploader_creative',
+                                    uploader_name=cur_up.name))
+        else:
+            msg_text = 'Creating campaigns for uploader.'
+            cur_up.launch_task(
+                '.uploader_create_objects', _(msg_text),
+                running_user=current_user.id)
+            db.session.commit()
+            return redirect(url_for('main.edit_uploader_adsets',
                                     uploader_name=cur_up.name))
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
@@ -1928,7 +2059,7 @@ def edit_uploader_campaign(uploader_name):
 @login_required
 def edit_uploader_creative(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader_creative',
-                                  edit_progress=25, edit_name='Creative')
+                                  edit_progress=80, edit_name='Creative')
     # uploader_to_edit = kwargs['object']
     form = EditUploaderCreativeForm(uploader_name)
     kwargs['form'] = form

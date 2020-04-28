@@ -570,7 +570,8 @@ class EditUploaderCampaignMediaPlanForm(FlaskForm):
                          cre.MediaPlan.placement_phase,
                          cre.MediaPlan.campaign_phase,
                          cre.MediaPlan.partner_name,
-                         cre.MediaPlan.country_name]]
+                         cre.MediaPlan.country_name,
+                         cre.MediaPlan.placement_name]]
     media_plan_columns = SelectMultipleField(
         _l('Media Plan Columns'), choices=media_plan_column_choices,
         default=[(x, x) for x in
@@ -599,6 +600,40 @@ class EditUploaderCampaignCreateForm(FlaskForm):
         choices=[(x, x) for x in ['Media Plan', 'File']])
     create_file = FileField(_l('Create File'))
     refresh_uploader_campaign_name = SubmitField('View Current Campaign Names')
+    refresh_full_campaign_relation = SubmitField('View Full Relation File')
+    form_continue = HiddenField('form_continue')
+    relations = FieldList(FormField(RelationForm, label=''))
+
+
+class EditUploaderAdsetMediaPlanForm(FlaskForm):
+    name_create_type = SelectField(
+        _l('Name Creation Type'),
+        choices=[(x, x) for x in ['Media Plan', 'File']])
+    media_plan_column_choices = [
+        (x, x) for x in [cre.MediaPlan.campaign_id,
+                         cre.MediaPlan.campaign_name,
+                         cre.MediaPlan.placement_phase,
+                         cre.MediaPlan.campaign_phase,
+                         cre.MediaPlan.partner_name,
+                         cre.MediaPlan.country_name,
+                         cre.MediaPlan.placement_name]]
+    media_plan_columns = SelectMultipleField(
+        _l('Media Plan Columns'), choices=media_plan_column_choices,
+        default=[(x, x) for x in [cre.MediaPlan.placement_name]])
+    partner_name_filter = TextAreaField(
+        _l('Partner Name Filter'), default='Facebook|Instagram')
+    refresh_uploader_adset_name = SubmitField('View Current Adset Names')
+    refresh_full_adset_relation = SubmitField('View Full Relation File')
+    form_continue = HiddenField('form_continue')
+    relations = FieldList(FormField(RelationForm, label=''))
+
+
+class EditUploaderAdsetCreateForm(FlaskForm):
+    name_create_type = SelectField(
+        _l('Name Creation Type'),
+        choices=[(x, x) for x in ['Media Plan', 'File']])
+    create_file = FileField(_l('Create File'))
+    refresh_uploader_campaign_name = SubmitField('View Current Adset Names')
     refresh_full_campaign_relation = SubmitField('View Full Relation File')
     form_continue = HiddenField('form_continue')
     relations = FieldList(FormField(RelationForm, label=''))

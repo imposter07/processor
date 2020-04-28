@@ -855,6 +855,11 @@ class UploaderRelations(db.Model):
             'relation_constant': self.relation_constant,
             'position': self.position,
         }
+        for col in ['position']:
+            if form_dict[col]:
+                val = ProcessorDatasources.convert_string_to_list(
+                    form_dict[col])
+                form_dict[col] = val
         return form_dict
 
     def set_from_form(self, form, cur_upo_id):

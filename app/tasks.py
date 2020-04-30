@@ -947,6 +947,40 @@ def get_uploader_and_user_from_id(uploader_id, current_user_id):
     return uploader_to_run, user_that_ran
 
 
+def parse_uploader_error_dict(uploader_id, current_user_id, error_dict):
+    try:
+        if not error_dict:
+            return True
+        uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
+            uploader_id=uploader_id, current_user_id=current_user_id)
+        for key in error_dict:
+            if key == 'fb/campaign_upload.xlsx':
+                upo = UploaderObjects.query.filter_by(
+                    uploader_id=uploader_to_run.id,
+                    object_level='Campaign').first()
+            elif key == 'fb/adset_upload.xlsx':
+                upo = UploaderObjects.query.filter_by(
+                    uploader_id=uploader_to_run.id,
+                    object_level='Adset').first()
+            elif key == 'fb/ad_upload.xlsx':
+                upo = UploaderObjects.query.filter_by(
+                    uploader_id=uploader_to_run.id,
+                    object_level='Ad').first()
+            else:
+                continue
+            for rel_col_name in error_dict[key]:
+                relation = UploaderRelations.query.filter_by(
+                    uploader_objects_id=upo.id,
+                    impacted_column_name=rel_col_name).first()
+                relation.unresolved_relations = error_dict[key][rel_col_name]
+                db.session.commit()
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def run_uploader(uploader_id, current_user_id, uploader_args):
     try:
         uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
@@ -959,7 +993,8 @@ def run_uploader(uploader_id, current_user_id, uploader_args):
         file_path = adjust_path(uploader_to_run.local_path)
         from uploader.main import main
         os.chdir(file_path)
-        main(uploader_args)
+        error_dict = main(uploader_args)
+        parse_uploader_error_dict(uploader_id, current_user_id, error_dict)
         msg_text = ("{} finished running.".format(uploader_to_run.name))
         processor_post_message(proc=uploader_to_run, usr=user_that_ran,
                                text=msg_text, run_complete=True,
@@ -1078,7 +1113,7 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
                 uploader_objects_id=upo.id,
                 impacted_column_name=vk).first()
             rel_pos = UploaderRelations.convert_string_to_list(
-                current_value=relation.position)
+                string_value=relation.position)
             if rel_pos and rel_pos != ['']:
                 df = get_uploader_relation_values_from_position(
                     rel_pos=rel_pos, df=df, vk=vk, object_level=object_level)
@@ -1783,28 +1818,32 @@ def build_processor_from_request(processor_id, current_user_id):
 def save_media_plan(processor_id, current_user_id, media_plan,
                     object_type=Processor):
     try:
-        cur_processor = object_type.query.get(processor_id)
+        cur_obj = object_type.query.get(processor_id)
         cur_user = User.query.get(current_user_id)
-        if not cur_processor.local_path:
+        if not cur_obj.local_path:
             base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
-                cur_processor.campaign.product.client.name,
-                cur_processor.campaign.product.name,
-                cur_processor.campaign.name,
-                cur_processor.name)
+                cur_obj.campaign.product.client.name,
+                cur_obj.campaign.product.name,
+                cur_obj.campaign.name,
+                cur_obj.name)
         else:
-            base_path = cur_processor.local_path
+            base_path = cur_obj.local_path
         if not os.path.exists(base_path):
             os.makedirs(base_path)
-        media_plan.to_csv(os.path.join(
-            base_path, 'mediaplan.csv'
-        ))
-        msg_text = ('{} media plan was updated.'
-                    ''.format(cur_processor.name))
         if object_type == Processor:
             object_name = 'Processor'
+            media_plan.to_csv(os.path.join(
+                base_path, 'mediaplan.csv'
+            ))
         else:
             object_name = 'Uploader'
-        processor_post_message(cur_processor, cur_user, msg_text,
+            import uploader.upload.utils as utl
+            utl.write_df(df=media_plan,
+                         file_name=os.path.join(base_path, 'mediaplan.xlsx'),
+                         sheet_name='Media Plan')
+        msg_text = ('{} media plan was updated.'
+                    ''.format(cur_obj.name))
+        processor_post_message(cur_obj, cur_user, msg_text,
                                object_name=object_name)
         _set_task_progress(100)
     except:

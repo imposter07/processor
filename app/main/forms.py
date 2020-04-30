@@ -550,6 +550,8 @@ class EditUploaderForm(UploaderForm):
 class RelationForm(FlaskForm):
     impacted_column_name = StringField(
         'Column Name', render_kw={'readonly': True})
+    unresolved_relations = StringField(
+        'Unresolved Relations', render_kw={'readonly': True})
     relation_constant = StringField(
         'Relation Constant', description='Only populate if you want a '
                                          'value to appear for all line items.')

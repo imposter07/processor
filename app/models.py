@@ -848,12 +848,14 @@ class UploaderRelations(db.Model):
     impacted_column_name = db.Column(db.Text)
     relation_constant = db.Column(db.Text)
     position = db.Column(db.Text)
+    unresolved_relations = db.Column(db.Text)
 
     def get_form_dict(self):
         form_dict = {
             'impacted_column_name': self.impacted_column_name,
             'relation_constant': self.relation_constant,
             'position': self.position,
+            'unresolved_relations': self.unresolved_relations
         }
         for col in ['position']:
             if form_dict[col]:

@@ -4,6 +4,7 @@ import json
 import time
 import copy
 import shutil
+import itertools
 import pandas as pd
 from datetime import datetime
 from flask import render_template
@@ -977,19 +978,26 @@ def run_uploader(uploader_id, current_user_id, uploader_args):
         return False
 
 
-def uploader_file_translation(uploader_file_name):
+def uploader_file_translation(uploader_file_name, object_level='Campaign'):
+    base_config_path = 'config'
+    base_create_path = os.path.join(base_config_path, 'create')
+    base_fb_path = os.path.join(base_config_path, 'fb')
     file_translation = {
-        'Creator': 'config/create/creator_config.xlsx',
-        'Campaign': 'config/fb/campaign_upload.xlsx',
-        'Adset': 'config/fb/adset_upload.xlsx',
-        'Ad': 'config/fb/ad_upload.xlsx',
-        'edit_relation': 'config/create/campaign_relation.xlsx',
-        'full_campaign_relation': 'config/create/campaign_relation.xlsx',
-        'campaign_name_create': 'config/create/campaign_name_creator.xlsx',
-        'uploader_campaign_name': 'config/fb/campaign_upload.xlsx',
-        'uploader_adset_name': 'config/fb/adset_upload.xlsx',
-        'adset_name_create': 'config/create/adset_name_creator.xlsx',
-        'full_adset_relation': 'config/create/adset_relation.xlsx'}
+        'Creator': os.path.join(base_create_path, 'creator_config.xlsx'),
+        'uploader_creative_files': ''}
+    for name in ['Campaign', 'Adset', 'Ad', 'uploader_current_name']:
+        if name == 'uploader_current_name':
+            file_name = object_level.lower()
+        else:
+            file_name = name.lower()
+        file_name = '{}_upload.xlsx'.format(file_name)
+        file_translation[name] = os.path.join(base_fb_path, file_name)
+    for name in ['edit_relation', 'uploader_full_relation']:
+        file_name = '{}_relation.xlsx'.format(object_level.lower())
+        file_translation[name] = os.path.join(base_create_path, file_name)
+    for name in ['name_creator']:
+        file_name = '{}_name_creator.xlsx'.format(object_level.lower())
+        file_translation[name] = os.path.join(base_create_path, file_name)
     return file_translation[uploader_file_name]
 
 
@@ -1019,21 +1027,26 @@ def get_current_uploader_obj_names(uploader_id, current_user_id, cur_path,
 
 
 def get_uploader_relation_values_from_position(rel_pos, df, vk, object_level):
-    rel_pos = int(rel_pos)
+    rel_pos = [int(x) for x in rel_pos]
     col = get_primary_column(object_level)
     df = df.loc[df['impacted_column_name'] == vk]
     cdf = pd.read_excel(uploader_file_translation(object_level))
-    new_values = (cdf[col].str.split('_').
-                  str[rel_pos].unique().tolist())
+    cdf = cdf[col].str.split('_', expand=True)
+    new_values = list(itertools.product(*[cdf[x].dropna().unique().tolist()
+                      for x in rel_pos]))
+    new_values = ['|'.join(map(str, x)) for x in new_values]
     new_values = [x for x in new_values
-                  if x not in
-                  df['column_value'].unique().tolist()]
+                  if x not in df['column_value'].unique().tolist()]
     cdf = pd.DataFrame(new_values, columns=['column_value'])
-    cdf['column_name'] = col
+    cdf['column_name'] = '|'.join([col for x in rel_pos])
     cdf['impacted_column_name'] = vk
-    cdf['impacted_column_new_value'] = ''
+    if vk in ['campaign_name', 'adset_name', 'ad_name']:
+        impacted_new_value = cdf['column_value'].str.replace('|', '_')
+    else:
+        impacted_new_value = ''
+    cdf['impacted_column_new_value'] = impacted_new_value
     df = df.append(cdf, ignore_index=True, sort=False)
-    df['position'] = rel_pos
+    df['position'] = '|'.join([str(x) for x in rel_pos])
     return df
 
 
@@ -1049,21 +1062,30 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         file_path = adjust_path(uploader_to_run.local_path)
         os.chdir(file_path)
-        file_name = uploader_file_translation(parameter)
-        if parameter in ['uploader_campaign_name', 'uploader_adset_name']:
+        file_name = uploader_file_translation(
+            uploader_file_name=parameter, object_level=object_level)
+        if parameter in ['uploader_current_name']:
             df = get_current_uploader_obj_names(
                 uploader_id, current_user_id, cur_path, file_path, file_name,
                 object_level=object_level)
+        elif parameter in ['uploader_creative_files']:
+            file_names = os.listdir("./creative/")
+            df = pd.DataFrame(file_names, columns=['creative_file_names'])
         else:
             df = pd.read_excel(file_name)
         if vk:
             relation = UploaderRelations.query.filter_by(
                 uploader_objects_id=upo.id,
                 impacted_column_name=vk).first()
-            rel_pos = relation.position.strip('{}')
-            if rel_pos:
+            rel_pos = UploaderRelations.convert_string_to_list(
+                current_value=relation.position)
+            if rel_pos and rel_pos != ['']:
                 df = get_uploader_relation_values_from_position(
                     rel_pos=rel_pos, df=df, vk=vk, object_level=object_level)
+            else:
+                df = pd.DataFrame([
+                    {'Result': 'RELATION DOES NOT HAVE A POSITION SET ONE ' 
+                               'AND REMOVE CONSTANT'}])
         _set_task_progress(100)
         return [df]
     except:
@@ -1098,7 +1120,7 @@ def set_uploader_config_file(uploader_id, current_user_id):
 
 
 def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
-                        vk=None, mem_file=False):
+                        vk=None, mem_file=False, object_level='Campaign'):
     try:
         cur_up, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
@@ -1106,7 +1128,8 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
         import uploader.upload.utils as utl
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(cur_up.local_path))
-        file_name = uploader_file_translation(parameter)
+        file_name = uploader_file_translation(
+            uploader_file_name=parameter, object_level=object_level)
         if mem_file:
             new_data.seek(0)
             with open(file_name, 'wb') as f:
@@ -1119,7 +1142,7 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
             if vk:
                 odf = pd.read_excel(file_name)
                 odf = odf.loc[odf['impacted_column_name'] != vk]
-                df = odf.append(df, ignore_index=True)
+                df = odf.append(df, ignore_index=True, sort=False)
             utl.write_df(df, file_name)
         msg_text = ('{} uploader {} was updated.'
                     ''.format(file_name, cur_up.name))
@@ -1145,7 +1168,7 @@ def set_object_relation_file(uploader_id, current_user_id,
         import uploader.upload.utils as utl
         os.chdir(adjust_path(cur_up.local_path))
         file_name = uploader_file_translation(
-            'full_{}_relation'.format(object_level.lower()))
+            'uploader_full_relation', object_level=object_level)
         df = pd.read_excel(file_name)
         for rel in up_rel:
             if rel.relation_constant:
@@ -1260,9 +1283,8 @@ def uploader_create_objects(uploader_id, current_user_id,
         import uploader.upload.creator as cre
         import uploader.upload.utils as utl
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        creator_column = '|'.join(
-            x.strip('"') for x in
-            up_obj.media_plan_columns.strip("}''{").split(','))
+        creator_col = UploaderObjects.string_to_list(up_obj.media_plan_columns)
+        creator_column = '|'.join(creator_col)
         file_filter = 'Partner Name::{}'.format(up_obj.partner_filter)
         new_dict = get_uploader_create_dict(
             object_level=object_level, create_type=up_obj.name_create_type,
@@ -1323,6 +1345,22 @@ def uploader_save_creative(uploader_id, current_user_id, file, file_name):
             shutil.copyfileobj(file, f, length=131072)
         _set_task_progress(100)
         return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+
+
+def get_uploader_creative(uploader_id, current_user_id):
+    try:
+        cur_up, user_that_ran = get_uploader_and_user_from_id(
+            uploader_id=uploader_id, current_user_id=current_user_id)
+        _set_task_progress(0)
+        file_path = adjust_path(cur_up.local_path)
+        os.chdir(file_path)
+        file_names = os.listdir(".")
+        df = pd.DataFrame(file_names, columns=['creative_file_names'])
+        return [df]
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Uploader {} User {}'.format(

@@ -581,6 +581,7 @@
                     data: json,
                     object_name:  "{{ object_name }}",
                     object_type: "{{ title }}",
+                    object_level: "{{ edit_name }}",
                     table: sendTableName
                 }).done(function(data, status) {
                     reloadPage();

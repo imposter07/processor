@@ -16,9 +16,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
     ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm,\
-    ProcessorDuplicateForm, EditUploaderCampaignMediaPlanForm,\
-    EditUploaderCampaignCreateForm, EditUploaderCreativeForm,\
-    EditUploaderAdsetMediaPlanForm, EditUploaderAdsetCreateForm
+    ProcessorDuplicateForm, EditUploaderMediaPlanForm,\
+    EditUploaderNameCreateForm, EditUploaderCreativeForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -384,9 +383,9 @@ def get_navigation_buttons(buttons=None):
     elif buttons == 'Uploader':
         buttons = [{'Basic': 'main.edit_uploader'},
                    {'Campaign': 'main.edit_uploader_campaign'},
-                   {'Adset': 'main.edit_uploader_adsets'},
+                   {'Adset': 'main.edit_uploader_adset'},
                    {'Creative': 'main.edit_uploader_creative'},
-                   {'Ad': 'main.edit_uploader'}]
+                   {'Ad': 'main.edit_uploader_ad'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
                    {'Import': 'main.edit_processor_import'},
@@ -712,6 +711,7 @@ def post_table():
         cur_obj = Processor
     else:
         cur_obj = Uploader
+        proc_arg['object_level'] = request.form['object_level']
     if 'vendorkey' in table_name:
         split_table_name = table_name.split('vendorkey')
         table_name = split_table_name[0]
@@ -762,14 +762,11 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'rate_card': '.get_rate_card',
                  'edit_conversions': '.get_processor_conversions',
                  'data_sources': '.get_processor_sources',
-                 'imports': '.get_processor_sources',
-                 'Uploader': '.get_uploader_file',
-                 'edit_relation': '.get_uploader_file',
-                 'Campaign': '.get_uploader_file',
-                 'full_campaign_relation': '.get_uploader_file',
-                 'uploader_campaign_name': '.get_uploader_file',
-                 'full_adset_relation': '.get_uploader_file',
-                 'uploader_adset_name': '.get_uploader_file'}
+                 'imports': '.get_processor_sources'}
+    for x in ['Uploader', 'Campaign', 'Adset', 'Ad',
+              'uploader_full_relation', 'edit_relation', 'name_creator',
+              'uploader_current_name', 'uploader_creative_files']:
+        arg_trans[x] = '.get_uploader_file'
     job_name = arg_trans[table_name]
     return job_name, table_name, proc_arg
 
@@ -1941,77 +1938,22 @@ def uploader_campaign_name_file_upload(uploader_name):
     cur_up.launch_task(
         '.write_uploader_file', _(msg_text),
         running_user=current_user.id, new_data=mem,
-        parameter='campaign_name_create', mem_file=True)
+        parameter='name_creator', mem_file=True,
+        object_level=request.form['object_level'])
     db.session.commit()
     return jsonify({'data': 'success'})
 
 
-@bp.route('/uploader/<uploader_name>/edit/campaign', methods=['GET', 'POST'])
-@login_required
-def edit_uploader_campaign(uploader_name):
+def edit_uploader_base_objects(uploader_name, object_level, next_level='Page'):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
-                                  edit_progress=40, edit_name='Campaign')
-    cur_up = kwargs['object']
-    up_cam = UploaderObjects.query.filter_by(
-        uploader_id=cur_up.id, object_level='Campaign').first()
-    relations = EditUploaderCampaignMediaPlanForm.set_relations(
-        data_source=UploaderRelations, cur_upo=up_cam)
-    if up_cam.name_create_type == 'Media Plan':
-        form_object = EditUploaderCampaignMediaPlanForm
-        form = form_object(relations=relations)
-        if request.method == 'POST':
-            form.validate()
-            up_cam.media_plan_columns = form.media_plan_columns.data
-            up_cam.partner_filter = form.partner_name_filter.data
-            up_cam.name_create_type = form.name_create_type.data
-            db.session.commit()
-        elif request.method == 'GET':
-            form.name_create_type.data = up_cam.name_create_type
-            form.media_plan_columns.data = up_cam.media_plan_columns
-            form.partner_name_filter.data = up_cam.partner_filter
-    else:
-        form_object = EditUploaderCampaignCreateForm
-        form = form_object(relations=relations)
-        if request.method == 'POST':
-            form.validate()
-            up_cam.name_create_type = form.name_create_type.data
-            db.session.commit()
-        if request.method == 'GET':
-            form.name_create_type.data = up_cam.name_create_type
-    if request.method == 'POST':
-        set_uploader_relations_in_db(cur_up.id, form.relations.data)
-        if form.form_continue.data == 'continue':
-            msg_text = 'Creating and uploading campaigns for uploader.'
-            cur_up.launch_task(
-                '.uploader_create_and_upload_campaigns', _(msg_text),
-                running_user=current_user.id, object_level='Campaign')
-            db.session.commit()
-            return redirect(url_for('main.edit_uploader_campaign',
-                                    uploader_name=cur_up.name))
-        else:
-            msg_text = 'Creating campaigns for uploader.'
-            cur_up.launch_task(
-                '.uploader_create_objects', _(msg_text),
-                running_user=current_user.id, object_level='Campaign')
-            db.session.commit()
-            return redirect(url_for('main.edit_uploader_campaign',
-                                    uploader_name=cur_up.name))
-    kwargs['form'] = form
-    return render_template('create_processor.html',  **kwargs)
-
-
-@bp.route('/uploader/<uploader_name>/edit/adsets', methods=['GET', 'POST'])
-@login_required
-def edit_uploader_adsets(uploader_name):
-    kwargs = get_current_uploader(uploader_name, 'edit_uploader',
-                                  edit_progress=60, edit_name='Adset')
+                                  edit_progress=40, edit_name=object_level)
     cur_up = kwargs['object']
     up_obj = UploaderObjects.query.filter_by(
-        uploader_id=cur_up.id, object_level='Adset').first()
-    relations = EditUploaderCampaignMediaPlanForm.set_relations(
+        uploader_id=cur_up.id, object_level=object_level).first()
+    relations = EditUploaderMediaPlanForm.set_relations(
         data_source=UploaderRelations, cur_upo=up_obj)
     if up_obj.name_create_type == 'Media Plan':
-        form_object = EditUploaderAdsetMediaPlanForm
+        form_object = EditUploaderMediaPlanForm
         form = form_object(relations=relations)
         if request.method == 'POST':
             form.validate()
@@ -2024,7 +1966,7 @@ def edit_uploader_adsets(uploader_name):
             form.media_plan_columns.data = up_obj.media_plan_columns
             form.partner_name_filter.data = up_obj.partner_filter
     else:
-        form_object = EditUploaderAdsetCreateForm
+        form_object = EditUploaderNameCreateForm
         form = form_object(relations=relations)
         if request.method == 'POST':
             form.validate()
@@ -2033,26 +1975,44 @@ def edit_uploader_adsets(uploader_name):
         if request.method == 'GET':
             form.name_create_type.data = up_obj.name_create_type
     if request.method == 'POST':
-        set_uploader_relations_in_db(cur_up.id, form.relations.data,
-                                     object_level='Adset')
+        set_uploader_relations_in_db(cur_up.id, form.relations.data)
         if form.form_continue.data == 'continue':
-            msg_text = 'Creating and uploading adsets for uploader.'
+            msg_text = 'Creating and uploading {} for uploader.'.format(
+                object_level)
             cur_up.launch_task(
                 '.uploader_create_and_upload_objects', _(msg_text),
-                running_user=current_user.id)
+                running_user=current_user.id, object_level=object_level)
             db.session.commit()
-            return redirect(url_for('main.edit_uploader_creative',
-                                    uploader_name=cur_up.name))
+            return redirect(url_for(
+                'main.edit_uploader_{}'.format(next_level.lower()),
+                uploader_name=cur_up.name))
         else:
-            msg_text = 'Creating campaigns for uploader.'
+            msg_text = 'Creating {} for uploader.'.format(object_level)
             cur_up.launch_task(
                 '.uploader_create_objects', _(msg_text),
-                running_user=current_user.id)
+                running_user=current_user.id, object_level=object_level)
             db.session.commit()
-            return redirect(url_for('main.edit_uploader_adsets',
-                                    uploader_name=cur_up.name))
+            return redirect(url_for(
+                'main.edit_uploader_{}'.format(object_level.lower()),
+                uploader_name=cur_up.name))
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
+
+
+@bp.route('/uploader/<uploader_name>/edit/campaign', methods=['GET', 'POST'])
+@login_required
+def edit_uploader_campaign(uploader_name):
+    object_level = 'Campaign'
+    next_level = 'Adset'
+    return edit_uploader_base_objects(uploader_name, object_level, next_level)
+
+
+@bp.route('/uploader/<uploader_name>/edit/adset', methods=['GET', 'POST'])
+@login_required
+def edit_uploader_adset(uploader_name):
+    object_level = 'Adset'
+    next_level = 'Creative'
+    return edit_uploader_base_objects(uploader_name, object_level, next_level)
 
 
 @bp.route('/uploader/<uploader_name>/edit/creative', methods=['GET', 'POST'])
@@ -2063,6 +2023,13 @@ def edit_uploader_creative(uploader_name):
     # uploader_to_edit = kwargs['object']
     form = EditUploaderCreativeForm(uploader_name)
     kwargs['form'] = form
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_uploader_creative',
+                                    uploader_name=uploader_name))
+        else:
+            return redirect(url_for('main.edit_uploader_ad',
+                                    uploader_name=uploader_name))
     return render_template('create_processor.html',  **kwargs)
 
 
@@ -2079,6 +2046,14 @@ def uploader_file_upload(uploader_name):
         running_user=current_user.id, file=mem, file_name=file_name)
     db.session.commit()
     return jsonify({'data': 'success'})
+
+
+@bp.route('/uploader/<uploader_name>/edit/ad', methods=['GET', 'POST'])
+@login_required
+def edit_uploader_ad(uploader_name):
+    object_level = 'Ad'
+    next_level = 'Page'
+    return edit_uploader_base_objects(uploader_name, object_level, next_level)
 
 
 @bp.route('/help')

@@ -838,7 +838,7 @@ class UploaderObjects(db.Model):
 
     @staticmethod
     def string_to_list(string_value):
-        return ProcessorDatasources.convert_string_to_list(string_value)
+        return UploaderRelations.convert_string_to_list(string_value)
 
 
 class UploaderRelations(db.Model):
@@ -857,10 +857,16 @@ class UploaderRelations(db.Model):
         }
         for col in ['position']:
             if form_dict[col]:
-                val = ProcessorDatasources.convert_string_to_list(
-                    form_dict[col])
+                val = self.convert_string_to_list(form_dict[col])
                 form_dict[col] = val
         return form_dict
+
+    @staticmethod
+    def convert_string_to_list(string_value):
+        val = string_value
+        if val:
+            val = ProcessorDatasources.convert_string_to_list(val)
+        return val
 
     def set_from_form(self, form, cur_upo_id):
         self.uploader_objects_id = cur_upo_id.id

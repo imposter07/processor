@@ -560,7 +560,7 @@ class RelationForm(FlaskForm):
     refresh_edit_relation = SubmitField('Edit as Spreadsheet')
 
 
-class EditUploaderCampaignMediaPlanForm(FlaskForm):
+class EditUploaderMediaPlanForm(FlaskForm):
     name_create_type = SelectField(
         _l('Name Creation Type'),
         choices=[(x, x) for x in ['Media Plan', 'File']])
@@ -578,8 +578,8 @@ class EditUploaderCampaignMediaPlanForm(FlaskForm):
                  [cre.MediaPlan.partner_name, cre.MediaPlan.campaign_id]])
     partner_name_filter = TextAreaField(
         _l('Partner Name Filter'), default='Facebook|Instagram')
-    refresh_uploader_campaign_name = SubmitField('View Current Campaign Names')
-    refresh_full_campaign_relation = SubmitField('View Full Relation File')
+    refresh_uploader_current_name = SubmitField('View Current Names')
+    refresh_uploader_full_relation = SubmitField('View Full Relation File')
     form_continue = HiddenField('form_continue')
     relations = FieldList(FormField(RelationForm, label=''))
 
@@ -594,17 +594,17 @@ class EditUploaderCampaignMediaPlanForm(FlaskForm):
         return relation_dict
 
 
-class EditUploaderCampaignCreateForm(FlaskForm):
+class EditUploaderNameCreateForm(FlaskForm):
     name_create_type = SelectField(
         _l('Name Creation Type'),
         choices=[(x, x) for x in ['Media Plan', 'File']])
     create_file = FileField(_l('Create File'))
-    refresh_uploader_campaign_name = SubmitField('View Current Campaign Names')
-    refresh_full_campaign_relation = SubmitField('View Full Relation File')
+    refresh_uploader_current_name = SubmitField('View Current Names')
+    refresh_uploader_full_relation = SubmitField('View Full Relation File')
     form_continue = HiddenField('form_continue')
     relations = FieldList(FormField(RelationForm, label=''))
 
-
+"""
 class EditUploaderAdsetMediaPlanForm(FlaskForm):
     name_create_type = SelectField(
         _l('Name Creation Type'),
@@ -637,9 +637,10 @@ class EditUploaderAdsetCreateForm(FlaskForm):
     refresh_full_campaign_relation = SubmitField('View Full Relation File')
     form_continue = HiddenField('form_continue')
     relations = FieldList(FormField(RelationForm, label=''))
-
+"""
 
 class EditUploaderCreativeForm(FlaskForm):
+    refresh_uploader_creative_files = SubmitField('View Creative Files')
     creative_file = FileField(_l('Creative File'))
     form_continue = HiddenField('form_continue')
 

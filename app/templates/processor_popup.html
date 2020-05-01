@@ -61,7 +61,9 @@
             {% endif %}
         </div>
             {% with post = processor.get_last_post() %}
-                {% include '_post.html' %}
+                {% if post %}
+                    {% include '_post.html' %}
+                {% endif %}
             {% endwith %}
         </div>
     </div>

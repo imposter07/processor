@@ -376,6 +376,7 @@
                 fileMetadataObject: {
                     object_name: "{{ object_name }}",
                     object_type:  "{{ title }}",
+                    object_level: "{{ edit_name }}",
                     object_form: $('#base_form_id').serializeArray()
                 }
             });
@@ -594,6 +595,7 @@
                 {
                     object_type: "{{ title }}",
                     object_name:  "{{ object_name }}",
+                    object_level: "{{ edit_name }}",
                     task_name: tableName,
                 }).done(function(data, status) {
                     let downloadProgress = $('#downloadProgress');

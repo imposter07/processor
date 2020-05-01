@@ -833,6 +833,7 @@ class UploaderObjects(db.Model):
     spend_value = db.Column(db.Numeric)
     objective = db.Column(db.Text)
     partner_filter = db.Column(db.Text)
+    duplication_type = db.Column(db.Text)
     uploader_relations = db.relationship(
         'UploaderRelations', backref='uploader_objects', lazy='dynamic')
 

@@ -1222,7 +1222,8 @@ def set_object_relation_file(uploader_id, current_user_id,
 
 
 def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
-                             creator_column=None, file_filter=None):
+                             creator_column=None, file_filter=None,
+                             duplication_type=None):
     import uploader.upload.creator as cre
     if object_level == 'Campaign':
         if create_type == 'Media Plan':
@@ -1239,7 +1240,7 @@ def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
         else:
             col_file_name = [
                 '/create/campaign_name_creator.xlsx',
-                '/create/campaign_relation.xlsx'],
+                '/create/campaign_relation.xlsx']
             col_new_file = [
                 'fb/campaign_upload.xlsx', 'fb/campaign_upload.xlsx']
             col_create_type = ['create', 'relation']
@@ -1279,15 +1280,19 @@ def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
             col_overwrite = [True, True, '']
             col_filter = [file_filter, '', '']
         else:
+            if duplication_type == 'Custom':
+                dup_col_name = ('ad_name::campaign_name|adset_name::'
+                                '/create/ad_upload_filter.xlsx')
+            else:
+                dup_col_name = 'ad_name::campaign_name|adset_name'
             col_file_name = [
                 '/create/ad_name_creator.xlsx', '/fb/adset_upload.xlsx',
                 '/create/ad_relation.xlsx']
             col_new_file = [
-                '/fb/ad_upload.xlsx', '/fb/ad_upload.xlsx',
-                '/fb/ad_upload.xlsx']
+                'fb/ad_upload.xlsx', 'fb/ad_upload.xlsx',
+                'fb/ad_upload.xlsx']
             col_create_type = ['create', 'duplicate', 'relation']
-            col_column_name = ['ad_name', 'ad_name::campaign_name|adset_name',
-                               '']
+            col_column_name = ['ad_name', dup_col_name, '']
             col_overwrite = [True, '', '']
             col_filter = ['', '', '']
     else:
@@ -1323,7 +1328,8 @@ def uploader_create_objects(uploader_id, current_user_id,
         file_filter = 'Partner Name::{}'.format(up_obj.partner_filter)
         new_dict = get_uploader_create_dict(
             object_level=object_level, create_type=up_obj.name_create_type,
-            creator_column=creator_column, file_filter=file_filter)
+            creator_column=creator_column, file_filter=file_filter,
+            duplication_type=up_obj.duplication_type)
         df = pd.DataFrame(new_dict)
         os.chdir(adjust_path(cur_up.local_path))
         file_name = uploader_file_translation('Creator')

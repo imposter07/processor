@@ -487,12 +487,9 @@ def get_processor_request_links(processor_name):
     return run_links
 
 
-def get_current_processor(processor_name, current_page, edit_progress=0,
-                          edit_name='Page', buttons=None, fix_id=None):
-    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
-    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+def get_posts_for_objects(cur_obj, fix_id, current_page, object_name):
     page = request.args.get('page', 1, type=int)
-    post_filter = {'processor_id': cur_proc.id}
+    post_filter = {'{}_id'.format(object_name): cur_obj.id}
     if fix_id:
         post_filter['request_id'] = fix_id
     query = Post.query
@@ -501,6 +498,22 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
     posts = (query.
              order_by(Post.timestamp.desc()).
              paginate(page, 5, False))
+    next_url = url_for('main.' + current_page, page=posts.next_num,
+                       **{'{}_name'.format(object_name): cur_obj.name}
+                       ) if posts.has_next else None
+    prev_url = url_for('main.' + current_page, page=posts.prev_num,
+                       **{'{}_name'.format(object_name): cur_obj.name}
+                       ) if posts.has_prev else None
+    return posts, next_url, prev_url
+
+
+def get_current_processor(processor_name, current_page, edit_progress=0,
+                          edit_name='Page', buttons=None, fix_id=None):
+    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    posts, next_url, prev_url = get_posts_for_objects(
+        cur_obj=cur_proc, fix_id=fix_id, current_page=current_page,
+        object_name='processor')
     api_imports = {0: {'All': 'import'}}
     for idx, (k, v) in enumerate(vmc.api_translation.items()):
         api_imports[idx + 1] = {k: v}
@@ -515,14 +528,9 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
                 api_imports=api_imports,
                 object_function_call={'processor_name': cur_proc.name},
                 run_links=run_links, edit_links=edit_links,
-                output_links=output_links, request_links=request_links)
+                output_links=output_links, request_links=request_links,
+                next_url=next_url, prev_url=prev_url)
     args['buttons'] = get_navigation_buttons(buttons)
-    next_url = url_for('main.' + current_page, processor_name=cur_proc.name,
-                       page=posts.next_num) if posts.has_next else None
-    prev_url = url_for('main.' + current_page, processor_name=cur_proc.name,
-                       page=posts.prev_num) if posts.has_prev else None
-    args['prev_url'] = prev_url
-    args['next_url'] = next_url
     return args
 
 
@@ -585,14 +593,16 @@ def parse_upload_file_request(current_request):
     current_form = json.loads(current_form[current_key])
     object_name = current_form['object_name']
     object_form = current_form['object_form']
-    return current_key, object_name, object_form
+    object_level = current_form['object_level']
+    return current_key, object_name, object_form, object_level
 
 
 @bp.route('/processor/<processor_name>/edit/import/upload_file',
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_import_upload_file(processor_name):
-    current_key, object_name, object_form = parse_upload_file_request(request)
+    current_key, object_name, object_form, object_level = \
+        parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     mem, file_name = get_file_in_memory_from_request(request, current_key)
     search_dict = {}
@@ -621,7 +631,7 @@ def edit_processor_import_upload_file(processor_name):
             running_user=current_user.id, new_data=mem,
             vk=ds.vendor_key, mem_file=True)
     db.session.commit()
-    return jsonify({'data': 'success'})
+    return jsonify({'data': 'success: {}'.format(processor_name)})
 
 
 @bp.route('/processor/<processor_name>/edit/import', methods=['GET', 'POST'])
@@ -737,7 +747,7 @@ def post_table():
     job_name = arg_trans[table_name]
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
-    if table_name == 'Vendormatrix':
+    if table_name in ['Vendormatrix', 'Uploader']:
         task.wait_and_get_job(loops=20)
     return jsonify({'data': 'success'})
 
@@ -763,7 +773,7 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'edit_conversions': '.get_processor_conversions',
                  'data_sources': '.get_processor_sources',
                  'imports': '.get_processor_sources'}
-    for x in ['Uploader', 'Campaign', 'Adset', 'Ad',
+    for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files']:
         arg_trans[x] = '.get_uploader_file'
@@ -1392,7 +1402,8 @@ def edit_processor_request_fix(processor_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_request_fix_upload_file(processor_name):
-    current_key, object_name, object_form = parse_upload_file_request(request)
+    current_key, object_name, object_form, object_level =\
+        parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     fix_type = [x['value'] for x in object_form if x['name'] == 'fix_type'][0]
     mem, file_name = get_file_in_memory_from_request(request, current_key)
@@ -1415,7 +1426,7 @@ def edit_processor_request_fix_upload_file(processor_name):
     elif fix_type == 'Update Plan':
         check_and_add_media_plan(mem, cur_proc)
     db.session.commit()
-    return jsonify({'data': 'success'})
+    return jsonify({'data': 'success: {}'.format(processor_name)})
 
 
 @bp.route('/processor/<processor_name>/edit/fix/submit',
@@ -1577,22 +1588,29 @@ def uploader():
 def check_base_uploader_object(uploader_id, object_level='Campaign'):
     new_uploader = Uploader.query.get(uploader_id)
     upo = UploaderObjects.query.filter_by(uploader_id=new_uploader.id,
-                                          object_level=object_level)
+                                          object_level=object_level).first()
     if not upo:
         upo = UploaderObjects(uploader_id=new_uploader.id,
                               object_level=object_level)
-        if new_uploader.media_plan:
-            if object_level == 'Campaign':
-                upo.media_plan_columns = [
-                    'Campaign ID', 'Placement Phase\n(If Needed) ',
-                    'Partner Name', 'Country', 'Creative\n(If Needed)']
-            elif object_level == 'Adset':
-                upo.media_plan_columns = ['Placement Name']
+        if object_level == 'Campaign':
+            upo.media_plan_columns = [
+                'Campaign ID', 'Placement Phase (If Needed) ',
+                'Partner Name', 'Country', 'Creative (If Needed)']
             upo.file_filter = 'Facebook|Instagram'
+            upo.name_create_type = 'Media Plan'
+        elif object_level == 'Adset':
+            upo.media_plan_columns = ['Placement Name']
+            upo.file_filter = 'Facebook|Instagram'
+            upo.name_create_type = 'Media Plan'
+        elif object_level == 'Ad':
+            upo.media_plan_columns = ['Placement Name']
+            upo.file_filter = 'Facebook|Instagram'
+            upo.name_create_type = 'File'
+            upo.duplication_type = 'All'
         else:
             pass
         db.session.add(upo)
-        db.commit()
+        db.session.commit()
     return jsonify({'data': 'success'})
 
 
@@ -1695,6 +1713,7 @@ def check_relation_uploader_objects(uploader_id, object_level='Campaign'):
 def create_base_uploader_objects(uploader_id):
     for obj in ['Campaign', 'Adset', 'Ad']:
         check_base_uploader_object(uploader_id, obj)
+    for obj in ['Campaign', 'Adset', 'Ad']:
         check_relation_uploader_objects(uploader_id, obj)
     return jsonify({'data': 'success'})
 
@@ -1810,14 +1829,12 @@ def get_uploader_edit_links():
 
 
 def get_current_uploader(uploader_name, current_page, edit_progress=0,
-                         edit_name='Page', buttons='Uploader'):
+                         edit_name='Page', buttons='Uploader', fix_id=None):
     cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    page = request.args.get('page', 1, type=int)
-    posts = (Post.query.
-             filter_by(uploader_id=cur_up.id).
-             order_by(Post.timestamp.desc()).
-             paginate(page, 5, False))
+    posts, next_url, prev_url = get_posts_for_objects(
+        cur_obj=cur_up, fix_id=fix_id, current_page=current_page,
+        object_name='uploader')
     run_links = get_uploader_run_links(uploader_name, edit_name)
     edit_links = get_uploader_edit_links()
     # output_links = get_uploader_output_links()
@@ -1827,13 +1844,8 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
             'edit_progress': edit_progress, 'edit_name': edit_name,
             'buttons': get_navigation_buttons(buttons),
             'object_function_call': {'uploader_name': cur_up.name},
-            'run_links': run_links, 'edit_links': edit_links}
-    next_url = url_for('main.' + current_page, uploader_name=cur_up.name,
-                       page=posts.next_num) if posts.has_next else None
-    prev_url = url_for('main.' + current_page, uploader_name=cur_up.name,
-                       page=posts.prev_num) if posts.has_prev else None
-    args['prev_url'] = prev_url
-    args['next_url'] = next_url
+            'run_links': run_links, 'edit_links': edit_links,
+            'next_url': next_url, 'prev_url': prev_url}
     return args
 
 
@@ -1849,13 +1861,14 @@ def uploader_page(uploader_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_uploader_upload_file(uploader_name):
-    current_key, object_name, object_form = parse_upload_file_request(request)
+    current_key, object_name, object_form, object_level =\
+        parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     mem, file_name = get_file_in_memory_from_request(request, current_key)
     check_and_add_media_plan(mem, cur_up, object_type=Uploader)
     cur_up.media_plan = True
     db.session.commit()
-    return jsonify({'data': 'success'})
+    return jsonify({'data': 'success: {}'.format(uploader_name)})
 
 
 @bp.route('/uploader/<uploader_name>/edit', methods=['GET', 'POST'])
@@ -1927,21 +1940,40 @@ def set_uploader_relations_in_db(uploader_id, form_relations,
     return True
 
 
-@bp.route('/uploader/<uploader_name>/edit/campaign/upload_file',
-          methods=['GET', 'POST'])
-@login_required
-def uploader_campaign_name_file_upload(uploader_name):
-    current_key, object_name, object_form = parse_upload_file_request(request)
+def uploader_name_file_upload(uploader_name):
+    current_key, object_name, object_form, object_level =\
+        parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
-    mem, file_name = get_file_in_memory_from_request(request, 'create_file')
+    mem, file_name = get_file_in_memory_from_request(request, current_key)
     msg_text = 'Saving file {} for {}'.format(file_name, cur_up.name)
     cur_up.launch_task(
         '.write_uploader_file', _(msg_text),
         running_user=current_user.id, new_data=mem,
         parameter='name_creator', mem_file=True,
-        object_level=request.form['object_level'])
+        object_level=object_level)
     db.session.commit()
-    return jsonify({'data': 'success'})
+    return jsonify({'data': 'success: {}'.format(uploader_name)})
+
+
+@bp.route('/uploader/<uploader_name>/edit/campaign/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def uploader_campaign_name_file_upload(uploader_name):
+    return uploader_name_file_upload(uploader_name)
+
+
+@bp.route('/uploader/<uploader_name>/edit/adset/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def uploader_adset_name_file_upload(uploader_name):
+    return uploader_name_file_upload(uploader_name)
+
+
+@bp.route('/uploader/<uploader_name>/edit/ad/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def uploader_ad_name_file_upload(uploader_name):
+    return uploader_name_file_upload(uploader_name)
 
 
 def edit_uploader_base_objects(uploader_name, object_level, next_level='Page'):
@@ -1971,11 +2003,15 @@ def edit_uploader_base_objects(uploader_name, object_level, next_level='Page'):
         if request.method == 'POST':
             form.validate()
             up_obj.name_create_type = form.name_create_type.data
+            up_obj.duplication_type = form.duplication_type.data
             db.session.commit()
         if request.method == 'GET':
             form.name_create_type.data = up_obj.name_create_type
+            form.duplication_type.data = up_obj.duplication_type
     if request.method == 'POST':
-        set_uploader_relations_in_db(cur_up.id, form.relations.data)
+        set_uploader_relations_in_db(
+            uploader_id=cur_up.id, form_relations=form.relations.data,
+            object_level=object_level)
         if form.form_continue.data == 'continue':
             msg_text = 'Creating and uploading {} for uploader.'.format(
                 object_level)
@@ -1988,10 +2024,11 @@ def edit_uploader_base_objects(uploader_name, object_level, next_level='Page'):
                 uploader_name=cur_up.name))
         else:
             msg_text = 'Creating {} for uploader.'.format(object_level)
-            cur_up.launch_task(
+            task = cur_up.launch_task(
                 '.uploader_create_objects', _(msg_text),
                 running_user=current_user.id, object_level=object_level)
             db.session.commit()
+            task.wait_and_get_job(loops=30)
             return redirect(url_for(
                 'main.edit_uploader_{}'.format(object_level.lower()),
                 uploader_name=cur_up.name))
@@ -2037,7 +2074,8 @@ def edit_uploader_creative(uploader_name):
           methods=['GET', 'POST'])
 @login_required
 def uploader_file_upload(uploader_name):
-    current_key, object_name, object_form = parse_upload_file_request(request)
+    current_key, object_name, object_form, object_level =\
+        parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     mem, file_name = get_file_in_memory_from_request(request, 'creative_file')
     msg_text = 'Saving file {} for {}'.format(file_name, cur_up.name)
@@ -2045,7 +2083,7 @@ def uploader_file_upload(uploader_name):
         '.uploader_save_creative', _(msg_text),
         running_user=current_user.id, file=mem, file_name=file_name)
     db.session.commit()
-    return jsonify({'data': 'success'})
+    return jsonify({'data': 'success: {}'.format(uploader_name)})
 
 
 @bp.route('/uploader/<uploader_name>/edit/ad', methods=['GET', 'POST'])

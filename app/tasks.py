@@ -822,8 +822,8 @@ def full_run_processor(processor_id, current_user_id, processor_args=None):
     try:
         _set_task_progress(0)
         if not processor_args:
-            processor_args = ('--api all --ftp all --dbi all '
-                              '--exp all --tab --analyze')
+            processor_args = (
+                '--api all --ftp all --dbi all --exp all --tab --analyze')
         run_processor(processor_id, current_user_id, processor_args)
         _set_task_progress(100)
     except:

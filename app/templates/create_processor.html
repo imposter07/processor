@@ -844,5 +844,18 @@
                 },(2 *1000));
             });
         });
+        $(document).ready(function(){
+            $('input[id*="unresolved_relations"]').each(function(index){
+                console.log($(this).value)
+                if (($(this)[0].value === '0') || ($(this)[0].value === '')){
+                    $(this).css("background-color", "#00cc44")
+                    $(this)[0].value = 'ALL DEFINED'
+                }
+                else {
+                    $(this).css("background-color", "#ff6666")
+                    $(this)[0].value = $(this)[0].value + 'UNDEFINED'
+                }
+            })
+        })
     </script>
 {% endblock %}

@@ -903,8 +903,9 @@ def write_rate_card(processor_id, current_user_id, new_data, vk):
         _set_task_progress(100)
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
 
 
 def get_logfile_uploader(uploader_id, current_user_id):
@@ -1677,20 +1678,37 @@ def send_processor_request_email(processor_id, current_user_id, progress):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def set_processor_twitter_config(processor_id, current_user_id):
+def set_processor_config_file(processor_id, current_user_id, config_type,
+                              config_file_name):
     try:
         cur_processor = Processor.query.get(processor_id)
         client_name = cur_processor.campaign.product.client.name
         import processor.reporting.utils as utl
         os.chdir(adjust_path(cur_processor.local_path))
-        file_path = os.path.join(utl.config_path, 'twitter_api_cred')
-        df = pd.read_csv(os.path.join(file_path, 'twitter_dict.csv'))
+        file_path = '{}_api_cred'.format(config_type)
+        file_name = '{}_dict.csv'.format(config_type)
+        file_path = os.path.join(utl.config_path, file_path)
+        df = pd.read_csv(os.path.join(file_path, file_name))
         file_name = df[df['client'] == client_name]['file'].values
         if file_name:
             file_name = file_name[0]
             copy_file(os.path.join(file_path, file_name),
-                      os.path.join(utl.config_path, 'twconfig.json'))
+                      os.path.join(utl.config_path, config_file_name))
         return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def set_processor_config_files(processor_id, current_user_id):
+    try:
+        for config_type in [('twitter', 'twconfig.json'),
+                            ('dc', 'dcapi.json'), ('dv', 'dvapi.json')]:
+            set_processor_config_file(
+                processor_id=processor_id, current_user_id=current_user_id,
+                config_type=config_type[0], config_file_name=config_type[1])
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
@@ -1751,6 +1769,7 @@ def schedule_processor(processor_id, current_user_id):
 def build_processor_from_request(processor_id, current_user_id):
     progress = {
         'create': 'Failed',
+        'set_config_files': 'Failed',
         'set_apis': 'Failed',
         'set_conversions': 'Failed',
         'set_fees': 'Failed',
@@ -1779,9 +1798,10 @@ def build_processor_from_request(processor_id, current_user_id):
         proc_dict = [
             x.get_dict_for_processor(import_names, cur_processor.start_date)
             for x in cur_processor.accounts]
-        if [x for x in proc_dict if 'Twitter' in x['key']]:
-            os.chdir(cur_path)
-            set_processor_twitter_config(processor_id, current_user_id)
+        os.chdir(cur_path)
+        result = set_processor_config_files(processor_id, current_user_id)
+        if result:
+            progress['set_config_files'] = 'Success!'
         os.chdir(cur_path)
         result = set_processor_imports(processor_id, current_user_id, proc_dict)
         if result:

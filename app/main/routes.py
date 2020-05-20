@@ -775,7 +775,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'imports': '.get_processor_sources'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
-              'uploader_current_name', 'uploader_creative_files']:
+              'uploader_current_name', 'uploader_creative_files',
+              'upload_filter']:
         arg_trans[x] = '.get_uploader_file'
     job_name = arg_trans[table_name]
     return job_name, table_name, proc_arg
@@ -1757,10 +1758,11 @@ def create_uploader():
             new_uploader.media_plan = True
             db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_uploader',
+            return redirect(url_for('main.edit_uploader_campaign',
                                     uploader_name=new_uploader.name))
         else:
-            return redirect(url_for('main.upload'))
+            return redirect(url_for('main.edit_uploader',
+                                    uploader_name=new_uploader.name))
     return render_template('create_processor.html', user=cur_user,
                            title=_('Uploader'), form=form, edit_progress="25",
                            edit_name='Basic')
@@ -1949,7 +1951,7 @@ def uploader_name_file_upload(uploader_name):
     cur_up.launch_task(
         '.write_uploader_file', _(msg_text),
         running_user=current_user.id, new_data=mem,
-        parameter='name_creator', mem_file=True,
+        parameter=current_key, mem_file=True,
         object_level=object_level)
     db.session.commit()
     return jsonify({'data': 'success: {}'.format(uploader_name)})

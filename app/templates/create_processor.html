@@ -286,7 +286,6 @@
               {{ _('Show Logs') }}
             </button>
         </div>
-    </div>
     <br>
     <h3 class="sidebar-heading d-flex justify-content-between align-items-center
                text-dark text-center">
@@ -550,7 +549,7 @@
                  $('#listTabs').find('li.active')[0].children[0].click();
              }
              catch(err) {
-                 location.reload()
+                 window.location.reload(true)
              }
         }
         function SendDataTable() {
@@ -686,7 +685,7 @@
                 console.log("Request failed: " + textStatus);
                 let downloadProgress = $('#downloadProgress');
                 downloadProgress.attr("style", "width: 100%");
-                location.reload()
+                window.location.reload(true)
             }).always(function(){
                 $(clickElem).prop("disabled", false);
                 $(clickElem).html(oldHtml);
@@ -818,7 +817,7 @@
                     reloadPage();
                 } else {
                     if (!$("[class*='DTED DTED_Lightbox_Wrapper']")[0]){
-                        location.reload()}
+                        window.location.reload(true)}
                 }
             })
         });
@@ -827,9 +826,6 @@
                 $($.fn.dataTable.tables(true)).DataTable()
                     .columns.adjust();
             })
-        });
-        $(document).ready(function () {
-            bsCustomFileInput.init()
         });
         $(document).ready(function() {
             $('#data_source').on('change', function(e){
@@ -846,16 +842,36 @@
         });
         $(document).ready(function(){
             $('input[id*="unresolved_relations"]').each(function(index){
-                console.log($(this).value)
-                if (($(this)[0].value === '0') || ($(this)[0].value === '')){
+                if (($(this)[0].value === '0') || ($(this)[0].value === '')
+                    || ($(this)[0].value === 'ALL DEFINED')){
                     $(this).css("background-color", "#00cc44")
                     $(this)[0].value = 'ALL DEFINED'
                 }
                 else {
                     $(this).css("background-color", "#ff6666")
-                    $(this)[0].value = $(this)[0].value + 'UNDEFINED'
+                    if (!($(this)[0].value.includes('UNDEFINED'))){
+                        $(this)[0].value = $(this)[0].value + 'UNDEFINED'
+                    }
                 }
             })
         })
+        function checkHideElem(elem){
+            if($(elem)[0].value === 'Custom') {
+                $('#upload_filter').parent().show()
+                $('#upload_filter').show()
+            }
+            else{
+                $('#upload_filter').parent().hide()
+                $('#upload_filter').hide()
+            }
+        }
+        $(document).ready(function() {
+            checkHideElem('#duplication_type');
+        });
+        $(document).ready(function() {
+            $('#duplication_type').on('change', function(e){
+                checkHideElem(this);
+            });
+        });
     </script>
 {% endblock %}

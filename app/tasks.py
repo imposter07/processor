@@ -1031,8 +1031,8 @@ def uploader_file_translation(uploader_file_name, object_level='Campaign'):
     for name in ['edit_relation', 'uploader_full_relation']:
         file_name = '{}_relation.xlsx'.format(object_level.lower())
         file_translation[name] = os.path.join(base_create_path, file_name)
-    for name in ['name_creator']:
-        file_name = '{}_name_creator.xlsx'.format(object_level.lower())
+    for name in ['name_creator', 'upload_filter']:
+        file_name = '{}_{}.xlsx'.format(object_level.lower(), name)
         file_translation[name] = os.path.join(base_create_path, file_name)
     return file_translation[uploader_file_name]
 

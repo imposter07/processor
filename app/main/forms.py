@@ -565,7 +565,7 @@ class RelationForm(FlaskForm):
 class EditUploaderMediaPlanForm(FlaskForm):
     name_create_type = SelectField(
         _l('Name Creation Type'),
-        choices=[(x, x) for x in ['Media Plan', 'File']])
+        choices=[(x, x) for x in ['Media Plan', 'File', 'Match Table']])
     media_plan_column_choices = [
         (x, x) for x in [cre.MediaPlan.campaign_id,
                          cre.MediaPlan.campaign_name,
@@ -599,13 +599,13 @@ class EditUploaderMediaPlanForm(FlaskForm):
 class EditUploaderNameCreateForm(FlaskForm):
     name_create_type = SelectField(
         _l('Name Creation Type'),
-        choices=[(x, x) for x in ['Media Plan', 'File']])
-    create_file = FileField(_l('Create File'))
+        choices=[(x, x) for x in ['Media Plan', 'File', 'Match Table']])
+    name_creator = FileField(_l('Name Creator File'))
     refresh_uploader_current_name = SubmitField('View Current Names')
     duplication_type = SelectField(
         _l('Duplication Type'),
         choices=[(x, x) for x in ['None', 'All', 'Custom']])
-    duplication_filter_file = FileField(_l('Duplication Filter File'))
+    upload_filter = FileField(_l('Duplication Filter File'))
     refresh_uploader_full_relation = SubmitField('View Full Relation File')
     form_continue = HiddenField('form_continue')
     relations = FieldList(FormField(RelationForm, label=''))

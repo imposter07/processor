@@ -17,7 +17,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
     ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm,\
     ProcessorDuplicateForm, EditUploaderMediaPlanForm,\
-    EditUploaderNameCreateForm, EditUploaderCreativeForm
+    EditUploaderNameCreateForm, EditUploaderCreativeForm, UploaderDuplicateForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -776,7 +776,7 @@ def translate_table_name_to_job(table_name, proc_arg):
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
-              'upload_filter']:
+              'upload_filter', 'match_table']:
         arg_trans[x] = '.get_uploader_file'
     job_name = arg_trans[table_name]
     return job_name, table_name, proc_arg
@@ -1830,6 +1830,15 @@ def get_uploader_edit_links():
     return edit_links
 
 
+def get_uploader_request_links(uploader_name):
+    req_links = {
+                 0: {'title': 'Request Duplication',
+                     'href': url_for('main.edit_uploader_duplication',
+                                     uploader_name=uploader_name)}
+                 }
+    return req_links
+
+
 def get_current_uploader(uploader_name, current_page, edit_progress=0,
                          edit_name='Page', buttons='Uploader', fix_id=None):
     cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
@@ -1840,13 +1849,14 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
     run_links = get_uploader_run_links(uploader_name, edit_name)
     edit_links = get_uploader_edit_links()
     # output_links = get_uploader_output_links()
-    # request_links = get_uploader_request_links(processor_name)
+    request_links = get_uploader_request_links(uploader_name)
     args = {'object': cur_up, 'posts': posts.items, 'title': _('Uploader'),
             'object_name': cur_up.name, 'user': cur_user,
             'edit_progress': edit_progress, 'edit_name': edit_name,
             'buttons': get_navigation_buttons(buttons),
             'object_function_call': {'uploader_name': cur_up.name},
             'run_links': run_links, 'edit_links': edit_links,
+            'request_links': request_links,
             'next_url': next_url, 'prev_url': prev_url}
     return args
 
@@ -1946,7 +1956,12 @@ def uploader_name_file_upload(uploader_name):
     current_key, object_name, object_form, object_level =\
         parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
+    up_obj = UploaderObjects.query.filter_by(
+        uploader_id=cur_up.id, object_level=object_level).first()
     mem, file_name = get_file_in_memory_from_request(request, current_key)
+    if current_key == 'name_creator':
+        if up_obj.name_create_type == 'Match Table':
+            current_key = 'match_table'
     msg_text = 'Saving file {} for {}'.format(file_name, cur_up.name)
     cur_up.launch_task(
         '.write_uploader_file', _(msg_text),
@@ -2094,6 +2109,27 @@ def edit_uploader_ad(uploader_name):
     object_level = 'Ad'
     next_level = 'Page'
     return edit_uploader_base_objects(uploader_name, object_level, next_level)
+
+
+@bp.route('/uploader/<uploader_name>/edit/duplicate',
+          methods=['GET', 'POST'])
+@login_required
+def edit_uploader_duplication(uploader_name):
+    kwargs = get_current_uploader(uploader_name, 'edit_uploader_duplication',
+                                  edit_progress=100, edit_name='Duplicate')
+    cur_up = kwargs['object']
+    form = UploaderDuplicateForm()
+    kwargs['form'] = form
+    if request.method == 'POST':
+        msg_text = 'Sending request and attempting to duplicate uploader: {}' \
+                   ''.format(uploader_name)
+        cur_up.launch_task(
+            '.duplicate_uploader', _(msg_text),
+            running_user=current_user.id, form_data=form.data)
+        db.session.commit()
+        return redirect(url_for('main.uploader_page',
+                                uploader_name=cur_up.name))
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/help')

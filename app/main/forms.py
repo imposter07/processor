@@ -617,6 +617,11 @@ class EditUploaderCreativeForm(FlaskForm):
     form_continue = HiddenField('form_continue')
 
 
+class UploaderDuplicateForm(FlaskForm):
+    new_name = StringField(_('New Name'), validators=[DataRequired()])
+    form_continue = HiddenField('form_continue')
+
+
 class ProcessorDuplicateForm(FlaskForm):
     new_name = StringField(_('New Name'), validators=[DataRequired()])
     new_start_date = DateField('New Start Date', format='%Y-%m-%d',

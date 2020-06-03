@@ -936,10 +936,12 @@ def create_uploader(uploader_id, current_user_id, base_path):
                                object_name='Uploader')
         set_uploader_config_file(uploader_id, current_user_id)
         _set_task_progress(100)
+        return True
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Uploader {} User {}'.format(
             uploader_id, current_user_id), exc_info=sys.exc_info())
+        return False
 
 
 def get_uploader_and_user_from_id(uploader_id, current_user_id):
@@ -1031,7 +1033,7 @@ def uploader_file_translation(uploader_file_name, object_level='Campaign'):
     for name in ['edit_relation', 'uploader_full_relation']:
         file_name = '{}_relation.xlsx'.format(object_level.lower())
         file_translation[name] = os.path.join(base_create_path, file_name)
-    for name in ['name_creator', 'upload_filter']:
+    for name in ['name_creator', 'upload_filter', 'match_table']:
         file_name = '{}_{}.xlsx'.format(object_level.lower(), name)
         file_translation[name] = os.path.join(base_create_path, file_name)
     return file_translation[uploader_file_name]
@@ -1296,6 +1298,15 @@ def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
             col_column_name = ['ad_name', dup_col_name, '']
             col_overwrite = [True, '', '']
             col_filter = ['', '', '']
+            if create_type == 'Match Table':
+                col_file_name.insert(0, '/create/ad_match_table.xlsx')
+                col_new_file.insert(
+                    0, '/create/ad_name_creator.xlsx|'
+                       '/create/ad_upload_filter.xlsx|/create/ad_relation.xlsx')
+                col_create_type.insert(0, 'match')
+                col_column_name.insert(0, '')
+                col_overwrite.insert(0, '')
+                col_filter.insert(0, '')
     else:
         col_file_name = ['']
         col_new_file = ['']
@@ -1626,14 +1637,17 @@ def set_processor_plan_net(processor_id, current_user_id):
 
 def send_processor_build_email(
         processor_id, current_user_id, progress,
-        title='[Liquid App] New Processor Creation Request!'):
+        title='[Liquid App] New Processor Creation Request!',
+        object_type=Processor, recipients=None):
     try:
         progress = ['{}.....{}'.format(k, v)
                     for k, v in progress.items()]
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = object_type.query.get(processor_id)
         from urllib.parse import quote
         processor_name = quote(cur_processor.name)
-        for user in cur_processor.processor_followers:
+        if not recipients:
+            recipients = cur_processor.processor_followers
+        for user in recipients:
             send_email(title,
                        sender=app.config['ADMINS'][0],
                        recipients=[user.email],
@@ -2089,3 +2103,93 @@ def duplicate_processor(processor_id, current_user_id, form_data):
         send_processor_build_email(
             processor_id, current_user_id, progress,
             title='[Liquid App] New Processor Duplication Request!')
+
+
+def duplicate_uploader_in_db(uploader_id, current_user_id, form_data):
+    try:
+        cur_uploader = Uploader.query.get(uploader_id)
+        up_dict = cur_uploader.to_dict()
+        new_uploader = Uploader()
+        for k, v in up_dict.items():
+            new_uploader.__setattr__(k, v)
+        new_path = '/mnt/c/clients/{}/{}/{}/{}/uploader'.format(
+            up_dict.campaign.product.client.name,
+            up_dict.campaign.product.name, up_dict.campaign.name,
+            form_data['new_name'])
+        new_uploader.local_path = new_path
+        new_uploader.name = form_data['new_name']
+        db.session.add(new_uploader)
+        db.session.commit()
+        return new_uploader.id
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def duplicate_uploader_objects(uploader_id, current_user_id, old_uploader_id):
+    try:
+        from app.main.routes import create_base_uploader_objects
+        create_base_uploader_objects(uploader_id)
+        for object_level in ['Campaign', 'Adset', 'Ad']:
+            upo = UploaderObjects.query.filter_by(
+                uploader_id=uploader_id,  object_level=object_level).first()
+            old_upo = UploaderObjects.query.filter_by(
+                uploader_id=old_uploader_id,  object_level=object_level).first()
+            old_up_dict = old_upo.to_dict()
+            for k, v in old_up_dict.items():
+                upo.__setattr__(k, v)
+            for relation in upo.uploader_relations:
+                old_rel = UploaderRelations.query.filter_by(
+                    impacted_column_name=relation.impacted_column_name,
+                    uploader_objects_id=old_upo.id).first()
+                old_rel_dict = old_rel.to_dict()
+                for k, v in old_rel_dict.items():
+                    relation.__setattr__(k, v)
+        db.session.commit()
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def duplicate_uploader(uploader_id, current_user_id, form_data):
+    progress = {
+        'duplicate_in_db': 'Failed',
+        'duplicate_in_server': 'Failed',
+        'create_new_uploader_objects_in_db': 'Failed'
+    }
+    try:
+        import datetime as dt
+        _set_task_progress(0)
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        cur_uploader = Uploader.query.get(uploader_id)
+        new_uploader_id = duplicate_uploader_in_db(
+            uploader_id, current_user_id, form_data)
+        if new_uploader_id:
+            progress['duplicate_in_db'] = 'Success!'
+        _set_task_progress(33)
+        result = create_uploader(new_uploader_id, current_user_id,
+                                 cur_uploader.local_path)
+        if result:
+            progress['duplicate_in_server'] = 'Success!'
+        _set_task_progress(66)
+        os.chdir(cur_path)
+        result = duplicate_uploader_objects(new_uploader_id, current_user_id,
+                                            uploader_id)
+        if result:
+            progress['old_processor_set_dates'] = 'Success!'
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+    finally:
+        cur_user = User.query.get(current_user_id)
+        send_processor_build_email(
+            uploader_id, current_user_id, progress,
+            title='[Liquid App] New Uploader Duplication Request!',
+            object_type=Uploader, recipients=[cur_user])

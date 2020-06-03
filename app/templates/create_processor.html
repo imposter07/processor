@@ -226,6 +226,7 @@
                  </div>
             </div>
         </div>
+        {% if output_links %}
         <div class="card">
             <button class="btn btn-outline-primary btn-block
                            dropdown-toggle text-left"
@@ -252,6 +253,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         <div class="card">
             <button class="btn btn-outline-danger btn-block
                            dropdown-toggle text-left"
@@ -360,6 +362,12 @@
     <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
 
     <script>
+        $(document).ready(function() {
+            var duplicationType = '#duplication_type'
+            if ($(duplicationType.length)){
+                checkHideElem('#duplication_type');
+            }
+        });
         $(document).ready(function() {
             FilePond.registerPlugin(
                 FilePondPluginImagePreview,
@@ -570,7 +578,7 @@
                       '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
                       'Loading...' +
                     '</button>');
-            };
+            }
             $('#tableModalSaveButton').parent().html('' +
                     '<button class="btn btn-success btn-lg btn-block" type="button" disabled>' +
                       '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
@@ -778,6 +786,14 @@
               );
             });
         });
+        function loadingBtn(elem, currentStyle){
+          $(elem).parent().html('' +
+            '<button id="loadingBtn" class="btn btn-primary btn-block"' +
+                'style="' + currentStyle + '"type="button" disabled>' +
+              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+              'Loading...' +
+            '</button>');
+        }
         $(document).ready(function() {
             $('input[id*="refresh_"]').click(function() {
               let tableName = $(this)[0].id.split('refresh_')[1];
@@ -856,21 +872,25 @@
             })
         })
         function checkHideElem(elem){
+            var uploadFilter = $('#upload_filter')
             if($(elem)[0].value === 'Custom') {
-                $('#upload_filter').parent().show()
-                $('#upload_filter').show()
+                uploadFilter.parent().show()
+                uploadFilter.show()
             }
             else{
-                $('#upload_filter').parent().hide()
-                $('#upload_filter').hide()
+                uploadFilter.parent().hide()
+                uploadFilter.hide()
             }
         }
         $(document).ready(function() {
-            checkHideElem('#duplication_type');
-        });
-        $(document).ready(function() {
             $('#duplication_type').on('change', function(e){
                 checkHideElem(this);
+            });
+        });
+        $(document).ready(function() {
+            $('#name_create_type').on('change', function(e){
+                SubmitForm('', 'form_continue');
+                loadingBtn($(this).parent(), '');
             });
         });
     </script>

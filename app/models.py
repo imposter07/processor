@@ -821,6 +821,10 @@ class Uploader(db.Model):
     def get_main_page():
         return []
 
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])
+
 
 class UploaderObjects(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -840,6 +844,10 @@ class UploaderObjects(db.Model):
     @staticmethod
     def string_to_list(string_value):
         return UploaderRelations.convert_string_to_list(string_value)
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])
 
 
 class UploaderRelations(db.Model):
@@ -876,3 +884,7 @@ class UploaderRelations(db.Model):
         self.impacted_column_name = form['impacted_column_name']
         self.relation_constant = form['relation_constant']
         self.position = form['position']
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])

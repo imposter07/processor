@@ -2113,8 +2113,8 @@ def duplicate_uploader_in_db(uploader_id, current_user_id, form_data):
         for k, v in up_dict.items():
             new_uploader.__setattr__(k, v)
         new_path = '/mnt/c/clients/{}/{}/{}/{}/uploader'.format(
-            up_dict.campaign.product.client.name,
-            up_dict.campaign.product.name, up_dict.campaign.name,
+            cur_uploader.campaign.product.client.name,
+            cur_uploader.campaign.product.name, cur_uploader.campaign.name,
             form_data['new_name'])
         new_uploader.local_path = new_path
         new_uploader.name = form_data['new_name']

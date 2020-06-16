@@ -596,7 +596,7 @@
             });
         }
         var downloadingProgress = null;
-        function getDownloadProgress(tableName) {
+        function getDownloadProgress(tableName, updateFunction=false) {
             downloadingProgress = setInterval(function() {
                 $.post('/get_task_progress',
                 {
@@ -609,11 +609,22 @@
                     let newPercent = data['percent'];
                     let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
                     if (newPercent > oldPercent) {
-                        downloadProgress.attr("style", "width: " + newPercent + "%")
+                        if (updateFunction) {
+                            updateFunction(newPercent);
+                        }
+                        else {
+                            downloadProgress.attr("style", "width: " + newPercent + "%")
+
+                        }
                     }
                     else {
                         let percent = oldPercent + 2;
-                        downloadProgress.attr("style", "width: " + percent + "%")
+                        if (updateFunction) {
+                            updateFunction(percent);
+                        }
+                        else {
+                            downloadProgress.attr("style", "width: " + percent + "%")
+                        }
                     }
             });
         }, 2500);
@@ -866,7 +877,7 @@
                 else {
                     $(this).css("background-color", "#ff6666")
                     if (!($(this)[0].value.includes('UNDEFINED'))){
-                        $(this)[0].value = $(this)[0].value + 'UNDEFINED'
+                        $(this)[0].value = $(this)[0].value + ' UNDEFINED'
                     }
                 }
             })

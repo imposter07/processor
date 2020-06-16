@@ -380,6 +380,8 @@ def get_navigation_buttons(buttons=None):
                    {'All Fixes': 'main.edit_processor_all_fix'}]
     elif buttons == 'ProcessorDuplicate':
         buttons = [{'Duplicate': 'main.edit_processor_duplication'}]
+    elif buttons == 'ProcessorDashboard':
+        buttons = [{'Dashboard': 'main.edit_processor_dashboard'}]
     elif buttons == 'Uploader':
         buttons = [{'Basic': 'main.edit_uploader'},
                    {'Campaign': 'main.edit_uploader_campaign'},
@@ -2159,3 +2161,42 @@ def edit_processor_duplication(processor_name):
         return redirect(url_for('main.processor_page',
                                 processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/get_metrics', methods=['GET', 'POST'])
+@login_required
+def get_metrics():
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    proc_arg = {'running_user': cur_user.id,
+                'dimensions': [vmc.date],
+                'metrics': [vmc.impressions, vmc.clicks, vmc.cost]}
+    obj_name = request.form['object_name']
+    cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
+    job_name = '.get_data_tables'
+    msg_text = 'Getting daily metric table for {}'.format(cur_proc.name)
+    task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
+    db.session.commit()
+    job = task.wait_and_get_job(force_return=True)
+    df = job.result[0]
+    data = df.reset_index().to_dict(orient='records')
+    return jsonify(data)
+
+
+@bp.route('/processor/<processor_name>/dashboard', methods=['GET', 'POST'])
+@login_required
+def edit_processor_dashboard(processor_name):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_dashboard',
+                                   edit_progress=100, edit_name='Dashboard',
+                                   buttons='ProcessorDashboard')
+    cur_proc = kwargs['object']
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    proc_arg = {'running_user': cur_user.id}
+    msg_text = 'Getting total metric table for {}'.format(cur_proc.name)
+    job_name = '.get_processor_total_metrics'
+    task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
+    db.session.commit()
+    job = task.wait_and_get_job(force_return=True)
+    metrics = job.result[0]
+    kwargs['metrics'] = metrics
+    return render_template('dashboard.html', **kwargs)

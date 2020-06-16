@@ -448,7 +448,8 @@ def get_file_in_memory(tables):
     return mem
 
 
-def get_data_tables(processor_id, current_user_id, parameter):
+def get_data_tables(processor_id, current_user_id, parameter=None,
+                    dimensions=None, metrics=None):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
@@ -457,8 +458,9 @@ def get_data_tables(processor_id, current_user_id, parameter):
         _set_task_progress(15)
         tables = pd.read_csv(file_name)
         _set_task_progress(30)
-        metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
-                   'Net Cost Final']
+        if not metrics:
+            metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
+                       'Net Cost Final']
         param_translate = {
             'Vendor': ['mpCampaign', 'mpVendor', 'Vendor Key'],
             'Target': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpTargeting'],
@@ -468,7 +470,12 @@ def get_data_tables(processor_id, current_user_id, parameter):
                          'mpBuy Rate', 'mpPlacement Date'],
             'FullOutput': []
         }
-        parameter = param_translate[parameter]
+        if parameter:
+            parameter = param_translate[parameter]
+        elif dimensions:
+            parameter = dimensions
+        else:
+            parameter = []
         if parameter:
             tables = [tables.groupby(parameter)[metrics].sum()]
         else:
@@ -2123,7 +2130,7 @@ def duplicate_uploader_in_db(uploader_id, current_user_id, form_data):
         return new_uploader.id
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
             uploader_id, current_user_id), exc_info=sys.exc_info())
         return False
 
@@ -2181,7 +2188,7 @@ def duplicate_uploader(uploader_id, current_user_id, form_data):
         result = duplicate_uploader_objects(new_uploader_id, current_user_id,
                                             uploader_id)
         if result:
-            progress['old_processor_set_dates'] = 'Success!'
+            progress['create_new_uploader_objects_in_db'] = 'Success!'
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -2193,3 +2200,48 @@ def duplicate_uploader(uploader_id, current_user_id, form_data):
             uploader_id, current_user_id, progress,
             title='[Liquid App] New Uploader Duplication Request!',
             object_type=Uploader, recipients=[cur_user])
+
+
+def clean_total_metric_df(df, col_name):
+    if df.empty:
+        df[col_name] = '0'
+    else:
+        df = df.rename(columns={df.columns[0]: col_name})
+    return df
+
+
+def get_processor_total_metrics(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import reporting.analyze as az
+        import reporting.vendormatrix as vm
+        import reporting.dictcolumns as dctc
+        import reporting.vmcolumns as vmc
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        aly = az.Analyze(file_name='Raw Data Output.csv', matrix=matrix)
+        df, tdf = aly.generate_topline_and_weekly_metrics(group=dctc.PRN)
+        df = clean_total_metric_df(df, 'current_value')
+        tdf = clean_total_metric_df(tdf, 'new_value')
+        df = df.join(tdf)
+        df['change'] = (
+            (df['new_value'].str.replace(',', '').str.replace(
+                '$', '').astype(float) -
+             df['current_value'].str.replace(',', '').str.replace(
+                 '$', '').astype(float)) /
+             df['current_value'].str.replace(',', '').str.replace(
+                 '$', '').astype(float))
+        _set_task_progress(100)
+        df = df.rename_axis('name').reset_index()
+        df = df[df['name'].isin(['Net Cost Final', vmc.impressions,
+                                 vmc.clicks, 'CPC'])]
+        df = df.to_dict(orient='records')
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

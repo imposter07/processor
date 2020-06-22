@@ -2236,7 +2236,6 @@ def get_processor_total_metrics(processor_id, current_user_id):
         df = df.rename_axis('name').reset_index()
         df = df[df['name'].isin(['Net Cost Final', vmc.impressions,
                                  vmc.clicks, 'CPC'])]
-        df = df.to_dict(orient='records')
         return [df]
     except:
         _set_task_progress(100)

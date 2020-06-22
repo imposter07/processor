@@ -937,9 +937,7 @@ def edit_processor_export(processor_name):
 def processor_page(processor_name):
     kwargs = get_current_processor(processor_name, 'processor_page',
                                    edit_progress=100, edit_name='Page')
-    cur_proc = kwargs['processor']
-    return render_template('create_processor.html',
-                           tableau_workbook=cur_proc.tableau_workbook, **kwargs)
+    return render_template('dashboard.html', **kwargs)
 
 
 @bp.route('/processor/<processor_name>/popup')
@@ -2172,8 +2170,12 @@ def get_metrics():
                 'metrics': request.form['y_col'].split('|')}
     obj_name = request.form['object_name']
     cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
-    job_name = '.get_data_tables'
-    msg_text = 'Getting daily metric table for {}'.format(cur_proc.name)
+    msg_text = 'Getting metric table for {}'.format(cur_proc.name)
+    if request.form['elem'] == '#totalMetrics':
+        job_name = '.get_processor_total_metrics'
+        proc_arg = {x: proc_arg[x] for x in proc_arg if x =='running_user'}
+    else:
+        job_name = '.get_data_tables'
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
     job = task.wait_and_get_job(force_return=True)
@@ -2189,15 +2191,4 @@ def edit_processor_dashboard(processor_name):
                                    current_page='edit_processor_dashboard',
                                    edit_progress=100, edit_name='Dashboard',
                                    buttons='ProcessorDashboard')
-
-    cur_proc = kwargs['object']
-    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    proc_arg = {'running_user': cur_user.id}
-    msg_text = 'Getting total metric table for {}'.format(cur_proc.name)
-    job_name = '.get_processor_total_metrics'
-    task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
-    db.session.commit()
-    job = task.wait_and_get_job(force_return=True)
-    metrics = job.result[0]
-    kwargs['metrics'] = metrics
     return render_template('dashboard.html', **kwargs)

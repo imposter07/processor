@@ -31,34 +31,8 @@
         }
     </style>
     <div class="row">
-        <div class="card-deck container-fluid text-center">
-            {% for metric in metrics %}
-                <div class="card mb-3 shadow-lg">
-                    <div class="card-body">
-                        <h6 class="card-title mb-0">{{ metric['name'] }}</h6>
-                        <div class="row">
-                            <div class="col">
-                                <h3 style="text-align:center">{{ metric['current_value'] }}</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <p class="mb-0">
-                            {% if metric['change'] < 0 %}
-                                <span class="text-danger mr-2"><i
-                                        class="mdi mdi-arrow-up-bold"></i>
-                                    {{ "{:.0f}".format(metric['change'] * 100) }}%</span>
-                            {% else %}
-                                <span class="text-success mr-2"><i
-                                        class="mdi mdi-arrow-up-bold"></i>
-                                    {{ "{:.0f}".format(metric['change'] * 100) }}%</span>
-                            {% endif %}
-                            <span class="text-nowrap">Since last week</span>
-                        </p>
-                    </div>
-                </div>
-
-            {% endfor %}
+        <div id="totalMetrics" class="card-deck container-fluid text-center">
+            <div id="totalMetricsProgress" class='widget'></div>
         </div>
     </div>
 
@@ -584,6 +558,31 @@
                 })
         }
 
+        function generateTotalCards(elem, data, xCol, yCol) {
+            data.forEach(function (d) {
+                $(elem).append(
+                '<div class="card mb-3 shadow-lg">' +
+                    '<div class="card-body">' +
+                        '<h6 class="card-title mb-0">'+ d['name'] +'</h6>' +
+                        '<div class="row">' +
+                            '<div class="col">' +
+                                '<h3 style="text-align:center">' + d['current_value'] + '</h3>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="card-footer">' +
+                        '<p class="mb-0">' +
+                        '<span class="text-danger mr-2">' +
+                            '<i class="mdi mdi-arrow-up-bold"></i>' +
+                                 (d['change'] * 100) + '%</span>' +
+                            '<span class="text-nowrap">Since last week</span>' +
+                        '</p>' +
+                    '</div>' +
+                '</div>'
+                )
+            });
+        }
+
         function getDownloadProgress(tableName, chart, downloadingProgress) {
             downloadingProgress = setInterval(function() {
                 $.post('/get_task_progress',
@@ -608,6 +607,7 @@
                     object_name: "{{ object_name }}",
                     object_type: "{{ title }}",
                     object_level: "{{ edit_name }}",
+                    elem: elem,
                     x_col: xCol,
                     y_col: yCol.join('|')
                 },
@@ -703,6 +703,7 @@
 
         $(document).ready(function () {
             let metrics = ['Impressions', 'Clicks', 'Net Cost']
+            getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name', metrics);
             getMetrics('#dailyMetrics', generateLineChart, 'Date', metrics);
             getMetrics('#delivery', generateProgressBars, 'mpVendor',
                 ['Net Cost', 'Planned Net Cost']);

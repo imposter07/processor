@@ -11,6 +11,19 @@
         #delivery {
             overflow-y: auto
         }
+
+        .tooltip {
+            fill: grey;
+            stroke: #000;
+            opacity: 1;
+            padding: 2px;
+        }
+
+        .overlay {
+            fill: none;
+            pointer-events: all;
+        }
+
         .progress-bar {
             fill: #ddd;
             margin-left: auto;
@@ -39,6 +52,7 @@
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/LIB/d3-scale-radial.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <br>
     <div class="row">
         <div class="col-md-3">
@@ -144,7 +158,7 @@
         function generateAxis(data, svg, xAxisType, yAxisType, width, height,
                               xCol, yCol, timeX=null) {
 
-            let xDomain = function(xAxisType) {
+            let xDomain = function() {
                 if (timeX) {
                     return d3.extent(data, function (d) {
                         return d[xCol];
@@ -185,6 +199,85 @@
 
         function sortData(data, col) {
             return data.sort((a, b) => b[col] - a[col])
+        }
+
+        function updateYAxis(axes, data, svg, selectedVar) {
+            axes.yScale.domain([0, d3.max(data, function (d) {
+                return +d[selectedVar]
+            })]);
+            svg.selectAll(".yaxis")
+                .transition().duration(500)
+                .call(axes.yAxis)
+        }
+
+        function addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, timeX) {
+            let dateFormatter = d3.timeFormat("%m/%d/%y");
+            let formatValue = d3.format(",");
+            let focus = svg.append("g")
+                .attr("class", "focus");
+
+            focus.append("circle")
+                .attr("r", 5)
+                .attr("fill", function (d) {
+                    return myColor(selectedVar)
+                });
+
+            focus.append("rect")
+                .style("opacity", 0)
+                .attr("class", "tooltip")
+                .style("background-color", "white")
+                .style("border", "solid")
+                .style("border-width", "2px")
+                .style("border-radius", "5px")
+                .style("padding", "5px");
+
+            focus.append("text")
+                .attr("class", "tooltip-x")
+                .attr("x", 18)
+                .attr("y", -2);
+
+            focus.append("text")
+                .attr("class", "tooltip-y")
+                .attr("x", 18)
+                .attr("y", 18);
+
+            svg.append("rect")
+                .attr("class", "overlay")
+                .attr("width", am.width)
+                .attr("height", am.height)
+                .on("mouseover", function () {
+                    focus.attr("display", null);
+                })
+                .on("mouseout", function () {
+                    focus.attr("display", "none");
+                })
+                .on("mousemove", mousemove);
+            let bisectDate = d3.bisector(function (d) {
+                return d[xCol];
+            }).left
+
+            function mousemove() {
+                let dGet = function (currentThis) {
+                    if (timeX) {
+                        let x0 = axes.x.invert(d3.mouse(currentThis)[0])
+                        let i = bisectDate(data, x0, 1)
+                        let d0 = data[i - 1]
+                        let d1 = data[i];
+                        return x0 - d0[xCol] > d1[xCol] - x0 ? d1 : d0
+                    } else {
+                        let mx = d3.mouse(currentThis)[0] // x position of cursor
+                        let idx = Math.round(mx / axes.x.step())
+                        return data[idx]
+                    }
+                }
+                let d = dGet(this)
+                let xColVal = (timeX) ? dateFormatter(d[xCol]) : d[xCol]
+                focus.attr("transform", "translate(" + axes.x(d[xCol]) + "," + axes.yScale(d[selectedVar]) + ")");
+                focus.select(".tooltip-x").text(xCol + ": " + xColVal);
+                focus.select(".tooltip-y").text(selectedVar + ": " + formatValue(d[selectedVar]));
+                focus.style("left", (d3.mouse(this)[0] + 70) + "px");
+                focus.style("top", (d3.mouse(this)[1]) + "px");
+            }
         }
 
         function generateHistogram() {
@@ -267,52 +360,36 @@
                 data, svg, d3.scaleTime(), d3.scaleLinear(), am.width, am.height,
                 xCol, yCol[0], true
             )
-            let line = svg
-                .append('g')
-                .append("path")
-                .datum(data)
-                .attr("d", d3.line()
-                    .x(function (d) {
-                        return axes.x(+d[xCol])
-                    })
-                    .y(function (d) {
-                        return axes.yScale(+d[yCol[0]])
-                    })
-                )
-                .attr("stroke", function () {
-                    return myColor(yCol[0])
-                })
-                .style("stroke-width", 4)
-                .style("fill", "none")
             // A function that update the chart
-            function update(selectedGroup) {
+            function update(selectedVar) {
 
-                // Create new data with the selection?
-                let dataFilter = data.map(function (d) {
-                    return {xCol: d[xCol], value: d[selectedGroup]}
-                })
-                // Give these new data to update line
-                axes.yScale.domain([0, d3.max(dataFilter, function (d) {
-                    return +d.value;
-                })])
-                svg.selectAll(".yaxis")
-                    .transition().duration(500)
-                    .call(axes.yAxis)
-                line
-                    .datum(dataFilter)
+                updateYAxis(axes, data, svg, selectedVar)
+
+                let u = svg.selectAll(".lineTest")
+                    .data([data])
+                u
+                    .enter()
+                    .append("path")
+                    .attr("class", "lineTest")
+                    .merge(u)
                     .transition()
                     .duration(1000)
                     .attr("d", d3.line()
                         .x(function (d) {
-                            return axes.x(+d.xCol)
+                            return axes.x(d[xCol])
                         })
                         .y(function (d) {
-                            return axes.yScale(+d.value)
+                            return axes.yScale(d[selectedVar])
                         })
+                        .curve(d3.curveMonotoneX)
                     )
                     .attr("stroke", function (d) {
-                        return myColor(selectedGroup)
+                        return myColor(selectedVar)
                     })
+                    .attr("stroke-width", 4)
+                    .attr("fill", "none")
+
+                addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, true)
             }
 
             // When the button is changed, run the updateChart function
@@ -322,6 +399,7 @@
                 // run the updateChart function with this selected option
                 update(selectedOption)
             })
+            update(yCol[0])
         }
 
         function generateLollipopChart(elem, data, xCol, yCol) {
@@ -387,6 +465,7 @@
                     .attr("r", 8)
                     .attr("fill", "#69b3a2");
 
+                addToolTip(svg, am, axes, data, xCol, selectedVar, myColor)
             }
 
             // When the button is changed, run the updateChart function
@@ -595,7 +674,7 @@
                     let newPercent = data['percent'];
                     chart.update(parseInt(newPercent))
             });
-        }, 750);
+        }, 1500);
             return downloadingProgress
         }
 
@@ -632,7 +711,7 @@
                 .attr('width', size.width)
                 .attr('height', size.height);
             const outerRadius = Math.min(size.width, size.height) * 0.45;
-            const thickness = 10;
+            const thickness = 25;
             let value = 0;
 
             const mainArc = d3.arc()
@@ -667,7 +746,7 @@
             let percentLabel = svg.append("text")
                 .attr('class', 'progress-label')
                 .attr('transform', `translate(${size.width / 2},${size.height / 2})`)
-                .text('0')
+                .text('0%')
 
             return {
                 update: function (progressPercent) {
@@ -705,8 +784,7 @@
             let metrics = ['Impressions', 'Clicks', 'Net Cost']
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name', metrics);
             getMetrics('#dailyMetrics', generateLineChart, 'Date', metrics);
-            getMetrics('#delivery', generateProgressBars, 'mpVendor',
-                ['Net Cost', 'Planned Net Cost']);
+            getMetrics('#delivery', generateProgressBars, 'mpVendor', ['Net Cost', 'Planned Net Cost']);
             getMetrics('#partnerMetrics', generateLollipopChart, 'mpVendor', metrics)
             getMetrics('#countryMetrics', generateLollipopChart, 'mpCountry/Region', metrics)
             getMetrics('#targetMetrics', generateLollipopChart, 'mpTargeting', metrics)

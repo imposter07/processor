@@ -2165,9 +2165,13 @@ def edit_processor_duplication(processor_name):
 @login_required
 def get_metrics():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    dimensions = [request.form['x_col']]
+    if 'filter_col' in request.form:
+        dimensions += request.form['filter_col'].split('|')
+    metrics = request.form['y_col'].split('|')
     proc_arg = {'running_user': cur_user.id,
-                'dimensions': [request.form['x_col']],
-                'metrics': request.form['y_col'].split('|')}
+                'dimensions': dimensions,
+                'metrics': metrics}
     obj_name = request.form['object_name']
     cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
     msg_text = 'Getting metric table for {}'.format(cur_proc.name)

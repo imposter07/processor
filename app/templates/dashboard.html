@@ -52,7 +52,7 @@
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/LIB/d3-scale-radial.js"></script>
-    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
     <br>
     <div class="row">
         <div class="col-md-3">
@@ -82,7 +82,7 @@
     </div>
     <br>
     <div class="row">
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card-header">
                 <h5 class="mb-3">Partner Metrics</h5>
                 <select id="partnerMetricsSelect"
@@ -95,7 +95,7 @@
                 <div id="partnerMetrics"></div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card-header">
                 <h5 class="mb-3">Country Metrics</h5>
                 <select id="countryMetricsSelect"
@@ -108,7 +108,9 @@
                 <div id="countryMetrics"></div>
             </div>
         </div>
-        <div class="col-md-4">
+    </div>
+    <div class="row">
+        <div class="col-md-12">
             <div class="card-header">
                 <h5 class="mb-3">Target Metrics</h5>
                 <select id="targetMetricsSelect"
@@ -139,8 +141,8 @@
             return {margin: margin, width: width, height: height, svg: svg}
         }
 
-        function generateSelect(elem, allGroup) {
-            let buttonSelector = elem + 'Select';
+        function generateSelect(elem, allGroup, selectElem='Select') {
+            let buttonSelector = elem + selectElem;
             d3.select(buttonSelector)
                 .selectAll('myOptions')
                 .data(allGroup)
@@ -176,6 +178,7 @@
             let xAxis = d3.axisBottom(x)
             svg.append("g")
                 .attr("transform", "translate(0," + height + ")")
+                .attr('class', 'xaxis')
                 .call(xAxis);
 
             let yScale = yAxisType
@@ -193,7 +196,7 @@
         function getColorPal(allGroup) {
             let myColor = d3.scaleOrdinal()
                 .domain(allGroup)
-                .range(d3.schemeSet2);
+                .range(d3.schemeTableau10);
             return myColor
         }
 
@@ -278,6 +281,77 @@
                 focus.style("left", (d3.mouse(this)[0] + 70) + "px");
                 focus.style("top", (d3.mouse(this)[1]) + "px");
             }
+        }
+
+        function getAreaGenerator(axes, xCol, selectedVar) {
+            return d3.area()
+                .x(function (d) {
+                    return axes.x(d[xCol])
+                })
+                .y0(axes.yScale(0))
+                .y1(function (d) {
+                    return axes.yScale(d[selectedVar])
+                })
+                .curve(d3.curveMonotoneX)
+        }
+
+        function addClipBrush(svg, am, idleTimeout, idled, axes, u, xCol, selectedVar) {
+            // Add brushing
+            var clip = svg.append("defs").append("svg:clipPath")
+                .attr("id", "clip")
+                .append("svg:rect")
+                .attr("width", am.width)
+                .attr("height", am.height)
+                .attr("x", 0)
+                .attr("y", 0);
+
+            // Add brushing
+            var brush = d3.brushX()                   // Add the brush feature using the d3.brush function
+                .extent([[0, 0], [am.width, am.height]])  // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area
+                .on("end", updateChartFromClipBrush)               // Each time the brush selection changes, trigger the 'updateChart' function
+
+            function updateChartFromClipBrush() {
+
+                // What are the selected boundaries?
+                let extent = d3.event.selection
+                console.log(extent)
+                console.log(axes.x.domain)
+                // If no selection, back to initial coordinate. Otherwise, update X axis domain
+                if (!extent) {
+                    if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
+                    axes.x.domain([4, 8])
+                } else {
+                    axes.x.domain([axes.x.invert(extent[0]), axes.x.invert(extent[1])])
+                    u.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
+                }
+                console.log(axes.x.domain)
+                // Update axis and area position
+                svg.selectAll(".xaxis")
+                    .transition().duration(500)
+                    .call(axes.xAxis)
+                let areaGenerator = getAreaGenerator(axes, xCol, selectedVar)
+                u
+                    .select('.lineTest')
+                    .transition()
+                    .duration(1000)
+                    .attr("d", areaGenerator)
+            }
+
+            return {clip: clip, brush: brush}
+        }
+
+        function groupData() {
+            var nested_data = d3.nest()
+                .key(function (d) {
+                    return d.Clicked;
+                })
+                .key(function (d) {
+                    return d.Campaign
+                })
+                .rollup(function (values) {
+                    return values.length;
+                })
+                .entries(data);
         }
 
         function generateHistogram() {
@@ -402,6 +476,81 @@
             update(yCol[0])
         }
 
+        function generateAreaChart(elem, data, xCol, yCol, filterCols) {
+
+            let am = autoMargin(elem, 500, 60, 30);
+            let svg = am.svg
+            let parseDate = d3.timeParse("%Y-%m-%d");
+            data.forEach(function (d) {
+                d[xCol] = parseDate(d[xCol]);
+            });
+            generateSelect(elem, yCol)
+            // generateSelect(elem, filterCols, 'SelectDimension')
+            // A color scale: one color for each group
+            let myColor = getColorPal(yCol)
+            let axes = generateAxis(
+                data, svg, d3.scaleTime(), d3.scaleLinear(), am.width, am.height,
+                xCol, yCol[0], true
+            )
+            // A function that update the chart
+            function update(selectedVar, selectedDim=null) {
+                updateYAxis(axes, data, svg, selectedVar)
+                let areaGenerator = getAreaGenerator(axes, xCol, selectedVar)
+                let u = svg.selectAll(".lineTest")
+                    .data([data])
+                    .attr("clip-path", "url(#clip)")
+                u
+                    .enter()
+                    .append("path")
+                    .attr("class", "lineTest")
+                    .merge(u)
+                    .transition()
+                    .duration(1000)
+                    .attr("d", areaGenerator)
+                    .attr("stroke", function (d) {
+                        return myColor(selectedVar)
+                    })
+                    .attr("stroke-width", 1)
+                    .attr("fill-opacity", .3)
+                    .attr("fill", function (d) {
+                        return myColor(selectedVar)
+                    })
+                var idleTimeout = null
+
+                function idled() {
+                    idleTimeout = null;
+                }
+                let clipBrush = addClipBrush(svg, am, idleTimeout,
+                    idled, axes, u, xCol, selectedVar)
+                u
+                    .enter()
+                    .append("g")
+                    .attr("class", "brush")
+                    .call(clipBrush.brush);
+                addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, true)
+            }
+
+            // When the button is changed, run the updateChart function
+            d3.select(elem + 'Select').on("change", function (d) {
+                // recover the option that has been chosen
+                let selectedOption = d3.select(this).property("value")
+                // run the updateChart function with this selected option
+                update(selectedOption)
+            })
+
+            // If user double click, reinitialize the chart
+            svg.on("dblclick", function () {
+                axes.x.domain(d3.extent(data, function (d) {
+                    return d[xCol];
+                }))
+                svg.selectAll(".xaxis")
+                    .transition().duration(500)
+                    .call(axes.xAxis)
+                update(yCol[0])
+            });
+            update(yCol[0])
+        }
+
         function generateLollipopChart(elem, data, xCol, yCol) {
             data = sortData(data, yCol[0])
             let am = autoMargin(elem, 500, 60, 30);
@@ -463,7 +612,14 @@
                         return axes.yScale(d[selectedVar]);
                     })
                     .attr("r", 8)
-                    .attr("fill", "#69b3a2");
+                    .attr("stroke", function (d) {
+                        return myColor(selectedVar)
+                    })
+                    .attr("stroke-width", 1)
+                    .attr("fill", function (d) {
+                        return myColor(selectedVar)
+                    })
+                    .attr("fill-opacity", .3)
 
                 addToolTip(svg, am, axes, data, xCol, selectedVar, myColor)
             }
@@ -476,6 +632,74 @@
                 update(selectedOption)
             })
             update(yCol[0])
+        }
+
+        function generateBarChart(elem, data, xCol, yCol) {
+            data = sortData(data, yCol[0])
+            let am = autoMargin(elem, 500, 60, 30);
+            let svg = am.svg
+            generateSelect(elem, yCol)
+            // A color scale: one color for each group
+            let myColor = getColorPal(yCol)
+            let axes = generateAxis(
+                data, svg, d3.scaleBand(), d3.scaleLinear(), am.width, am.height,
+                xCol, yCol[0], false
+            )
+
+            function update(selectedVar) {
+                // Add Y axis
+                axes.yScale.domain([0, d3.max(data, function (d) {
+                    return +d[selectedVar]
+                })]);
+                svg.selectAll(".yaxis")
+                    .transition().duration(500)
+                    .call(axes.yAxis)
+                // variable u: map data to existing circle
+                var j = svg.selectAll(".bar")
+                    .data(data)
+                // update lines
+                console.log(axes.x.bandwidth())
+                j
+                    .enter()
+                    .append("rect")
+                    .attr("class", "bar")
+                    .merge(j)
+                    .transition()
+                    .duration(1000)
+                    .attr("x", function (d) {
+                        return axes.x(d[xCol]);
+                    })
+                    .attr("y", function (d) {
+                        return axes.yScale(d[selectedVar]);
+                    })
+                    .attr("width", 20)
+                    .attr("height", function (d) {
+                        return am.height - axes.yScale(d[selectedVar]);
+                    })
+                    .attr("stroke", function (d) {
+                        return myColor(selectedVar)
+                    })
+                    .attr("stroke-width", 1)
+                    .attr("fill", function (d) {
+                        return myColor(selectedVar)
+                    })
+                    .attr("fill-opacity", .3)
+
+                addToolTip(svg, am, axes, data, xCol, selectedVar, myColor)
+            }
+
+            // When the button is changed, run the updateChart function
+            d3.select(elem + 'Select').on("change", function (d) {
+                // recover the option that has been chosen
+                let selectedOption = d3.select(this).property("value")
+                // run the updateChart function with this selected option
+                update(selectedOption)
+            })
+            update(yCol[0])
+        }
+
+        function generateWorldMap(elem, data, xCol, yCol) {
+            let am = autoMargin(elem, 500, 0, 0);    // example data from server
         }
 
         function generateCircularBarplot(elem, data, xCol, yCol) {
@@ -678,7 +902,7 @@
             return downloadingProgress
         }
 
-        function getMetrics(elem, createVisualFunction, xCol, yCol) {
+        function getMetrics(elem, createVisualFunction, xCol, yCol, filterCol) {
             $.ajax({
                 type: "POST",
                 url: "/get_metrics",
@@ -688,11 +912,12 @@
                     object_level: "{{ edit_name }}",
                     elem: elem,
                     x_col: xCol,
-                    y_col: yCol.join('|')
+                    y_col: yCol.join('|'),
+                    // filter_col: filterCol.join('|')
                 },
             }).done(function (data, status) {
                 chart.update(100);
-                createVisualFunction(elem, data, xCol, yCol);
+                createVisualFunction(elem, data, xCol, yCol, filterCol);
             }).fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);
             }).always(function () {
@@ -782,11 +1007,12 @@
 
         $(document).ready(function () {
             let metrics = ['Impressions', 'Clicks', 'Net Cost']
+            let filerCols = ['mpCampaign', 'mpVendor', 'mpCountry/Region']
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name', metrics);
-            getMetrics('#dailyMetrics', generateLineChart, 'Date', metrics);
+            getMetrics('#dailyMetrics', generateAreaChart, 'Date', metrics);
             getMetrics('#delivery', generateProgressBars, 'mpVendor', ['Net Cost', 'Planned Net Cost']);
-            getMetrics('#partnerMetrics', generateLollipopChart, 'mpVendor', metrics)
-            getMetrics('#countryMetrics', generateLollipopChart, 'mpCountry/Region', metrics)
+            getMetrics('#partnerMetrics', generateBarChart, 'mpVendor', metrics)
+            getMetrics('#countryMetrics', generateBarChart, 'mpCountry/Region', metrics)
             getMetrics('#targetMetrics', generateLollipopChart, 'mpTargeting', metrics)
         });
 

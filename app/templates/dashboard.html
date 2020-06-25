@@ -976,7 +976,7 @@
             });
         }
 
-        function getDownloadProgress(tableName, chart, downloadingProgress) {
+        function getDownloadProgressForRadial(tableName, chart, downloadingProgress) {
             downloadingProgress = setInterval(function() {
                 $.post('/get_task_progress',
                 {
@@ -1016,7 +1016,7 @@
             });
             let chart = radialProgress(elem + 'Progress')
             let downloadingProgress = null
-            downloadingProgress = getDownloadProgress('OutputData', chart, downloadingProgress)
+            downloadingProgress = getDownloadProgressForRadial('OutputData', chart, downloadingProgress)
         }
 
         function radialProgress(selector) {

@@ -6,6 +6,7 @@ import copy
 import shutil
 import itertools
 import pandas as pd
+import numpy as np
 from datetime import datetime
 from flask import render_template
 from rq import get_current_job
@@ -1572,7 +1573,6 @@ def set_processor_fees(processor_id, current_user_id):
         rate_card = cur_processor.rate_card
         import processor.reporting.dictcolumns as dctc
         import processor.reporting.dictionary as dct
-        import numpy as np
         os.chdir(adjust_path(cur_processor.local_path))
         rate_list = []
         for row in rate_card.rates:
@@ -1984,7 +1984,6 @@ def set_vendormatrix_dates(processor_id, current_user_id, start_date=None,
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
-        import numpy as np
         import processor.reporting.utils as utl
         import processor.reporting.vmcolumns as vmc
         import processor.reporting.vendormatrix as vm
@@ -2234,7 +2233,8 @@ def get_processor_total_metrics(processor_id, current_user_id):
                  '$', '').astype(float)) /
             df['old_value'].str.replace(',', '').str.replace(
                  '$', '').astype(float))
-        df['change'] = (df['change'].round(4) * 10000).astype(int) / 10000
+        df['change'] = df['change'].round(4)
+        df = df.replace([np.inf, -np.inf], np.nan)
         df = df.fillna(0)
         df = df.rename_axis('name').reset_index()
         df = df[df['name'].isin(['Net Cost Final', vmc.impressions,

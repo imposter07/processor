@@ -2221,21 +2221,25 @@ def get_processor_total_metrics(processor_id, current_user_id):
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         aly = az.Analyze(file_name='Raw Data Output.csv', matrix=matrix)
-        df, tdf = aly.generate_topline_and_weekly_metrics(group=dctc.PRN)
+        df, tdf, twdf = aly.generate_topline_and_weekly_metrics(group=dctc.PRN)
         df = clean_total_metric_df(df, 'current_value')
         tdf = clean_total_metric_df(tdf, 'new_value')
+        twdf = clean_total_metric_df(twdf, 'old_value')
         df = df.join(tdf)
+        df = df.join(twdf)
         df['change'] = (
             (df['new_value'].str.replace(',', '').str.replace(
                 '$', '').astype(float) -
-             df['current_value'].str.replace(',', '').str.replace(
+             df['old_value'].str.replace(',', '').str.replace(
                  '$', '').astype(float)) /
-             df['current_value'].str.replace(',', '').str.replace(
+            df['old_value'].str.replace(',', '').str.replace(
                  '$', '').astype(float))
-        _set_task_progress(100)
+        df['change'] = (df['change'].round(4) * 10000).astype(int) / 10000
+        df = df.fillna(0)
         df = df.rename_axis('name').reset_index()
         df = df[df['name'].isin(['Net Cost Final', vmc.impressions,
                                  vmc.clicks, 'CPC'])]
+        _set_task_progress(100)
         return [df]
     except:
         _set_task_progress(100)

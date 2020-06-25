@@ -3,13 +3,13 @@
 {% block app_content %}
     <style type="text/css">
         .widget {
-            height: 50vh;
-            width: 200px;
+            height: 25vh;
+            width: 175px;
             margin-left: auto;
             margin-right: auto;
         }
         #delivery {
-            overflow-y: auto
+            overflow-y: scroll;
         }
 
         .tooltip {
@@ -43,7 +43,7 @@
             dominant-baseline: central;
         }
     </style>
-    <div class="row">
+    <div class="row h-50">
         <div id="totalMetrics" class="card-deck container-fluid text-center">
             <div id="totalMetricsProgress" class='widget'></div>
         </div>
@@ -55,26 +55,26 @@
 
     <br>
     <div class="row">
-        <div class="col-md-3">
+        <div class="col-md-3 h-50">
             <div class="card-header">
-                <h5 class="mb-3">Delivery</h5>
-                <select id="deliverySelect" class="form-control form-control-sm">
+                <h7 class="mb-3">Delivery</h7>
+                <select id="deliverySelect" class="custom-select custom-select-sm">
                     <option>Select Campaign</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow">
+            <div class="card container-fluid shadow h-50">
                 <div id="deliveryProgress" class='widget'></div>
                 <div id="delivery"></div>
             </div>
         </div>
-        <div class="col-md-9">
+        <div class="col-md-9 h-50">
             <div class="card-header">
-                <h5 class="mb-3">Daily Metrics</h5>
-                <select id="dailyMetricsSelect" class="form-control form-control-sm">
+                <h7 class="mb-3">Daily</h7>
+                <select id="dailyMetricsSelect" class="custom-select custom-select-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow">
+            <div class="card container-fluid shadow h-50">
                 <div id="dailyMetricsProgress" class='widget'></div>
                 <div id="dailyMetrics"></div>
             </div>
@@ -82,11 +82,11 @@
     </div>
     <br>
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-6 h-50">
             <div class="card-header">
-                <h5 class="mb-3">Partner Metrics</h5>
+                <h7 class="mb-3">Partner</h7>
                 <select id="partnerMetricsSelect"
-                        class="form-control form-control-sm">
+                        class="custom-select custom-select-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
@@ -95,11 +95,11 @@
                 <div id="partnerMetrics"></div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-6 h-50">
             <div class="card-header">
-                <h5 class="mb-3">Country Metrics</h5>
+                <h7 class="mb-3">Country</h7>
                 <select id="countryMetricsSelect"
-                        class="form-control form-control-sm">
+                        class="custom-select custom-select-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
@@ -108,19 +108,35 @@
                 <div id="countryMetrics"></div>
             </div>
         </div>
-    </div>
+    </div><br>
     <div class="row">
-        <div class="col-md-12">
+        <div class="col-md-12 h-50">
             <div class="card-header">
-                <h5 class="mb-3">Target Metrics</h5>
+                <h7 class="mb-3">Target</h7>
                 <select id="targetMetricsSelect"
-                        class="form-control form-control-sm">
+                        class="custom-select custom-select-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
             <div class="card container-fluid shadow">
                 <div id="targetMetricsProgress" class='widget'></div>
                 <div id="targetMetrics"></div>
+            </div>
+        </div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card-header">
+                <h7 class="mb-3">Creative</h7>
+                <select id="creativeMetricsSelect"
+                        class="form-control form-control-sm">
+                    <option>Select Metric</option>
+                </select>
+            </div>
+            <div class="card container-fluid shadow">
+                <div id="creativeMetricsProgress" class='widget'></div>
+                <div id="creativeMetrics"></div>
             </div>
         </div>
     </div>
@@ -131,10 +147,11 @@
             let margin = {top: 10, right: 10, bottom: bMargin, left: lMargin},
                 width = size.width - margin.left - margin.right,
                 height = maxHeight - margin.top - margin.bottom;
+            let svgHeight = height + margin.top + margin.bottom
             let svg = parent
                 .append("svg")
                 .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
+                .attr("height", svgHeight)
                 .append("g")
                 .attr("transform",
                     "translate(" + margin.left + "," + margin.top + ")");
@@ -478,7 +495,7 @@
 
         function generateAreaChart(elem, data, xCol, yCol, filterCols) {
 
-            let am = autoMargin(elem, 500, 60, 30);
+            let am = autoMargin(elem, 250, 60, 30);
             let svg = am.svg
             let parseDate = d3.timeParse("%Y-%m-%d");
             data.forEach(function (d) {
@@ -553,7 +570,7 @@
 
         function generateLollipopChart(elem, data, xCol, yCol) {
             data = sortData(data, yCol[0])
-            let am = autoMargin(elem, 500, 60, 30);
+            let am = autoMargin(elem, 250, 60, 30);
             let svg = am.svg
             generateSelect(elem, yCol)
             // A color scale: one color for each group
@@ -634,9 +651,83 @@
             update(yCol[0])
         }
 
+        function generateMiniChart(elem, axes, am) {
+
+            var svg = d3.select("svg"),
+                margin2 = {top: 430, right: 20, bottom: 30, left: 40},
+                width = +svg.attr("width") - axes.margin.left - axes.margin.right,
+                height2 = +svg.attr("height") - margin2.top - margin2.bottom;
+            var x2 = d3.scaleTime().range([0, width]),
+                y2 = d3.scaleLinear().range([height2, 0]);
+
+            var xAxis2 = d3.axisBottom(x2)
+
+            var brush = d3.brushX()
+                .extent([[0, 0], [width, height2]])
+                .on("brush end", brushed);
+
+            var zoom = d3.zoom()
+                .scaleExtent([1, Infinity])
+                .translateExtent([[0, 0], [width, am.height]])
+                .extent([[0, 0], [width, am.height]])
+                .on("zoom", zoomed);
+
+            var area2 = d3.area()
+                .curve(d3.curveMonotoneX)
+                .x(function (d) {
+                    return x2(d[xCol]);
+                })
+                .y0(height2)
+                .y1(function (d) {
+                    return y2(d[selectedVar]);
+                });
+
+            svg.append("defs").append("clipPath")
+                .attr("id", "clip")
+                .append("rect")
+                .attr("width", width)
+                .attr("height", height);
+
+            var focus = svg.append("g")
+                .attr("class", "focus")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var context = svg.append("g")
+                .attr("class", "context")
+                .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
+
+            function brushed() {
+                if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
+                var s = d3.event.selection || x2.range();
+                x.domain(s.map(x2.invert, x2));
+                focus.select(".area").attr("d", area);
+                focus.select(".axis--x").call(xAxis);
+                svg.select(".zoom").call(zoom.transform, d3.zoomIdentity
+                    .scale(width / (s[1] - s[0]))
+                    .translate(-s[0], 0));
+            }
+
+            function zoomed() {
+                if (d3.event.sourceEvent && d3.event.sourceEvent.type === "brush") return; // ignore zoom-by-brush
+                var t = d3.event.transform;
+                x.domain(t.rescaleX(x2).domain());
+                focus.select(".area").attr("d", area);
+                focus.select(".axis--x").call(xAxis);
+                context.select(".brush").call(brush.move, x.range().map(t.invertX, t));
+            }
+
+            function type(d) {
+                d.date = parseDate(d.date);
+                d.price = +d.price;
+                return d;
+            }
+
+
+        }
+
         function generateBarChart(elem, data, xCol, yCol) {
             data = sortData(data, yCol[0])
-            let am = autoMargin(elem, 500, 60, 30);
+            let am = autoMargin(elem, 250, 60, 30);
             let svg = am.svg
             generateSelect(elem, yCol)
             // A color scale: one color for each group
@@ -658,7 +749,6 @@
                 var j = svg.selectAll(".bar")
                     .data(data)
                 // update lines
-                console.log(axes.x.bandwidth())
                 j
                     .enter()
                     .append("rect")
@@ -684,7 +774,7 @@
                         return myColor(selectedVar)
                     })
                     .attr("fill-opacity", .3)
-
+                // generateMiniChart(elem)
                 addToolTip(svg, am, axes, data, xCol, selectedVar, myColor)
             }
 
@@ -796,7 +886,7 @@
         function generateProgressBars(elem, data, xCol, yCol) {
             data.sort((a, b) => b[yCol[0]] - a[yCol[0]])
             generateSelect(elem, yCol)
-            let am = autoMargin(elem, 500, 10, 10)
+            let am = autoMargin(elem, 250, 5, 5)
             let xVal = 10
             let barHeight = 20
             let spacing = 50
@@ -866,19 +956,19 @@
                 $(elem).append(
                 '<div class="card mb-3 shadow-lg">' +
                     '<div class="card-body">' +
-                        '<h6 class="card-title mb-0">'+ d['name'] +'</h6>' +
+                        '<div class="text-muted small">'+ d['name'] +'</div>' +
                         '<div class="row">' +
                             '<div class="col">' +
-                                '<h3 style="text-align:center">' + d['current_value'] + '</h3>' +
+                                '<div class="text-large" style="text-align:center">' + d['current_value'] + '</div>' +
                             '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div class="card-footer">' +
                         '<p class="mb-0">' +
-                        '<span class="text-danger mr-2">' +
+                        '<span class="text-muted small text-danger mr-2">' +
                             '<i class="mdi mdi-arrow-up-bold"></i>' +
-                                 (d['change'] * 100) + '%</span>' +
-                            '<span class="text-nowrap">Since last week</span>' +
+                                 (d['change'] * 100).toFixed(2) + '%</span>' +
+                            '<span class="text-nowrap text-muted small">Since Last Week</span>' +
                         '</p>' +
                     '</div>' +
                 '</div>'
@@ -936,7 +1026,7 @@
                 .attr('width', size.width)
                 .attr('height', size.height);
             const outerRadius = Math.min(size.width, size.height) * 0.45;
-            const thickness = 25;
+            const thickness = 10;
             let value = 0;
 
             const mainArc = d3.arc()
@@ -1014,6 +1104,7 @@
             getMetrics('#partnerMetrics', generateBarChart, 'mpVendor', metrics)
             getMetrics('#countryMetrics', generateBarChart, 'mpCountry/Region', metrics)
             getMetrics('#targetMetrics', generateLollipopChart, 'mpTargeting', metrics)
+            getMetrics('#creativeMetrics', generateLollipopChart, 'mpCreative', metrics)
         });
 
     </script>

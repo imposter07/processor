@@ -8,16 +8,6 @@
             margin-left: auto;
             margin-right: auto;
         }
-        #delivery {
-            overflow-y: scroll;
-        }
-
-        .tooltip {
-            fill: grey;
-            stroke: #000;
-            opacity: 1;
-            padding: 2px;
-        }
 
         .overlay {
             fill: none;
@@ -38,10 +28,15 @@
         .progress-label {
             fill: #aaa;
             font-family: 'Open Sans', sans-serif;
-            font-size: 20px;
+            font-size: 15px;
             text-anchor: middle;
             dominant-baseline: central;
         }
+
+        .outer {
+            overflow: auto;
+        }
+
     </style>
     <div class="row h-50">
         <div id="totalMetrics" class="card-deck container-fluid text-center">
@@ -62,9 +57,9 @@
                     <option>Select Campaign</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow h-50">
+            <div class="card container-fluid shadow outer">
                 <div id="deliveryProgress" class='widget'></div>
-                <div id="delivery"></div>
+                <div id="delivery" style="height:250px;"></div>
             </div>
         </div>
         <div class="col-md-9 h-50">
@@ -74,7 +69,7 @@
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow h-50">
+            <div class="card container-fluid shadow outer">
                 <div id="dailyMetricsProgress" class='widget'></div>
                 <div id="dailyMetrics"></div>
             </div>
@@ -90,7 +85,7 @@
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow">
+            <div class="card container-fluid shadow outer">
                 <div id="partnerMetricsProgress" class='widget'></div>
                 <div id="partnerMetrics"></div>
             </div>
@@ -103,7 +98,7 @@
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow">
+            <div class="card container-fluid shadow outer">
                 <div id="countryMetricsProgress" class='widget'></div>
                 <div id="countryMetrics"></div>
             </div>
@@ -118,7 +113,7 @@
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow">
+            <div class="card container-fluid shadow outer">
                 <div id="targetMetricsProgress" class='widget'></div>
                 <div id="targetMetrics"></div>
             </div>
@@ -134,19 +129,20 @@
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow">
+            <div class="card container-fluid shadow outer">
                 <div id="creativeMetricsProgress" class='widget'></div>
                 <div id="creativeMetrics"></div>
             </div>
         </div>
     </div>
     <script>
-        function autoMargin(elem, maxHeight, lMargin, bMargin) {
+        function autoMargin(elem, maxHeight, lMargin, bMargin, dataLength=1,
+                            dataLengthY=1) {
             const parent = d3.select(elem)
             const size = parent.node().getBoundingClientRect()
             let margin = {top: 10, right: 10, bottom: bMargin, left: lMargin},
-                width = size.width - margin.left - margin.right,
-                height = maxHeight - margin.top - margin.bottom;
+                width = (size.width - margin.left - margin.right) * dataLength,
+                height = (maxHeight - margin.top - margin.bottom) * dataLengthY;
             let svgHeight = height + margin.top + margin.bottom
             let svg = parent
                 .append("svg")
@@ -174,6 +170,30 @@
 
         }
 
+        function wrapText(text, width) {
+            text.each(function () {
+                var text = d3.select(this),
+                    words = text.text().split(/[ _]+/).reverse(),
+                    word,
+                    line = [],
+                    lineNumber = 0,
+                    lineHeight = 1.1, // ems
+                    y = text.attr("y"),
+                    dy = parseFloat(text.attr("dy")),
+                    tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+                while (word = words.pop()) {
+                    line.push(word);
+                    tspan.text(line.join(" "));
+                    if (tspan.node().getComputedTextLength() > width) {
+                        line.pop();
+                        tspan.text(line.join(" "));
+                        line = [word];
+                        tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+                    }
+                }
+            });
+        }
+
         function generateAxis(data, svg, xAxisType, yAxisType, width, height,
                               xCol, yCol, timeX=null) {
 
@@ -187,7 +207,7 @@
                 }
             }
             let x = xAxisType
-                .domain(xDomain(xAxisType))
+                .domain(xDomain())
                 .range([0, width])
             if (!timeX) {
                 x.padding(1)
@@ -197,6 +217,11 @@
                 .attr("transform", "translate(0," + height + ")")
                 .attr('class', 'xaxis')
                 .call(xAxis);
+            if (!timeX) {
+                svg.selectAll('.xaxis')
+                    .selectAll(".tick text")
+                    .call(wrapText, x.bandwidth());
+            }
 
             let yScale = yAxisType
                 .domain([0, d3.max(data, function (d) {
@@ -242,7 +267,7 @@
                     return myColor(selectedVar)
                 });
 
-            focus.append("rect")
+            focus.append("div")
                 .style("opacity", 0)
                 .attr("class", "tooltip")
                 .style("background-color", "white")
@@ -267,9 +292,11 @@
                 .attr("height", am.height)
                 .on("mouseover", function () {
                     focus.attr("display", null);
+                    focus.attr("fill-opacity", .7)
                 })
                 .on("mouseout", function () {
                     focus.attr("display", "none");
+                    focus.attr("fill-opacity", .3)
                 })
                 .on("mousemove", mousemove);
             let bisectDate = d3.bisector(function (d) {
@@ -286,7 +313,7 @@
                         return x0 - d0[xCol] > d1[xCol] - x0 ? d1 : d0
                     } else {
                         let mx = d3.mouse(currentThis)[0] // x position of cursor
-                        let idx = Math.round(mx / axes.x.step())
+                        let idx = Math.round((mx / axes.x.step()) - axes.x.padding())
                         return data[idx]
                     }
                 }
@@ -570,7 +597,8 @@
 
         function generateLollipopChart(elem, data, xCol, yCol) {
             data = sortData(data, yCol[0])
-            let am = autoMargin(elem, 250, 60, 30);
+            let dataLength = (data.length < 20) ? 1 : data.length / 20
+            let am = autoMargin(elem, 250, 60, 30, dataLength);
             let svg = am.svg
             generateSelect(elem, yCol)
             // A color scale: one color for each group
@@ -721,13 +749,12 @@
                 d.price = +d.price;
                 return d;
             }
-
-
         }
 
         function generateBarChart(elem, data, xCol, yCol) {
             data = sortData(data, yCol[0])
-            let am = autoMargin(elem, 250, 60, 30);
+            let dataLength = (data.length < 10) ? 1 : data.length / 10
+            let am = autoMargin(elem, 250, 60, 30, dataLength);
             let svg = am.svg
             generateSelect(elem, yCol)
             // A color scale: one color for each group
@@ -886,7 +913,8 @@
         function generateProgressBars(elem, data, xCol, yCol) {
             data.sort((a, b) => b[yCol[0]] - a[yCol[0]])
             generateSelect(elem, yCol)
-            let am = autoMargin(elem, 250, 5, 5)
+            let dataLength = (data.length < 5) ? 1 : data.length / 5
+            let am = autoMargin(elem, 250, 5, 5, 1, dataLength)
             let xVal = 10
             let barHeight = 20
             let spacing = 50

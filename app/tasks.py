@@ -454,10 +454,11 @@ def get_data_tables(processor_id, current_user_id, parameter=None,
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.utils as utl
         file_name = os.path.join(adjust_path(cur_processor.local_path),
                                  'Raw Data Output.csv')
         _set_task_progress(15)
-        tables = pd.read_csv(file_name)
+        tables = utl.import_read_csv(file_name)
         _set_task_progress(30)
         if not metrics:
             metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
@@ -477,8 +478,10 @@ def get_data_tables(processor_id, current_user_id, parameter=None,
             parameter = dimensions
         else:
             parameter = []
-        if parameter:
+        if parameter and not tables.empty:
             tables = [tables.groupby(parameter)[metrics].sum()]
+        elif parameter and tables.empty:
+            tables = [tables]
         else:
             mem = get_file_in_memory(tables)
             tables = [mem]

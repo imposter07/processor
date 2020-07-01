@@ -1896,10 +1896,55 @@ def save_media_plan(processor_id, current_user_id, media_plan,
         processor_post_message(cur_obj, cur_user, msg_text,
                                object_name=object_name)
         _set_task_progress(100)
+        return True
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def save_spend_cap_file(processor_id, current_user_id, new_data):
+    try:
+        cur_obj = Processor.query.get(processor_id)
+        cur_user = User.query.get(current_user_id)
+        new_data.seek(0)
+        file_name = '/dictionaries/plannet_placement.csv'
+        with open(cur_obj.local_path + file_name, 'wb') as f:
+            shutil.copyfileobj(new_data, f, length=131072)
+        msg_text = 'Spend cap file was saved.'
+        processor_post_message(cur_obj, cur_user, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def set_spend_cap_config_file(processor_id, current_user_id, dict_col):
+    try:
+        cur_obj = Processor.query.get(processor_id)
+        cur_user = User.query.get(current_user_id)
+        cap_config_dict = {
+            'file_name': ['dictionaries/plannet_placement.csv'],
+            'file_dim': [dict_col],
+            'file_metric': ['Net Cost (Capped)'],
+            'processor_dim': [dict_col],
+            'processor_metric': ['Planned Net Cost']}
+        df = pd.DataFrame(cap_config_dict)
+        os.chdir(adjust_path(cur_obj.local_path))
+        df.to_csv('config/cap_config.csv', index=False)
+        msg_text = ('{} spend cap config was updated.'
+                    ''.format(cur_obj.name))
+        processor_post_message(cur_obj, cur_user, msg_text)
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
 
 
 def processor_fix_request(processor_id, current_user_id, fix):
@@ -1908,7 +1953,10 @@ def processor_fix_request(processor_id, current_user_id, fix):
         ali_user = User.query.get(4)
         fixed = False
         if fix.fix_type == 'Update Plan':
-            fixed = set_processor_plan_net(processor_id, current_user_id)
+            fixed = set_processor_plan_net(processor_id, ali_user.id)
+        elif fix.fix_type == 'Spend Cap':
+            fixed = set_spend_cap_config_file(processor_id, ali_user.id,
+                                              fix.column_name)
         elif fix.fix_type == 'Change Dimension':
             pass
         elif fix.fix_type == 'Change Metric':

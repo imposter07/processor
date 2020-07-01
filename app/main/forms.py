@@ -430,6 +430,7 @@ class ProcessorFixForm(FlaskForm):
         ('Upload File', 'Upload File'),
         ('Update Plan', 'Update Plan'),
         ('Change Tableau', 'Change Tableau'),
+        ('Spend Cap', 'Spend Cap'),
         ('Custom', 'Custom')])
     column_name = SelectField(
         'Column Name',  choices=[('', '')] + [(x, x) for x in dctc.COLS] +

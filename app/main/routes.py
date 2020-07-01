@@ -1392,7 +1392,7 @@ def edit_processor_request_fix(processor_name):
         db.session.add(post)
         db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.processor_page',
+            return redirect(url_for('main.edit_processor_submit_fix',
                                     processor_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_request_fix',
@@ -1427,6 +1427,11 @@ def edit_processor_request_fix_upload_file(processor_name):
             vk=ds.vendor_key, mem_file=True)
     elif fix_type == 'Update Plan':
         check_and_add_media_plan(mem, cur_proc)
+    elif fix_type == 'Spend Cap':
+        msg_text = 'Adding new spend cap'
+        cur_proc.launch_task(
+            '.save_spend_cap_file', _(msg_text),
+            running_user=current_user.id, new_data=mem)
     db.session.commit()
     return jsonify({'data': 'success: {}'.format(processor_name)})
 

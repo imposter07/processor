@@ -2185,7 +2185,7 @@ def get_metrics():
         job_name = '.get_processor_total_metrics'
         proc_arg = {x: proc_arg[x] for x in proc_arg if x == 'running_user'}
     else:
-        job_name = '.get_data_tables'
+        job_name = '.get_data_tables_from_db'
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
     job = task.wait_and_get_job(force_return=True)

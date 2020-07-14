@@ -2299,3 +2299,55 @@ def get_processor_total_metrics(processor_id, current_user_id):
                 processor_id, current_user_id),
             exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
+                            dimensions=None, metrics=None):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.utils as utl
+        import processor.reporting.export as export
+        os.chdir(adjust_path(cur_processor.local_path))
+        _set_task_progress(30)
+        if not metrics:
+            metrics = ['impressions', 'clicks', 'netcost']
+        dimensions = ['event.{}'.format(x) if x == 'eventdate'
+                      else x for x in dimensions]
+        dimensions = ','.join(dimensions)
+        metric_sql = ','.join(['SUM({0}) AS {0}'.format(x) for x in metrics])
+        up_id = pd.read_csv('config/upload_id_file.csv')
+        up_id = up_id['uploadid'][0]
+        command = """SELECT {0},{1}
+            FROM lqadb.event
+            FULL JOIN lqadb.fullplacement ON event.fullplacementid = fullplacement.fullplacementid
+            FULL JOIN lqadb.plan ON plan.fullplacementid = fullplacement.fullplacementid
+            LEFT JOIN lqadb.vendor ON fullplacement.vendorid = vendor.vendorid
+            LEFT JOIN lqadb.campaign ON fullplacement.campaignid = campaign.campaignid
+            LEFT JOIN lqadb.country ON fullplacement.countryid = country.countryid
+            LEFT JOIN lqadb.product ON campaign.productid = product.productid
+            LEFT JOIN lqadb.targeting ON fullplacement.targetingid = targeting.targetingid
+            LEFT JOIN lqadb.creative ON fullplacement.creativeid = creative.creativeid
+            WHERE fullplacement.uploadid = '{2}'
+            GROUP BY {0}
+        """.format(dimensions, metric_sql, up_id)
+        db_class = export.DB()
+        db_class.input_config('dbconfig.json')
+        db_class.connect()
+        db_class.cursor.execute(command)
+        data = db_class.cursor.fetchall()
+        columns = [i[0] for i in db_class.cursor.description]
+        df = pd.DataFrame(data=data, columns=columns)
+        df = utl.data_to_type(df, float_col=metrics)
+        if 'eventdate' in df.columns:
+            df = utl.data_to_type(df, str_col=['eventdate'])
+        df = df.fillna(0)
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Parameter {}'.format(
+                processor_id, current_user_id, parameter),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

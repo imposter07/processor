@@ -984,24 +984,25 @@
         function generateTotalCards(elem, data, xCol, yCol) {
             data.forEach(function (d) {
                 $(elem).append(
-                '<div class="card mb-3 shadow-lg">' +
+                    '<div class="card mb-3 shadow-lg">' +
                     '<div class="card-body">' +
-                        '<div class="text-muted small">'+ d['name'] +'</div>' +
-                        '<div class="row">' +
-                            '<div class="col">' +
-                                '<div class="text-large" style="text-align:center">' + d['current_value'] + '</div>' +
-                            '</div>' +
-                        '</div>' +
+                    '<div class="text-muted small">' + d['name'] + '</div>' +
+                    '<div class="row">' +
+                    '<div class="col">' +
+                    '<div class="text-large" style="text-align:center">' +
+                    d['current_value'] + '</div>' +
+                    '</div>' +
+                    '</div>' +
                     '</div>' +
                     '<div class="card-footer">' +
-                        '<p class="mb-0">' +
-                        '<span class="text-muted small text-danger mr-2">' +
-                            '<i class="mdi mdi-arrow-up-bold"></i>' +
-                                 (d['change'] * 100).toFixed(2) + '%</span>' +
-                            '<span class="text-nowrap text-muted small">Since Last Week</span>' +
-                        '</p>' +
+                    '<p class="mb-0">' +
+                    '<span class="text-muted small text-danger mr-2">' +
+                    '<i class="mdi mdi-arrow-up-bold"></i>' +
+                    (d['change'] * 100).toFixed(2) + '%</span>' +
+                    '<span class="text-nowrap text-muted small">Since Last Week</span>' +
+                    '</p>' +
                     '</div>' +
-                '</div>'
+                    '</div>'
                 )
             });
         }
@@ -1046,7 +1047,8 @@
             });
             let chart = radialProgress(elem + 'Progress')
             let downloadingProgress = null
-            downloadingProgress = getDownloadProgressForRadial('OutputData', chart, downloadingProgress)
+            downloadingProgress = getDownloadProgressForRadial('OutputData',
+                chart, downloadingProgress)
         }
 
         function radialProgress(selector) {
@@ -1126,15 +1128,15 @@
         }
 
         $(document).ready(function () {
-            let metrics = ['Impressions', 'Clicks', 'Net Cost']
+            let metrics = ['impressions', 'clicks', 'netcost']
             let filerCols = ['mpCampaign', 'mpVendor', 'mpCountry/Region']
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name', metrics);
-            getMetrics('#dailyMetrics', generateAreaChart, 'Date', metrics);
-            getMetrics('#delivery', generateProgressBars, 'mpVendor', ['Net Cost', 'Planned Net Cost']);
-            getMetrics('#partnerMetrics', generateBarChart, 'mpVendor', metrics)
-            getMetrics('#countryMetrics', generateBarChart, 'mpCountry/Region', metrics)
-            getMetrics('#targetMetrics', generateLollipopChart, 'mpTargeting', metrics)
-            getMetrics('#creativeMetrics', generateLollipopChart, 'mpCreative', metrics)
+            getMetrics('#dailyMetrics', generateAreaChart, 'eventdate', metrics);
+            getMetrics('#delivery', generateProgressBars, 'vendorname', ['netcost', 'plannednetcost']);
+            getMetrics('#partnerMetrics', generateBarChart, 'vendorname', metrics)
+            getMetrics('#countryMetrics', generateBarChart, 'countryname', metrics)
+            getMetrics('#targetMetrics', generateLollipopChart, 'targetingname', metrics)
+            getMetrics('#creativeMetrics', generateLollipopChart, 'creativename', metrics)
         });
 
     </script>

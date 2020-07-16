@@ -2309,7 +2309,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         import processor.reporting.utils as utl
         import processor.reporting.export as export
         os.chdir(adjust_path(cur_processor.local_path))
-        _set_task_progress(30)
+        _set_task_progress(15)
         if not metrics:
             metrics = ['impressions', 'clicks', 'netcost']
         dimensions = ['event.{}'.format(x) if x == 'eventdate'
@@ -2318,6 +2318,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         metric_sql = ','.join(['SUM({0}) AS {0}'.format(x) for x in metrics])
         up_id = pd.read_csv('config/upload_id_file.csv')
         up_id = up_id['uploadid'][0]
+        _set_task_progress(30)
         command = """SELECT {0},{1}
             FROM lqadb.event
             FULL JOIN lqadb.fullplacement ON event.fullplacementid = fullplacement.fullplacementid
@@ -2334,10 +2335,13 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         db_class = export.DB()
         db_class.input_config('dbconfig.json')
         db_class.connect()
+        _set_task_progress(50)
         db_class.cursor.execute(command)
         data = db_class.cursor.fetchall()
+        _set_task_progress(70)
         columns = [i[0] for i in db_class.cursor.description]
         df = pd.DataFrame(data=data, columns=columns)
+        _set_task_progress(90)
         df = utl.data_to_type(df, float_col=metrics)
         if 'eventdate' in df.columns:
             df = utl.data_to_type(df, str_col=['eventdate'])

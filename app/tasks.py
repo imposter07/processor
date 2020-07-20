@@ -14,7 +14,8 @@ from app import create_app, db
 from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
-    TaskScheduler, Requests, UploaderObjects, UploaderRelations
+    TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
+    ProcessorAnalysis
 
 app = create_app()
 app.app_context().push()
@@ -175,6 +176,8 @@ def run_processor(processor_id, current_user_id, processor_args):
         else:
             main()
         copy_processor_local(old_file_path, copy_back=True)
+        if 'analyze' in processor_args:
+            update_analysis_in_db(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(proc=processor_to_run, usr=user_that_ran,
                                text=msg_text, run_complete=True)
@@ -2355,3 +2358,55 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                 processor_id, current_user_id, parameter),
             exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def update_analysis_in_db(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.analyze as az
+        os.chdir(adjust_path(cur_processor.local_path))
+        with open(az.Analyze.analysis_dict_file_name, 'r') as f:
+            analysis_dict = json.load(f)
+        all_analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id).all()
+        for analysis in all_analysis:
+            analysis_dict_val = [
+                x for x in analysis_dict if
+                x[az.Analyze.analysis_dict_key_col] == analysis.key and
+                x[az.Analyze.analysis_dict_param_col] == analysis.parameter and
+                x[az.Analyze.analysis_dict_param_2_col] == analysis.parameter_2]
+            if not analysis_dict_val:
+                db.session.delete(analysis)
+                db.session.commit()
+        for analysis in analysis_dict:
+            old_analysis = ProcessorAnalysis.query.filter_by(
+                key=analysis[az.Analyze.analysis_dict_key_col],
+                parameter=analysis[az.Analyze.analysis_dict_param_col],
+                parameter_2=analysis[az.Analyze.analysis_dict_param_2_col],
+                processor_id=cur_processor.id
+            ).first()
+            if old_analysis:
+                old_analysis.data = analysis[az.Analyze.analysis_dict_data_col]
+                old_analysis.message = analysis[
+                    az.Analyze.analysis_dict_msg_col]
+                old_analysis.date = datetime.today().date()
+            else:
+                new_analysis = ProcessorAnalysis(
+                    key=analysis[az.Analyze.analysis_dict_key_col],
+                    parameter=analysis[az.Analyze.analysis_dict_param_col],
+                    parameter_2=analysis[az.Analyze.analysis_dict_param_2_col],
+                    data=analysis[az.Analyze.analysis_dict_data_col],
+                    message=analysis[az.Analyze.analysis_dict_msg_col],
+                    processor_id=cur_processor.id,
+                    date=datetime.today().date())
+                db.session.add(new_analysis)
+            db.session.commit()
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return False

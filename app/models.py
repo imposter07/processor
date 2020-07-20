@@ -442,6 +442,8 @@ class Processor(db.Model):
                                             backref='processor', lazy='dynamic')
     accounts = db.relationship('Account', backref='processor', lazy='dynamic')
     requests = db.relationship('Requests', backref='processor', lazy='dynamic')
+    processor_analysis = db.relationship('ProcessorAnalysis',
+                                         backref='processor', lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -888,3 +890,14 @@ class UploaderRelations(db.Model):
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                      if not k.startswith("_") and k != 'id'])
+
+
+class ProcessorAnalysis(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    key = db.Column(db.Text)
+    data = db.Column(db.JSON)
+    message = db.Column(db.Text)
+    date = db.Column(db.Date)
+    parameter = db.Column(db.Text)
+    parameter_2 = db.Column(db.Text)

@@ -2317,6 +2317,8 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         _set_task_progress(15)
         if not metrics:
             metrics = ['impressions', 'clicks', 'netcost']
+        if not os.path.exists('config/upload_id_file.csv'):
+            return [pd.DataFrame({x: [] for x in dimensions + metrics})]
         dimensions = ['event.{}'.format(x) if x == 'eventdate'
                       else x for x in dimensions]
         dimensions = ','.join(dimensions)

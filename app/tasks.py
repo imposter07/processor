@@ -166,6 +166,7 @@ def run_processor(processor_id, current_user_id, processor_args):
         post_body = ('Running {} for processor: {}...'.format(
             processor_args, processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, post_body)
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
         _set_task_progress(0)
         old_file_path = adjust_path(processor_to_run.local_path)
         file_path = copy_processor_local(old_file_path)
@@ -177,6 +178,7 @@ def run_processor(processor_id, current_user_id, processor_args):
             main()
         copy_processor_local(old_file_path, copy_back=True)
         if 'analyze' in processor_args:
+            os.chdir(cur_path)
             update_analysis_in_db(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(proc=processor_to_run, usr=user_that_ran,

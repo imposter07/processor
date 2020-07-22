@@ -2318,6 +2318,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         if not metrics:
             metrics = ['impressions', 'clicks', 'netcost']
         if not os.path.exists('config/upload_id_file.csv'):
+            _set_task_progress(100)
             return [pd.DataFrame({x: [] for x in dimensions + metrics})]
         dimensions = ['event.{}'.format(x) if x == 'eventdate'
                       else x for x in dimensions]
@@ -2384,13 +2385,13 @@ def update_analysis_in_db(processor_id, current_user_id):
                 db.session.delete(analysis)
                 db.session.commit()
         for analysis in analysis_dict:
-            old_analysis = ProcessorAnalysis.query.filter_by(
-                key=analysis[az.Analyze.analysis_dict_key_col],
-                parameter=analysis[az.Analyze.analysis_dict_param_col],
-                parameter_2=analysis[az.Analyze.analysis_dict_param_2_col],
-                processor_id=cur_processor.id
-            ).first()
+            old_analysis = [
+                x for x in all_analysis if
+                analysis[az.Analyze.analysis_dict_key_col] == x.key and
+                analysis[az.Analyze.analysis_dict_param_col] == x.parameter and
+                analysis[az.Analyze.analysis_dict_param_2_col] == x.parameter_2]
             if old_analysis:
+                old_analysis = old_analysis[0]
                 old_analysis.data = analysis[az.Analyze.analysis_dict_data_col]
                 old_analysis.message = analysis[
                     az.Analyze.analysis_dict_msg_col]

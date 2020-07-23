@@ -2265,7 +2265,7 @@ def clean_total_metric_df(df, col_name):
     return df
 
 
-def get_processor_total_metrics(processor_id, current_user_id):
+def get_processor_total_metrics_file(processor_id, current_user_id):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
@@ -2292,6 +2292,63 @@ def get_processor_total_metrics(processor_id, current_user_id):
         df['change'] = df['change'].round(4)
         df = df.replace([np.inf, -np.inf], np.nan)
         df = df.fillna(0)
+        df = df.rename_axis('name').reset_index()
+        df = df[df['name'].isin(['Net Cost Final', vmc.impressions,
+                                 vmc.clicks, 'CPC'])]
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def clean_topline_df_from_db(db_item, new_col_name):
+    import processor.reporting.utils as utl
+    import processor.reporting.analyze as az
+    df = pd.DataFrame(db_item.data)
+    df = utl.data_to_type(df, float_col=list(df.columns))
+    df = pd.DataFrame(df.fillna(0).T.sum()).T
+    metric_names = [x for x in df.columns if x in az.ValueCalc().metric_names]
+    df = az.ValueCalc().calculate_all_metrics(metric_names=metric_names, df=df)
+    df = clean_total_metric_df(df.T, new_col_name)
+    return df
+
+
+def get_processor_total_metrics(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.analyze as az
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.utils as utl
+        topline_analysis = cur_processor.processor_analysis.filter_by(
+            key=az.Analyze.topline_col).all()
+        if not topline_analysis:
+            return pd.DataFrame()
+        df = clean_topline_df_from_db(
+            [x for x in topline_analysis
+             if x.parameter == az.Analyze.topline_col][0], 'current_value')
+        tdf = clean_topline_df_from_db(
+            [x for x in topline_analysis
+             if x.parameter == az.Analyze.lw_topline_col][0], 'new_value')
+        twdf = clean_topline_df_from_db(
+            [x for x in topline_analysis
+             if x.parameter == az.Analyze.tw_topline_col][0], 'old_value')
+        df = df.join(tdf)
+        df = df.join(twdf)
+        df['change'] = ((df['new_value'].astype(float) -
+                         df['old_value'].astype(float)) /
+                        df['old_value'].astype(float))
+        df['change'] = df['change'].round(4)
+        df = df.replace([np.inf, -np.inf], np.nan)
+        df = df.fillna(0)
+        tdf = df.T.iloc[:-1]
+        tdf = utl.give_df_default_format(tdf)
+        df = tdf.T.join(df['change'])
         df = df.rename_axis('name').reset_index()
         df = df[df['name'].isin(['Net Cost Final', vmc.impressions,
                                  vmc.clicks, 'CPC'])]

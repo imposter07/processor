@@ -460,6 +460,9 @@ def get_data_tables(processor_id, current_user_id, parameter=None,
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.utils as utl
+        if not cur_processor.local_path:
+            _set_task_progress(100)
+            return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
         file_name = os.path.join(adjust_path(cur_processor.local_path),
                                  'Raw Data Output.csv')
         _set_task_progress(15)
@@ -1707,6 +1710,32 @@ def send_processor_request_email(processor_id, current_user_id, progress):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+def send_processor_analysis_email(processor_id, current_user_id, progress):
+    try:
+        progress = ['Request #{}.....{}'.format(k, v)
+                    for k, v in progress.items()]
+        cur_processor = Processor.query.get(processor_id)
+        from urllib.parse import quote
+        processor_name = quote(cur_processor.name)
+        for user in cur_processor.processor_followers:
+            send_email('[Liquid App] New Processor Fix Request!',
+                       sender=app.config['ADMINS'][0],
+                       recipients=[user.email],
+                       text_body=render_template(
+                           'email/processor_request_fix.txt', user=user,
+                           processor_name=processor_name,
+                           progress=progress),
+                       html_body=render_template(
+                           'email/processor_request_fix.html', user=user,
+                           processor_name=processor_name,
+                           progress=progress),
+                       sync=True)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
 def set_processor_config_file(processor_id, current_user_id, config_type,
                               config_file_name):
     try:
@@ -2370,6 +2399,9 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.utils as utl
         import processor.reporting.export as export
+        if not cur_processor.local_path:
+            _set_task_progress(100)
+            return [pd.DataFrame({x: [] for x in dimensions + metrics})]
         os.chdir(adjust_path(cur_processor.local_path))
         _set_task_progress(15)
         if not metrics:

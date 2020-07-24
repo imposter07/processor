@@ -2339,10 +2339,13 @@ def clean_topline_df_from_db(db_item, new_col_name):
     import processor.reporting.utils as utl
     import processor.reporting.analyze as az
     df = pd.DataFrame(db_item.data)
-    df = utl.data_to_type(df, float_col=list(df.columns))
-    df = pd.DataFrame(df.fillna(0).T.sum()).T
-    metric_names = [x for x in df.columns if x in az.ValueCalc().metric_names]
-    df = az.ValueCalc().calculate_all_metrics(metric_names=metric_names, df=df)
+    if not df.empty:
+        df = utl.data_to_type(df, float_col=list(df.columns))
+        df = pd.DataFrame(df.fillna(0).T.sum()).T
+        calculated_metrics = az.ValueCalc().metric_names
+        metric_names = [x for x in df.columns if x in calculated_metrics]
+        df = az.ValueCalc().calculate_all_metrics(
+            metric_names=metric_names, df=df)
     df = clean_total_metric_df(df.T, new_col_name)
     return df
 

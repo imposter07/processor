@@ -2360,6 +2360,7 @@ def get_processor_total_metrics(processor_id, current_user_id):
         topline_analysis = cur_processor.processor_analysis.filter_by(
             key=az.Analyze.topline_col).all()
         if not topline_analysis:
+            _set_task_progress(100)
             return pd.DataFrame()
         df = clean_topline_df_from_db(
             [x for x in topline_analysis

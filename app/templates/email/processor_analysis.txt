@@ -1,0 +1,16 @@
+Dear {{ user.username }},
+
+Today's campaign analysis for a processor you follow is below.
+
+This processor can be found at: https://lqadata.com/processor/{{ processor_name }}
+
+{% for x in analysis %}
+    {{ x['message'] }}
+    {% if 'data' in x %}
+        {{ x['data'].to_string() }}
+    {% endif %}
+{% endfor %}
+
+Sincerely,
+
+Liquid App

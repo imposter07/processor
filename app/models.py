@@ -901,3 +901,6 @@ class ProcessorAnalysis(db.Model):
     date = db.Column(db.Date)
     parameter = db.Column(db.Text)
     parameter_2 = db.Column(db.Text)
+    filter_col = db.Column(db.Text)
+    filter_val = db.Column(db.Text)
+    split_col = db.Column(db.Text)

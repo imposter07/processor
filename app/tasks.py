@@ -844,6 +844,7 @@ def full_run_processor(processor_id, current_user_id, processor_args=None):
             processor_args = (
                 '--api all --ftp all --dbi all --exp all --tab --analyze')
         run_processor(processor_id, current_user_id, processor_args)
+        send_processor_analysis_email(processor_id, current_user_id)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -1710,25 +1711,31 @@ def send_processor_request_email(processor_id, current_user_id, progress):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def send_processor_analysis_email(processor_id, current_user_id, progress):
+def send_processor_analysis_email(processor_id, current_user_id):
     try:
-        progress = ['Request #{}.....{}'.format(k, v)
-                    for k, v in progress.items()]
         cur_processor = Processor.query.get(processor_id)
+        if ((not cur_processor.end_date) or
+                (cur_processor.end_date < datetime.today().date())):
+            _set_task_progress(100)
+            return True
         from urllib.parse import quote
         processor_name = quote(cur_processor.name)
+        text_body = build_processor_analysis_email(
+            processor_id, current_user_id)
         for user in cur_processor.processor_followers:
-            send_email('[Liquid App] New Processor Fix Request!',
+            send_email('[Liquid App] {} | Analysis | {}'.format(
+                cur_processor.name,
+                datetime.today().date().strftime('%Y-%m-%d')),
                        sender=app.config['ADMINS'][0],
                        recipients=[user.email],
                        text_body=render_template(
-                           'email/processor_request_fix.txt', user=user,
+                           'email/processor_analysis.txt', user=user,
                            processor_name=processor_name,
-                           progress=progress),
+                           analysis=text_body),
                        html_body=render_template(
-                           'email/processor_request_fix.html', user=user,
+                           'email/processor_analysis.html', user=user,
                            processor_name=processor_name,
-                           progress=progress),
+                           analysis=text_body),
                        sync=True)
     except:
         _set_task_progress(100)
@@ -2472,6 +2479,11 @@ def update_analysis_in_db(processor_id, current_user_id):
             analysis_dict_val = [
                 x for x in analysis_dict if
                 x[az.Analyze.analysis_dict_key_col] == analysis.key and
+                x[az.Analyze.analysis_dict_filter_col
+                  ] == analysis.filter_col and
+                x[az.Analyze.analysis_dict_filter_val
+                  ] == analysis.filter_val and
+                x[az.Analyze.analysis_dict_split_col] == analysis.split_col and
                 x[az.Analyze.analysis_dict_param_col] == analysis.parameter and
                 x[az.Analyze.analysis_dict_param_2_col] == analysis.parameter_2]
             if not analysis_dict_val:
@@ -2481,6 +2493,12 @@ def update_analysis_in_db(processor_id, current_user_id):
             old_analysis = [
                 x for x in all_analysis if
                 analysis[az.Analyze.analysis_dict_key_col] == x.key and
+                analysis[
+                    az.Analyze.analysis_dict_filter_col] == x.filter_col and
+                analysis[
+                    az.Analyze.analysis_dict_filter_val] == x.filter_val and
+                analysis[
+                    az.Analyze.analysis_dict_split_col] == x.split_col and
                 analysis[az.Analyze.analysis_dict_param_col] == x.parameter and
                 analysis[az.Analyze.analysis_dict_param_2_col] == x.parameter_2]
             if old_analysis:
@@ -2494,6 +2512,9 @@ def update_analysis_in_db(processor_id, current_user_id):
                     key=analysis[az.Analyze.analysis_dict_key_col],
                     parameter=analysis[az.Analyze.analysis_dict_param_col],
                     parameter_2=analysis[az.Analyze.analysis_dict_param_2_col],
+                    filter_col=analysis[az.Analyze.analysis_dict_filter_col],
+                    filter_val=analysis[az.Analyze.analysis_dict_filter_val],
+                    split_col=analysis[az.Analyze.analysis_dict_split_col],
                     data=analysis[az.Analyze.analysis_dict_data_col],
                     message=analysis[az.Analyze.analysis_dict_msg_col],
                     processor_id=cur_processor.id,
@@ -2508,3 +2529,79 @@ def update_analysis_in_db(processor_id, current_user_id):
             'Unhandled exception - Processor {} User {}'.format(
                 processor_id, current_user_id), exc_info=sys.exc_info())
         return False
+
+
+def build_processor_analysis_email(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        import processor.reporting.analyze as az
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.dictcolumns as dctc
+        cur_processor = Processor.query.get(processor_id)
+        analysis = cur_processor.processor_analysis.all()
+        text_body = []
+        topline_analysis = [x for x in analysis
+                            if x.key == az.Analyze.topline_col]
+        text_body.append({'message': 'TOPLINE\n\n', 'tab': 0})
+        for topline in topline_analysis:
+            df = pd.DataFrame(topline.data)
+            if not df.empty:
+                text_body.append({'message': '-  {}\n'.format(topline.message),
+                                  'data': df,
+                                  'tab': 1})
+        delivery_analysis = [x for x in analysis if x.key in
+                             [az.Analyze.delivery_col,
+                              az.Analyze.delivery_comp_col]]
+        text_body.append({'message': 'DELIVERY\n\n', 'tab': 0})
+        for delivery in delivery_analysis:
+            df = pd.DataFrame(delivery.data)
+            if not df.empty:
+                text_body.append({'message': '-  {}\n'.format(delivery.message),
+                                  'data': pd.DataFrame(delivery.data),
+                                  'tab': 1})
+        kpi_analysis = [x for x in analysis
+                        if x.key == az.Analyze.kpi_col]
+        kpis = set(x.parameter for x in kpi_analysis
+                   if x.parameter not in ['0', 'nan'])
+        text_body.append({'message': 'KPI ANALYSIS\n\n', 'tab': 0})
+        for kpi in kpis:
+            text_body.append({'message': '-  {}\n\n'.format(kpi), 'tab': 1})
+            cur_analysis = [x for x in kpi_analysis if x.parameter == kpi]
+            text_body.append({'message': '-  {}\n\n'.format('Partner'),
+                              'tab': 2})
+            par_analysis = [x for x in cur_analysis if x.split_col == dctc.VEN]
+            for a in par_analysis:
+                text_body.append({'message': '-  {}\n'.format(a.message),
+                                  'data': pd.DataFrame(a.data), 'tab': 3})
+                partners = pd.DataFrame(a.data)[dctc.VEN].to_list()
+                for p in partners:
+                    text_body.append({'message': '-  {}\n\n'.format(p),
+                                      'tab': 3})
+                    ind_par_anlaysis = [x for x in cur_analysis
+                                        if x.filter_val == p
+                                        and x.parameter_2 == a.parameter_2]
+                    for ind_par in ind_par_anlaysis:
+                        text_body.append(
+                            {'message': '-  {}\n'.format(ind_par.message),
+                             'tab': 4})
+            date_analysis = [x for x in cur_analysis if x.split_col == vmc.date]
+            text_body.append({'message': '-  {}\n\n'.format('Date'), 'tab': 2})
+            for a in date_analysis:
+                text_body.append({'message': '-  {}\n'.format(a.message),
+                                  'data': pd.DataFrame(a.data), 'tab': 3})
+        qa_analysis = [
+            x for x in analysis if x.key in
+            [az.Analyze.unknown_col, az.Analyze.raw_file_update_col]]
+        text_body.append({'message': 'REPORTING QA\n\n', 'tab': 0})
+        for qa in qa_analysis:
+            df = pd.DataFrame(qa.data)
+            if not df.empty:
+                text_body.append({'message': '-  {}\n'.format(qa.message),
+                                  'data': pd.DataFrame(qa.data), 'tab': 1})
+        return text_body
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return []

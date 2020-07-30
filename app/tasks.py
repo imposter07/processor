@@ -2548,10 +2548,13 @@ def analysis_email_basic(processor_id, current_user_id, text_body, header,
             x for x in full_analysis if x.__dict__[param] in analysis_keys]
         text_body = add_text_body(text_body, header, tab=tab)
         for a in analysis:
-            df = pd.DataFrame(a.data)
-            if not df.empty:
-                text_body = add_text_body(text_body, a.message,
-                                          tab=tab+1, data=df)
+            if not a.data:
+                text_body = add_text_body(text_body, a.message, tab=tab + 1)
+            else:
+                df = pd.DataFrame(a.data)
+                if not df.empty:
+                    text_body = add_text_body(text_body, a.message,
+                                              tab=tab+1, data=df)
         return text_body
     except:
         _set_task_progress(100)

@@ -2412,7 +2412,8 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.utils as utl
         import processor.reporting.export as export
-        if not cur_processor.local_path:
+        if ((not cur_processor.local_path) or
+                (not os.path.exists(cur_processor.local_path))):
             _set_task_progress(100)
             return [pd.DataFrame({x: [] for x in dimensions + metrics})]
         os.chdir(adjust_path(cur_processor.local_path))

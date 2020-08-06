@@ -2413,7 +2413,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         import processor.reporting.utils as utl
         import processor.reporting.export as export
         if ((not cur_processor.local_path) or
-                (not os.path.exists(cur_processor.local_path))):
+                (not os.path.exists(adjust_path(cur_processor.local_path)))):
             _set_task_progress(100)
             return [pd.DataFrame({x: [] for x in dimensions + metrics})]
         os.chdir(adjust_path(cur_processor.local_path))
@@ -2456,6 +2456,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         df = utl.data_to_type(df, float_col=metrics)
         if 'eventdate' in df.columns:
             df = utl.data_to_type(df, str_col=['eventdate'])
+            df = df[df['eventdate'] != 'None']
         df = df.fillna(0)
         _set_task_progress(100)
         return [df]

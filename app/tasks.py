@@ -2406,7 +2406,7 @@ def get_processor_total_metrics(processor_id, current_user_id):
 
 
 def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
-                            dimensions=None, metrics=None):
+                            dimensions=None, metrics=None, filter_dict=None):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
@@ -2429,6 +2429,18 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         metric_sql = ','.join(['SUM({0}) AS {0}'.format(x) for x in metrics])
         up_id = pd.read_csv('config/upload_id_file.csv')
         up_id = up_id['uploadid'][0]
+        where_sql = "WHERE fullplacement.uploadid = '{}'".format(up_id)
+        if filter_dict:
+            for k, v in filter_dict.items():
+                if k == 'eventdate':
+                    sd = datetime.strptime(
+                        v[0], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
+                    ed = datetime.strptime(
+                        v[1], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
+                    w = " AND event.{} BETWEEN '{}' AND '{}'".format(k, sd, ed)
+                else:
+                    w = " AND {} = '{}'".format(k, v)
+                where_sql += w
         _set_task_progress(30)
         command = """SELECT {0},{1}
             FROM lqadb.event
@@ -2440,9 +2452,9 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
             LEFT JOIN lqadb.product ON campaign.productid = product.productid
             LEFT JOIN lqadb.targeting ON fullplacement.targetingid = targeting.targetingid
             LEFT JOIN lqadb.creative ON fullplacement.creativeid = creative.creativeid
-            WHERE fullplacement.uploadid = '{2}'
+            {2}
             GROUP BY {0}
-        """.format(dimensions, metric_sql, up_id)
+        """.format(dimensions, metric_sql, where_sql)
         db_class = export.DB()
         db_class.input_config('dbconfig.json')
         db_class.connect()

@@ -2179,6 +2179,8 @@ def get_metrics():
     proc_arg = {'running_user': cur_user.id,
                 'dimensions': dimensions,
                 'metrics': metrics}
+    if 'filter_dict' in request.form:
+        proc_arg['filter_dict'] = json.loads(request.form['filter_dict'])
     obj_name = request.form['object_name']
     cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
     msg_text = 'Getting metric table for {}'.format(cur_proc.name)

@@ -38,6 +38,45 @@
         }
 
     </style>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <select id="" class="custom-select custom-select-sm">
+                            <option>Campaign</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <select id="" class="custom-select custom-select-sm">
+                            <option>Partner</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="row">
+                            <input id="datePicker"
+                                   class="custom-select custom-select-sm
+                                          flatpickr flatpickr-input active"
+                                   type="text" placeholder="Date"
+                                   data-id="range"
+                                   readonly="readonly" data-input>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button id="applyFilter" type="button"
+                                class="btn btn-block btn-outline-primary btn-sm">
+                            Apply Filter
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <br>
     <div class="row h-50">
         <div id="totalMetrics" class="card-deck container-fluid text-center">
             <div id="totalMetricsProgress" class='widget'></div>
@@ -135,7 +174,15 @@
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/LIB/d3-scale-radial.js"></script>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css"
+          href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css"
+          rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/js/select2.min.js"></script>
 
     <script>
         function autoMargin(elem, maxHeight, lMargin, bMargin, dataLength=1,
@@ -360,8 +407,6 @@
 
                 // What are the selected boundaries?
                 let extent = d3.event.selection
-                console.log(extent)
-                console.log(axes.x.domain)
                 // If no selection, back to initial coordinate. Otherwise, update X axis domain
                 if (!extent) {
                     if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
@@ -370,7 +415,6 @@
                     axes.x.domain([axes.x.invert(extent[0]), axes.x.invert(extent[1])])
                     u.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
                 }
-                console.log(axes.x.domain)
                 // Update axis and area position
                 svg.selectAll(".xaxis")
                     .transition().duration(500)
@@ -1023,7 +1067,7 @@
             return downloadingProgress
         }
 
-        function getMetrics(elem, createVisualFunction, xCol, yCol, filterCol) {
+        function getMetrics(elem, createVisualFunction, xCol, yCol, filterDict) {
             $.ajax({
                 type: "POST",
                 url: "/get_metrics",
@@ -1034,11 +1078,12 @@
                     elem: elem,
                     x_col: xCol,
                     y_col: yCol.join('|'),
+                    filter_dict: JSON.stringify(filterDict),
                     // filter_col: filterCol.join('|')
                 },
             }).done(function (data, status) {
                 chart.update(100);
-                createVisualFunction(elem, data, xCol, yCol, filterCol);
+                createVisualFunction(elem, data, xCol, yCol, filterDict);
             }).fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);
             }).always(function () {
@@ -1127,16 +1172,51 @@
             }
         }
 
-        $(document).ready(function () {
+        function getAllCharts(filterDict, clickElem=null, oldHtml=null) {
             let metrics = ['impressions', 'clicks', 'netcost']
             let filerCols = ['mpCampaign', 'mpVendor', 'mpCountry/Region']
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name', metrics);
-            getMetrics('#dailyMetrics', generateAreaChart, 'eventdate', metrics);
+            getMetrics('#dailyMetrics', generateAreaChart, 'eventdate', metrics, filterDict);
             getMetrics('#delivery', generateProgressBars, 'vendorname', ['netcost', 'plannednetcost']);
             getMetrics('#partnerMetrics', generateBarChart, 'vendorname', metrics)
             getMetrics('#countryMetrics', generateBarChart, 'countryname', metrics)
             getMetrics('#targetMetrics', generateLollipopChart, 'targetingname', metrics)
             getMetrics('#creativeMetrics', generateLollipopChart, 'creativename', metrics)
+            if (oldHtml) {
+                $(clickElem).prop("disabled", false);
+                $(clickElem).html(oldHtml);
+                unanimateBar();
+            }
+        }
+
+        function getDates() {
+            const fp = document.querySelector('#datePicker')._flatpickr;
+            return {eventdate: fp.selectedDates}
+        }
+
+        $(document).ready(function() {
+            $('button[id^="applyFilter"]').click(function () {
+                let dropdownButton = "#" + $(this)[0].id;
+                $(dropdownButton).prop("disabled", true);
+                let oldHtml = $(dropdownButton).html();
+                $(dropdownButton).html(
+                    `<span class="spinner-grow spinner-grow-sm" role="status"
+                      aria-hidden="true"></span> Loading...`
+                  );
+                animateBar();
+                let dateFilter = getDates();
+                getAllCharts(dateFilter, dropdownButton, oldHtml)
+                // getLog(dropdownButton, oldHtml);
+            });
+        });
+
+
+        $(document).ready(function () {
+            $('select').select2()
+            $("#datePicker").flatpickr({
+                mode: "range"
+            });
+            getAllCharts()
         });
 
     </script>

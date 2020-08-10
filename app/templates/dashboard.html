@@ -620,11 +620,8 @@
                 addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, true)
             }
 
-            // When the button is changed, run the updateChart function
-            d3.select(elem + 'Select').on("change", function (d) {
-                // recover the option that has been chosen
-                let selectedOption = d3.select(this).property("value")
-                // run the updateChart function with this selected option
+            $(elem + 'Select').on("select2:select", function (e) {
+                let selectedOption = $(e.currentTarget).val();
                 update(selectedOption)
             })
 
@@ -715,13 +712,11 @@
                 addToolTip(svg, am, axes, data, xCol, selectedVar, myColor)
             }
 
-            // When the button is changed, run the updateChart function
-            d3.select(elem + 'Select').on("change", function (d) {
-                // recover the option that has been chosen
-                let selectedOption = d3.select(this).property("value")
-                // run the updateChart function with this selected option
+            $(elem + 'Select').on("select2:select", function (e) {
+                let selectedOption = $(e.currentTarget).val();
                 update(selectedOption)
             })
+
             update(yCol[0])
         }
 
@@ -851,13 +846,11 @@
                 addToolTip(svg, am, axes, data, xCol, selectedVar, myColor)
             }
 
-            // When the button is changed, run the updateChart function
-            d3.select(elem + 'Select').on("change", function (d) {
-                // recover the option that has been chosen
-                let selectedOption = d3.select(this).property("value")
-                // run the updateChart function with this selected option
+            $(elem + 'Select').on("select2:select", function (e) {
+                let selectedOption = $(e.currentTarget).val();
                 update(selectedOption)
             })
+
             update(yCol[0])
         }
 
@@ -1067,7 +1060,13 @@
             return downloadingProgress
         }
 
-        function getMetrics(elem, createVisualFunction, xCol, yCol, filterDict) {
+        function getMetrics(elem, createVisualFunction, xCol, yCol, filterDict=null) {
+            if (filterDict) {
+                $(elem).parent().html(
+                    '<div id="' + elem.substring(1)  + 'Progress" class=\'widget\'></div>\n' +
+                    '<div id="' + elem.substring(1) +'" style="height:250px;"></div>\n'
+                )
+            }
             $.ajax({
                 type: "POST",
                 url: "/get_metrics",
@@ -1178,10 +1177,10 @@
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name', metrics);
             getMetrics('#dailyMetrics', generateAreaChart, 'eventdate', metrics, filterDict);
             getMetrics('#delivery', generateProgressBars, 'vendorname', ['netcost', 'plannednetcost']);
-            getMetrics('#partnerMetrics', generateBarChart, 'vendorname', metrics)
-            getMetrics('#countryMetrics', generateBarChart, 'countryname', metrics)
-            getMetrics('#targetMetrics', generateLollipopChart, 'targetingname', metrics)
-            getMetrics('#creativeMetrics', generateLollipopChart, 'creativename', metrics)
+            getMetrics('#partnerMetrics', generateBarChart, 'vendorname', metrics, filterDict);
+            getMetrics('#countryMetrics', generateBarChart, 'countryname', metrics, filterDict)
+            getMetrics('#targetMetrics', generateLollipopChart, 'targetingname', metrics, filterDict)
+            getMetrics('#creativeMetrics', generateLollipopChart, 'creativename', metrics, filterDict)
             if (oldHtml) {
                 $(clickElem).prop("disabled", false);
                 $(clickElem).html(oldHtml);
@@ -1209,7 +1208,6 @@
                 // getLog(dropdownButton, oldHtml);
             });
         });
-
 
         $(document).ready(function () {
             $('select').select2()

@@ -69,17 +69,17 @@
                         </button>
                     </div>
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
     <br>
-    <div class="row h-50">
-        <div id="totalMetrics" class="card-deck container-fluid text-center">
-            <div id="totalMetricsProgress" class='widget'></div>
+    <div class="row">
+        <div class="col-md-12 h-50">
+            <div class="card-deck container-fluid text-center">
+                <div id="totalMetricsProgress" class='widget'></div>
+                <div id="totalMetrics" class="row w-100"></div>
+            </div>
         </div>
     </div>
 
@@ -644,7 +644,6 @@
             let am = autoMargin(elem, 250, 60, 30, dataLength);
             let svg = am.svg
             generateSelect(elem, yCol)
-            // A color scale: one color for each group
             let myColor = getColorPal(yCol)
             let axes = generateAxis(
                 data, svg, d3.scaleBand(), d3.scaleLinear(), am.width, am.height,
@@ -1056,15 +1055,19 @@
                     let newPercent = data['percent'];
                     chart.update(parseInt(newPercent))
             });
-        }, 3000);
+        }, 5000);
             return downloadingProgress
         }
 
-        function getMetrics(elem, createVisualFunction, xCol, yCol, filterDict=null) {
+        function getMetrics(elem, createVisualFunction, xCol, yCol,
+                            filterDict=null, parentClass="", parentHeight=250) {
             if (filterDict) {
                 $(elem).parent().html(
-                    '<div id="' + elem.substring(1)  + 'Progress" class=\'widget\'></div>\n' +
-                    '<div id="' + elem.substring(1) +'" style="height:250px;"></div>\n'
+                    '<div id="' + elem.substring(1)  +
+                    'Progress" class=\'widget\'></div>\n' +
+                    '<div id="' + elem.substring(1) + '" ' +
+                    'class="' + parentClass + '" ' +
+                    'style="height:' + parentHeight + 'px;"></div>\n'
                 )
             }
             $.ajax({
@@ -1173,10 +1176,10 @@
 
         function getAllCharts(filterDict, clickElem=null, oldHtml=null) {
             let metrics = ['impressions', 'clicks', 'netcost']
-            let filerCols = ['mpCampaign', 'mpVendor', 'mpCountry/Region']
-            getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name', metrics);
+            getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name',
+                metrics, filterDict, "row w-100", 125);
             getMetrics('#dailyMetrics', generateAreaChart, 'eventdate', metrics, filterDict);
-            getMetrics('#delivery', generateProgressBars, 'vendorname', ['netcost', 'plannednetcost']);
+            getMetrics('#delivery', generateProgressBars, 'vendorname', ['netcost', 'plannednetcost'], filterDict);
             getMetrics('#partnerMetrics', generateBarChart, 'vendorname', metrics, filterDict);
             getMetrics('#countryMetrics', generateBarChart, 'countryname', metrics, filterDict)
             getMetrics('#targetMetrics', generateLollipopChart, 'targetingname', metrics, filterDict)
@@ -1205,12 +1208,14 @@
                 animateBar();
                 let dateFilter = getDates();
                 getAllCharts(dateFilter, dropdownButton, oldHtml)
-                // getLog(dropdownButton, oldHtml);
             });
         });
 
         $(document).ready(function () {
-            $('select').select2()
+            $('select').select2({
+                dropdownAutoWidth: true,
+                width: 'auto'
+            })
             $("#datePicker").flatpickr({
                 mode: "range"
             });

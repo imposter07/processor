@@ -2186,7 +2186,8 @@ def get_metrics():
     msg_text = 'Getting metric table for {}'.format(cur_proc.name)
     if request.form['elem'] == '#totalMetrics':
         job_name = '.get_processor_total_metrics'
-        proc_arg = {x: proc_arg[x] for x in proc_arg if x == 'running_user'}
+        proc_arg = {x: proc_arg[x] for x in proc_arg
+                    if x in ['running_user', 'filter_dict']}
     else:
         job_name = '.get_data_tables_from_db'
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)

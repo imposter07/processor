@@ -1035,7 +1035,8 @@
                     '<span class="text-muted small text-danger mr-2">' +
                     '<i class="mdi mdi-arrow-up-bold"></i>' +
                     (d['change'] * 100).toFixed(2) + '%</span>' +
-                    '<span class="text-nowrap text-muted small">Since Last Week</span>' +
+                    '<span class="text-nowrap text-muted small">' +
+                    d['msg'] + '</span>' +
                     '</p>' +
                     '</div>' +
                     '</div>'
@@ -1060,7 +1061,8 @@
         }
 
         function getMetrics(elem, createVisualFunction, xCol, yCol,
-                            filterDict=null, parentClass="", parentHeight=250) {
+                            filterDict=null, parentClass="", parentHeight=250,
+                            clickElem=null, oldHtml=null) {
             if (filterDict) {
                 $(elem).parent().html(
                     '<div id="' + elem.substring(1)  +
@@ -1091,6 +1093,11 @@
             }).always(function () {
                 $(elem + 'Progress').remove()
                 clearInterval(downloadingProgress);
+                if (oldHtml) {
+                    $(clickElem).prop("disabled", false);
+                    $(clickElem).html(oldHtml);
+                    unanimateBar();
+                }
             });
             let chart = radialProgress(elem + 'Progress')
             let downloadingProgress = null
@@ -1177,18 +1184,13 @@
         function getAllCharts(filterDict, clickElem=null, oldHtml=null) {
             let metrics = ['impressions', 'clicks', 'netcost']
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name',
-                metrics, filterDict, "row w-100", 125);
+                metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
             getMetrics('#dailyMetrics', generateAreaChart, 'eventdate', metrics, filterDict);
             getMetrics('#delivery', generateProgressBars, 'vendorname', ['netcost', 'plannednetcost'], filterDict);
             getMetrics('#partnerMetrics', generateBarChart, 'vendorname', metrics, filterDict);
             getMetrics('#countryMetrics', generateBarChart, 'countryname', metrics, filterDict)
             getMetrics('#targetMetrics', generateLollipopChart, 'targetingname', metrics, filterDict)
             getMetrics('#creativeMetrics', generateLollipopChart, 'creativename', metrics, filterDict)
-            if (oldHtml) {
-                $(clickElem).prop("disabled", false);
-                $(clickElem).html(oldHtml);
-                unanimateBar();
-            }
         }
 
         function getDates() {

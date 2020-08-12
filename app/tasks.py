@@ -2359,7 +2359,8 @@ def clean_topline_df_from_db(db_item, new_col_name):
     return df
 
 
-def get_processor_total_metrics(processor_id, current_user_id):
+def get_processor_total_metrics(processor_id, current_user_id,
+                                filter_dict=None):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
@@ -2382,9 +2383,27 @@ def get_processor_total_metrics(processor_id, current_user_id):
              if x.parameter == az.Analyze.tw_topline_col][0], 'old_value')
         df = df.join(tdf)
         df = df.join(twdf)
-        df['change'] = ((df['new_value'].astype(float) -
-                         df['old_value'].astype(float)) /
-                        df['old_value'].astype(float))
+        if filter_dict:
+            tdf = get_data_tables_from_db(
+                processor_id, current_user_id, dimensions=['productname'],
+                metrics=['impressions', 'clicks', 'netcost'],
+                filter_dict=filter_dict)
+            tdf = tdf[0][['impressions', 'clicks', 'netcost']]
+            tdf = tdf.rename(
+                columns={'impressions': 'Impressions', 'clicks': 'Clicks',
+                         'netcost': 'Net Cost Final'})
+            tdf['CPC'] = tdf['Net Cost Final'] / tdf['Clicks']
+            df = df.join(tdf.T)
+            df['change'] = (df[0].astype(float) /
+                            df['current_value'].astype(float))
+            df = df.drop(columns='current_value').rename(
+                columns={0: 'current_value'})
+            df = df[['current_value'] +
+                    [x for x in df.columns if x != 'current_value']]
+        else:
+            df['change'] = ((df['new_value'].astype(float) -
+                             df['old_value'].astype(float)) /
+                            df['old_value'].astype(float))
         df['change'] = df['change'].round(4)
         df = df.replace([np.inf, -np.inf], np.nan)
         df = df.fillna(0)
@@ -2394,6 +2413,10 @@ def get_processor_total_metrics(processor_id, current_user_id):
         df = df.rename_axis('name').reset_index()
         df = df[df['name'].isin(['Net Cost Final', vmc.impressions,
                                  vmc.clicks, 'CPC'])]
+        if filter_dict:
+            df['msg'] = 'Of Total'
+        else:
+            df['msg'] = 'Since Last Week'
         _set_task_progress(100)
         return [df]
     except:
@@ -2437,7 +2460,8 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                         v[0], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
                     ed = datetime.strptime(
                         v[1], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
-                    w = " AND event.{} BETWEEN '{}' AND '{}'".format(k, sd, ed)
+                    w = (" AND (event.{0} BETWEEN '{1}' AND '{2}' "
+                         "OR event.{0} IS NULL)".format(k, sd, ed))
                 else:
                     w = " AND {} = '{}'".format(k, v)
                 where_sql += w

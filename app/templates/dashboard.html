@@ -42,17 +42,27 @@
         <div class="col-md-12">
             <div class="card-header">
                 <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <select id="" class="custom-select custom-select-sm">
-                            <option>Campaign</option>
+                    <div class="col-md-2 mb-3">
+                        <select id="campaignnameSelect"
+                                class="custom-select custom-select-sm">
                         </select>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <select id="" class="custom-select custom-select-sm">
-                            <option>Partner</option>
+                    <div class="col-md-2 mb-3">
+                        <select id="vendornameSelect"
+                                class="custom-select custom-select-sm">
                         </select>
                     </div>
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-2 mb-3">
+                        <select id="countrynameSelect"
+                                class="custom-select custom-select-sm">
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <select id="devicenameSelect"
+                                class="custom-select custom-select-sm">
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-3">
                         <div class="row">
                             <input id="datePicker"
                                    class="custom-select custom-select-sm
@@ -62,7 +72,7 @@
                                    readonly="readonly" data-input>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-2 mb-3">
                         <button id="applyFilter" type="button"
                                 class="btn btn-block btn-outline-primary btn-sm">
                             Apply Filter
@@ -1062,7 +1072,7 @@
 
         function getMetrics(elem, createVisualFunction, xCol, yCol,
                             filterDict=null, parentClass="", parentHeight=250,
-                            clickElem=null, oldHtml=null) {
+                            clickElem=null, oldHtml=null, addSelect=false) {
             if (filterDict) {
                 $(elem).parent().html(
                     '<div id="' + elem.substring(1)  +
@@ -1083,11 +1093,13 @@
                     x_col: xCol,
                     y_col: yCol.join('|'),
                     filter_dict: JSON.stringify(filterDict),
-                    // filter_col: filterCol.join('|')
                 },
             }).done(function (data, status) {
                 chart.update(100);
                 createVisualFunction(elem, data, xCol, yCol, filterDict);
+                if (addSelect) {
+                    addSelectOptions(data, xCol)
+                }
             }).fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);
             }).always(function () {
@@ -1182,20 +1194,33 @@
         }
 
         function getAllCharts(filterDict, clickElem=null, oldHtml=null) {
+            let addSelect = !(clickElem)
             let metrics = ['impressions', 'clicks', 'netcost']
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name',
-                metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
+                 metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
             getMetrics('#dailyMetrics', generateAreaChart, 'eventdate', metrics, filterDict);
             getMetrics('#delivery', generateProgressBars, 'vendorname', ['netcost', 'plannednetcost'], filterDict);
-            getMetrics('#partnerMetrics', generateBarChart, 'vendorname', metrics, filterDict);
-            getMetrics('#countryMetrics', generateBarChart, 'countryname', metrics, filterDict)
+            getMetrics('#partnerMetrics', generateBarChart, 'vendorname',
+                metrics, filterDict, null, null, null, null, addSelect);
+            getMetrics('#countryMetrics', generateBarChart, 'countryname',
+                metrics, filterDict, null, null, null, null, addSelect);
             getMetrics('#targetMetrics', generateLollipopChart, 'targetingname', metrics, filterDict)
             getMetrics('#creativeMetrics', generateLollipopChart, 'creativename', metrics, filterDict)
         }
 
         function getDates() {
             const fp = document.querySelector('#datePicker')._flatpickr;
-            return {eventdate: fp.selectedDates}
+            return [{eventdate: fp.selectedDates}]
+        }
+
+        function getFilters(colName, filterDict) {
+           let newFilter = {};
+           newFilter[colName] = $('#' + colName + 'Select').select2('data').map(
+                function(elem){
+                    return elem.text
+           });
+           filterDict = filterDict.concat(newFilter)
+           return filterDict
         }
 
         $(document).ready(function() {
@@ -1208,16 +1233,33 @@
                       aria-hidden="true"></span> Loading...`
                   );
                 animateBar();
-                let dateFilter = getDates();
-                getAllCharts(dateFilter, dropdownButton, oldHtml)
+                let filterDict = getDates();
+                console.log(filterDict)
+                filterDict = getFilters('vendorname', filterDict);
+                console.log(filterDict)
+                filterDict = getFilters('countryname', filterDict);
+                console.log(filterDict)
+                getAllCharts(filterDict, dropdownButton, oldHtml);
             });
         });
 
-        $(document).ready(function () {
-            $('select').select2({
-                dropdownAutoWidth: true,
-                width: 'auto'
+        function addSelectOptions(data, xCol) {
+            let i = 0;
+            let newData = $.map(data, function (obj) {
+              obj['text'] = obj['text'] || obj[xCol];
+              obj['id'] = i;
+              i++;
+              return obj;
+            });
+            $("#" + xCol + "Select").select2({
+                data: newData,
+                multiple: true,
+                allowClear: true,
+                placeholder: xCol,
             })
+        }
+
+        $(document).ready(function () {
             $("#datePicker").flatpickr({
                 mode: "range"
             });

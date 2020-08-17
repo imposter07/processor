@@ -2453,18 +2453,24 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         up_id = pd.read_csv('config/upload_id_file.csv')
         up_id = up_id['uploadid'][0]
         where_sql = "WHERE fullplacement.uploadid = '{}'".format(up_id)
+        where_args = []
         if filter_dict:
-            for k, v in filter_dict.items():
-                if k == 'eventdate':
-                    sd = datetime.strptime(
-                        v[0], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
-                    ed = datetime.strptime(
-                        v[1], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
-                    w = (" AND (event.{0} BETWEEN '{1}' AND '{2}' "
-                         "OR event.{0} IS NULL)".format(k, sd, ed))
-                else:
-                    w = " AND {} = '{}'".format(k, v)
-                where_sql += w
+            for f in filter_dict:
+                for k, v in f.items():
+                    if v:
+                        if k == 'eventdate':
+                            sd = datetime.strptime(v[0],
+                                '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
+                            ed = datetime.strptime(v[1],
+                                '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
+                            w = (" AND (event.{0} BETWEEN '{1}' AND '{2}' "
+                                 "OR event.{0} IS NULL)".format(k, sd, ed))
+                        else:
+                            w = " AND {} IN ({})".format(
+                                k, ', '.join(['%s'] * len(v)))
+                            where_args.extend(v)
+                        where_sql += w
+        print(where_sql)
         _set_task_progress(30)
         command = """SELECT {0},{1}
             FROM lqadb.event
@@ -2483,7 +2489,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         db_class.input_config('dbconfig.json')
         db_class.connect()
         _set_task_progress(50)
-        db_class.cursor.execute(command)
+        db_class.cursor.execute(command, where_args)
         data = db_class.cursor.fetchall()
         _set_task_progress(70)
         columns = [i[0] for i in db_class.cursor.description]

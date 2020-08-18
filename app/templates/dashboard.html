@@ -36,33 +36,37 @@
         .outer {
             overflow: auto;
         }
-
     </style>
     <div class="row">
         <div class="col-md-12">
             <div class="card-header">
                 <div class="row">
-                    <div class="col-md-2 mb-3">
+                    <div class="col mb-3">
                         <select id="campaignnameSelect"
                                 class="custom-select custom-select-sm">
                         </select>
                     </div>
-                    <div class="col-md-2 mb-3">
+                    <div class="col mb-3">
                         <select id="vendornameSelect"
                                 class="custom-select custom-select-sm">
                         </select>
                     </div>
-                    <div class="col-md-2 mb-3">
+                    <div class="col mb-3">
                         <select id="countrynameSelect"
                                 class="custom-select custom-select-sm">
                         </select>
                     </div>
-                    <div class="col-md-2 mb-3">
-                        <select id="devicenameSelect"
+                    <div class="col mb-3">
+                        <select id="environmentnameSelect"
                                 class="custom-select custom-select-sm">
                         </select>
                     </div>
-                    <div class="col-md-2 mb-3">
+                    <div class="col mb-3">
+                        <select id="kpinameSelect"
+                                class="custom-select custom-select-sm">
+                        </select>
+                    </div>
+                    <div class="col mb-3">
                         <div class="row">
                             <input id="datePicker"
                                    class="custom-select custom-select-sm
@@ -72,7 +76,7 @@
                                    readonly="readonly" data-input>
                         </div>
                     </div>
-                    <div class="col-md-2 mb-3">
+                    <div class="col mb-3">
                         <button id="applyFilter" type="button"
                                 class="btn btn-block btn-outline-primary btn-sm">
                             Apply Filter
@@ -98,13 +102,14 @@
         <div class="col-md-3 h-50">
             <div class="card-header">
                 <h7 class="mb-3">Delivery</h7>
-                <select id="deliverySelect" class="custom-select custom-select-sm">
+                <select id="deliveryMetricsSelect"
+                        class="custom-select custom-select-sm">
                     <option>Select Campaign</option>
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="deliveryProgress" class='widget'></div>
-                <div id="delivery" style="height:250px;"></div>
+                <div id="deliveryMetricsProgress" class='widget'></div>
+                <div id="deliveryMetrics" style="height:250px;"></div>
             </div>
         </div>
         <div class="col-md-9 h-50">
@@ -150,33 +155,43 @@
         </div>
     </div><br>
     <div class="row">
-        <div class="col-md-12 h-50">
+        <div class="col-md-4 h-50">
             <div class="card-header">
-                <h7 class="mb-3">Target</h7>
-                <select id="targetMetricsSelect"
+                <h7 class="mb-3">Campaign</h7>
+                <select id="campaignMetricsSelect"
                         class="custom-select custom-select-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="targetMetricsProgress" class='widget'></div>
-                <div id="targetMetrics"></div>
+                <div id="campaignMetricsProgress" class='widget'></div>
+                <div id="campaignMetrics"></div>
             </div>
         </div>
-    </div>
-    <br>
-    <div class="row">
-        <div class="col-md-12">
+        <div class="col-md-4 h-50">
             <div class="card-header">
-                <h7 class="mb-3">Creative</h7>
-                <select id="creativeMetricsSelect"
-                        class="form-control form-control-sm">
+                <h7 class="mb-3">Device</h7>
+                <select id="environmentMetricsSelect"
+                        class="custom-select custom-select-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="creativeMetricsProgress" class='widget'></div>
-                <div id="creativeMetrics"></div>
+                <div id="environmentMetricsProgress" class='widget'></div>
+                <div id="environmentMetrics"></div>
+            </div>
+        </div>
+        <div class="col-md-4 h-50">
+            <div class="card-header">
+                <h7 class="mb-3">KPI</h7>
+                <select id="kpiMetricsSelect"
+                        class="custom-select custom-select-sm">
+                    <option>Select Metric</option>
+                </select>
+            </div>
+            <div class="card container-fluid shadow outer">
+                <div id="kpiMetricsProgress" class='widget'></div>
+                <div id="kpiMetrics"></div>
             </div>
         </div>
     </div>
@@ -215,6 +230,12 @@
 
         function generateSelect(elem, allGroup, selectElem='Select') {
             let buttonSelector = elem + selectElem;
+            $(buttonSelector).html('' +
+                '<select id="' + buttonSelector + ' " ' +
+                'class="custom-select custom-select-sm">' +
+                '<option>Select Metric</option>' +
+                '</select>'
+            )
             d3.select(buttonSelector)
                 .selectAll('myOptions')
                 .data(allGroup)
@@ -226,7 +247,6 @@
                 .attr("value", function (d) {
                     return d;
                 }) // corresponding value returned by the button
-
         }
 
         function wrapText(text, width) {
@@ -1198,14 +1218,21 @@
             let metrics = ['impressions', 'clicks', 'netcost']
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name',
                  metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
-            getMetrics('#dailyMetrics', generateAreaChart, 'eventdate', metrics, filterDict);
-            getMetrics('#delivery', generateProgressBars, 'vendorname', ['netcost', 'plannednetcost'], filterDict);
+
+            getMetrics('#dailyMetrics', generateAreaChart, 'eventdate',
+                metrics, filterDict);
+            getMetrics('#deliveryMetrics', generateProgressBars, 'vendorname',
+                ['netcost', 'plannednetcost'], filterDict);
             getMetrics('#partnerMetrics', generateBarChart, 'vendorname',
                 metrics, filterDict, null, null, null, null, addSelect);
             getMetrics('#countryMetrics', generateBarChart, 'countryname',
                 metrics, filterDict, null, null, null, null, addSelect);
-            getMetrics('#targetMetrics', generateLollipopChart, 'targetingname', metrics, filterDict)
-            getMetrics('#creativeMetrics', generateLollipopChart, 'creativename', metrics, filterDict)
+            getMetrics('#campaignMetrics', generateLollipopChart, 'campaignname',
+                metrics, filterDict, null, null, null, null, addSelect);
+            getMetrics('#environmentMetrics', generateLollipopChart, 'environmentname',
+                metrics, filterDict, null, null, null, null, addSelect)
+            getMetrics('#kpiMetrics', generateLollipopChart, 'kpiname',
+                metrics, filterDict, null, null, null, null, addSelect)
         }
 
         function getDates() {
@@ -1234,11 +1261,12 @@
                   );
                 animateBar();
                 let filterDict = getDates();
-                console.log(filterDict)
+                filterDict = getFilters('campaignname', filterDict);
                 filterDict = getFilters('vendorname', filterDict);
-                console.log(filterDict)
                 filterDict = getFilters('countryname', filterDict);
-                console.log(filterDict)
+                filterDict = getFilters('campaignname', filterDict);
+                filterDict = getFilters('environmentname', filterDict);
+                filterDict = getFilters('kpiname', filterDict);
                 getAllCharts(filterDict, dropdownButton, oldHtml);
             });
         });
@@ -1260,11 +1288,11 @@
         }
 
         $(document).ready(function () {
+            $("select[id$='MetricsSelect']").select2();
             $("#datePicker").flatpickr({
                 mode: "range"
             });
             getAllCharts()
         });
-
     </script>
 {% endblock %}

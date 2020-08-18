@@ -2470,7 +2470,6 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                                 k, ', '.join(['%s'] * len(v)))
                             where_args.extend(v)
                         where_sql += w
-        print(where_sql)
         _set_task_progress(30)
         command = """SELECT {0},{1}
             FROM lqadb.event
@@ -2480,8 +2479,8 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
             LEFT JOIN lqadb.campaign ON fullplacement.campaignid = campaign.campaignid
             LEFT JOIN lqadb.country ON fullplacement.countryid = country.countryid
             LEFT JOIN lqadb.product ON campaign.productid = product.productid
-            LEFT JOIN lqadb.targeting ON fullplacement.targetingid = targeting.targetingid
-            LEFT JOIN lqadb.creative ON fullplacement.creativeid = creative.creativeid
+            LEFT JOIN lqadb.environment ON fullplacement.environmentid = environment.environmentid
+            LEFT JOIN lqadb.kpi ON fullplacement.kpiid = kpi.kpiid
             {2}
             GROUP BY {0}
         """.format(dimensions, metric_sql, where_sql)

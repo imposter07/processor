@@ -2435,12 +2435,20 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.utils as utl
         import processor.reporting.export as export
+        import processor.reporting.analyze as az
         if ((not cur_processor.local_path) or
                 (not os.path.exists(adjust_path(cur_processor.local_path)))):
             _set_task_progress(100)
             return [pd.DataFrame({x: [] for x in dimensions + metrics})]
-        os.chdir(adjust_path(cur_processor.local_path))
         _set_task_progress(15)
+        if metrics == ['kpi']:
+            kpis, kpi_cols = get_kpis_for_processor(
+                processor_id, current_user_id)
+            metrics = [x for x in ['impressions', 'clicks', 'netcost']
+                       if x not in kpi_cols] + kpi_cols
+        else:
+            kpis = None
+        os.chdir(adjust_path(cur_processor.local_path))
         if not metrics:
             metrics = ['impressions', 'clicks', 'netcost']
         if not os.path.exists('config/upload_id_file.csv'):
@@ -2499,6 +2507,13 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
             df = utl.data_to_type(df, str_col=['eventdate'])
             df = df[df['eventdate'] != 'None']
         df = df.fillna(0)
+        if kpis:
+            calculated_metrics = az.ValueCalc().metric_names
+            metric_names = [x for x in kpis if x in calculated_metrics]
+            df = az.ValueCalc().calculate_all_metrics(
+                metric_names=metric_names, df=df, db_translate=True)
+            df = df.replace([np.inf, -np.inf], np.nan)
+            df = df.fillna(0)
         _set_task_progress(100)
         return [df]
     except:
@@ -2673,3 +2688,32 @@ def build_processor_analysis_email(processor_id, current_user_id):
             'Unhandled exception - Processor {} User {}'.format(
                 processor_id, current_user_id), exc_info=sys.exc_info())
         return []
+
+
+def get_kpis_for_processor(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        import processor.reporting.analyze as az
+        import processor.reporting.expcolumns as exc
+        cur_processor = Processor.query.get(processor_id)
+        vc = az.ValueCalc()
+        analysis = cur_processor.processor_analysis.all()
+        analysis = [x for x in analysis if x.key in [az.Analyze.kpi_col]]
+        kpis = set(x.parameter for x in analysis
+                   if x.parameter not in ['0', 'nan'])
+        kpi_formula = [vc.calculations[x] for x in vc.calculations
+                       if vc.calculations[x][vc.metric_name] in kpis]
+        kpi_cols = [x[vc.formula][::2] for x in kpi_formula]
+        kpi_cols = set([x for x in kpi_cols for x in x if x])
+        df = pd.read_csv(os.path.join(adjust_path(cur_processor.local_path),
+                                      'config', 'db_df_translation.csv'))
+        translation = dict(zip(df[exc.translation_df], df[exc.translation_db]))
+        kpi_cols = [translation[x] for x in kpi_cols]
+        _set_task_progress(100)
+        return kpis, kpi_cols
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return None, None

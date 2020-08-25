@@ -1116,6 +1116,9 @@
                 },
             }).done(function (data, status) {
                 chart.update(100);
+                yCol = (yCol.includes('kpi')) ? (
+                    Object.keys(data[0]).filter(function(e)
+                    { return e !== 'index' && e !== xCol })) : yCol
                 createVisualFunction(elem, data, xCol, yCol, filterDict);
                 if (addSelect) {
                     addSelectOptions(data, xCol)
@@ -1215,10 +1218,9 @@
 
         function getAllCharts(filterDict, clickElem=null, oldHtml=null) {
             let addSelect = !(clickElem)
-            let metrics = ['impressions', 'clicks', 'netcost']
+            let metrics = ['kpi']
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name',
                  metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
-
             getMetrics('#dailyMetrics', generateAreaChart, 'eventdate',
                 metrics, filterDict);
             getMetrics('#deliveryMetrics', generateProgressBars, 'vendorname',

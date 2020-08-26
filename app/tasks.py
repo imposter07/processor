@@ -2708,7 +2708,7 @@ def get_kpis_for_processor(processor_id, current_user_id):
         df = pd.read_csv(os.path.join(adjust_path(cur_processor.local_path),
                                       'config', 'db_df_translation.csv'))
         translation = dict(zip(df[exc.translation_df], df[exc.translation_db]))
-        kpi_cols = [translation[x] for x in kpi_cols]
+        kpi_cols = [translation[x] for x in kpi_cols if x in translation]
         _set_task_progress(100)
         return kpis, kpi_cols
     except:
@@ -2716,4 +2716,4 @@ def get_kpis_for_processor(processor_id, current_user_id):
         app.logger.error(
             'Unhandled exception - Processor {} User {}'.format(
                 processor_id, current_user_id), exc_info=sys.exc_info())
-        return None, None
+        return [], []

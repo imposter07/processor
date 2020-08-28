@@ -984,7 +984,8 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
             'dcm': '--api dc --analyze',
             'dv': '--api dv --analyze',
             'adk': '--api adk --analyze',
-            'inn': '--api inn -- analyze'}
+            'inn': '--api inn -- analyze',
+            'tik': '--api tik --analyze'}
         processor_to_run.launch_task('.run_processor', _(post_body),
                                      running_user=current_user.id,
                                      processor_args=arg_trans[processor_args])

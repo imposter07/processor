@@ -1,9 +1,6 @@
 {% extends "base.html" %}
 
 {% block app_header %}
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta http-equiv="Pragma" content="no-cache"/>
-    <meta http-equiv="Expires" content="0"/>
     <h3>{{ _('{} - {}'.format(title, object_name)) }}</h3>
     <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
@@ -595,7 +592,16 @@
                     object_level: "{{ edit_name }}",
                     table: sendTableName
                 }).done(function(data, status) {
-                    reloadPage();
+                    console.log("{{ object_name }}")
+                    console.log("{{ title }}")
+                    console.log("{{ edit_name }}")
+                    if ("{{ edit_name }}" === 'Import' ||
+                        "{{ edit_name }}" === 'Clean') {
+                        reloadPage();
+                    }
+                    else {
+                        $('#tableModal').modal('hide');
+                    }
             });
         }
         var downloadingProgress = null;
@@ -839,15 +845,19 @@
               animateBar();
             });
         });
-        $(document).ready(function() {
+        $(document).ready(function () {
             $('#tableModal').on('hidden.bs.modal', function () {
-                let sourceElem = $('table[id^="modalTable"]')[0].id;
-                if ((sourceElem === "modalTableimports") ||
-                    (sourceElem === "modalTabledata_sources")) {
-                    reloadPage();
-                } else {
-                    if (!$("[class*='DTED DTED_Lightbox_Wrapper']")[0]){
-                        window.location.reload(true)}
+                if (("{{ edit_name }}" === 'Import') ||
+                    ("{{ edit_name }}" === 'Clean')) {
+                    let sourceElem = $('table[id^="modalTable"]')[0].id;
+                    if ((sourceElem === "modalTableimports") ||
+                        (sourceElem === "modalTabledata_sources")) {
+                        reloadPage();
+                    } else {
+                        if (!$("[class*='DTED DTED_Lightbox_Wrapper']")[0]) {
+                            window.location.reload(true)
+                        }
+                    }
                 }
             })
         });
@@ -886,14 +896,15 @@
             })
         })
         function checkHideElem(elem){
-            var uploadFilter = $('#upload_filter')
-            if($(elem)[0].value === 'Custom') {
-                uploadFilter.parent().show()
-                uploadFilter.show()
-            }
-            else{
-                uploadFilter.parent().hide()
-                uploadFilter.hide()
+            if ($('#upload_filter').length > 0) {
+                var uploadFilter = $('#upload_filter')
+                if ($(elem)[0].value === 'Custom') {
+                    uploadFilter.parent().show()
+                    uploadFilter.show()
+                } else {
+                    uploadFilter.parent().hide()
+                    uploadFilter.hide()
+                }
             }
         }
         $(document).ready(function() {

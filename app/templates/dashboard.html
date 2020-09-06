@@ -1116,12 +1116,16 @@
                 },
             }).done(function (data, status) {
                 chart.update(100);
-                yCol = (yCol.includes('kpi')) ? (
-                    Object.keys(data[0]).filter(function(e)
-                    { return e !== 'index' && e !== xCol })) : yCol
-                createVisualFunction(elem, data, xCol, yCol, filterDict);
-                if (addSelect) {
-                    addSelectOptions(data, xCol)
+                if (!Array.isArray(data) && data.length) {
+                    console.log(data)
+                    yCol = (yCol.includes('kpi')) ? (
+                        Object.keys(data[0]).filter(function (e) {
+                            return e !== 'index' && e !== xCol
+                        })) : yCol
+                    createVisualFunction(elem, data, xCol, yCol, filterDict);
+                    if (addSelect) {
+                        addSelectOptions(data, xCol)
+                    }
                 }
             }).fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);

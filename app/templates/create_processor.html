@@ -592,9 +592,6 @@
                     object_level: "{{ edit_name }}",
                     table: sendTableName
                 }).done(function(data, status) {
-                    console.log("{{ object_name }}")
-                    console.log("{{ title }}")
-                    console.log("{{ edit_name }}")
                     if ("{{ edit_name }}" === 'Import' ||
                         "{{ edit_name }}" === 'Clean') {
                         reloadPage();

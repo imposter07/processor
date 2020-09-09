@@ -1116,9 +1116,7 @@
                 },
             }).done(function (data, status) {
                 chart.update(100);
-                console.log(data)
                 if (Array.isArray(data) && data.length) {
-                    console.log(data)
                     yCol = (yCol.includes('kpi')) ? (
                         Object.keys(data[0]).filter(function (e) {
                             return e !== 'index' && e !== xCol

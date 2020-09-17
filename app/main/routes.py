@@ -439,19 +439,11 @@ def create_processor():
                            edit_name='Basic', buttons=get_navigation_buttons())
 
 
-def get_processor_run_links(processor_name, edit_name):
+def get_processor_run_links():
     run_links = {}
     for idx, run_arg in enumerate(
             ('full', 'import', 'basic', 'export', 'update')):
-        run_url = url_for('main.run_processor', processor_name=processor_name,
-                          redirect_dest=edit_name, processor_args=run_arg)
-        if run_arg == 'import':
-            run_href = "javascript: show_modal_table('importRunButton');"
-        else:
-            run_href = run_url
-        run_link = dict(title=run_arg.capitalize(),
-                        url=run_url,
-                        href=run_href)
+        run_link = dict(title=run_arg.capitalize())
         run_links[idx] = run_link
     return run_links
 
@@ -519,7 +511,7 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
     api_imports = {0: {'All': 'import'}}
     for idx, (k, v) in enumerate(vmc.api_translation.items()):
         api_imports[idx + 1] = {k: v}
-    run_links = get_processor_run_links(processor_name, edit_name)
+    run_links = get_processor_run_links()
     edit_links = get_processor_edit_links()
     output_links = get_processor_output_links()
     request_links = get_processor_request_links(processor_name)
@@ -744,14 +736,15 @@ def post_table():
                  'edit_conversions': '.write_conversions',
                  'raw_data': '.write_raw_data',
                  'Uploader': '.write_uploader_file'}
+    msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData']:
-        return jsonify({'data': 'success'})
+        return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
     job_name = arg_trans[table_name]
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
     if table_name in ['Vendormatrix', 'Uploader']:
         task.wait_and_get_job(loops=20)
-    return jsonify({'data': 'success'})
+    return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
 
 
 def translate_table_name_to_job(table_name, proc_arg):
@@ -948,17 +941,27 @@ def processor_popup(processor_name):
     return render_template('processor_popup.html', processor=processor_for_page)
 
 
-@bp.route('/processor/<processor_name>/run/<redirect_dest>/<processor_args>',
-          methods=['GET', 'POST'])
+@bp.route('/run_object', methods=['GET', 'POST'])
 @login_required
-def run_processor(processor_name, processor_args='', redirect_dest=None):
-    processor_to_run = Processor.query.filter_by(
-        name=processor_name).first_or_404()
-    if processor_to_run.get_task_in_progress('.run_processor'):
-        flash(_('The processor is already running.'))
+def run_object():
+    cur_obj_text = request.form['object_type']
+    obj_name = request.form['object_name']
+    run_type = request.form['run_type']
+    if cur_obj_text == 'Processor':
+        cur_obj = Processor
     else:
-        post_body = ('Running {} for processor: {}...'.format(processor_args,
-                                                              processor_name))
+        cur_obj = Uploader
+    run_obj = cur_obj.query.filter_by(name=obj_name).first_or_404()
+    if not run_obj.local_path:
+        msg = 'The {} {} has not been created, finish creating it.'.format(
+            cur_obj_text, obj_name)
+        lvl = 'danger'
+    elif run_obj.get_task_in_progress('.run_processor'):
+        msg = 'The {} {} is already running.'.format(cur_obj_text, obj_name)
+        lvl = 'warning'
+    else:
+        post_body = ('Running {} for {}: {}...'.format(
+            run_type, cur_obj_text, obj_name))
         arg_trans = {
             'full': '--api all --ftp all --dbi all --exp all --tab --analyze',
             'import': '--api all --ftp all --dbi all --analyze',
@@ -986,30 +989,17 @@ def run_processor(processor_name, processor_args='', redirect_dest=None):
             'adk': '--api adk --analyze',
             'inn': '--api inn -- analyze',
             'tik': '--api tik --analyze',
-            'amz': '--api amz --analyze'}
-        processor_to_run.launch_task('.run_processor', _(post_body),
-                                     running_user=current_user.id,
-                                     processor_args=arg_trans[processor_args])
-        processor_to_run.last_run_time = datetime.utcnow()
+            'amz': '--api amz --analyze',
+            'cri': '--api cri --analyze'}
+        run_obj.launch_task('.run_processor', _(post_body),
+                            running_user=current_user.id,
+                            processor_args=arg_trans[run_type.lower()])
+        cur_obj.last_run_time = datetime.utcnow()
         db.session.commit()
-    if not redirect_dest or redirect_dest == 'Page':
-        return redirect(url_for('main.processor_page',
-                                processor_name=processor_to_run.name))
-    elif redirect_dest == 'Basic':
-        return redirect(url_for('main.edit_processor',
-                                processor_name=processor_to_run.name))
-    elif redirect_dest == 'Import':
-        return redirect(url_for('main.edit_processor_import',
-                                processor_name=processor_to_run.name))
-    elif redirect_dest == 'Clean':
-        return redirect(url_for('main.edit_processor_clean',
-                                processor_name=processor_to_run.name))
-    elif redirect_dest == 'Export':
-        return redirect(url_for('main.edit_processor_export',
-                                processor_name=processor_to_run.name))
-    else:
-        return redirect(url_for('main.processor_page',
-                                processor_name=processor_to_run.name))
+        msg = post_body
+        lvl = 'success'
+    msg = '<strong>{}</strong>, {}'.format(current_user.username, msg)
+    return jsonify({'data': 'success', 'message': msg, 'level': lvl})
 
 
 @bp.route('/processor/<processor_name>/edit', methods=['GET', 'POST'])

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block app_header %}
+    <div id="alertPlaceholder"></div>
     <h3>{{ _('{} - {}'.format(title, object_name)) }}</h3>
     <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
@@ -90,9 +91,7 @@
                      <a class="list-group-item list-group-item-action
                          list-group-item-linkable"
                          id="list-all" data-toggle="list"
-                         href="{{ url_for('main.run_processor',
-                         processor_name=object_name, redirect_dest=edit_name,
-                         processor_args=api_arg) }}"
+                         href="javascript: runObject('{{ api_arg }}', null, null, 'importModal');"
                          role="tab" aria-controls="home">{{ api_name }}</a>
                   {% endfor %}
                 {% endfor %}
@@ -154,6 +153,7 @@
             <button class="btn btn-outline-success btn-block
                            dropdown-toggle text-left"
                     type="button" data-toggle="collapse"
+                    id="runObjectDropdownButton"
                     data-target="#collapseOne" aria-expanded="false"
                     aria-controls="collapseOne">
                 <i class="fas fa-play-circle" href="#" role="button"></i>
@@ -165,7 +165,8 @@
                 <div class="card-body">
                     {% if run_links %}
                         {% for run_link_idx in run_links %}
-                          <a class="dropdown-item" href="{{ run_links[run_link_idx]['href'] }}">
+                          <a class="dropdown-item" href="#"
+                            id="{{ 'runObject{}'.format(run_links[run_link_idx]['title']) }}">
                               {{ run_links[run_link_idx]['title'] }}</a>
                         {% endfor %}
                     {% endif %}
@@ -579,8 +580,9 @@
                       'Loading...' +
                     '</button>');
             }
+            let oldHtml = $('#tableModalSaveButton').parent().parent().html();
             $('#tableModalSaveButton').parent().html('' +
-                    '<button class="btn btn-success btn-lg btn-block" type="button" disabled>' +
+                    '<button id="loadingBtnModal" class="btn btn-success btn-lg btn-block" type="button" disabled>' +
                       '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
                       'Loading...' +
                     '</button>');
@@ -598,6 +600,8 @@
                     }
                     else {
                         $('#tableModal').modal('hide');
+                        displayAlert(data['message'], data['level']);
+                        $('#loadingBtnModal').replaceWith(oldHtml);
                     }
             });
         }
@@ -666,6 +670,61 @@
                 pondElem.instantUpload = false;
                 return pondElem
             }
+        }
+        $(document).ready(function() {
+            $('a[id^="runObject"]').click(function () {
+                let runType = this.id.replace('runObject', '');
+                if (runType === 'Import') {
+                    show_modal_table('importRunButton');
+                }
+                else {
+                    let dropdownButton = "#" + $(this).parents()[2].children[0].id;
+                    $(dropdownButton).prop("disabled", true);
+                    let oldHtml = $(dropdownButton).html();
+                    $(dropdownButton).html(
+                        `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
+                            role="status" aria-hidden="true"></span> Loading...`
+                    );
+                    runObject(runType, dropdownButton, oldHtml)
+                }
+            });
+        });
+        function displayAlert(message, level) {
+            let alertPlaceholder = '#alertPlaceholder'
+            $(alertPlaceholder).addClass('alert alert-' + level);
+            $(alertPlaceholder).html(message);
+            $(alertPlaceholder).append('' +
+                '<button type="button" class="close" data-dismiss="alert"' +
+                ' aria-label="Close">\n' +
+                '    <span aria-hidden="true">&times;</span>\n' +
+                '  </button>')
+            $(alertPlaceholder).fadeIn('slow');
+        }
+        function runObject(runType, clickElem=null, oldHtml=null, modalElem=null) {
+            $.ajax({
+                type: "POST",
+                url: "/run_object",
+                data: {
+                    run_type: runType,
+                    object_name: "{{ object_name }}",
+                    object_type:  "{{ title }}",
+                    object_level: "{{ edit_name }}",
+                },
+            }).done(function(data, status) {
+                displayAlert(data['message'], data['level'])
+            }).fail(function(jqXHR, textStatus ) {
+                console.log("Request failed: " + textStatus);
+            }).always(function(){
+                if (clickElem){
+                    $(clickElem).prop("disabled", false);
+                    $(clickElem).html(oldHtml);
+                    $('#loadingBtn').replaceWith(oldHtml);
+                    unanimateBar();
+                }
+                if (modalElem){
+                    $('#' + modalElem).modal('hide');
+                }
+            });
         }
         $(document).ready(function() {
             $('a[id^="editTable"]').click(function () {

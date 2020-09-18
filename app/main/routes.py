@@ -348,12 +348,10 @@ def processor():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     page = request.args.get('page', 1, type=int)
     current_clients = Client.query.order_by(Client.name)
-    processors = cur_user.processor_followed.order_by(
-        Processor.last_run_time.desc()).paginate(
+    processors = cur_user.processor_followed.paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
     if len(processors.items) == 0:
-        processors = Processor.query.order_by(
-            Processor.last_run_time.desc()).paginate(
+        processors = Processor.query.paginate(
             page, current_app.config['POSTS_PER_PAGE'], False)
     next_url = (url_for('main.processor', username=cur_user.username,
                         page=processors.next_num)

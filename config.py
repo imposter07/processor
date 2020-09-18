@@ -11,7 +11,7 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    ADMINS = ['james@liquidadvertising.com']
+    ADMINS = ['ali@lqadata.com', 'james@liquidarcade.com']
     POSTS_PER_PAGE = 10
     LANGUAGES = ['en', 'es']
     MAIL_SERVER = None

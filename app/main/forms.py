@@ -630,3 +630,16 @@ class ProcessorDuplicateForm(FlaskForm):
     new_end_date = DateField('New End Date', format='%Y-%m-%d',
                              validators=[DataRequired()])
     form_continue = HiddenField('form_continue')
+
+
+class ProcessorDashboardForm(FlaskForm):
+    name = StringField(_('Name'), validators=[DataRequired()])
+    chart_type_select2 = SelectField(
+        'Chart Type',
+        choices=[(x, x) for x in ['Area', 'Line', 'Bar', 'Lollipop']])
+    dims_select2 = SelectMultipleField(
+        'Dimensions',
+        choices=[(x, x) for x in dctc.COLS] + [(x, x) for x in vmc.datacol])
+    metrics_select2 = SelectMultipleField(
+        'Metrics', choices=[(x, x) for x in vmc.datafloatcol])
+    form_continue = HiddenField('form_continue')

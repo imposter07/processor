@@ -17,7 +17,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
     ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm,\
     ProcessorDuplicateForm, EditUploaderMediaPlanForm,\
-    EditUploaderNameCreateForm, EditUploaderCreativeForm, UploaderDuplicateForm
+    EditUploaderNameCreateForm, EditUploaderCreativeForm,\
+    UploaderDuplicateForm, ProcessorDashboardForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -474,6 +475,9 @@ def get_processor_request_links(processor_name):
                                      processor_name=processor_name)},
                  2: {'title': 'Request Duplication',
                      'href': url_for('main.edit_processor_duplication',
+                                     processor_name=processor_name)},
+                 3: {'title': 'Request Dashboard',
+                     'href': url_for('main.edit_processor_dashboard_create',
                                      processor_name=processor_name)}
                  }
     return run_links
@@ -2197,3 +2201,15 @@ def edit_processor_dashboard(processor_name):
                                    edit_progress=100, edit_name='Dashboard',
                                    buttons='ProcessorDashboard')
     return render_template('dashboard.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/dashboard/create', methods=['GET', 'POST'])
+@login_required
+def edit_processor_dashboard_create(processor_name):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_dashboard',
+                                   edit_progress=100, edit_name='Dashboard',
+                                   buttons='ProcessorDashboard')
+    form = ProcessorDashboardForm()
+    kwargs['form'] = form
+    return render_template('create_processor.html', **kwargs)

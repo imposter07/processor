@@ -1,0 +1,115 @@
+<div class="card bg-light mb-3">
+    <div class="card-header">
+        <h3>
+            <span class="nowrap">
+            <a href="{{ url_for('main.processor_dashboard_view',
+            processor_name=dash.processor.name, dashboard_id=dash.id) }}">
+            {{ processor.name }} - Dashboard: {{ dash.name }}</a>
+            <h6 class="mt-0">{{ _('was created %(when)s',
+            when=moment(dash.created_at).fromNow()) }}</h6>
+            </span>
+        </h3>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col">
+                    {% for form in dash.form %}
+                        {% include '_form.html' %}
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="btn-group btn-group-sm btn-block" role="group">
+                <button id="dash{{ dash.id }}View"
+                        class="btn btn-outline-success">
+                     <i class="fas fa-chart-bar" href="#" role="button"></i>
+                    View
+                </button>
+                <button id="dash{{ dash.id }}Save"
+                        class="btn btn-outline-info">
+                    <i class="fas fa-save" href="#" role="button"></i>
+                    Save
+                </button>
+                <button id="dash{{ dash.id }}Download"
+                        class="btn btn-outline-primary">
+                    <i class="fas fa-download" href="#" role="button"></i>
+                    Download
+                </button>
+                <button id="dash{{ dash.id }}Delete"
+                        class="btn btn-outline-danger">
+                    <i class="fas fa-trash" href="#" role="button"></i>
+                    Delete
+                </button>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div id="dash{{ dash.id }}Row" class="row" style="display: none;">
+                <div class="col-md-12 h-50">
+                    <div class="card-header">
+                        <h7 class="mb-3">{{ dash.name }}</h7>
+                        <select id="dash{{ dash.id }}MetricsSelect"
+                                class="custom-select custom-select-sm">
+                            <option>Select Metric</option>
+                        </select>
+                    </div>
+                    <div class="card container-fluid shadow outer">
+                        <div id="dash{{ dash.id }}MetricsProgress"
+                             class='widget'></div>
+                        <div id="dash{{ dash.id }}Metrics"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        $('button[id^="dash"]').unbind().click(function () {
+            console.log(this.id)
+            let dashId = this.id.replace('View', '')
+            let dropdownButton = '#' + this.id
+            console.log(dashId)
+            $('#' + dashId + 'Row').css('display','block');
+            $(dropdownButton).prop("disabled", true);
+            let oldHtml = $(dropdownButton).html();
+            $(dropdownButton).html(
+                `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
+                    role="status" aria-hidden="true"></span> Loading...`
+            );
+            $.ajax({
+                type: "POST",
+                url: "/get_dashboard_properties",
+                data: {
+                    object_name: "{{ object_name }}",
+                    object_type: "{{ title }}",
+                    object_level: "{{ edit_name }}",
+                    dashboard_id: dashId.replace('dash', '')
+                },
+            }).done(function (data, status) {
+                let chartType = data['chart_type']
+                let chartFunction = (function () {
+                    if (chartType === 'Bar') {
+                        return generateBarChart;
+                    } else if (chartType === 'Lollipop') {
+                        return generateLollipopChart;
+                    } else if (chartType === 'Area') {
+                        return generateAreaChart;
+                    } else if (chartType === 'Line') {
+                        return generateLineChart;
+                    } else {
+                        return generateBarChart;
+                    }
+                })
+                getMetrics('#' + dashId + 'Metrics', chartFunction(),
+                    JSON.parse(data['dimensions'])[0],
+                    JSON.parse(data['metrics']), null, "", 250,
+                    dropdownButton, oldHtml);
+            }).fail(function (jqXHR, textStatus) {
+                console.log("Request failed: " + textStatus);
+            });
+        });
+    });
+    $(document).ready(function () {
+        $("select").select2();
+    })
+</script>

@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-
 {% block app_header %}
     <div id="alertPlaceholder"></div>
     <h3>{{ _('{} - {}'.format(title, object_name)) }}</h3>
@@ -319,6 +318,11 @@
     {% if fixes %}
         {% for fix in fixes %}
             {% include '_fix.html' %}
+        {% endfor %}
+    {% endif %}
+    {% if dashboards %}
+        {% for dash in dashboards %}
+            {% include '_dash_card.html' %}
         {% endfor %}
     {% endif %}
     {% if tables %}
@@ -979,7 +983,8 @@
             });
         });
         $(document).ready(function(){
-            $("select[id$='select2']").select2();
+            $("select").select2();
         })
     </script>
+{% include "_dash_builder.html" with context %}
 {% endblock %}

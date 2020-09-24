@@ -11,6 +11,7 @@ from app.models import User, Processor, Client, Product, Campaign, Uploader,\
     RateCard, ProcessorDatasources
 import processor.reporting.dictcolumns as dctc
 import processor.reporting.vmcolumns as vmc
+import processor.reporting.export as exp
 import uploader.upload.creator as cre
 
 
@@ -459,19 +460,8 @@ class ProcessorRequestCommentForm(FlaskForm):
     form_continue = HiddenField('form_continue')
 
 
-class ProcessorRequestFixForm(FlaskForm):
-    # post = TextAreaField(_l('Comment on Fix'))
+class ProcessorContinueForm(FlaskForm):
     form_continue = HiddenField('form_continue')
-
-    def set_fixes(self, data_source, cur_proc):
-        fix_dict = []
-        proc_fixes = data_source.query.filter_by(processor_id=cur_proc.id).all()
-        for fix in proc_fixes:
-            if fix.fix_type is not None:
-                form_dict = fix.get_form_dict()
-                fix_dict.append(form_dict)
-        self.fixes = fix_dict
-        return fix_dict
 
 
 class UploaderForm(FlaskForm):
@@ -634,12 +624,11 @@ class ProcessorDuplicateForm(FlaskForm):
 
 class ProcessorDashboardForm(FlaskForm):
     name = StringField(_('Name'), validators=[DataRequired()])
-    chart_type_select2 = SelectField(
+    chart_type = SelectField(
         'Chart Type',
         choices=[(x, x) for x in ['Area', 'Line', 'Bar', 'Lollipop']])
-    dims_select2 = SelectMultipleField(
-        'Dimensions',
-        choices=[(x, x) for x in dctc.COLS] + [(x, x) for x in vmc.datacol])
-    metrics_select2 = SelectMultipleField(
-        'Metrics', choices=[(x, x) for x in vmc.datafloatcol])
+    dimensions = SelectField(
+        'Dimensions', choices=[(x, x) for x in exp.ScriptBuilder().dimensions])
+    metrics = SelectMultipleField(
+        'Metrics', choices=[(x, x) for x in exp.ScriptBuilder().metrics])
     form_continue = HiddenField('form_continue')

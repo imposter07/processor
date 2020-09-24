@@ -15,14 +15,14 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
     GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
-    ProcessorRequestFixForm, ProcessorFixForm, ProcessorRequestCommentForm,\
+    ProcessorContinueForm, ProcessorFixForm, ProcessorRequestCommentForm,\
     ProcessorDuplicateForm, EditUploaderMediaPlanForm,\
     EditUploaderNameCreateForm, EditUploaderCreativeForm,\
     UploaderDuplicateForm, ProcessorDashboardForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
-    UploaderRelations
+    UploaderRelations, Dashboard
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -380,7 +380,8 @@ def get_navigation_buttons(buttons=None):
     elif buttons == 'ProcessorDuplicate':
         buttons = [{'Duplicate': 'main.edit_processor_duplication'}]
     elif buttons == 'ProcessorDashboard':
-        buttons = [{'Dashboard': 'main.edit_processor_dashboard'}]
+        buttons = [{'Create': 'main.processor_dashboard_create'},
+                   {'View All': 'main.processor_dashboard_all'}]
     elif buttons == 'Uploader':
         buttons = [{'Basic': 'main.edit_uploader'},
                    {'Campaign': 'main.edit_uploader_campaign'},
@@ -477,7 +478,7 @@ def get_processor_request_links(processor_name):
                      'href': url_for('main.edit_processor_duplication',
                                      processor_name=processor_name)},
                  3: {'title': 'Request Dashboard',
-                     'href': url_for('main.edit_processor_dashboard_create',
+                     'href': url_for('main.processor_dashboard_create',
                                      processor_name=processor_name)}
                  }
     return run_links
@@ -1442,7 +1443,7 @@ def edit_processor_submit_fix(processor_name):
                                    buttons='ProcessorRequestFix')
     cur_proc = kwargs['processor']
     fixes = cur_proc.get_open_requests()
-    form = ProcessorRequestFixForm()
+    form = ProcessorContinueForm()
     kwargs['fixes'] = fixes
     kwargs['form'] = form
     if request.method == 'POST':
@@ -1478,7 +1479,7 @@ def edit_processor_all_fix(processor_name):
                                    buttons='ProcessorRequestFix')
     cur_proc = kwargs['processor']
     fixes = cur_proc.get_all_requests()
-    form = ProcessorRequestFixForm()
+    form = ProcessorContinueForm()
     kwargs['fixes'] = fixes
     kwargs['form'] = form
     if request.method == 'POST':
@@ -2168,9 +2169,14 @@ def edit_processor_duplication(processor_name):
 def get_metrics():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     dimensions = [request.form['x_col']]
-    if 'filter_col' in request.form:
-        dimensions += request.form['filter_col'].split('|')
-    metrics = request.form['y_col'].split('|')
+    if 'dashboard_id' in request.form and request.form['dashboard_id']:
+        dash = Dashboard.query.get(request.form['dashboard_id'])
+        metrics = dash.get_metrics()
+        dimensions = dash.get_dimensions()
+    else:
+        if 'filter_col' in request.form:
+            dimensions += request.form['filter_col'].split('|')
+        metrics = request.form['y_col'].split('|')
     proc_arg = {'running_user': cur_user.id,
                 'dimensions': dimensions,
                 'metrics': metrics}
@@ -2203,13 +2209,111 @@ def edit_processor_dashboard(processor_name):
     return render_template('dashboard.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/dashboard/create', methods=['GET', 'POST'])
+@bp.route('/processor/<processor_name>/dashboard/create',
+          methods=['GET', 'POST'])
 @login_required
-def edit_processor_dashboard_create(processor_name):
+def processor_dashboard_create(processor_name):
     kwargs = get_current_processor(processor_name,
-                                   current_page='edit_processor_dashboard',
-                                   edit_progress=100, edit_name='Dashboard',
+                                   current_page='processor_dashboard_create',
+                                   edit_progress=50, edit_name='Create',
                                    buttons='ProcessorDashboard')
+    cur_proc = kwargs['processor']
     form = ProcessorDashboardForm()
     kwargs['form'] = form
+    if request.method == 'POST':
+        form.validate()
+        new_dash = Dashboard(
+            processor_id=cur_proc.id, name=form.name.data,
+            user_id=current_user.id, chart_type=form.chart_type.data,
+            dimensions=form.dimensions.data, metrics=form.metrics.data,
+            created_at=datetime.utcnow())
+        db.session.add(new_dash)
+        db.session.commit()
+        creation_text = "New Dashboard {} for Processor {} was created!".format(
+            new_dash.name, cur_proc.name)
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    processor_id=cur_proc.id)
+        db.session.add(post)
+        db.session.commit()
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.processor_dashboard_all',
+                                    processor_name=processor_name))
+        else:
+            return redirect(url_for('main.processor_dashboard_create',
+                                    processor_name=processor_name))
     return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/dashboard/all', methods=['GET', 'POST'])
+@login_required
+def processor_dashboard_all(processor_name):
+    print('dashfdlhksafhklfasdkhlfahklsd')
+    kwargs = get_current_processor(processor_name,
+                                   current_page='processor_dashboard_all',
+                                   edit_progress=100, edit_name='View All',
+                                   buttons='ProcessorDashboard')
+    cur_proc = kwargs['processor']
+    dashboards = cur_proc.get_all_dashboards()
+    for dash in dashboards:
+        dash_form = ProcessorDashboardForm()
+        dash_form.name.data = dash.name
+        dash_form.chart_type.data = dash.chart_type
+        dash_form.dimensions.data = dash.get_dimensions()[0]
+        dash_form.metrics.data = dash.get_metrics()
+        dash.add_form(dash_form)
+    kwargs['dashboards'] = dashboards
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.processor_dashboard_all',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.processor_dashboard_all',
+                                    processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/dashboard/<dashboard_id>',
+          methods=['GET', 'POST'])
+@login_required
+def processor_dashboard_view(processor_name, dashboard_id):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='processor_dashboard_all',
+                                   edit_progress=100, edit_name='View Dash',
+                                   buttons='ProcessorDashboard')
+    cur_proc = kwargs['processor']
+    dashboard = Dashboard.query.filter_by(id=dashboard_id).all()
+    for dash in dashboard:
+        dash_form = ProcessorDashboardForm()
+        dash_form.name.data = dash.name
+        dash_form.chart_type.data = dash.chart_type
+        dash_form.dimensions.data = dash.get_dimensions()[0]
+        dash_form.metrics.data = dash.get_metrics()
+        dash.add_form(dash_form)
+    kwargs['dashboards'] = dashboard
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.processor_dashboard_all',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.processor_dashboard_view',
+                                    processor_name=cur_proc.name,
+                                    dashboard_id=dashboard_id))
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/get_dashboard_properties', methods=['GET', 'POST'])
+@login_required
+def get_dashboard_properties():
+    if 'dashboard_id' in request.form and request.form['dashboard_id']:
+        dash = Dashboard.query.get(int(request.form['dashboard_id']))
+        metrics = dash.get_metrics_json()
+        dimensions = dash.get_dimensions_json()
+        chart_type = dash.chart_type
+    else:
+        metrics = []
+        dimensions = []
+        chart_type = []
+    dash_properties = {'metrics': metrics, 'dimensions': dimensions,
+                       'chart_type': chart_type}
+    return jsonify(dash_properties)

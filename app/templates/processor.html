@@ -89,13 +89,6 @@
                 getTable(tableName, dropdownButton, oldHtml);
             });
         });
-        $(document).ready(function() {
-            $('a[id^="customSwitch1"]').click(function () {
-                console.log('siwtch pressed');
-                var elementName = this.id;
-                console.log(elementName);
-            });
-        });
         function getTable(tableName, clickElem, oldHtml){
             $.post('/get_table',
                 {

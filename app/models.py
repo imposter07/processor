@@ -111,6 +111,7 @@ class User(UserMixin, db.Model):
     uploader = db.relationship('Uploader', foreign_keys='Uploader.user_id',
                                backref='user', lazy='dynamic')
     schedule = db.relationship('TaskScheduler', backref='user', lazy='dynamic')
+    dashboard = db.relationship('Dashboard', backref='user', lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -444,6 +445,8 @@ class Processor(db.Model):
     requests = db.relationship('Requests', backref='processor', lazy='dynamic')
     processor_analysis = db.relationship('ProcessorAnalysis',
                                          backref='processor', lazy='dynamic')
+    dashboard = db.relationship(
+        'Dashboard', backref='processor', lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -520,6 +523,9 @@ class Processor(db.Model):
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                      if not k.startswith("_") and k != 'id'])
+
+    def get_all_dashboards(self):
+        return self.dashboard.order_by(Dashboard.created_at.desc()).all()
 
 
 class TaskScheduler(db.Model):
@@ -904,3 +910,44 @@ class ProcessorAnalysis(db.Model):
     filter_col = db.Column(db.Text)
     filter_val = db.Column(db.Text)
     split_col = db.Column(db.Text)
+
+
+class Dashboard(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    chart_type = db.Column(db.Text)
+    dimensions = db.Column(db.Text)
+    metrics = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __init__(self):
+        self.form = None
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and
+                     k not in ['id', 'user_id', 'processor', 'processor_id']])
+
+    def get_dimensions(self):
+        return self.convert_string_to_list(self.dimensions)
+
+    def get_metrics(self):
+        return self.convert_string_to_list(self.metrics)
+
+    def get_dimensions_json(self):
+        return json.dumps(self.get_dimensions())
+
+    def get_metrics_json(self):
+        return json.dumps(self.get_metrics())
+
+    @staticmethod
+    def convert_string_to_list(string_value):
+        val = string_value
+        if val:
+            val = ProcessorDatasources.convert_string_to_list(val)
+        return val
+
+    def add_form(self, form):
+        self.form = [form]

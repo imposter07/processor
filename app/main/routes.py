@@ -952,19 +952,7 @@ def run_object():
     run_type = request.form['run_type']
     if cur_obj_text == 'Processor':
         cur_obj = Processor
-    else:
-        cur_obj = Uploader
-    run_obj = cur_obj.query.filter_by(name=obj_name).first_or_404()
-    if not run_obj.local_path:
-        msg = 'The {} {} has not been created, finish creating it.'.format(
-            cur_obj_text, obj_name)
-        lvl = 'danger'
-    elif run_obj.get_task_in_progress('.run_processor'):
-        msg = 'The {} {} is already running.'.format(cur_obj_text, obj_name)
-        lvl = 'warning'
-    else:
-        post_body = ('Running {} for {}: {}...'.format(
-            run_type, cur_obj_text, obj_name))
+        task_name = '.run_processor'
         arg_trans = {
             'full': '--api all --ftp all --dbi all --exp all --tab --analyze',
             'import': '--api all --ftp all --dbi all --analyze',
@@ -994,9 +982,27 @@ def run_object():
             'tik': '--api tik --analyze',
             'amz': '--api amz --analyze',
             'cri': '--api cri --analyze'}
-        run_obj.launch_task('.run_processor', _(post_body),
+    else:
+        cur_obj = Uploader
+        task_name = '.run_uploader'
+        arg_trans = {'create': '--create',
+                     'campaign': '--api fb --upload c',
+                     'adset': '--api fb --upload as',
+                     'ad': '--api fb --upload ad'}
+    run_obj = cur_obj.query.filter_by(name=obj_name).first_or_404()
+    if not run_obj.local_path:
+        msg = 'The {} {} has not been created, finish creating it.'.format(
+            cur_obj_text, obj_name)
+        lvl = 'danger'
+    elif run_obj.get_task_in_progress(task_name):
+        msg = 'The {} {} is already running.'.format(cur_obj_text, obj_name)
+        lvl = 'warning'
+    else:
+        post_body = ('Running {} for {}: {}...'.format(
+            run_type, cur_obj_text, obj_name))
+        run_obj.launch_task(task_name, _(post_body),
                             running_user=current_user.id,
-                            processor_args=arg_trans[run_type.lower()])
+                            run_args=arg_trans[run_type.lower()])
         cur_obj.last_run_time = datetime.utcnow()
         db.session.commit()
         msg = post_body
@@ -1771,53 +1777,11 @@ def create_uploader():
                            edit_name='Basic')
 
 
-@bp.route('/uploader/<uploader_name>/run/<redirect_dest>/<uploader_args>',
-          methods=['GET', 'POST'])
-@login_required
-def run_uploader(uploader_name, uploader_args='', redirect_dest=None):
-    uploader_to_run = Uploader.query.filter_by(
-        name=uploader_name).first_or_404()
-    if uploader_to_run.get_task_in_progress('.run_uploader'):
-        flash(_('The uploader is already running.'))
-    else:
-        post_body = ('Running {} for uploader: {}...'.format(
-            uploader_args, uploader_name))
-        arg_trans = {'create': '--create',
-                     'campaign': '--api fb --upload c',
-                     'adset': '--api fb --upload as',
-                     'ad': '--api fb --upload ad'}
-        uploader_to_run.launch_task('.run_uploader', _(post_body),
-                                    running_user=current_user.id,
-                                    uploader_args=arg_trans[uploader_args])
-        uploader_to_run.last_run_time = datetime.utcnow()
-        db.session.commit()
-    if not redirect_dest or redirect_dest == 'Page':
-        return redirect(url_for('main.uploader_page',
-                                uploader_name=uploader_to_run.name))
-    elif redirect_dest == 'Basic':
-        return redirect(url_for('main.edit_uploader',
-                                uploader_name=uploader_to_run.name))
-    elif redirect_dest == 'Campaigns':
-        return redirect(url_for('main.edit_uploader_campaign',
-                                uploader_name=uploader_to_run.name))
-    elif redirect_dest == 'Creative':
-        return redirect(url_for('main.edit_uploader_creative',
-                                uploader_name=uploader_to_run.name))
-    else:
-        return redirect(url_for('main.uploader_page',
-                                uploader_name=uploader_to_run.name))
-
-
-def get_uploader_run_links(uploader_name, edit_name):
+def get_uploader_run_links():
     run_links = {}
     for idx, run_arg in enumerate(
             ('create', 'campaign', 'adset', 'ad')):
-        run_url = url_for('main.run_uploader', uploader_name=uploader_name,
-                          redirect_dest=edit_name, uploader_args=run_arg)
-        run_href = run_url
-        run_link = dict(title=run_arg.capitalize(),
-                        url=run_url,
-                        href=run_href)
+        run_link = dict(title=run_arg.capitalize())
         run_links[idx] = run_link
     return run_links
 
@@ -1849,9 +1813,8 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
     posts, next_url, prev_url = get_posts_for_objects(
         cur_obj=cur_up, fix_id=fix_id, current_page=current_page,
         object_name='uploader')
-    run_links = get_uploader_run_links(uploader_name, edit_name)
+    run_links = get_uploader_run_links()
     edit_links = get_uploader_edit_links()
-    # output_links = get_uploader_output_links()
     request_links = get_uploader_request_links(uploader_name)
     args = {'object': cur_up, 'posts': posts.items, 'title': _('Uploader'),
             'object_name': cur_up.name, 'user': cur_user,
@@ -2248,7 +2211,6 @@ def processor_dashboard_create(processor_name):
 @bp.route('/processor/<processor_name>/dashboard/all', methods=['GET', 'POST'])
 @login_required
 def processor_dashboard_all(processor_name):
-    print('dashfdlhksafhklfasdkhlfahklsd')
     kwargs = get_current_processor(processor_name,
                                    current_page='processor_dashboard_all',
                                    edit_progress=100, edit_name='View All',
@@ -2263,13 +2225,6 @@ def processor_dashboard_all(processor_name):
         dash_form.metrics.data = dash.get_metrics()
         dash.add_form(dash_form)
     kwargs['dashboards'] = dashboards
-    if request.method == 'POST':
-        if form.form_continue.data == 'continue':
-            return redirect(url_for('main.processor_dashboard_all',
-                                    processor_name=cur_proc.name))
-        else:
-            return redirect(url_for('main.processor_dashboard_all',
-                                    processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
@@ -2291,14 +2246,6 @@ def processor_dashboard_view(processor_name, dashboard_id):
         dash_form.metrics.data = dash.get_metrics()
         dash.add_form(dash_form)
     kwargs['dashboards'] = dashboard
-    if request.method == 'POST':
-        if form.form_continue.data == 'continue':
-            return redirect(url_for('main.processor_dashboard_all',
-                                    processor_name=cur_proc.name))
-        else:
-            return redirect(url_for('main.processor_dashboard_view',
-                                    processor_name=cur_proc.name,
-                                    dashboard_id=dashboard_id))
     return render_template('create_processor.html', **kwargs)
 
 

@@ -159,12 +159,12 @@ def copy_processor_local(file_path, copy_back=False):
         return file_path
 
 
-def run_processor(processor_id, current_user_id, processor_args):
+def run_processor(processor_id, current_user_id, run_args):
     try:
         processor_to_run, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
         post_body = ('Running {} for processor: {}...'.format(
-            processor_args, processor_to_run.name))
+            run_args, processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, post_body)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         _set_task_progress(0)
@@ -172,12 +172,12 @@ def run_processor(processor_id, current_user_id, processor_args):
         file_path = copy_processor_local(old_file_path)
         from processor.main import main
         os.chdir(file_path)
-        if processor_args:
-            main(processor_args)
+        if run_args:
+            main(run_args)
         else:
             main()
         copy_processor_local(old_file_path, copy_back=True)
-        if 'analyze' in processor_args:
+        if 'analyze' in run_args:
             os.chdir(cur_path)
             update_analysis_in_db(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
@@ -1006,19 +1006,19 @@ def parse_uploader_error_dict(uploader_id, current_user_id, error_dict):
         return False
 
 
-def run_uploader(uploader_id, current_user_id, uploader_args):
+def run_uploader(uploader_id, current_user_id, run_args):
     try:
         uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
         post_body = ('Running {} for uploader: {}...'.format(
-            uploader_args, uploader_to_run.name))
+            run_args, uploader_to_run.name))
         processor_post_message(uploader_to_run, user_that_ran, post_body,
                                object_name='Uploader')
         _set_task_progress(0)
         file_path = adjust_path(uploader_to_run.local_path)
         from uploader.main import main
         os.chdir(file_path)
-        error_dict = main(uploader_args)
+        error_dict = main(run_args)
         parse_uploader_error_dict(uploader_id, current_user_id, error_dict)
         msg_text = ("{} finished running.".format(uploader_to_run.name))
         processor_post_message(proc=uploader_to_run, usr=user_that_ran,
@@ -1372,7 +1372,7 @@ def uploader_create_objects(uploader_id, current_user_id,
         set_object_relation_file(uploader_id, current_user_id,
                                  object_level=object_level)
         os.chdir(cur_path)
-        run_uploader(uploader_id, current_user_id, uploader_args='--create')
+        run_uploader(uploader_id, current_user_id, run_args='--create')
         msg_text = ('{} uploader {} creation file was updated.'
                     ''.format(cur_up.name, object_level))
         processor_post_message(cur_up, user_that_ran, msg_text,
@@ -1393,14 +1393,14 @@ def uploader_create_and_upload_objects(uploader_id, current_user_id,
         uploader_create_objects(uploader_id, current_user_id,
                                 object_level=object_level)
         if object_level == 'Campaign':
-            uploader_args = '--api fb --upload c'
+            run_args = '--api fb --upload c'
         elif object_level == 'Adset':
-            uploader_args = '--api fb --upload as'
+            run_args = '--api fb --upload as'
         elif object_level == 'Ad':
-            uploader_args = '--api fb --upload ad'
+            run_args = '--api fb --upload ad'
         else:
-            uploader_args = ''
-        run_uploader(uploader_id, current_user_id, uploader_args=uploader_args)
+            run_args = ''
+        run_uploader(uploader_id, current_user_id, run_args=run_args)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

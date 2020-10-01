@@ -111,5 +111,8 @@
     });
     $(document).ready(function () {
         $("select").select2();
-    })
+        $("ul.select2-selection__rendered").sortable({
+            containment: 'parent'
+        });
+    });
 </script>

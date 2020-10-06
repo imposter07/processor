@@ -2223,6 +2223,9 @@ def processor_dashboard_all(processor_name):
         dash_form.chart_type.data = dash.chart_type
         dash_form.dimensions.data = dash.get_dimensions()[0]
         dash_form.metrics.data = dash.get_metrics()
+        for k, v in dash_form._fields.items():
+            if k not in ['csrf_token', 'form_continue']:
+                dash_form._fields[k].id = '{}__{}'.format(k, dash.id)
         dash.add_form(dash_form)
     kwargs['dashboards'] = dashboards
     return render_template('create_processor.html', **kwargs)

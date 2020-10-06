@@ -922,7 +922,8 @@ class Dashboard(db.Model):
     metrics = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        super(Dashboard, self).__init__(**kwargs)
         self.form = None
 
     def to_dict(self):

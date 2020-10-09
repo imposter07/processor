@@ -407,8 +407,14 @@
             });
         });
         function SubmitForm(form_continue, elemId) {
-             document.getElementById(elemId).setAttribute("value", form_continue);
-             document.getElementById("base_form_id").submit();
+            document.getElementById(elemId).setAttribute("value", form_continue);
+            let validForm = document.getElementById('base_form_id').reportValidity()
+            if (validForm) {
+                document.getElementById("base_form_id").submit();
+            }
+            else {
+                displayAlert('Please correct the required fields.', 'danger')
+            }
         }
         function selectColumns ( editor, csv, header ) {
             let selectEditor = new $.fn.dataTable.Editor();
@@ -862,12 +868,14 @@
         }
         $(document).ready(function() {
             $('button[id^="load"]').click(function() {
-              animateBar();
-              $(this).prop("disabled", true);
-              $(this).html(
-                `<span class="spinner-grow spinner-grow-sm"
+                if (document.getElementById('base_form_id').checkValidity()) {
+                    animateBar();
+                    $(this).prop("disabled", true);
+                    $(this).html(
+                        `<span class="spinner-grow spinner-grow-sm"
                     role="status" aria-hidden="true"></span> Loading...`
-              );
+                    );
+                }
             });
         });
         function loadingBtn(elem, currentStyle){
@@ -932,16 +940,17 @@
             })
         });
         $(document).ready(function() {
-            $('#data_source').on('change', function(e){
+            $('#data_source').on('select2:select', function(e){
                 let selectedText = this.options[e.target.selectedIndex].text;
                 let divId  = $('input[value="' + selectedText + '"]')[0].id;
-                document.getElementById(divId).scrollIntoView();
+                let scrollIntoViewOptions = {'behavior': 'smooth'}
+                document.getElementById(divId).scrollIntoView(scrollIntoViewOptions);
                 let element = $('#' + divId).parent().parent().parent().parent()[0];
-                let origcolor = element.style.backgroundColor;
+                let originalColor = element.style.backgroundColor;
                 element.style.backgroundColor = "#b3ecff";
                 let t = setTimeout(function(){
-                   element.style.backgroundColor = origcolor;
-                },(2 *1000));
+                   element.style.backgroundColor = originalColor;
+                },(2 * 1000));
             });
         });
         $(document).ready(function(){
@@ -972,12 +981,12 @@
             }
         }
         $(document).ready(function() {
-            $('#duplication_type').on('change', function(e){
+            $('#duplication_type').on('select2:select', function(e){
                 checkHideElem(this);
             });
         });
         $(document).ready(function() {
-            $('#name_create_type').on('change', function(e){
+            $('#name_create_type').on('select2:select', function(e){
                 SubmitForm('', 'form_continue');
                 loadingBtn($(this).parent(), '');
             });

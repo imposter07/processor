@@ -391,12 +391,9 @@
             data, svg, d3.scaleTime(), d3.scaleLinear(), am.width, am.height,
             xCol, yCol[0], true
         )
-
         // A function that update the chart
         function update(selectedVar) {
-
             updateYAxis(axes, data, svg, selectedVar)
-
             let u = svg.selectAll(".lineTest")
                 .data([data])
             u
@@ -420,10 +417,8 @@
                 })
                 .attr("stroke-width", 4)
                 .attr("fill", "none")
-
             addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, true)
         }
-
         // When the button is changed, run the updateChart function
         d3.select(elem + 'Select').on("change", function (d) {
             // recover the option that has been chosen

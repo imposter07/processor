@@ -11,14 +11,14 @@
         pointer-events: all;
     }
 
-    .progress-bar {
+    .radial-progress-bar {
         fill: #ddd;
         margin-left: auto;
         margin-right: auto;
         margin-top: auto;
     }
 
-    .progress-bar-bg {
+    .radial-progress-bar-bg {
         fill: #3f3f3f;
     }
 
@@ -997,23 +997,23 @@
             .outerRadius(outerRadius)
 
         svg.append("path")
-            .attr('class', 'progress-bar-bg')
+            .attr('class', 'radial-progress-bar-bg')
             .attr('transform', `translate(${size.width / 2},${size.height / 2})`)
             .attr('d', mainArc())
 
         const mainArcPath = svg.append("path")
-            .attr('class', 'progress-bar')
+            .attr('class', 'radial-progress-bar')
             .attr('transform', `translate(${size.width / 2},${size.height / 2})`)
 
         svg.append("circle")
-            .attr('class', 'progress-bar')
+            .attr('class', 'radial-progress-bar')
             .attr('transform', `translate(${size.width / 2},${size.height / 2 - outerRadius + thickness / 2})`)
             .attr('width', thickness)
             .attr('height', thickness)
             .attr('r', thickness / 2)
 
         const end = svg.append("circle")
-            .attr('class', 'progress-bar')
+            .attr('class', 'radial-progress-bar')
             .attr('transform', `translate(${size.width / 2},${size.height / 2 - outerRadius + thickness / 2})`)
             .attr('width', thickness)
             .attr('height', thickness)

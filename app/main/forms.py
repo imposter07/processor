@@ -622,13 +622,34 @@ class ProcessorDuplicateForm(FlaskForm):
     form_continue = HiddenField('form_continue')
 
 
+class StaticFilterForm(FlaskForm):
+    filter_dimension = SelectField(
+        'Dimensions', choices=[(x, x) for x in exp.ScriptBuilder().dimensions])
+    filter_dimension_value = SelectMultipleField(
+        'Dimension Values')
+    filter_delete = SubmitField(
+        'Delete', render_kw={'style': 'background-color:red'})
+
+
 class ProcessorDashboardForm(FlaskForm):
     name = StringField(_('Name'), validators=[DataRequired()])
     chart_type = SelectField(
         'Chart Type',
-        choices=[(x, x) for x in ['Area', 'Line', 'Bar', 'Lollipop']])
+        choices=[(x, x) for x in ['Bar', 'Area', 'Line', 'Lollipop']])
     dimensions = SelectField(
         'Dimensions', choices=[(x, x) for x in exp.ScriptBuilder().dimensions])
     metrics = SelectMultipleField(
         'Metrics', choices=[(x, x) for x in exp.ScriptBuilder().metrics])
     form_continue = HiddenField('form_continue')
+    relations = FieldList(FormField(StaticFilterForm, label=''))
+
+    @staticmethod
+    def set_static_filter(data_source, cur_upo):
+        relation_dict = []
+        up_rel = data_source.query.filter_by(
+            uploader_objects_id=cur_upo.id).all()
+        for rel in up_rel:
+            form_dict = rel.get_form_dict()
+            relation_dict.append(form_dict)
+        return relation_dict
+

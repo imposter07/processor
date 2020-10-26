@@ -1129,4 +1129,17 @@
             placeholder: xCol,
         })
     }
+
+    $(document).ready(function () {
+        $('#chart_type').on('select2:select', function (e) {
+            let selectedText = this.options[e.target.selectedIndex].text;
+            let dimensionsJquery = '#dimensions';
+            if ((selectedText === 'Area') || (selectedText === 'Line')) {
+                $(dimensionsJquery).val('eventdate').trigger('change');
+                $(dimensionsJquery).prop("disabled", true);
+            } else {
+                $(dimensionsJquery).prop("disabled", false);
+            }
+        });
+    });
 </script>

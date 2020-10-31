@@ -921,6 +921,8 @@ class Dashboard(db.Model):
     dimensions = db.Column(db.Text)
     metrics = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    dashboard_filters = db.relationship('DashboardFilter',
+                                        backref='dashboard', lazy='dynamic')
 
     def __init__(self, **kwargs):
         super(Dashboard, self).__init__(**kwargs)
@@ -943,6 +945,11 @@ class Dashboard(db.Model):
     def get_metrics_json(self):
         return json.dumps(self.get_metrics())
 
+    def get_filters_json(self):
+        dash_filters = [x.get_converted_form_dict()
+                        for x in self.dashboard_filters]
+        return json.dumps(dash_filters)
+
     @staticmethod
     def convert_string_to_list(string_value):
         val = string_value
@@ -952,3 +959,41 @@ class Dashboard(db.Model):
 
     def add_form(self, form):
         self.form = [form]
+
+
+class DashboardFilter(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    dashboard_id = db.Column(db.Integer, db.ForeignKey('dashboard.id'))
+    filter_col = db.Column(db.Text)
+    filter_val = db.Column(db.Text)
+
+    def __init__(self, **kwargs):
+        super(DashboardFilter, self).__init__(**kwargs)
+        self.form_dict = self.get_form_dict()
+
+    def get_form_dict(self):
+        form_dict = {
+            'filter_col': self.filter_col,
+            'filter_val': self.filter_val
+        }
+        self.form_dict = form_dict
+        return form_dict
+
+    def get_converted_form_dict(self):
+        form_dict = {
+            self.convert_string_to_list(self.filter_col)[0]:
+            self.convert_string_to_list(self.filter_val)
+        }
+        return form_dict
+
+    def set_from_form(self, form, current_dashboard):
+        self.dashboard_id = current_dashboard.id
+        self.filter_col = form['filter_col']
+        self.filter_val = form['filter_val']
+
+    @staticmethod
+    def convert_string_to_list(string_value):
+        val = string_value
+        if val:
+            val = ProcessorDatasources.convert_string_to_list(val)
+        return val

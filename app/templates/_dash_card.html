@@ -63,12 +63,90 @@
     </div>
 </div>
 <script>
+    function viewDash(dashId, dropdownButton, oldHtml) {
+        $.ajax({
+            type: "POST",
+            url: "/get_dashboard_properties",
+            data: {
+                object_name: "{{ object_name }}",
+                object_type: "{{ title }}",
+                object_level: "{{ edit_name }}",
+                dashboard_id: dashId.replace('dash', '')
+            },
+        }).done(function (data, status) {
+            let chartType = data['chart_type']
+            let chartFunction = (function () {
+                if (chartType === 'Bar') {
+                    return generateBarChart;
+                } else if (chartType === 'Lollipop') {
+                    return generateLollipopChart;
+                } else if (chartType === 'Area') {
+                    return generateAreaChart;
+                } else if (chartType === 'Line') {
+                    return generateLineChart;
+                } else {
+                    return generateBarChart;
+                }
+            })
+            getMetrics('#' + dashId + 'Metrics', chartFunction(),
+                JSON.parse(data['dimensions'])[0],
+                JSON.parse(data['metrics']),
+                JSON.parse(data['chart_filters']), "", 250,
+                dropdownButton, oldHtml);
+        }).fail(function (jqXHR, textStatus) {
+            console.log("Request failed: " + textStatus);
+        });
+    }
+    function saveDash(dashId, dropdownButton, oldHtml) {
+        let clickedButton = '#' + dashId + 'Save'
+        console.log(clickedButton)
+        let objForm = $($(clickedButton).parent().parent()[0]
+            .children[0].children[0].children[0]).serializeArray()
+        $.ajax({
+            type: "POST",
+            url: "/save_dashboard",
+            data: {
+                object_name: "{{ object_name }}",
+                object_type: "{{ title }}",
+                object_level: "{{ edit_name }}",
+                dashboard_id: dashId.replace('dash', ''),
+                object_form: objForm
+            },
+        }).done(function (data, status) {
+            let element = $(dropdownButton).parent().parent().parent()[0];
+            let originalColor = element.style.backgroundColor;
+            element.style.backgroundColor = "#b3ecff";
+            let t = setTimeout(function () {
+                element.style.backgroundColor = originalColor;
+            }, (2 * 1000));
+            displayAlert(data['message'], data['level'])
+        }).fail(function (jqXHR, textStatus) {
+            console.log("Request failed: " + textStatus);
+            displayAlert('Could not save dashboard, please try again later',
+                'warning')
+        }).always(function () {
+            $(dropdownButton).prop("disabled", false);
+            $(dropdownButton).html(oldHtml);
+            unanimateBar();
+        });
+    }
     $(document).ready(function () {
         $('button[id^="dash"]').unbind().click(function () {
-            console.log(this.id)
-            let dashId = this.id.replace('View', '')
+            let curId = this.id
+            let functionName = function (curId) {
+                if (curId.includes('View')) {
+                    return ['View', viewDash]
+                } else if (curId.includes('Save')) {
+                    return ['Save', saveDash]
+                } else if (curId.includes('Download')) {
+                    return ['Download', '']
+                } else if (curId.includes('Delete')) {
+                    return ['Delete', '']
+                }
+            }
+            let currentFunction = functionName(curId);
+            let dashId = this.id.replace(currentFunction[0], '')
             let dropdownButton = '#' + this.id
-            console.log(dashId)
             $('#' + dashId + 'Row').css('display','block');
             $(dropdownButton).prop("disabled", true);
             let oldHtml = $(dropdownButton).html();
@@ -76,37 +154,7 @@
                 `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
                     role="status" aria-hidden="true"></span> Loading...`
             );
-            $.ajax({
-                type: "POST",
-                url: "/get_dashboard_properties",
-                data: {
-                    object_name: "{{ object_name }}",
-                    object_type: "{{ title }}",
-                    object_level: "{{ edit_name }}",
-                    dashboard_id: dashId.replace('dash', '')
-                },
-            }).done(function (data, status) {
-                let chartType = data['chart_type']
-                let chartFunction = (function () {
-                    if (chartType === 'Bar') {
-                        return generateBarChart;
-                    } else if (chartType === 'Lollipop') {
-                        return generateLollipopChart;
-                    } else if (chartType === 'Area') {
-                        return generateAreaChart;
-                    } else if (chartType === 'Line') {
-                        return generateLineChart;
-                    } else {
-                        return generateBarChart;
-                    }
-                })
-                getMetrics('#' + dashId + 'Metrics', chartFunction(),
-                    JSON.parse(data['dimensions'])[0],
-                    JSON.parse(data['metrics']), null, "", 250,
-                    dropdownButton, oldHtml);
-            }).fail(function (jqXHR, textStatus) {
-                console.log("Request failed: " + textStatus);
-            });
+            currentFunction[1](dashId, dropdownButton, oldHtml)
         });
     });
 </script>

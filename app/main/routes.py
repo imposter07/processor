@@ -22,7 +22,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
-    UploaderRelations, Dashboard
+    UploaderRelations, Dashboard, DashboardFilter
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -2145,6 +2145,7 @@ def get_metrics():
                 'metrics': metrics}
     if 'filter_dict' in request.form:
         proc_arg['filter_dict'] = json.loads(request.form['filter_dict'])
+        print(proc_arg['filter_dict'])
     obj_name = request.form['object_name']
     cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
     msg_text = 'Getting metric table for {}'.format(cur_proc.name)
@@ -2172,6 +2173,32 @@ def edit_processor_dashboard(processor_name):
     return render_template('dashboard.html', **kwargs)
 
 
+def set_dashboard_filters_in_db(object_id, form_dicts,
+                                base_object_class=Dashboard,
+                                foreign_key_col='dashboard_id',
+                                dep_object_class=DashboardFilter):
+    obj = base_object_class.query.get(object_id)
+    old_objects = dep_object_class.query.filter_by(
+        **{foreign_key_col: obj.id}).all()
+    new_objects = []
+    for form_dict in form_dicts:
+        new_object = dep_object_class()
+        new_object.set_from_form(form_dict, obj)
+        new_object.get_form_dict()
+        new_objects.append(new_object)
+    new_form_dicts = [x.form_dict for x in new_objects]
+    for old_object in old_objects:
+        old_object.get_form_dict()
+        if old_object.form_dict not in new_form_dicts:
+            db.session.delete(old_object)
+    old_dicts = [x.form_dict for x in old_objects]
+    for new_object in new_objects:
+        if new_object.form_dict not in old_dicts:
+            db.session.add(new_object)
+    db.session.commit()
+    return True
+
+
 @bp.route('/processor/<processor_name>/dashboard/create',
           methods=['GET', 'POST'])
 @login_required
@@ -2183,6 +2210,10 @@ def processor_dashboard_create(processor_name):
     cur_proc = kwargs['processor']
     form = ProcessorDashboardForm()
     kwargs['form'] = form
+    if form.add_child.data:
+        form.static_filters.append_entry()
+        kwargs['form'] = form
+        return render_template('create_processor.html', **kwargs)
     if request.method == 'POST':
         form.validate()
         new_dash = Dashboard(
@@ -2192,6 +2223,7 @@ def processor_dashboard_create(processor_name):
             created_at=datetime.utcnow())
         db.session.add(new_dash)
         db.session.commit()
+        set_dashboard_filters_in_db(new_dash.id, form.static_filters.data)
         creation_text = "New Dashboard {} for Processor {} was created!".format(
             new_dash.name, cur_proc.name)
         flash(_(creation_text))
@@ -2218,7 +2250,9 @@ def processor_dashboard_all(processor_name):
     cur_proc = kwargs['processor']
     dashboards = cur_proc.get_all_dashboards()
     for dash in dashboards:
-        dash_form = ProcessorDashboardForm()
+        static_filters = ProcessorDashboardForm().set_filters(
+            DashboardFilter, dash)
+        dash_form = ProcessorDashboardForm(static_filters=static_filters)
         dash_form.name.data = dash.name
         dash_form.chart_type.data = dash.chart_type
         dash_form.dimensions.data = dash.get_dimensions()[0]
@@ -2239,15 +2273,32 @@ def processor_dashboard_view(processor_name, dashboard_id):
                                    current_page='processor_dashboard_all',
                                    edit_progress=100, edit_name='View Dash',
                                    buttons='ProcessorDashboard')
-    cur_proc = kwargs['processor']
     dashboard = Dashboard.query.filter_by(id=dashboard_id).all()
     for dash in dashboard:
-        dash_form = ProcessorDashboardForm()
+        static_filters = ProcessorDashboardForm().set_filters(
+            DashboardFilter, dash)
+        dash_form = ProcessorDashboardForm(static_filters=static_filters)
+        for static_filter in dash_form.static_filters.entries:
+            selected_choices = static_filter.filter_val.__dict__['object_data']
+            selected_choices = DashboardFilter.convert_string_to_list(
+                selected_choices)
+            static_filter.filter_val.choices = [
+                (x, x) for x in selected_choices]
+            static_filter.filter_val.data = selected_choices
+            selected_choices = static_filter.filter_col.__dict__['object_data']
+            selected_choices = DashboardFilter.convert_string_to_list(
+                selected_choices)
+            static_filter.filter_col.data = selected_choices[0]
         dash_form.name.data = dash.name
         dash_form.chart_type.data = dash.chart_type
         dash_form.dimensions.data = dash.get_dimensions()[0]
         dash_form.metrics.data = dash.get_metrics()
         dash.add_form(dash_form)
+    for dash in dashboard:
+        if dash.form[0].add_child.data:
+            dash.form[0].static_filters.append_entry()
+            kwargs['dashboards'] = dashboard
+            return render_template('create_processor.html', **kwargs)
     kwargs['dashboards'] = dashboard
     return render_template('create_processor.html', **kwargs)
 
@@ -2260,10 +2311,52 @@ def get_dashboard_properties():
         metrics = dash.get_metrics_json()
         dimensions = dash.get_dimensions_json()
         chart_type = dash.chart_type
+        chart_filters = dash.get_filters_json()
     else:
         metrics = []
         dimensions = []
         chart_type = []
+        chart_filters = []
     dash_properties = {'metrics': metrics, 'dimensions': dimensions,
-                       'chart_type': chart_type}
+                       'chart_type': chart_type, 'chart_filters': chart_filters}
     return jsonify(dash_properties)
+
+
+def get_col_from_serialize_dict(data, col_name):
+    col_keys = [k for k, v in data.items() if v == col_name and 'name' in k]
+    col_val_keys = [x.replace('name', 'value') for x in col_keys]
+    col_vals = [v for k, v in data.items() if k in col_val_keys]
+    return col_vals
+
+
+def clean_serialize_dict(data):
+    new_dict = {}
+    for col in ['name', 'chart_type', 'dimensions', 'metrics']:
+        new_dict[col] = get_col_from_serialize_dict(data, col)
+    filter_idx = [v.replace('static_filters-', '').replace('-filter_col', '')
+                  for k, v in data.items() if 'filter_col' in v and 'name' in k]
+    new_dict['static_filters'] = []
+    for filter_num in filter_idx:
+        filter_dict = {}
+        for col in ['filter_col', 'filter_val']:
+            search_val = 'static_filters-{}-{}'.format(filter_num, col)
+            col_vals = get_col_from_serialize_dict(data, search_val)
+            filter_dict[col] = col_vals
+        new_dict['static_filters'].append(filter_dict)
+    return new_dict
+
+
+@bp.route('/save_dashboard', methods=['GET', 'POST'])
+@login_required
+def save_dashboard():
+    dash = Dashboard.query.get(int(request.form['dashboard_id']))
+    object_form = request.form.to_dict()
+    object_form = clean_serialize_dict(object_form)
+    dash.name = object_form['name'][0]
+    dash.chart_type = object_form['chart_type'][0]
+    dash.dimensions = object_form['dimensions'][0]
+    dash.metrics = object_form['metrics']
+    db.session.commit()
+    set_dashboard_filters_in_db(dash.id, object_form['static_filters'])
+    msg = 'The dashboard {} has been saved!'.format(dash.name)
+    return jsonify({'data': 'success', 'message': msg, 'level': 'success'})

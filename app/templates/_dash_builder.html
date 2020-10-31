@@ -1114,15 +1114,16 @@
         });
     });
 
-    function addSelectOptions(data, xCol) {
+    function addSelectOptions(data, xCol, selectDiv=false) {
         let i = 0;
         let newData = $.map(data, function (obj) {
             obj['text'] = obj['text'] || obj[xCol];
-            obj['id'] = i;
+            obj['id'] = obj['text'] || obj[xCol];;
             i++;
             return obj;
         });
-        $("#" + xCol + "Select").select2({
+        let elem = selectDiv ? selectDiv : "#" + xCol + "Select"
+        $(elem).select2({
             data: newData,
             multiple: true,
             allowClear: true,
@@ -1140,6 +1141,37 @@
             } else {
                 $(dimensionsJquery).prop("disabled", false);
             }
+        });
+        $('select[id$="filter_col"]').on('select2:select', function (e) {
+            let selectedText = this.options[e.target.selectedIndex].text;
+            let filterNum = this.id.replace(
+                'static_filters-', '').replace('-filter_col', '')
+            let elemId = '#static_filters-' + filterNum + '-filter_val'
+            $(elemId).empty();
+            $(elemId).parent().hide()
+            $(elemId).parent().parent().append(
+                '<div><div id="loadingBtn"></div></div>')
+            loadingBtn('#loadingBtn', '')
+            $.ajax({
+                type: "POST",
+                url: "/get_metrics",
+                data: {
+                    object_name: "{{ object_name }}",
+                    object_type: "{{ title }}",
+                    object_level: "{{ edit_name }}",
+                    elem: elemId,
+                    x_col: selectedText,
+                    y_col: ['impressions'].join('|'),
+                },
+            }).done(function (data, status) {
+                $(elemId).parent().show()
+                $('#loadingBtn').remove()
+                addSelectOptions(data, selectedText, elemId)
+            }).fail(function (jqXHR, textStatus) {
+                console.log("Request failed: " + textStatus);
+            }).always(function () {
+
+            });
         });
     });
 </script>

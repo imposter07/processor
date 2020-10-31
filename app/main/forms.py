@@ -623,16 +623,16 @@ class ProcessorDuplicateForm(FlaskForm):
 
 
 class StaticFilterForm(FlaskForm):
-    filter_dimension = SelectField(
+    filter_col = SelectField(
         'Dimensions', choices=[(x, x) for x in exp.ScriptBuilder().dimensions])
-    filter_dimension_value = SelectMultipleField(
-        'Dimension Values')
+    filter_val = SelectMultipleField(
+        'Dimension Values', choices=[(x, x) for x in ['All Values']])
     filter_delete = SubmitField(
         'Delete', render_kw={'style': 'background-color:red'})
 
 
 class ProcessorDashboardForm(FlaskForm):
-    name = StringField(_('Name'), validators=[DataRequired()])
+    name = StringField(_('Name'))
     chart_type = SelectField(
         'Chart Type',
         choices=[(x, x) for x in ['Bar', 'Area', 'Line', 'Lollipop']])
@@ -640,16 +640,17 @@ class ProcessorDashboardForm(FlaskForm):
         'Dimensions', choices=[(x, x) for x in exp.ScriptBuilder().dimensions])
     metrics = SelectMultipleField(
         'Metrics', choices=[(x, x) for x in exp.ScriptBuilder().metrics])
+    add_child = SubmitField(label='Add Static Filter')
     form_continue = HiddenField('form_continue')
-    relations = FieldList(FormField(StaticFilterForm, label=''))
+    static_filters = FieldList(FormField(StaticFilterForm, label=''))
 
-    @staticmethod
-    def set_static_filter(data_source, cur_upo):
+    def set_filters(self, data_source, cur_upo):
         relation_dict = []
         up_rel = data_source.query.filter_by(
-            uploader_objects_id=cur_upo.id).all()
+            dashboard_id=cur_upo.id).all()
         for rel in up_rel:
             form_dict = rel.get_form_dict()
             relation_dict.append(form_dict)
+        self.static_filters = relation_dict
         return relation_dict
 

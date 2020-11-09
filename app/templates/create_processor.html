@@ -389,6 +389,7 @@
                     method: 'POST',
                 },
                 allowPaste: false,
+                credits: false,
                 fileMetadataObject: {
                     object_name: "{{ object_name }}",
                     object_type:  "{{ title }}",
@@ -679,7 +680,8 @@
                             }
                         }
                     ],
-                    allowPaste: false
+                    allowPaste: false,
+                    credits: false
                     });
                 pondElem.instantUpload = false;
                 return pondElem
@@ -919,8 +921,8 @@
         });
         $(document).ready(function () {
             $('#tableModal').on('hidden.bs.modal', function () {
-                if (("{{ edit_name }}" === 'Import') ||
-                    ("{{ edit_name }}" === 'Clean')) {
+                if (['Import', 'Clean', 'Campaign', 'Adset', 'Ad'].includes(
+                    "{{ edit_name }}")) {
                     let sourceElem = $('table[id^="modalTable"]')[0].id;
                     if ((sourceElem === "modalTableimports") ||
                         (sourceElem === "modalTabledata_sources")) {

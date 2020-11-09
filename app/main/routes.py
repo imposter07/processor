@@ -1082,7 +1082,7 @@ def check_and_add_media_plan(media_plan_data, processor_to_edit,
                              object_type=Processor):
     if media_plan_data:
         df = convert_media_plan_to_df(media_plan_data)
-        msg_text = ('Attempting to save media plan for  processor: {}'
+        msg_text = ('Attempting to save media plan for processor: {}'
                     ''.format(processor_to_edit.name))
         processor_to_edit.launch_task(
             '.save_media_plan', _(msg_text),

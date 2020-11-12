@@ -379,7 +379,8 @@ def set_processor_imports(processor_id, current_user_id, form_imports,
         os.chdir('processor')
         default_param_ic = ImportConfig(matrix=True)
         os.chdir(processor_path)
-        ic = ImportConfig(default_param_ic=default_param_ic)
+        ic = ImportConfig(
+            default_param_ic=default_param_ic, base_path=cur_path)
         ic.add_and_remove_from_vm(processor_dicts, matrix=True)
         matrix = vm.VendorMatrix()
         for processor_dict in full_processor_dicts:

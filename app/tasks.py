@@ -661,7 +661,8 @@ def write_dictionary(processor_id, current_user_id, new_data, vk):
             df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
         if vk == vm.plan_key:
-            df = df[dctc.PCOLS]
+            add_cols = [x for x in df.columns if x not in dctc.PCOLS]
+            df = df[dctc.PCOLS + add_cols]
         else:
             df = df[dctc.COLS]
         dic.write(df)

@@ -1595,28 +1595,47 @@ def uploader():
                            next_url=next_url, prev_url=prev_url)
 
 
-def check_base_uploader_object(uploader_id, object_level='Campaign'):
+def check_base_uploader_object(uploader_id, object_level='Campaign',
+                               uploader_type='Facebook'):
     new_uploader = Uploader.query.get(uploader_id)
-    upo = UploaderObjects.query.filter_by(uploader_id=new_uploader.id,
-                                          object_level=object_level).first()
+    upo = UploaderObjects.query.filter_by(
+        uploader_id=new_uploader.id, object_level=object_level,
+        uploader_type=uploader_type).first()
     if not upo:
         upo = UploaderObjects(uploader_id=new_uploader.id,
-                              object_level=object_level)
+                              object_level=object_level,
+                              uploader_type=uploader_type)
         if object_level == 'Campaign':
             upo.media_plan_columns = [
                 'Campaign ID', 'Placement Phase (If Needed) ',
                 'Partner Name', 'Country', 'Creative (If Needed)']
             upo.file_filter = 'Facebook|Instagram'
             upo.name_create_type = 'Media Plan'
+            if uploader_type == 'Facebook':
+                upo.file_filter = 'Facebook|Instagram'
+            elif uploader_type == 'Adwords':
+                upo.file_filter = 'Google SEM|Search|GDN'
+            else:
+                upo.file_filter = ''
         elif object_level == 'Adset':
             upo.media_plan_columns = ['Placement Name']
-            upo.file_filter = 'Facebook|Instagram'
             upo.name_create_type = 'Media Plan'
+            if uploader_type == 'Facebook':
+                upo.file_filter = 'Facebook|Instagram'
+            elif uploader_type == 'Adwords':
+                upo.file_filter = 'Google SEM|Search|GDN'
+            else:
+                upo.file_filter = ''
         elif object_level == 'Ad':
             upo.media_plan_columns = ['Placement Name']
-            upo.file_filter = 'Facebook|Instagram'
             upo.name_create_type = 'File'
             upo.duplication_type = 'All'
+            if uploader_type == 'Facebook':
+                upo.file_filter = 'Facebook|Instagram'
+            elif uploader_type == 'Adwords':
+                upo.file_filter = 'Google SEM|Search|GDN'
+            else:
+                upo.file_filter = ''
         else:
             pass
         db.session.add(upo)
@@ -1624,91 +1643,154 @@ def check_base_uploader_object(uploader_id, object_level='Campaign'):
     return jsonify({'data': 'success'})
 
 
-def check_relation_uploader_objects(uploader_id, object_level='Campaign'):
+def check_relation_uploader_objects(uploader_id, object_level='Campaign',
+                                    uploader_type='Facebook'):
     import datetime as dt
     import uploader.upload.fbapi as up_fbapi
+    import uploader.upload.awapi as up_awapi
+    import uploader.upload.dcapi as up_dcapi
     new_uploader = Uploader.query.get(uploader_id)
     upo = UploaderObjects.query.filter_by(uploader_id=new_uploader.id,
-                                          object_level=object_level).first()
+                                          object_level=object_level,
+                                          uploader_type=uploader_type).first()
     constant_col = 'relation_constant'
     position_col = 'position'
+    default_sd = dt.datetime.today().strftime('%m/%d/%Y')
+    default_ed = (dt.datetime.today()
+                  + dt.timedelta(days=7)).strftime('%m/%d/%Y')
+    relation_column_names = []
     if object_level == 'Campaign':
-        relation_column_names = {
-            up_fbapi.CampaignUpload.objective:
-                {constant_col: 'PAUSED'},
-            up_fbapi.CampaignUpload.spend_cap:
-                {constant_col: '1000'},
-            up_fbapi.CampaignUpload.status:
-                {constant_col: 'LINK_CLICKS'}}
+        if uploader_type == 'Facebook':
+            fb_cu = up_fbapi.CampaignUpload
+            relation_column_names = {
+                fb_cu.objective: {constant_col: 'LINK_CLICKS'},
+                fb_cu.spend_cap: {constant_col: '1000'},
+                fb_cu.status: {constant_col: 'PAUSED'}}
+        elif uploader_type == 'Adwords':
+            aw_cu = up_awapi.CampaignUpload
+            relation_column_names = {
+                aw_cu.status: {constant_col: 'PAUSED'},
+                aw_cu.sd: {constant_col: default_sd},
+                aw_cu.ed: {constant_col: default_ed},
+                aw_cu.budget: {constant_col: '10'},
+                aw_cu.method: {constant_col: 'STANDARD'},
+                aw_cu.freq: {constant_col: '5|DAY|ADGROUP'},
+                aw_cu.channel: {position_col: [1]},
+                aw_cu.channel_sub: {constant_col: ''},
+                aw_cu.network: {position_col: [1]},
+                aw_cu.strategy: {constant_col: 'TARGET_SPEND|5'},
+                aw_cu.settings: {constant_col: ''},
+                aw_cu.location: {position_col: [2]},
+                aw_cu.language: {position_col: [2]},
+                aw_cu.platform: {position_col: [3]}
+            }
+        elif uploader_type == 'DCM':
+            dcm_cu = up_dcapi.CampaignUpload
+            relation_column_names = {
+                dcm_cu.advertiserId: {constant_col: ''},
+                dcm_cu.sd: {constant_col: default_sd},
+                dcm_cu.ed: {constant_col: default_ed},
+                dcm_cu.defaultLandingPage: {constant_col: ''},
+            }
     elif object_level == 'Adset':
-        relation_column_names = {
-            up_fbapi.AdSetUpload.cam_name:
-                {position_col: [0, 15, 1, 2, 4]},
-            up_fbapi.AdSetUpload.target:
-                {position_col: [22]},
-            up_fbapi.AdSetUpload.country:
-                {position_col: [2]},
-            up_fbapi.AdSetUpload.age_min:
-                {constant_col: '18'},
-            up_fbapi.AdSetUpload.age_max:
-                {constant_col: '44'},
-            up_fbapi.AdSetUpload.genders:
-                {constant_col: 'M'},
-            up_fbapi.AdSetUpload.device:
-                {position_col: [19]},
-            up_fbapi.AdSetUpload.pubs:
-                {position_col: [1]},
-            up_fbapi.AdSetUpload.pos:
-                {constant_col: ''},
-            up_fbapi.AdSetUpload.budget_type:
-                {constant_col: 'lifetime'},
-            up_fbapi.AdSetUpload.budget_value:
-                {constant_col: '10'},
-            up_fbapi.AdSetUpload.goal:
-                {constant_col: 'LINK_CLICKS'},
-            up_fbapi.AdSetUpload.bid:
-                {constant_col: '2'},
-            up_fbapi.AdSetUpload.start_time:
-                {constant_col: dt.datetime.today().strftime('%m/%d/%Y')},
-            up_fbapi.AdSetUpload.end_time:
-                {constant_col: (dt.datetime.today() +
-                                dt.timedelta(days=7)).strftime('%m/%d/%Y')},
-            up_fbapi.AdSetUpload.status:
-                {constant_col: 'PAUSED'},
-            up_fbapi.AdSetUpload.bill_evt:
-                {constant_col: 'IMPRESSIONS'},
-            up_fbapi.AdSetUpload.prom_page:
-                {constant_col: '_'}
-        }
+        if uploader_type == 'Facebook':
+            fb_asu = up_fbapi.AdSetUpload
+            relation_column_names = {
+                fb_asu.cam_name: {position_col: [0, 15, 1, 2, 4]},
+                fb_asu.target: {position_col: [22]},
+                fb_asu.country: {position_col: [2]},
+                fb_asu.age_min: {constant_col: '18'},
+                fb_asu.age_max: {constant_col: '44'},
+                fb_asu.genders: {constant_col: 'M'},
+                fb_asu.device: {position_col: [19]},
+                fb_asu.pubs: {position_col: [1]},
+                fb_asu.pos: {constant_col: ''},
+                fb_asu.budget_type: {constant_col: 'lifetime'},
+                fb_asu.budget_value: {constant_col: '10'},
+                fb_asu.goal: {constant_col: 'LINK_CLICKS'},
+                fb_asu.bid: {constant_col: '2'},
+                fb_asu.start_time: {constant_col: default_sd},
+                fb_asu.end_time: {constant_col: default_ed},
+                fb_asu.status: {constant_col: 'PAUSED'},
+                fb_asu.bill_evt: {constant_col: 'IMPRESSIONS'},
+                fb_asu.prom_page: {constant_col: '_'}
+            }
+        elif uploader_type == 'DCM':
+            dcm_asu = up_dcapi.PlacementUpload
+            relation_column_names = {
+                dcm_asu.campaignId: {position_col: [0, 15, 1, 2, 4]},
+                dcm_asu.siteId: {position_col: [1]},
+                dcm_asu.compatibility: {position_col: [21]},
+                dcm_asu.size: {position_col: [20]},
+                dcm_asu.paymentSource: {constant_col: 'PLACEMENT_AGENCY_PAID'},
+                dcm_asu.tagFormats: {position_col: [10]},
+                dcm_asu.startDate: {constant_col: default_sd},
+                dcm_asu.endDate: {constant_col: default_ed},
+                dcm_asu.pricingType: {constant_col: 'PRICING_TYPE_CPM'},
+            }
+        elif uploader_type == 'Adwords':
+            aw_asu = up_awapi.AdGroupUpload
+            relation_column_names = {
+                aw_asu.cam_name: {position_col: [0, 15, 1, 2, 4]},
+                aw_asu.status: {constant_col: 'PAUSED'},
+                aw_asu.bid_type: {position_col: [7]},
+                aw_asu.bid_val: {constant_col: '2'},
+                aw_asu.age_range: {constant_col: 'age34'},
+                aw_asu.gender: {constant_col: 'gendermale'},
+                aw_asu.keyword: {position_col: [3]},
+                aw_asu.topic: {position_col: ''},
+                aw_asu.placement: {constant_col: ''},
+                aw_asu.affinity: {constant_col: ''},
+                aw_asu.in_market: {constant_col: ''},
+            }
     elif object_level == 'Ad':
-        relation_column_names = {
-            up_fbapi.AdUpload.cam_name: {},
-            up_fbapi.AdUpload.adset_name: {},
-            up_fbapi.AdUpload.filename:
-                {position_col: [3, 0]},
-            up_fbapi.AdUpload.prom_page:
-                {constant_col: '_'},
-            up_fbapi.AdUpload.ig_id:
-                {constant_col: '_'},
-            up_fbapi.AdUpload.link:
-                {position_col: ''},
-            up_fbapi.AdUpload.d_link:
-                {constant_col: 'liquidadvertising.com'},
-            up_fbapi.AdUpload.title:
-                {position_col: [3, 1]},
-            up_fbapi.AdUpload.body:
-                {position_col: [3, 1]},
-            up_fbapi.AdUpload.desc:
-                {position_col: [3, 1]},
-            up_fbapi.AdUpload.cta:
-                {constant_col: 'DOWNLOAD'},
-            up_fbapi.AdUpload.view_tag:
-                {constant_col: ''},
-            up_fbapi.AdUpload.status:
-                {constant_col: 'PAUSED'},
-        }
-    else:
-        relation_column_names = []
+        if uploader_type == 'Facebook':
+            fb_adu = up_fbapi.AdUpload
+            relation_column_names = {
+                fb_adu.cam_name: {},
+                fb_adu.adset_name: {},
+                fb_adu.filename: {position_col: [3, 0]},
+                fb_adu.prom_page: {constant_col: '_'},
+                fb_adu.ig_id: {constant_col: '_'},
+                fb_adu.link: {position_col: ''},
+                fb_adu.d_link: {constant_col: 'liquidadvertising.com'},
+                fb_adu.title: {position_col: [3, 1]},
+                fb_adu.body: {position_col: [3, 1]},
+                fb_adu.desc: {position_col: [3, 1]},
+                fb_adu.cta: {constant_col: 'DOWNLOAD'},
+                fb_adu.view_tag: {constant_col: ''},
+                fb_adu.status: {constant_col: 'PAUSED'},
+            }
+        elif uploader_type == 'Adwords':
+            aw_adu = up_awapi.AdUpload
+            relation_column_names = {
+                aw_adu.ag_name: {},
+                aw_adu.cam_name: {},
+                aw_adu.type: {position_col: [1]},
+                aw_adu.headline1: {position_col: ''},
+                aw_adu.headline2: {position_col: ''},
+                aw_adu.headline3: {position_col: ''},
+                aw_adu.description: {position_col: ''},
+                aw_adu.description2: {position_col: ''},
+                aw_adu.business_name: {constant_col: 'Business'},
+                aw_adu.final_url: {position_col: ''},
+                aw_adu.track_url: {position_col: ''},
+                aw_adu.display_url: {constant_col: ''},
+                aw_adu.marketing_image: {position_col: ''},
+                aw_adu.image: {constant_col: ''},
+            }
+        elif uploader_type == 'DCM':
+            dcm_adu = up_dcapi.AdUpload
+            relation_column_names = {
+                dcm_adu.campaignId: {},
+                dcm_adu.creativeRotation: {},
+                dcm_adu.deliverySchedule: {},
+                dcm_adu.endTime: {constant_col: default_ed},
+                dcm_adu.startTime: {constant_col: default_sd},
+                dcm_adu.type: {position_col: ''},
+                dcm_adu.placementAssignments: {},
+                dcm_adu.creative: {},
+            }
     for col in relation_column_names:
         relation = UploaderRelations.query.filter_by(
             uploader_objects_id=upo.id, impacted_column_name=col).first()
@@ -1721,10 +1803,11 @@ def check_relation_uploader_objects(uploader_id, object_level='Campaign'):
 
 
 def create_base_uploader_objects(uploader_id):
-    for obj in ['Campaign', 'Adset', 'Ad']:
-        check_base_uploader_object(uploader_id, obj)
-    for obj in ['Campaign', 'Adset', 'Ad']:
-        check_relation_uploader_objects(uploader_id, obj)
+    for uploader_type in ['Facebook', 'DCM', 'Adwords']:
+        for obj in ['Campaign', 'Adset', 'Ad']:
+            check_base_uploader_object(uploader_id, obj, uploader_type)
+        for obj in ['Campaign', 'Adset', 'Ad']:
+            check_relation_uploader_objects(uploader_id, obj, uploader_type)
     return jsonify({'data': 'success'})
 
 
@@ -1806,6 +1889,11 @@ def get_uploader_request_links(uploader_name):
     return req_links
 
 
+def get_uploader_view_selector():
+    view_selector = ['Facebook', 'DCM', 'Adwords']
+    return view_selector
+
+
 def get_current_uploader(uploader_name, current_page, edit_progress=0,
                          edit_name='Page', buttons='Uploader', fix_id=None):
     cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
@@ -1816,6 +1904,7 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
     run_links = get_uploader_run_links()
     edit_links = get_uploader_edit_links()
     request_links = get_uploader_request_links(uploader_name)
+    view_selector = get_uploader_view_selector()
     args = {'object': cur_up, 'posts': posts.items, 'title': _('Uploader'),
             'object_name': cur_up.name, 'user': cur_user,
             'edit_progress': edit_progress, 'edit_name': edit_name,
@@ -1823,7 +1912,8 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
             'object_function_call': {'uploader_name': cur_up.name},
             'run_links': run_links, 'edit_links': edit_links,
             'request_links': request_links,
-            'next_url': next_url, 'prev_url': prev_url}
+            'next_url': next_url, 'prev_url': prev_url,
+            'view_selector': view_selector}
     return args
 
 
@@ -1832,6 +1922,7 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
 def uploader_page(uploader_name):
     kwargs = get_current_uploader(uploader_name, 'uploader_page',
                                   edit_progress=100, edit_name='Page')
+    kwargs['uploader_objects'] = kwargs['object'].uploader_objects
     return render_template('create_processor.html', **kwargs)
 
 
@@ -1959,12 +2050,14 @@ def uploader_ad_name_file_upload(uploader_name):
     return uploader_name_file_upload(uploader_name)
 
 
-def edit_uploader_base_objects(uploader_name, object_level, next_level='Page'):
+def edit_uploader_base_objects(uploader_name, object_level, next_level='Page',
+                               uploader_type='Facebook'):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
                                   edit_progress=40, edit_name=object_level)
     cur_up = kwargs['object']
     up_obj = UploaderObjects.query.filter_by(
-        uploader_id=cur_up.id, object_level=object_level).first()
+        uploader_id=cur_up.id, object_level=object_level,
+        uploader_type=uploader_type).first()
     relations = EditUploaderMediaPlanForm.set_relations(
         data_source=UploaderRelations, cur_upo=up_obj)
     if up_obj.name_create_type == 'Media Plan':
@@ -2096,6 +2189,17 @@ def edit_uploader_duplication(uploader_name):
         return redirect(url_for('main.uploader_page',
                                 uploader_name=cur_up.name))
     return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/uploader/<uploader_name>/edit/campaign/dcm',
+          methods=['GET', 'POST'])
+@login_required
+def edit_uploader_campaign_dcm(uploader_name):
+    uploader_type = 'DCM'
+    object_level = 'Campaign'
+    next_level = 'Adset'
+    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+                                      uploader_type)
 
 
 @bp.route('/help')

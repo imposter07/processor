@@ -958,7 +958,7 @@ def create_uploader(uploader_id, current_user_id, base_path):
         msg_text = "Uploader was created."
         processor_post_message(new_uploader, user_create, msg_text,
                                object_name='Uploader')
-        set_uploader_config_file(uploader_id, current_user_id)
+        set_uploader_config_files(uploader_id, current_user_id)
         _set_task_progress(100)
         return True
     except:
@@ -1159,19 +1159,62 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
         return False
 
 
-def set_uploader_config_file(uploader_id, current_user_id):
+def set_uploader_config_files(uploader_id, current_user_id):
+    try:
+        import yaml
+        import uploader.upload.fbapi as fbapi
+        import uploader.upload.awapi as awapi
+        import uploader.upload.dcapi as dcapi
+        new_uploader = Uploader.query.get(uploader_id)
+        config_dicts = [
+            {'id_val': new_uploader.fb_account_id,
+             'config_file_path': fbapi.config_path,
+             'file_name': 'fbconfig.json', 'file_type': json,
+             'file_key': 'act_id', 'id_prefix': 'act_'},
+            {'id_val': new_uploader.aw_account_id,
+             'config_file_path': awapi.config_path,
+             'file_name': 'awconfig.yaml', 'file_type': yaml,
+             'file_key': 'client_customer_id', 'id_prefix': None,
+             'nested_key': 'adwords'},
+            {'id_val': new_uploader.dcm_account_id,
+             'config_file_path': dcapi.config_path,
+             'file_name': 'dcapi.json', 'file_type': json,
+             'file_key': 'act_id', 'id_prefix': None}, ]
+        for config_dict in config_dicts:
+            if config_dict['id_val']:
+                set_uploader_config_file(uploader_id, current_user_id,
+                                         **config_dict)
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            uploader_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def set_uploader_config_file(uploader_id, current_user_id, id_val=None,
+                             config_file_path=None, file_name=None,
+                             file_type=None, file_key=None,
+                             id_prefix=None, nested_key=None):
     try:
         cur_up, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
         _set_task_progress(0)
-        import uploader.upload.fbapi as fbapi
         file_path = adjust_path(cur_up.local_path)
         os.chdir(file_path)
-        with open(os.path.join(fbapi.config_path, 'fbconfig.json'), 'r') as f:
-            config_file = json.load(f)
-        config_file['act_id'] = 'act_' + cur_up.fb_account_id
-        with open(os.path.join(fbapi.config_path, 'fbconfig.json'), 'w') as f:
-            json.dump(config_file, f)
+        with open(os.path.join(config_file_path, file_name), 'r') as f:
+            config_file = file_type.load(f)
+        if id_prefix:
+            new_account_id_value = id_prefix + id_val
+        else:
+            new_account_id_value = id_val
+        if nested_key:
+            config_file[nested_key][file_key] = new_account_id_value
+        else:
+            config_file[file_key] = new_account_id_value
+        with open(os.path.join(config_file_path, file_name), 'w') as f:
+            file_type.dump(config_file, f)
         _set_task_progress(100)
         return True
     except:

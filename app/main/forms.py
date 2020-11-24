@@ -469,7 +469,9 @@ class UploaderForm(FlaskForm):
         DataRequired()])
     description = StringField(_l('Description'), validators=[
         DataRequired()])
-    account_id = StringField(_l('Account ID'))
+    fb_account_id = StringField(_l('Facebook Account ID'))
+    aw_account_id = StringField(_l('Adwords Account ID'))
+    dcm_account_id = StringField(_l('DCM Account ID'))
     cur_client = QuerySelectField(_l('Client'), allow_blank=True,
                                   query_factory=lambda: Client.query.all(),
                                   get_label='name')

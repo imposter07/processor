@@ -792,6 +792,8 @@ class Uploader(db.Model):
     last_run_time = db.Column(db.DateTime, default=datetime.utcnow)
     media_plan = db.Column(db.Boolean)
     fb_account_id = db.Column(db.Text)
+    aw_account_id = db.Column(db.Text)
+    dcm_account_id = db.Column(db.Text)
     tasks = db.relationship('Task', backref='uploader', lazy='dynamic')
     posts = db.relationship('Post', backref='uploader', lazy='dynamic')
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))

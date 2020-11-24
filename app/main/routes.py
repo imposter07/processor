@@ -1829,7 +1829,11 @@ def create_uploader():
         new_uploader = Uploader(
             name=form.name.data, description=form.description.data,
             user_id=current_user.id, created_at=datetime.utcnow(),
-            local_path=new_path, campaign_id=form_campaign.id)
+            local_path=new_path, campaign_id=form_campaign.id,
+            fb_account_id=form.fb_account_id.data,
+            aw_account_id=form.aw_account_id.data,
+            dcm_account_id=form.dcm_account_id.data
+        )
         db.session.add(new_uploader)
         db.session.commit()
         create_base_uploader_objects(new_uploader.id)
@@ -1957,7 +1961,9 @@ def edit_uploader(uploader_name):
         uploader_to_edit.name = form.name.data
         uploader_to_edit.description = form.description.data
         uploader_to_edit.campaign_id = form_campaign.id
-        uploader_to_edit.fb_account_id = form.account_id.data
+        uploader_to_edit.fb_account_id = form.fb_account_id.data
+        uploader_to_edit.aw_account_id = form.aw_account_id.data
+        uploader_to_edit.dcm_account_id = form.dcm_account_id.data
         db.session.commit()
         create_base_uploader_objects(uploader_to_edit.id)
         flash(_('Your changes have been saved.'))
@@ -1989,7 +1995,9 @@ def edit_uploader(uploader_name):
         form.cur_campaign.data = form_campaign
         form.cur_product.data = form_product
         form.cur_client.data = form_client
-        form.account_id.data = uploader_to_edit.fb_account_id
+        form.fb_account_id.data = uploader_to_edit.fb_account_id
+        form.aw_account_id.data = uploader_to_edit.aw_account_id
+        form.dcm_account_id.data = uploader_to_edit.dcm_account_id
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
 

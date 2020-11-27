@@ -382,12 +382,22 @@ def get_navigation_buttons(buttons=None):
     elif buttons == 'ProcessorDashboard':
         buttons = [{'Create': 'main.processor_dashboard_create'},
                    {'View All': 'main.processor_dashboard_all'}]
-    elif buttons == 'Uploader':
+    elif buttons == 'UploaderDCM':
+        buttons = [{'Basic': 'main.edit_uploader'},
+                   {'Campaign': 'main.edit_uploader_campaign_dcm'},
+                   {'Adset': 'main.edit_uploader_adset_dcm'},
+                   {'Ad': 'main.edit_uploader_ad_dcm'}]
+    elif buttons == 'UploaderFacebook':
         buttons = [{'Basic': 'main.edit_uploader'},
                    {'Campaign': 'main.edit_uploader_campaign'},
                    {'Adset': 'main.edit_uploader_adset'},
                    {'Creative': 'main.edit_uploader_creative'},
                    {'Ad': 'main.edit_uploader_ad'}]
+    elif buttons == 'UploaderAdwords':
+        buttons = [{'Basic': 'main.edit_uploader'},
+                   {'Campaign': 'main.edit_uploader_campaign_aw'},
+                   {'Adset': 'main.edit_uploader_adset_aw'},
+                   {'Ad': 'main.edit_uploader_ad_aw'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
                    {'Import': 'main.edit_processor_import'},
@@ -1878,9 +1888,6 @@ def get_uploader_edit_links():
     for idx, edit_file in enumerate(
             ('Creator', 'Campaign', 'Adset', 'Ad')):
         edit_links[idx] = dict(title=edit_file, nest=[])
-        if edit_file == 'Relation':
-            edit_links[idx]['nest'] = ['Campaign', 'Targeting', 'Creative',
-                                       'Vendor', 'Country', 'Serving', 'Copy']
     return edit_links
 
 
@@ -1893,13 +1900,22 @@ def get_uploader_request_links(uploader_name):
     return req_links
 
 
-def get_uploader_view_selector():
-    view_selector = ['Facebook', 'DCM', 'Adwords']
+def get_uploader_view_selector(uploader_type='Facebook'):
+    view_selector = [{'view': 'Facebook', 'active': False,
+                      'value': 'main.edit_uploader_campaign'},
+                     {'view': 'DCM', 'active': False,
+                      'value': 'main.edit_uploader_campaign_dcm'},
+                     {'view': 'Adwords', 'active': False,
+                      'value': 'main.edit_uploader_campaign_aw'}]
+    for view in view_selector:
+        if view['view'] == uploader_type:
+            view['active'] = True
     return view_selector
 
 
 def get_current_uploader(uploader_name, current_page, edit_progress=0,
-                         edit_name='Page', buttons='Uploader', fix_id=None):
+                         edit_name='Page', buttons='Uploader', fix_id=None,
+                         uploader_type='Facebook'):
     cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     posts, next_url, prev_url = get_posts_for_objects(
@@ -1908,11 +1924,12 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
     run_links = get_uploader_run_links()
     edit_links = get_uploader_edit_links()
     request_links = get_uploader_request_links(uploader_name)
-    view_selector = get_uploader_view_selector()
+    view_selector = get_uploader_view_selector(uploader_type)
+    nav_buttons = get_navigation_buttons(buttons + uploader_type)
     args = {'object': cur_up, 'posts': posts.items, 'title': _('Uploader'),
             'object_name': cur_up.name, 'user': cur_user,
             'edit_progress': edit_progress, 'edit_name': edit_name,
-            'buttons': get_navigation_buttons(buttons),
+            'buttons': nav_buttons,
             'object_function_call': {'uploader_name': cur_up.name},
             'run_links': run_links, 'edit_links': edit_links,
             'request_links': request_links,
@@ -2003,10 +2020,12 @@ def edit_uploader(uploader_name):
 
 
 def set_uploader_relations_in_db(uploader_id, form_relations,
-                                 object_level='Campaign'):
+                                 object_level='Campaign',
+                                 uploader_type='Facebook'):
     cur_up = Uploader.query.get(uploader_id)
     up_obj = UploaderObjects.query.filter_by(
-        uploader_id=cur_up.id, object_level=object_level).first()
+        uploader_id=cur_up.id, object_level=object_level,
+        uploader_type=uploader_type).first()
     for rel in form_relations:
         up_rel = UploaderRelations.query.filter_by(
             uploader_objects_id=up_obj.id,
@@ -2061,7 +2080,8 @@ def uploader_ad_name_file_upload(uploader_name):
 def edit_uploader_base_objects(uploader_name, object_level, next_level='Page',
                                uploader_type='Facebook'):
     kwargs = get_current_uploader(uploader_name, 'edit_uploader',
-                                  edit_progress=40, edit_name=object_level)
+                                  edit_progress=40, edit_name=object_level,
+                                  uploader_type=uploader_type)
     cur_up = kwargs['object']
     up_obj = UploaderObjects.query.filter_by(
         uploader_id=cur_up.id, object_level=object_level,
@@ -2095,7 +2115,7 @@ def edit_uploader_base_objects(uploader_name, object_level, next_level='Page',
     if request.method == 'POST':
         set_uploader_relations_in_db(
             uploader_id=cur_up.id, form_relations=form.relations.data,
-            object_level=object_level)
+            object_level=object_level, uploader_type=uploader_type)
         if form.form_continue.data == 'continue':
             msg_text = 'Creating and uploading {} for uploader.'.format(
                 object_level)
@@ -2206,6 +2226,61 @@ def edit_uploader_campaign_dcm(uploader_name):
     uploader_type = 'DCM'
     object_level = 'Campaign'
     next_level = 'Adset'
+    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+                                      uploader_type)
+
+
+@bp.route('/uploader/<uploader_name>/edit/adset/dcm',
+          methods=['GET', 'POST'])
+@login_required
+def edit_uploader_adset_dcm(uploader_name):
+    uploader_type = 'DCM'
+    object_level = 'Adset'
+    next_level = 'Ad'
+    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+                                      uploader_type)
+
+
+@bp.route('/uploader/<uploader_name>/edit/ad/dcm',
+          methods=['GET', 'POST'])
+@login_required
+def edit_uploader_ad_dcm(uploader_name):
+    uploader_type = 'DCM'
+    object_level = 'Ad'
+    next_level = 'Page'
+    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+                                      uploader_type)
+
+
+@bp.route('/uploader/<uploader_name>/edit/campaign/aw',
+          methods=['GET', 'POST'])
+@login_required
+def edit_uploader_campaign_aw(uploader_name):
+    uploader_type = 'Adwords'
+    object_level = 'Campaign'
+    next_level = 'Adset'
+    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+                                      uploader_type)
+
+
+@bp.route('/uploader/<uploader_name>/edit/adset/aw',
+          methods=['GET', 'POST'])
+@login_required
+def edit_uploader_adset_aw(uploader_name):
+    uploader_type = 'Adwords'
+    object_level = 'Adset'
+    next_level = 'Ad'
+    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+                                      uploader_type)
+
+
+@bp.route('/uploader/<uploader_name>/edit/ad/aw',
+          methods=['GET', 'POST'])
+@login_required
+def edit_uploader_ad_aw(uploader_name):
+    uploader_type = 'Adwords'
+    object_level = 'Ad'
+    next_level = 'Page'
     return edit_uploader_base_objects(uploader_name, object_level, next_level,
                                       uploader_type)
 

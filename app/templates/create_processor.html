@@ -43,10 +43,13 @@
     </nav>
     {% if view_selector %}
         <div class="form-group">
-
             <select class="form-control" id="viewSelector">
                 {% for view_select in view_selector %}
-                    <option>{{ view_select }}</option>
+                    <option {% if view_select['active'] == True %} selected{% endif %}
+                     value="{% if object_function_call %}
+                                  {{ url_for(view_select['value'], **object_function_call) }}
+                             {% endif %}">
+                        {{ view_select['view'] }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -1006,6 +1009,11 @@
             $('#name_create_type').on('select2:select', function(e){
                 SubmitForm('', 'form_continue');
                 loadingBtn($(this).parent(), '');
+            });
+        });
+        $(document).ready(function() {
+            $('#viewSelector').on('select2:select', function(e){
+                window.location = e.params.data.id;
             });
         });
         $(document).ready(function(){

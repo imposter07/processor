@@ -1790,6 +1790,144 @@ def send_processor_analysis_email(processor_id, current_user_id):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+def monthly_email_last_login(current_user_id, text_body, header, tab=0):
+    try:
+        cu = User.query.get(current_user_id)
+        days_since_login = (cu.last_seen - datetime.today()).days
+        if days_since_login == 0:
+            days_ago_msg = "Today.  Woo hoo for you!"
+        elif days_since_login == 1:
+            days_ago_msg = "1 day ago.  Missed you today!"
+        else:
+            days_ago_msg = "{} days ago.  Where have you been?"
+        msg = "Your last login was {}  ".format(days_ago_msg)
+        if days_since_login <= 7:
+            msg += ("We're happy you're using the app - please don't hesitate "
+                    "to provide feedback!")
+        elif days_since_login <= 30:
+            msg += ("Logging in once a month is something.  If there is "
+                    "anything that can be provided to help you find the app "
+                    "more useful, please reach out!")
+        elif days_since_login > 30:
+            msg += ("You don't really care about data. :(  If you have "
+                    "any suggestions on improving the app, "
+                    "we would love to hear them!")
+        text_body = add_text_body(text_body, msg, tab=tab)
+        return text_body
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - User {}'.format(
+                current_user_id), exc_info=sys.exc_info())
+        return []
+
+
+def monthly_email_app_updates(current_user_id, text_body, header, tab=0):
+    try:
+        import datetime as dt
+        new_posts = Post.query.filter(Post.timestamp >= datetime.today() -
+                                      dt.timedelta(days=28))
+        new_posts = new_posts.filter_by(user_id=3)
+        new_posts = new_posts.filter_by(processor_id=None)
+        new_posts = new_posts.filter_by(uploader_id=None)
+        text_body = add_text_body(text_body, header, tab=tab)
+        msg = ("Here are some of the new features and updates for the app"
+               " over the past month!  ")
+        text_body = add_text_body(text_body, msg, tab)
+        for p in new_posts:
+            text_body = add_text_body(text_body, p.body, tab=tab + 1)
+        return text_body
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - User {}'.format(
+                current_user_id), exc_info=sys.exc_info())
+        return []
+
+
+def monthly_email_data_toplines(current_user_id, text_body, header, tab=0):
+    try:
+        import datetime as dt
+        import processor.reporting.analyze as az
+        cu = User.query.get(current_user_id)
+        proc = cu.processor_followed.filter(
+            Processor.end_date > datetime.today()).all()
+        text_body = add_text_body(text_body, header, tab=tab)
+        msg = ("You follow {} processors that are currently live!  ".format(
+            len(proc)))
+        if len(proc) == 0:
+            msg += ("That's a bit sad isn't it!  To find some "
+                    "processor instances to follow, go to the explore tab "
+                    "(rocket ship in navbar) and press the blue 'Follow' "
+                    "button!  Following a processor will give you automated "
+                    "analysis emails daily and help populate your app "
+                    "homepage.  Here's some topline data that you could be "
+                    "getting: \n")
+            ji_user = User.query.get(3)
+            proc = ji_user.processor_followed.filter(
+                Processor.end_date > datetime.today()).all()
+        else:
+            msg += "Some of that data is provided below."
+        text_body = add_text_body(text_body, msg, tab=tab)
+        proc = proc[:3]
+        for p in proc:
+            analysis = p.processor_analysis.all()
+            text_body = analysis_email_basic(
+                p.id, current_user_id, text_body=text_body,
+                header='{} - TOPLINE TABLES'.format(p.name),
+                full_analysis=analysis, analysis_keys=[az.Analyze.topline_col])
+        return text_body
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - User {}'.format(
+                current_user_id), exc_info=sys.exc_info())
+        return []
+
+
+def build_app_monthly_email(current_user_id):
+    try:
+        _set_task_progress(0)
+        text_body = []
+        arguments = [
+            ('LAST LOGIN', monthly_email_last_login),
+            ('APP UPDATES', monthly_email_app_updates),
+            ('DATA TOPLINES', monthly_email_data_toplines)]
+        for arg in arguments:
+            text_body = arg[1](
+                current_user_id, text_body=text_body, header=arg[0])
+        return text_body
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - User {}'.format(
+                current_user_id), exc_info=sys.exc_info())
+        return []
+
+
+def send_app_monthly_email(processor_id, current_user_id):
+    try:
+        # all_users = User.query.all()
+        all_users = User.query.filter_by(username='James')
+        for cur_user in all_users:
+            text_body = build_app_monthly_email(cur_user.id)
+            send_email('[Liquid App] | Monthly Update | {}'.format(
+                datetime.today().date().strftime('%Y-%m-%d')),
+                       sender=app.config['ADMINS'][0],
+                       recipients=[cur_user.email],
+                       text_body=render_template(
+                           'email/app_monthly_updates.txt', user=cur_user,
+                           analysis=text_body),
+                       html_body=render_template(
+                           'email/app_monthly_updates.html', user=cur_user,
+                           analysis=text_body),
+                       sync=True)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
 def set_processor_config_file(processor_id, current_user_id, config_type,
                               config_file_name):
     try:
@@ -2551,6 +2689,59 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         if 'eventdate' in df.columns:
             df = utl.data_to_type(df, str_col=['eventdate'])
             df = df[df['eventdate'] != 'None']
+        df = df.fillna(0)
+        if kpis:
+            calculated_metrics = az.ValueCalc().metric_names
+            metric_names = [x for x in kpis if x in calculated_metrics]
+            df = az.ValueCalc().calculate_all_metrics(
+                metric_names=metric_names, df=df, db_translate=True)
+            df = df.replace([np.inf, -np.inf], np.nan)
+            df = df.fillna(0)
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Parameter {}'.format(
+                processor_id, current_user_id, parameter),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
+                            dimensions=None, metrics=None, filter_dict=None):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.utils as utl
+        import processor.reporting.export as export
+        import processor.reporting.analyze as az
+        if ((not cur_processor.local_path) or
+                (not os.path.exists(adjust_path(cur_processor.local_path)))):
+            _set_task_progress(100)
+            return [pd.DataFrame({x: [] for x in dimensions + metrics})]
+        _set_task_progress(15)
+        if metrics == ['kpi']:
+            kpis, kpi_cols = get_kpis_for_processor(
+                processor_id, current_user_id)
+            metrics = [x for x in ['Impressions', 'Clicks', 'Net Cost']
+                       if x not in kpi_cols] + kpi_cols
+        else:
+            kpis = None
+        if not metrics:
+            metrics = ['Impressions', 'Clicks', 'Net Cost']
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        _set_task_progress(60)
+        df = matrix.vendor_get(parameter)
+        _set_task_progress(90)
+        df = utl.data_to_type(df, float_col=metrics)
+        metrics = [x for x in metrics if x in df.columns]
+        df = df.groupby(dimensions)[metrics].sum()
+        if 'Date' in df.columns:
+            df = utl.data_to_type(df, str_col=['Date'])
+            df = df[df['Date'] != 'None']
         df = df.fillna(0)
         if kpis:
             calculated_metrics = az.ValueCalc().metric_names

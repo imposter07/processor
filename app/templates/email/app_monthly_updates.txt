@@ -1,0 +1,14 @@
+Dear {{ user.username }},
+
+This is your monthly update on the [Liquid App], see more at lqadata.com!
+
+{% for x in analysis %}
+    {{ x['message'] }}
+    {% if 'data' in x %}
+        {{ x['data'].to_string() }}
+    {% endif %}
+{% endfor %}
+
+Sincerely,
+
+Liquid App

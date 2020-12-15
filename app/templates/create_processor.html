@@ -395,7 +395,7 @@
                 checkHideElem('#duplication_type');
             }
         });
-        $(document).ready(function() {
+        function addFilePond() {
             FilePond.registerPlugin(
                 FilePondPluginImagePreview,
                 FilePondPluginFileMetadata,
@@ -403,20 +403,20 @@
             FilePond.parse(document.body);
             FilePond.setOptions({
                 server: {
-                    url: window.location.href  + '/upload_file',
+                    url: window.location.href + '/upload_file',
                     method: 'POST',
                 },
                 allowPaste: false,
                 credits: false,
                 fileMetadataObject: {
                     object_name: "{{ object_name }}",
-                    object_type:  "{{ title }}",
+                    object_type: "{{ title }}",
                     object_level: "{{ edit_name }}",
                     object_form: $('#base_form_id').serializeArray()
                 }
             });
-        });
-        $(document).ready(function() {
+        }
+        function addFilePondMeta() {
             const ponds = document.querySelectorAll('.filepond--root');
             ponds.forEach((pond) => {
                 pond.addEventListener('FilePond:addfilestart', e => {
@@ -424,7 +424,7 @@
                         'object_form', $('#base_form_id').serializeArray());
                 });
             });
-        });
+        }
         function SubmitForm(form_continue, elemId) {
             document.getElementById(elemId).setAttribute("value", form_continue);
             let validForm = document.getElementById('base_form_id').reportValidity()
@@ -906,37 +906,35 @@
               'Loading...' +
             '</button>');
         }
-        $(document).ready(function() {
-            $('input[id*="refresh_"]').click(function() {
-              let tableName = $(this)[0].id.split('refresh_')[1];
-              if (tableName === 'rate_card') {
-                  var vendorKey = $('#' + tableName)[0].value;
-              }
-              else {
-                  try {
-                    vendorKey = $(this).parent().parent()[0].elements[0].value;
-                  }
-                  catch(err) {
-                    vendorKey = 'None';
-                  }}
-              let oldHtml = $(this).parent().html();
-              let currentStyle = $(this).attr('style');
-              $(this).parent().html('' +
-                '<button id="loadingBtn" class="btn btn-primary btn-block"' +
+        function refreshButtons() {
+            $('input[id*="refresh_"]').click(function () {
+                let tableName = $(this)[0].id.split('refresh_')[1];
+                if (tableName === 'rate_card') {
+                    var vendorKey = $('#' + tableName)[0].value;
+                } else {
+                    try {
+                        vendorKey = $(this).parent().parent()[0].elements[0].value;
+                    } catch (err) {
+                        vendorKey = 'None';
+                    }
+                }
+                let oldHtml = $(this).parent().html();
+                let currentStyle = $(this).attr('style');
+                $(this).parent().html('' +
+                    '<button id="loadingBtn" class="btn btn-primary btn-block"' +
                     'style="' + currentStyle + '"type="button" disabled>' +
-                  '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                  'Loading...' +
-                '</button>');
-              if (tableName === 'download_raw_data') {
-                  var refreshPond = setDownloadBar($("#loadingBtn"), $(this).text());
-              }
-              else{
-                  var refreshPond = setDownloadBar($("#loadingBtn"), $(this).text(), false);
-              }
-              getTable(tableName, $(this).parent(), oldHtml, vendorKey, refreshPond);
-              animateBar();
+                    '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                    'Loading...' +
+                    '</button>');
+                if (tableName === 'download_raw_data') {
+                    var refreshPond = setDownloadBar($("#loadingBtn"), $(this).text());
+                } else {
+                    var refreshPond = setDownloadBar($("#loadingBtn"), $(this).text(), false);
+                }
+                getTable(tableName, $(this).parent(), oldHtml, vendorKey, refreshPond);
+                animateBar();
             });
-        });
+        }
         $(document).ready(function () {
             $('#tableModal').on('hidden.bs.modal', function () {
                 if (['Import', 'Clean', 'Campaign', 'Adset', 'Ad'].includes(
@@ -973,6 +971,74 @@
                 },(2 * 1000));
             });
         });
+        function appendCleanDashboard(dashForm){
+            $('.card-columns').append('' +
+                '<div id="dashCardCol" class="card col">' +
+                dashForm +
+                '<div class="card-footer">' +
+                    '<div id="" class="row">' +
+                        '<div class="col-md-12 h-50">' +
+                            '<div class="card-header">' +
+                                '<h7 class="mb-3"></h7>' +
+                                '<select id="dash_placeholderMetricsSelect"' +
+                                        'class="custom-select custom-select-sm">' +
+                                    '<option>Select Metric</option>' +
+                                '</select>' +
+                            '</div>' +
+                            '<div class="card container-fluid shadow outer">' +
+                                '<div id="dash_placeholderMetricsProgress"' +
+                                     'class="widget"></div>' +
+                                '<div id="dash_placeholderMetrics"></div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '</div>')
+        }
+        function getSelectedDashboard(){
+            $('#select_plot').on('select2:select', function (e) {
+                let selectedText = this.options[e.target.selectedIndex].text
+                let vendorKey = $('#datasources-0-vendor_key')[0].value
+                let metrics = ['kpi']
+                let filterDict = {}
+                let chartFunction = (function () {
+                    if (selectedText === 'Date') {
+                        return generateAreaChart;
+                    } else {
+                        return generateBarChart;
+                    }
+                })
+                getMetrics('#dash_placeholderMetrics', chartFunction(),
+                    selectedText, metrics,
+                    filterDict, "", 250, null, null, null, null, vendorKey);
+            });
+        }
+        function getDataSource(dataSourceName){
+            $.ajax({
+                type: "POST",
+                url: "/get_datasource",
+                data: {
+                    datasource: dataSourceName,
+                    object_name: "{{ object_name }}",
+                    object_type:  "{{ title }}",
+                    object_level: "{{ edit_name }}",
+                },
+            }).done(function(data, status) {
+                $('#base_form_id').html(data['datasource_form']);
+                appendCleanDashboard(data['dashboard_form'])
+                loadJS()
+            }).fail(function(jqXHR, textStatus ) {
+
+            }).always(function(){
+
+            });
+        }
+        function changeDataSource() {
+            $('#data_source_clean').on('select2:select', function(e){
+                let selectedText = this.options[e.target.selectedIndex].text;
+                getDataSource(selectedText);
+            });
+        }
         $(document).ready(function(){
             $('input[id*="unresolved_relations"]').each(function(index){
                 if (($(this)[0].value === '0') || ($(this)[0].value === '')
@@ -1016,8 +1082,27 @@
                 window.location = e.params.data.id;
             });
         });
+        function addSelect2(){
+            let selectString = "select"
+            $(selectString).select2();
+            $(selectString).on("select2:select", function (evt) {
+              let element = evt.params.data.element;
+              let $element = $(element);
+              $element.detach();
+              $(this).append($element);
+              $(this).trigger("change");
+            });
+        }
+        function loadJS(){
+            addFilePond()
+            addFilePondMeta()
+            addSelect2()
+            refreshButtons()
+            changeDataSource()
+            getSelectedDashboard()
+        }
         $(document).ready(function(){
-            $("select").select2();
+            loadJS()
         })
     </script>
     {% include "_dash_builder.html" %}

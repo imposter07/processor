@@ -99,7 +99,6 @@
     }
     function saveDash(dashId, dropdownButton, oldHtml) {
         let clickedButton = '#' + dashId + 'Save'
-        console.log(clickedButton)
         let objForm = $($(clickedButton).parent().parent()[0]
             .children[0].children[0].children[0]).serializeArray()
         $.ajax({

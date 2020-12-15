@@ -1799,7 +1799,8 @@ def monthly_email_last_login(current_user_id, text_body, header, tab=0):
         elif days_since_login == 1:
             days_ago_msg = "1 day ago.  Missed you today!"
         else:
-            days_ago_msg = "{} days ago.  Where have you been?"
+            days_ago_msg = "{} days ago.  Where have you been?".format(
+                days_since_login)
         msg = "Your last login was {}  ".format(days_ago_msg)
         if days_since_login <= 7:
             msg += ("We're happy you're using the app - please don't hesitate "
@@ -2739,6 +2740,7 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
         df = utl.data_to_type(df, float_col=metrics)
         metrics = [x for x in metrics if x in df.columns]
         df = df.groupby(dimensions)[metrics].sum()
+        df = df.reset_index()
         if 'Date' in df.columns:
             df = utl.data_to_type(df, str_col=['Date'])
             df = df[df['Date'] != 'None']

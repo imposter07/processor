@@ -193,10 +193,13 @@ class DataSourceForm(FlaskForm):
 
 
 class ProcessorCleanForm(FlaskForm):
-    data_source = SelectField(_l('Processor Data Source Filter'))
+    data_source_clean = SelectField(_l('Processor Data Source Filter'))
     refresh_data_sources = SubmitField(_l('Refresh From Processor'))
     form_continue = HiddenField('form_continue')
     datasources = FieldList(FormField(DataSourceForm, label=''))
+
+    def __init__(self, *args, **kwargs):
+        super(ProcessorCleanForm, self).__init__(*args, **kwargs)
 
     def set_datasources(self, data_source, cur_proc):
         imp_dict = []
@@ -212,7 +215,7 @@ class ProcessorCleanForm(FlaskForm):
         choices.extend([(x.vendor_key, x.vendor_key) for x in
                         ProcessorDatasources.query.filter_by(
                             processor_id=current_processor_id).all()])
-        self.data_source.choices = choices
+        self.data_source_clean.choices = choices
 
 
 class TranslationForm(FlaskForm):
@@ -656,3 +659,9 @@ class ProcessorDashboardForm(FlaskForm):
         self.static_filters = relation_dict
         return relation_dict
 
+
+class ProcessorCleanDashboardForm(FlaskForm):
+    add_raw_file = FileField(_l('Add New Raw File'))
+    select_plot = SelectField(
+        'Select Plot', choices=[('', ''), ('Date', 'Date')] +
+                               [(x, x) for x in dctc.COLS])

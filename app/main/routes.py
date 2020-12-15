@@ -18,7 +18,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorContinueForm, ProcessorFixForm, ProcessorRequestCommentForm,\
     ProcessorDuplicateForm, EditUploaderMediaPlanForm,\
     EditUploaderNameCreateForm, EditUploaderCreativeForm,\
-    UploaderDuplicateForm, ProcessorDashboardForm
+    UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -857,14 +857,41 @@ def get_table():
     return jsonify({'data': {'data': data, 'cols': cols, 'name': table_name}})
 
 
+@bp.context_processor
+def utility_functions():
+    def print_in_console(message):
+        print(str(message))
+    return dict(mdebug=print_in_console)
+
+
+@bp.route('/get_datasource', methods=['GET', 'POST'])
+@login_required
+def get_datasource():
+    obj_name = request.form['object_name']
+    datasource_name = request.form['datasource']
+    cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
+    ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
+    ds = [x for x in ds if x['vendor_key'] == datasource_name]
+    form = ProcessorCleanForm(datasources=ds)
+    for x in ds:
+        form.datasources.append_entry(x)
+    form.set_vendor_key_choices(current_processor_id=cur_proc.id)
+    form = render_template('_form.html', form=form)
+    dash_form = ProcessorCleanDashboardForm()
+    dash_form = render_template('_form.html', form=dash_form)
+    return jsonify({'datasource_form': form,
+                    'dashboard_form': dash_form})
+
+
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
 @login_required
 def edit_processor_clean(processor_name):
     kwargs = get_current_processor(processor_name, 'edit_processor_clean',
                                    edit_progress=75, edit_name='Clean')
     cur_proc = kwargs['processor']
-    ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
-    form = ProcessorCleanForm(datasources=ds)
+    # ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
+    # form = ProcessorCleanForm(datasources=[ds[0]])
+    form = ProcessorCleanForm()
     form.set_vendor_key_choices(current_processor_id=cur_proc.id)
     kwargs['form'] = form
     if request.method == 'POST':
@@ -2332,7 +2359,6 @@ def get_metrics():
                 'metrics': metrics}
     if 'filter_dict' in request.form:
         proc_arg['filter_dict'] = json.loads(request.form['filter_dict'])
-        print(proc_arg['filter_dict'])
     obj_name = request.form['object_name']
     cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
     msg_text = 'Getting metric table for {}'.format(cur_proc.name)
@@ -2340,6 +2366,9 @@ def get_metrics():
         job_name = '.get_processor_total_metrics'
         proc_arg = {x: proc_arg[x] for x in proc_arg
                     if x in ['running_user', 'filter_dict']}
+    elif request.form['elem'] == '#dash_placeholderMetrics':
+        job_name = '.get_raw_file_data_table'
+        proc_arg['parameter'] = request.form['vendor_key']
     else:
         job_name = '.get_data_tables_from_db'
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)

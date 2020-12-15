@@ -430,7 +430,6 @@
     }
 
     function generateAreaChart(elem, data, xCol, yCol, filterCols) {
-
         let am = autoMargin(elem, 250, 60, 30);
         let svg = am.svg
         let parseDate = d3.timeParse("%Y-%m-%d");
@@ -928,7 +927,7 @@
     function getMetrics(elem, createVisualFunction, xCol, yCol,
                         filterDict = null, parentClass = "", parentHeight = 250,
                         clickElem = null, oldHtml = null, addSelect = false,
-                        dashboardId = null) {
+                        dashboardId = null, vendorKey = null) {
         if (filterDict) {
             $(elem).parent().html(
                 '<div id="' + elem.substring(1) +
@@ -949,7 +948,8 @@
                 x_col: xCol,
                 y_col: yCol.join('|'),
                 filter_dict: JSON.stringify(filterDict),
-                dashboard_id: dashboardId
+                dashboard_id: dashboardId,
+                vendor_key: vendorKey
             },
         }).done(function (data, status) {
             chart.update(100);

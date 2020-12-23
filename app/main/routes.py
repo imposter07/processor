@@ -18,7 +18,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorContinueForm, ProcessorFixForm, ProcessorRequestCommentForm,\
     ProcessorDuplicateForm, EditUploaderMediaPlanForm,\
     EditUploaderNameCreateForm, EditUploaderCreativeForm,\
-    UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm
+    UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
+    ProcessorMetricsForm, ProcessorMetricForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -879,8 +880,36 @@ def get_datasource():
     form = render_template('_form.html', form=form)
     dash_form = ProcessorCleanDashboardForm()
     dash_form = render_template('_form.html', form=dash_form)
+    ds = cur_proc.processor_datasources.filter_by(
+        vendor_key=datasource_name).first()
+    metrics = ds.get_datasource_for_processor()['active_metrics']
+    print(metrics)
+    df = pd.DataFrame(metrics).T.reset_index()
+    df = df.rename({'index': 'Metric Name', 0: 'Metric Value'}, axis=1)
+    pd.set_option('display.max_colwidth', -1)
+    df = df.reset_index()
+    if 'index' in df.columns:
+        df = df[[x for x in df.columns if x != 'index'] + ['index']]
+    data = df.to_html(
+        index=False, table_id='metric_table',
+        classes='table table-striped table-responsive-sm small',
+        border=0)
+    cols = json.dumps(df.columns.tolist())
+    data = {'data': {'data': data, 'cols': cols, 'name': 'metric_table'}}
+    """
+    metrics = ds[0]
+    metrics_form = ProcessorMetricsForm()
+    for m in metrics:
+        ind_metric_form = ProcessorMetricForm()
+        ind_metric_form.metric_name = m
+        ind_metric_form.metric_values = metrics[m]
+        metrics_form.proc_metrics.append_entry(ind_metric_form)
+    metrics_form = render_template('_form.html', form=metrics_form,
+                                   form_type='inline')
+    """
     return jsonify({'datasource_form': form,
-                    'dashboard_form': dash_form})
+                    'dashboard_form': dash_form,
+                    'metrics_table': data})
 
 
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])

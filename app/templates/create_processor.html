@@ -477,16 +477,22 @@
 
             });
         }
-        function createTable(colData, rawData, tableName) {
+        function createTable(colData, rawData, tableName,
+                             elem="modal-body-table") {
             let cols = JSON.parse(colData);
             let tableFields = cols.map(function(e) {
-              return {label: e, name: e}
+                if (e === 'index') {
+                    return {label: e, name: e, type: "hidden"}
+                } else {
+                    return {label: e, name: e}
+                }
             });
+            console.log()
             let tableCols = cols.map(function(e) {
               return {data: e}
             });
             let tableJquery = '#' + tableName;
-            document.getElementById("modal-body-table").innerHTML = rawData;
+            document.getElementById(elem).innerHTML = rawData;
             $(document).ready( function () {
                 let editor = new $.fn.dataTable.Editor({
                     table: tableJquery,
@@ -638,39 +644,37 @@
                     }
             });
         }
+        /*
         var downloadingProgress = null;
         function getDownloadProgress(tableName, updateFunction=false) {
-            downloadingProgress = setInterval(function() {
-                $.post('/get_task_progress',
+            downloadingProgress = setInterval(getTaskProgress(tableName, updateFunction), 2500);
+        }*/
+        function getTaskProgress(tableName, updateFunction=false) {
+            $.post('/get_task_progress',
                 {
                     object_type: "{{ title }}",
-                    object_name:  "{{ object_name }}",
+                    object_name: "{{ object_name }}",
                     object_level: "{{ edit_name }}",
                     task_name: tableName,
-                }).done(function(data, status) {
-                    let downloadProgress = $('#downloadProgress');
-                    let newPercent = data['percent'];
-                    let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
-                    if (newPercent > oldPercent) {
-                        if (updateFunction) {
-                            updateFunction(newPercent);
-                        }
-                        else {
-                            downloadProgress.attr("style", "width: " + newPercent + "%")
-
-                        }
+                }).done(function (data, status) {
+                let downloadProgress = $('#downloadProgress');
+                let newPercent = data['percent'];
+                let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
+                if (newPercent > oldPercent) {
+                    if (updateFunction) {
+                        updateFunction(newPercent);
+                    } else {
+                        downloadProgress.attr("style", "width: " + newPercent + "%")
                     }
-                    else {
-                        let percent = oldPercent + 2;
-                        if (updateFunction) {
-                            updateFunction(percent);
-                        }
-                        else {
-                            downloadProgress.attr("style", "width: " + percent + "%")
-                        }
+                } else {
+                    let percent = oldPercent + 2;
+                    if (updateFunction) {
+                        updateFunction(percent);
+                    } else {
+                        downloadProgress.attr("style", "width: " + percent + "%")
                     }
+                }
             });
-        }, 2500);
         }
         function setDownloadBar(currentElement, textContent, pond = true) {
             $(
@@ -815,7 +819,8 @@
                 downloadProgress.attr("style", "width: 100%");
                 unanimateBar("downloadProgress");
             });
-            getDownloadProgress(tableName);
+            var downloadingProgress = setInterval(function() {
+                getTaskProgress(tableName); }, 2500)
         }
         $(document).ready(function() {
             $('button[id^="getLog"]').click(function () {
@@ -971,6 +976,15 @@
                 },(2 * 1000));
             });
         });
+        function appendMetricsForm(dashForm){
+            let tableName = dashForm['data']['name']
+            $('.card-columns').append('' +
+                '<div id="metricsCardCol" class="card col">' +
+                    '<div id=' + tableName + 'Elem></div>' +
+                '</div>')
+            createTable(dashForm['data']['cols'], dashForm['data']['data'],
+                        tableName, tableName + 'Elem')
+        }
         function appendCleanDashboard(dashForm){
             $('.card-columns').append('' +
                 '<div id="dashCardCol" class="card col">' +
@@ -1026,6 +1040,7 @@
             }).done(function(data, status) {
                 $('#base_form_id').html(data['datasource_form']);
                 appendCleanDashboard(data['dashboard_form'])
+                appendMetricsForm(data['metrics_table'])
                 loadJS()
             }).fail(function(jqXHR, textStatus ) {
 

@@ -665,3 +665,17 @@ class ProcessorCleanDashboardForm(FlaskForm):
     select_plot = SelectField(
         'Select Plot', choices=[('', ''), ('Date', 'Date')] +
                                [(x, x) for x in dctc.COLS])
+
+
+class ProcessorMetricForm(FlaskForm):
+    metric_name = SelectField('Metric Name',
+                              choices=[(x, x) for x in vmc.datafloatcol +
+                                       [vmc.datecol]])
+    metric_values = SelectMultipleField('Metric Values', choices=[('', '')])
+    delete_metric = SubmitField(
+        'Delete', render_kw={'style': 'background-color:red'})
+
+
+class ProcessorMetricsForm(FlaskForm):
+    add_sub_form_metric = SubmitField(label='Add Static Filter')
+    proc_metrics = FieldList(FormField(ProcessorMetricForm, label=''))

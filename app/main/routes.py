@@ -19,7 +19,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorDuplicateForm, EditUploaderMediaPlanForm,\
     EditUploaderNameCreateForm, EditUploaderCreativeForm,\
     UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
-    ProcessorMetricsForm, ProcessorMetricForm
+    ProcessorMetricsForm, ProcessorMetricForm, PlacementForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -865,6 +865,30 @@ def utility_functions():
     return dict(mdebug=print_in_console)
 
 
+def df_to_html(df, name):
+    pd.set_option('display.max_colwidth', -1)
+    df = df.reset_index()
+    if 'index' in df.columns:
+        df = df[[x for x in df.columns if x != 'index'] + ['index']]
+    data = df.to_html(
+        index=False, table_id=name,
+        classes='table table-striped table-responsive-sm small',
+        border=0)
+    cols = json.dumps(df.columns.tolist())
+    return {'data': {'data': data, 'cols': cols, 'name': name}}
+
+
+def get_placement_form(data_source):
+    form = PlacementForm()
+    form.set_column_choices(data_source.id)
+    ds_dict = data_source.get_datasource_for_processor()
+    form.full_placement_columns.data = ds_dict['Full Placement Name'].split('\n')
+    form.placement_columns.data = [ds_dict['Placement Name']]
+    form.auto_dictionary_placement.data = ds_dict['AUTO DICTIONARY PLACEMENT']
+    form = render_template('_form.html', form=form)
+    return form
+
+
 @bp.route('/get_datasource', methods=['GET', 'POST'])
 @login_required
 def get_datasource():
@@ -874,42 +898,28 @@ def get_datasource():
     ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
     ds = [x for x in ds if x['vendor_key'] == datasource_name]
     form = ProcessorCleanForm(datasources=ds)
-    for x in ds:
-        form.datasources.append_entry(x)
+    # for x in ds:
+    #    form.datasources.append_entry(x)
     form.set_vendor_key_choices(current_processor_id=cur_proc.id)
+    form.data_source_clean.data = datasource_name
     form = render_template('_form.html', form=form)
     dash_form = ProcessorCleanDashboardForm()
     dash_form = render_template('_form.html', form=dash_form)
     ds = cur_proc.processor_datasources.filter_by(
         vendor_key=datasource_name).first()
     metrics = ds.get_datasource_for_processor()['active_metrics']
-    print(metrics)
     df = pd.DataFrame(metrics).T.reset_index()
     df = df.rename({'index': 'Metric Name', 0: 'Metric Value'}, axis=1)
-    pd.set_option('display.max_colwidth', -1)
-    df = df.reset_index()
-    if 'index' in df.columns:
-        df = df[[x for x in df.columns if x != 'index'] + ['index']]
-    data = df.to_html(
-        index=False, table_id='metric_table',
-        classes='table table-striped table-responsive-sm small',
-        border=0)
-    cols = json.dumps(df.columns.tolist())
-    data = {'data': {'data': data, 'cols': cols, 'name': 'metric_table'}}
-    """
-    metrics = ds[0]
-    metrics_form = ProcessorMetricsForm()
-    for m in metrics:
-        ind_metric_form = ProcessorMetricForm()
-        ind_metric_form.metric_name = m
-        ind_metric_form.metric_values = metrics[m]
-        metrics_form.proc_metrics.append_entry(ind_metric_form)
-    metrics_form = render_template('_form.html', form=metrics_form,
-                                   form_type='inline')
-    """
+    data = df_to_html(df, 'metrics_table')
+    rules = ds.get_datasource_for_processor()['vm_rules']
+    df = pd.DataFrame(rules).T
+    rules_data = df_to_html(df, 'rules_table')
+    placement_form = get_placement_form(data_source=ds)
     return jsonify({'datasource_form': form,
                     'dashboard_form': dash_form,
-                    'metrics_table': data})
+                    'metrics_table': data,
+                    'rules_table': rules_data,
+                    'placement_form': placement_form})
 
 
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])

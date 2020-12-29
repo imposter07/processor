@@ -194,7 +194,7 @@ class DataSourceForm(FlaskForm):
 
 class ProcessorCleanForm(FlaskForm):
     data_source_clean = SelectField(_l('Processor Data Source Filter'))
-    refresh_data_sources = SubmitField(_l('Refresh From Processor'))
+    # refresh_data_sources = SubmitField(_l('Refresh From Processor'))
     form_continue = HiddenField('form_continue')
     datasources = FieldList(FormField(DataSourceForm, label=''))
 
@@ -232,13 +232,23 @@ class TranslationBroadForm(FlaskForm):
 
 
 class PlacementForm(FlaskForm):
-    column_name = SelectField('Column Names')
+    full_placement_columns = SelectMultipleField(_l('Full Placement Columns'))
+    placement_columns = SelectField(_l('Placement Column'))
+    auto_dictionary_placement = SelectField(_l('Auto Dict Placement'), choices=[
+        (x, x) for x in [dctc.FPN, dctc.PN]])
 
+    def __init__(self, *args, **kwargs):
+        super(PlacementForm, self).__init__(*args, **kwargs)
 
-class FullPlacementForm(FlaskForm):
-    add_child = SubmitField(label='Add Column')
-    remove_api = SubmitField('Remove Column')
-    placements = FieldList(FormField(PlacementForm))
+    def set_column_choices(self, current_ds_id):
+        choices = [('', '')]
+        ds = ProcessorDatasources.query.filter_by(id=current_ds_id).first()
+        ds_dict = ds.get_datasource_for_processor()
+        fp_cols = ds_dict['Full Placement Name'].split('\n')
+        choices.extend([(x, x) for x in fp_cols])
+        self.placement_columns.choices = choices
+        choices.extend([('::' + x, '::' + x) for x in fp_cols])
+        self.full_placement_columns.choices = choices
 
 
 class ProcessorExportForm(FlaskForm):

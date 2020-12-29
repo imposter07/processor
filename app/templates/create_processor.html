@@ -487,7 +487,6 @@
                     return {label: e, name: e}
                 }
             });
-            console.log()
             let tableCols = cols.map(function(e) {
               return {data: e}
             });
@@ -499,14 +498,16 @@
                     idSrc: 'index',
                     fields: tableFields
                 });
-                editor.on( 'open', function ( e, type, mode, action ) {
-                    if (type === "main") {
-                      $('#tableModal').modal('hide');
+                editor.on('open', function (e, type, mode, action) {
+                    if ((type === 'main') && (elem === 'modal-body-table')) {
+                        $('#tableModal').modal('hide');
                     }
-                } );
-                 editor.on( 'close', function () {
-                  $('#tableModal').modal('show');
-                } );
+                });
+                editor.on('close', function () {
+                    if (elem === 'modal-body-table') {
+                        $('#tableModal').modal('show');
+                    }
+                });
                 let uploadEditor = new $.fn.dataTable.Editor( {
                     fields: [ {
                         label: 'CSV file:',
@@ -633,8 +634,7 @@
                     object_level: "{{ edit_name }}",
                     table: sendTableName
                 }).done(function(data, status) {
-                    if ("{{ edit_name }}" === 'Import' ||
-                        "{{ edit_name }}" === 'Clean') {
+                    if ("{{ edit_name }}" === 'Import') {
                         reloadPage();
                     }
                     else {
@@ -818,6 +818,7 @@
                 let downloadProgress = $('#downloadProgress');
                 downloadProgress.attr("style", "width: 100%");
                 unanimateBar("downloadProgress");
+                refreshButtons()
             });
             var downloadingProgress = setInterval(function() {
                 getTaskProgress(tableName); }, 2500)
@@ -912,17 +913,22 @@
             '</button>');
         }
         function refreshButtons() {
-            $('input[id*="refresh_"]').click(function () {
+            $('input[id*="refresh_"], button[id*="refresh_"]').click(function () {
                 let tableName = $(this)[0].id.split('refresh_')[1];
+                console.log(tableName)
                 if (tableName === 'rate_card') {
                     var vendorKey = $('#' + tableName)[0].value;
-                } else {
+                } else if ("{{ edit_name }}" === 'Clean') {
+                    vendorKey = $('#data_source_clean').val();
+                }
+                else {
                     try {
                         vendorKey = $(this).parent().parent()[0].elements[0].value;
                     } catch (err) {
                         vendorKey = 'None';
                     }
                 }
+                console.log(vendorKey)
                 let oldHtml = $(this).parent().html();
                 let currentStyle = $(this).attr('style');
                 $(this).parent().html('' +
@@ -942,7 +948,7 @@
         }
         $(document).ready(function () {
             $('#tableModal').on('hidden.bs.modal', function () {
-                if (['Import', 'Clean', 'Campaign', 'Adset', 'Ad'].includes(
+                if (['Import', 'Campaign', 'Adset', 'Ad'].includes(
                     "{{ edit_name }}")) {
                     let sourceElem = $('table[id^="modalTable"]')[0].id;
                     if ((sourceElem === "modalTableimports") ||
@@ -976,17 +982,17 @@
                 },(2 * 1000));
             });
         });
-        function appendMetricsForm(dashForm){
+        function appendCardAsTable(dashForm, divId){
             let tableName = dashForm['data']['name']
-            $('.card-columns').append('' +
-                '<div id="metricsCardCol" class="card col">' +
+            $('#rowOne').append('' +
+                '<div id="' + divId + '" class="card col">' +
                     '<div id=' + tableName + 'Elem></div>' +
                 '</div>')
             createTable(dashForm['data']['cols'], dashForm['data']['data'],
                         tableName, tableName + 'Elem')
         }
         function appendCleanDashboard(dashForm){
-            $('.card-columns').append('' +
+            $('#rowTwo').append('' +
                 '<div id="dashCardCol" class="card col">' +
                 dashForm +
                 '<div class="card-footer">' +
@@ -1012,7 +1018,7 @@
         function getSelectedDashboard(){
             $('#select_plot').on('select2:select', function (e) {
                 let selectedText = this.options[e.target.selectedIndex].text
-                let vendorKey = $('#datasources-0-vendor_key')[0].value
+                let vendorKey = $('#data_source_clean').val();
                 let metrics = ['kpi']
                 let filterDict = {}
                 let chartFunction = (function () {
@@ -1027,6 +1033,65 @@
                     filterDict, "", 250, null, null, null, null, vendorKey);
             });
         }
+
+        function appendButtonRow() {
+            $('#base_form_id').children().eq(3).append(
+                '<br><br>' +
+                '<div class="row">' +
+                '<div class="card col">' +
+                '<label class="control label">RAW DATA</label>' +
+                '<div class="btn-group btn-group-sm btn-block" role="group">' +
+                '<button id="_refresh_raw_data"' +
+                'class="btn btn-outline-success">' +
+                '<i class="fas fa-chart-bar" href="#" role="button"></i>' +
+                'View' +
+                '</button>' +
+                '<button id="_refresh_download_raw_data"' +
+                'class="btn btn-outline-primary">' +
+                '<i class="fas fa-download" href="#" role="button"></i>' +
+                'Download' +
+                '</button>' +
+                '</div>' +
+                '</div>' +
+                '<div class="card col">' +
+                '<label class="control label">DICTIONARY</label>' +
+                '<div class="btn-group btn-group-sm btn-block" role="group">' +
+                '<button id="_refresh_dictionary"' +
+                'class="btn btn-outline-primary">' +
+                '<i class="fas fa-download" href="#" role="button"></i>' +
+                'View' +
+                '</button>' +
+                '<button id="_refresh_dictionary_order"' +
+                'class="btn btn-outline-primary">' +
+                '<i class="fas fa-download" href="#" role="button"></i>' +
+                'View Order' +
+                '</button>' +
+                '<button id="_refresh_delete_dict"' +
+                'class="btn btn-outline-danger">' +
+                '<i class="fas fa-trash" href="#" role="button"></i>' +
+                'Delete' +
+                '</button>' +
+                '</div>' +
+                '</div>'
+            )
+        }
+
+        function appendTwoRows() {
+            let cardCol = '.card-columns'
+            $(cardCol).parent()[0].innerHTML = '<div class="row" id="baseRow"></div>'
+            $(cardCol).removeClass("card-columns").addClass("row")
+            $('#baseRow').append(
+                '<div class="row" id="rowOne"></div>' +
+                '<div class="row" id="rowTwo"></div>'
+            )
+        }
+
+        function appendForm(form, row, name) {
+            $(row).append('' +
+                '<div id="' + name + '" class="card col">' +
+                form +
+                '</div>')
+        }
         function getDataSource(dataSourceName){
             $.ajax({
                 type: "POST",
@@ -1039,9 +1104,13 @@
                 },
             }).done(function(data, status) {
                 $('#base_form_id').html(data['datasource_form']);
-                appendCleanDashboard(data['dashboard_form'])
-                appendMetricsForm(data['metrics_table'])
-                loadJS()
+                appendButtonRow();
+                appendTwoRows();
+                appendCleanDashboard(data['dashboard_form']);
+                appendForm(data['placement_form'], '#rowOne', 'placeForm')
+                appendCardAsTable(data['metrics_table'], "metricsCardCol");
+                appendCardAsTable(data['rules_table'], "rulesCardCol");
+                loadJS();
             }).fail(function(jqXHR, textStatus ) {
 
             }).always(function(){

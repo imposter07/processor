@@ -8,7 +8,7 @@ from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length
 from flask_babel import _, lazy_gettext as _l
 from app.models import User, Processor, Client, Product, Campaign, Uploader,\
-    RateCard, ProcessorDatasources
+    RateCard, ProcessorDatasources, ProcessorAnalysis
 import processor.reporting.dictcolumns as dctc
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.export as exp
@@ -236,19 +236,33 @@ class PlacementForm(FlaskForm):
     placement_columns = SelectField(_l('Placement Column'))
     auto_dictionary_placement = SelectField(_l('Auto Dict Placement'), choices=[
         (x, x) for x in [dctc.FPN, dctc.PN]])
+    auto_dictionary_order = SelectMultipleField(_l('Auto Dictionary Order'))
 
     def __init__(self, *args, **kwargs):
         super(PlacementForm, self).__init__(*args, **kwargs)
 
     def set_column_choices(self, current_ds_id):
+        import processor.reporting.analyze as az
+        import pandas as pd
         choices = [('', '')]
         ds = ProcessorDatasources.query.filter_by(id=current_ds_id).first()
+        all_analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=ds.processor_id, key=az.Analyze.raw_columns).first()
+        df = pd.DataFrame(all_analysis.data)
+        raw_cols = df[df[vmc.vendorkey] == ds.vendor_key][
+            az.Analyze.raw_columns][0]
         ds_dict = ds.get_datasource_for_processor()
         fp_cols = ds_dict['Full Placement Name'].split('\n')
-        choices.extend([(x, x) for x in fp_cols])
+        fp_cols = [x for x in fp_cols if x not in raw_cols]
+        choices.extend([(x, x) for x in fp_cols + raw_cols])
         self.placement_columns.choices = choices
-        choices.extend([('::' + x, '::' + x) for x in fp_cols])
-        self.full_placement_columns.choices = choices
+        full_choices = [x for x in choices]
+        full_choices.extend([('::' + x, '::' + x) for x in fp_cols + raw_cols])
+        self.full_placement_columns.choices = full_choices
+        auto_choices = ds.auto_dictionary_order.split('\n')
+        dict_choices = [x for x in dctc.COLS if x not in auto_choices]
+        choices = [(x, x) for x in auto_choices + dict_choices]
+        self.auto_dictionary_order.choices = choices
 
 
 class ProcessorExportForm(FlaskForm):

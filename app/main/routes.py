@@ -883,9 +883,10 @@ def get_placement_form(data_source):
     form.set_column_choices(data_source.id)
     ds_dict = data_source.get_datasource_for_processor()
     form.full_placement_columns.data = ds_dict['Full Placement Name'].split('\n')
-    form.placement_columns.data = [ds_dict['Placement Name']]
+    form.placement_columns.data = ds_dict['Placement Name']
     form.auto_dictionary_placement.data = ds_dict['AUTO DICTIONARY PLACEMENT']
-    form = render_template('_form.html', form=form)
+    form.auto_dictionary_order.data = ds_dict['AUTO DICTIONARY ORDER'].split('\n')
+    form = render_template('_form.html', form=form, form_id='formPlacement')
     return form
 
 
@@ -904,7 +905,7 @@ def get_datasource():
     form.data_source_clean.data = datasource_name
     form = render_template('_form.html', form=form)
     dash_form = ProcessorCleanDashboardForm()
-    dash_form = render_template('_form.html', form=dash_form)
+    dash_form = render_template('_form.html', form=dash_form, form_id="formDash")
     ds = cur_proc.processor_datasources.filter_by(
         vendor_key=datasource_name).first()
     metrics = ds.get_datasource_for_processor()['active_metrics']

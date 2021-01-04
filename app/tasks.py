@@ -425,15 +425,23 @@ def set_data_sources(processor_id, current_user_id, form_sources):
             processor_id=cur_processor.id).all()
         sources = [x.get_datasource_for_processor() for x in sources]
         for idx, source in enumerate(sources):
-            sources[idx]['original_vendor_key'] = [
+            form_source = [
                 x for x in form_sources
-                if x['vendor_key'] == source[vmc.vendorkey]
-            ][0]['original_vendor_key']
+                if x['vendor_key'] == source[vmc.vendorkey]]
+            if len(form_source) > 0:
+                sources[idx]['original_vendor_key'] = form_source[0][
+                    'original_vendor_key']
+            else:
+                sources[idx][
+                    'original_vendor_key'] = sources[idx][vmc.vendorkey]
         import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         matrix.set_data_sources(sources)
         msg_text = "Processor {} datasources set.".format(cur_processor.name)
+        if len(form_sources) == 1:
+            name = form_sources[0]['vendor_key']
+            msg_text += "  {} was saved.".format(name)
         processor_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
     except:

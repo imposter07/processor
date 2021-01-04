@@ -881,11 +881,12 @@ def df_to_html(df, name):
 def get_placement_form(data_source):
     form = PlacementForm()
     form.set_column_choices(data_source.id)
-    ds_dict = data_source.get_datasource_for_processor()
-    form.full_placement_columns.data = ds_dict['Full Placement Name'].split('\n')
-    form.placement_columns.data = ds_dict['Placement Name']
-    form.auto_dictionary_placement.data = ds_dict['AUTO DICTIONARY PLACEMENT']
-    form.auto_dictionary_order.data = ds_dict['AUTO DICTIONARY ORDER'].split('\n')
+    ds_dict = data_source.get_ds_form_dict()
+    print(ds_dict)
+    form.full_placement_columns.data = ds_dict['full_placement_columns']
+    form.placement_columns.data = ds_dict['placement_columns']
+    form.auto_dictionary_placement.data = ds_dict['auto_dictionary_placement']
+    form.auto_dictionary_order.data = ds_dict['auto_dictionary_order']
     form = render_template('_form.html', form=form, form_id='formPlacement')
     return form
 
@@ -899,13 +900,12 @@ def get_datasource():
     ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
     ds = [x for x in ds if x['vendor_key'] == datasource_name]
     form = ProcessorCleanForm(datasources=ds)
-    # for x in ds:
-    #    form.datasources.append_entry(x)
     form.set_vendor_key_choices(current_processor_id=cur_proc.id)
     form.data_source_clean.data = datasource_name
     form = render_template('_form.html', form=form)
     dash_form = ProcessorCleanDashboardForm()
-    dash_form = render_template('_form.html', form=dash_form, form_id="formDash")
+    dash_form = render_template('_form.html', form=dash_form,
+                                form_id="formDash")
     ds = cur_proc.processor_datasources.filter_by(
         vendor_key=datasource_name).first()
     metrics = ds.get_datasource_for_processor()['active_metrics']
@@ -921,6 +921,37 @@ def get_datasource():
                     'metrics_table': data,
                     'rules_table': rules_data,
                     'placement_form': placement_form})
+
+
+@bp.route('/save_datasource', methods=['GET', 'POST'])
+@login_required
+def save_datasource():
+    obj_name = request.form['object_name']
+    datasource_name = request.form['datasource']
+    cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
+    data = request.form.to_dict()
+    df = pd.read_json(html.unescape(data['metrics_table']))
+    metric_dict = df.drop('index', axis=1).to_dict(orient='index')
+    metric_dict = {v['Metric Name']: [v['Metric Value']] for k, v in
+                   metric_dict.items()}
+    ds_dict = {'original_vendor_key': datasource_name,
+               'vendor_key': datasource_name,
+               'active_metrics': json.dumps(metric_dict),
+               'vm_rules': request.form['rules_table']}
+    for col in ['full_placement_columns', 'placement_columns',
+                'auto_dictionary_placement', 'auto_dictionary_order']:
+        new_data = get_col_from_serialize_dict(data, col)
+        new_data = '\n'.join(html.unescape(new_data))
+        ds_dict[col] = new_data
+    print(ds_dict)
+    msg_text = ('Setting data source {} in vendormatrix for {}'
+                '').format(datasource_name, obj_name)
+    task = cur_proc.launch_task('.set_data_sources', _(msg_text),
+                                running_user=current_user.id,
+                                form_sources=[ds_dict])
+    db.session.commit()
+    task.wait_and_get_job(loops=20)
+    return jsonify({'data': 'ok',})
 
 
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])

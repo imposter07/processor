@@ -429,8 +429,11 @@
             document.getElementById(elemId).setAttribute("value", form_continue);
             let validForm = document.getElementById('base_form_id').reportValidity()
             if (validForm) {
-
-                document.getElementById("base_form_id").submit();
+                if ("{{ edit_name }}" === "Clean") {
+                    submitCleanForm()
+                } else {
+                    document.getElementById("base_form_id").submit();
+                }
             }
             else {
                 displayAlert('Please correct the required fields.', 'danger')
@@ -899,7 +902,7 @@
                     animateBar();
                     $(this).prop("disabled", true);
                     $(this).html(
-                        `<span class="spinner-grow spinner-grow-sm"
+                        `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
                     role="status" aria-hidden="true"></span> Loading...`
                     );
                 }
@@ -1138,6 +1141,39 @@
             $('#data_source_clean').on('select2:select', function(e){
                 let selectedText = this.options[e.target.selectedIndex].text;
                 getDataSource(selectedText);
+            });
+        }
+        function submitCleanForm() {
+            let dataSourceName = $('#data_source_clean').val();
+            let formPlacement = $('#formPlacement').serializeArray()
+            let tableMetrics = JSON.stringify(
+                $('#metrics_table').DataTable().data().toArray())
+            let tableRules = JSON.stringify(
+                $('#rules_table').DataTable().data().toArray())
+            saveDataSource(dataSourceName, formPlacement, tableMetrics,
+                tableRules)
+        }
+
+        function saveDataSource(dataSourceName, formPlacement, tableMetrics,
+                                tableRules) {
+            $.ajax({
+                type: "POST",
+                url: "/save_datasource",
+                data: {
+                    datasource: dataSourceName,
+                    object_name: "{{ object_name }}",
+                    object_type: "{{ title }}",
+                    object_level: "{{ edit_name }}",
+                    placement_form: formPlacement,
+                    metrics_table: tableMetrics,
+                    rules_table: tableRules
+                },
+            }).done(function (data, status) {
+
+            }).fail(function (jqXHR, textStatus) {
+
+            }).always(function () {
+
             });
         }
         $(document).ready(function(){

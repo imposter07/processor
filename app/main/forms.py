@@ -244,22 +244,29 @@ class PlacementForm(FlaskForm):
     def set_column_choices(self, current_ds_id):
         import processor.reporting.analyze as az
         import pandas as pd
-        choices = [('', '')]
         ds = ProcessorDatasources.query.filter_by(id=current_ds_id).first()
         all_analysis = ProcessorAnalysis.query.filter_by(
             processor_id=ds.processor_id, key=az.Analyze.raw_columns).first()
         df = pd.DataFrame(all_analysis.data)
         raw_cols = df[df[vmc.vendorkey] == ds.vendor_key][
-            az.Analyze.raw_columns][0]
-        ds_dict = ds.get_datasource_for_processor()
-        fp_cols = ds_dict['Full Placement Name'].split('\n')
-        fp_cols = [x for x in fp_cols if x not in raw_cols]
-        choices.extend([(x, x) for x in fp_cols + raw_cols])
+            az.Analyze.raw_columns]
+        if len(raw_cols) > 0:
+            raw_cols = raw_cols[0]
+        else:
+            raw_cols = []
+        ds_dict = ds.get_ds_form_dict()
+        fp_cols = ds_dict['full_placement_columns'].split('\n')
+        fp_cols = [x for x in fp_cols if x not in raw_cols and x[:2] != '::']
+        choices = [(x, x) for x in fp_cols + raw_cols]
         self.placement_columns.choices = choices
-        full_choices = [x for x in choices]
-        full_choices.extend([('::' + x, '::' + x) for x in fp_cols + raw_cols])
+        fp_cols = ds_dict['full_placement_columns'].split('\n')
+        fp_cols = [x for x in fp_cols if x not in raw_cols]
+        full_choices = [(x, x) for x in fp_cols + raw_cols]
+        full_choices.extend([('::' + x, '::' + x) for x in fp_cols + raw_cols
+                             if x[:2] != '::'])
         self.full_placement_columns.choices = full_choices
-        auto_choices = ds.auto_dictionary_order.split('\n')
+        print(full_choices)
+        auto_choices = ds_dict['auto_dictionary_order'].split('\n')
         dict_choices = [x for x in dctc.COLS if x not in auto_choices]
         choices = [(x, x) for x in auto_choices + dict_choices]
         self.auto_dictionary_order.choices = choices

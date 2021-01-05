@@ -67,7 +67,7 @@
         let buttonSelector = elem + selectElem;
         $(buttonSelector).html('' +
             '<select id="' + buttonSelector + ' " ' +
-            'class="custom-select custom-select-sm">' +
+            'class="form-control form-control-sm">' +
             '<option>Select Metric</option>' +
             '</select>'
         )
@@ -82,6 +82,10 @@
             .attr("value", function (d) {
                 return d;
             }) // corresponding value returned by the button
+        allGroup = allGroup.map(x => {
+            return ({text: x});
+        });
+        addSelectOptions(allGroup, '', buttonSelector)
     }
 
     function wrapText(text, width) {
@@ -484,7 +488,7 @@
             addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, true)
         }
 
-        $(elem + 'Select').on("select2:select", function (e) {
+        $(elem + 'Select').on("change", function (e) {
             let selectedOption = $(e.currentTarget).val();
             update(selectedOption)
         })
@@ -575,7 +579,7 @@
             addToolTip(svg, am, axes, data, xCol, selectedVar, myColor)
         }
 
-        $(elem + 'Select').on("select2:select", function (e) {
+        $(elem + 'Select').on("change", function (e) {
             let selectedOption = $(e.currentTarget).val();
             update(selectedOption)
         })
@@ -709,7 +713,7 @@
             addToolTip(svg, am, axes, data, xCol, selectedVar, myColor)
         }
 
-        $(elem + 'Select').on("select2:select", function (e) {
+        $(elem + 'Select').on("change", function (e) {
             let selectedOption = $(e.currentTarget).val();
             update(selectedOption)
         })
@@ -1085,7 +1089,7 @@
 
     function getFilters(colName, filterDict) {
         let newFilter = {};
-        newFilter[colName] = $('#' + colName + 'Select').select2('data').map(
+        newFilter[colName] = $('#' + colName + 'Select').selectize('data').map(
             function (elem) {
                 return elem.text
             });
@@ -1118,21 +1122,20 @@
         let i = 0;
         let newData = $.map(data, function (obj) {
             obj['text'] = obj['text'] || obj[xCol];
-            obj['id'] = obj['text'] || obj[xCol];;
+            obj['id'] = obj['text'] || obj[xCol];
+            obj['value'] = obj['text'] || obj[xCol];;
             i++;
             return obj;
         });
         let elem = selectDiv ? selectDiv : "#" + xCol + "Select"
-        $(elem).select2({
-            data: newData,
-            multiple: true,
-            allowClear: true,
-            placeholder: xCol,
-        })
+        let selectizeElem = $(elem)[0].selectize
+        selectizeElem.load(function(callback) {
+            callback(newData);
+        });
     }
 
     $(document).ready(function () {
-        $('#chart_type').on('select2:select', function (e) {
+        $('#chart_type').on('change', function (e) {
             let selectedText = this.options[e.target.selectedIndex].text;
             let dimensionsJquery = '#dimensions';
             if ((selectedText === 'Area') || (selectedText === 'Line')) {
@@ -1142,7 +1145,7 @@
                 $(dimensionsJquery).prop("disabled", false);
             }
         });
-        $('select[id$="filter_col"]').on('select2:select', function (e) {
+        $('select[id$="filter_col"]').on('change', function (e) {
             let selectedText = this.options[e.target.selectedIndex].text;
             let filterNum = this.id.replace(
                 'static_filters-', '').replace('-filter_col', '')

@@ -882,11 +882,10 @@ def get_placement_form(data_source):
     form = PlacementForm()
     form.set_column_choices(data_source.id)
     ds_dict = data_source.get_ds_form_dict()
-    print(ds_dict)
-    form.full_placement_columns.data = ds_dict['full_placement_columns']
+    form.full_placement_columns.data = ds_dict['full_placement_columns'].split('\n')
     form.placement_columns.data = ds_dict['placement_columns']
     form.auto_dictionary_placement.data = ds_dict['auto_dictionary_placement']
-    form.auto_dictionary_order.data = ds_dict['auto_dictionary_order']
+    form.auto_dictionary_order.data = ds_dict['auto_dictionary_order'].split('\n')
     form = render_template('_form.html', form=form, form_id='formPlacement')
     return form
 
@@ -941,17 +940,20 @@ def save_datasource():
     for col in ['full_placement_columns', 'placement_columns',
                 'auto_dictionary_placement', 'auto_dictionary_order']:
         new_data = get_col_from_serialize_dict(data, col)
-        new_data = '\n'.join(html.unescape(new_data))
+        new_data = json.dumps(new_data)
         ds_dict[col] = new_data
     print(ds_dict)
+    """
     msg_text = ('Setting data source {} in vendormatrix for {}'
                 '').format(datasource_name, obj_name)
     task = cur_proc.launch_task('.set_data_sources', _(msg_text),
                                 running_user=current_user.id,
                                 form_sources=[ds_dict])
     db.session.commit()
+    
     task.wait_and_get_job(loops=20)
-    return jsonify({'data': 'ok',})
+    """
+    return jsonify({'data': 'ok', })
 
 
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])

@@ -43,27 +43,27 @@
                 <div class="row">
                     <div class="col mb-3">
                         <select id="campaignnameSelect"
-                                class="custom-select custom-select-sm">
+                                class="form-control form-control-sm">
                         </select>
                     </div>
                     <div class="col mb-3">
                         <select id="vendornameSelect"
-                                class="custom-select custom-select-sm">
+                                class="form-control form-control-sm">
                         </select>
                     </div>
                     <div class="col mb-3">
                         <select id="countrynameSelect"
-                                class="custom-select custom-select-sm">
+                                class="form-control form-control-sm">
                         </select>
                     </div>
                     <div class="col mb-3">
                         <select id="environmentnameSelect"
-                                class="custom-select custom-select-sm">
+                                class="form-control form-control-sm">
                         </select>
                     </div>
                     <div class="col mb-3">
                         <select id="kpinameSelect"
-                                class="custom-select custom-select-sm">
+                                class="form-control form-control-sm">
                         </select>
                     </div>
                     <div class="col mb-3">
@@ -103,7 +103,7 @@
             <div class="card-header">
                 <h7 class="mb-3">Delivery</h7>
                 <select id="deliveryMetricsSelect"
-                        class="custom-select custom-select-sm">
+                        class="form-control form-control-sm">
                     <option>Select Campaign</option>
                 </select>
             </div>
@@ -115,7 +115,7 @@
         <div class="col-md-9 h-50">
             <div class="card-header">
                 <h7 class="mb-3">Daily</h7>
-                <select id="dailyMetricsSelect" class="custom-select custom-select-sm">
+                <select id="dailyMetricsSelect" class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
@@ -131,7 +131,7 @@
             <div class="card-header">
                 <h7 class="mb-3">Partner</h7>
                 <select id="partnerMetricsSelect"
-                        class="custom-select custom-select-sm">
+                        class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
@@ -144,7 +144,7 @@
             <div class="card-header">
                 <h7 class="mb-3">Country</h7>
                 <select id="countryMetricsSelect"
-                        class="custom-select custom-select-sm">
+                        class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
@@ -159,7 +159,7 @@
             <div class="card-header">
                 <h7 class="mb-3">Campaign</h7>
                 <select id="campaignMetricsSelect"
-                        class="custom-select custom-select-sm">
+                        class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
@@ -172,7 +172,7 @@
             <div class="card-header">
                 <h7 class="mb-3">Device</h7>
                 <select id="environmentMetricsSelect"
-                        class="custom-select custom-select-sm">
+                        class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
@@ -185,7 +185,7 @@
             <div class="card-header">
                 <h7 class="mb-3">KPI</h7>
                 <select id="kpiMetricsSelect"
-                        class="custom-select custom-select-sm">
+                        class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
@@ -228,7 +228,7 @@
             let buttonSelector = elem + selectElem;
             $(buttonSelector).html('' +
                 '<select id="' + buttonSelector + ' " ' +
-                'class="custom-select custom-select-sm">' +
+                'class="form-control form-control-sm">' +
                 '<option>Select Metric</option>' +
                 '</select>'
             )
@@ -646,7 +646,7 @@
                 addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, true)
             }
 
-            $(elem + 'Select').on("select2:select", function (e) {
+            $(elem + 'Select').on("change", function (e) {
                 let selectedOption = $(e.currentTarget).val();
                 update(selectedOption)
             })
@@ -737,7 +737,7 @@
                 addToolTip(svg, am, axes, data, xCol, selectedVar, myColor)
             }
 
-            $(elem + 'Select').on("select2:select", function (e) {
+            $(elem + 'Select').on("change", function (e) {
                 let selectedOption = $(e.currentTarget).val();
                 update(selectedOption)
             })
@@ -871,7 +871,7 @@
                 addToolTip(svg, am, axes, data, xCol, selectedVar, myColor)
             }
 
-            $(elem + 'Select').on("select2:select", function (e) {
+            $(elem + 'Select').on("change", function (e) {
                 let selectedOption = $(e.currentTarget).val();
                 update(selectedOption)
             })
@@ -1222,6 +1222,7 @@
                  metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
             getMetrics('#dailyMetrics', generateAreaChart, 'eventdate',
                 metrics, filterDict);
+            /*
             getMetrics('#deliveryMetrics', generateProgressBars, 'vendorname',
                 ['netcost', 'plannednetcost'], filterDict);
             getMetrics('#partnerMetrics', generateBarChart, 'vendorname',
@@ -1234,6 +1235,8 @@
                 metrics, filterDict, null, null, null, null, addSelect)
             getMetrics('#kpiMetrics', generateLollipopChart, 'kpiname',
                 metrics, filterDict, null, null, null, null, addSelect)
+
+             */
         }
 
         function getDates() {
@@ -1243,7 +1246,7 @@
 
         function getFilters(colName, filterDict) {
            let newFilter = {};
-           newFilter[colName] = $('#' + colName + 'Select').select2('data').map(
+           newFilter[colName] = $('#' + colName + 'Select').selectize('data').map(
                 function(elem){
                     return elem.text
            });
@@ -1275,21 +1278,21 @@
         function addSelectOptions(data, xCol) {
             let i = 0;
             let newData = $.map(data, function (obj) {
-              obj['text'] = obj['text'] || obj[xCol];
-              obj['id'] = i;
-              i++;
-              return obj;
+                obj['text'] = obj['text'] || obj[xCol];
+                obj['id'] = obj['text'] || obj[xCol];
+                obj['value'] = obj['text'] || obj[xCol];
+                i++;
+                return obj;
             });
-            $("#" + xCol + "Select").select2({
-                data: newData,
-                multiple: true,
-                allowClear: true,
-                placeholder: xCol,
-            })
+            let elem = selectDiv ? selectDiv : "#" + xCol + "Select"
+            let selectizeElem = $(elem)[0].selectize
+            selectizeElem.load(function (callback) {
+                callback(newData);
+            });
         }
 
         $(document).ready(function () {
-            $("select[id$='MetricsSelect']").select2();
+            $("select[id$='MetricsSelect']").selectize();
             $("#datePicker").flatpickr({
                 mode: "range"
             });

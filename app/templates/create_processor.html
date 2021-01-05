@@ -384,9 +384,9 @@
     <script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.js"></script>
     <script src="https://unpkg.com/filepond-plugin-file-metadata/dist/filepond-plugin-file-metadata.js"></script>
     <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css"
-          rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/js/select2.min.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='Selectize/selectize.bootstrap4.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='Selectize/selectize.js') }}"></script>
 
     <script>
         $(document).ready(function() {
@@ -932,7 +932,6 @@
                         vendorKey = 'None';
                     }
                 }
-                console.log(vendorKey)
                 let oldHtml = $(this).parent().html();
                 let currentStyle = $(this).attr('style');
                 $(this).parent().html('' +
@@ -942,9 +941,9 @@
                     'Loading...' +
                     '</button>');
                 if (tableName === 'download_raw_data') {
-                    var refreshPond = setDownloadBar($("#loadingBtn"), $(this).text());
+                    var refreshPond = setDownloadBar($("#loadingBtn").parent(), $(this).text());
                 } else {
-                    var refreshPond = setDownloadBar($("#loadingBtn"), $(this).text(), false);
+                    var refreshPond = setDownloadBar($("#loadingBtn").parent(), $(this).text(), false);
                 }
                 getTable(tableName, $(this).parent(), oldHtml, vendorKey, refreshPond);
                 animateBar();
@@ -973,7 +972,7 @@
             })
         });
         $(document).ready(function() {
-            $('#data_source').on('select2:select', function(e){
+            $('#data_source').on('change', function(e){
                 let selectedText = this.options[e.target.selectedIndex].text;
                 let divId  = $('input[value="' + selectedText + '"]')[0].id;
                 let scrollIntoViewOptions = {'behavior': 'smooth'}
@@ -1009,7 +1008,7 @@
                             '<div class="card-header">' +
                                 '<h7 class="mb-3"></h7>' +
                                 '<select id="dash_placeholderMetricsSelect"' +
-                                        'class="custom-select custom-select-sm">' +
+                                        'class="form-control form-control-sm">' +
                                     '<option>Select Metric</option>' +
                                 '</select>' +
                             '</div>' +
@@ -1024,7 +1023,7 @@
                 '</div>')
         }
         function getSelectedDashboard(){
-            $('#select_plot').on('select2:select', function (e) {
+            $('#select_plot').on('change', function (e) {
                 let selectedText = this.options[e.target.selectedIndex].text
                 let vendorKey = $('#data_source_clean').val();
                 let metrics = ['kpi']
@@ -1050,7 +1049,7 @@
                 '<div class="btn-group btn-group-sm btn-block" role="group">' +
                 '<button id="_refresh_raw_data"' +
                 'class="btn btn-outline-success">' +
-                '<i class="fas fa-chart-bar" href="#" role="button"></i>' +
+                '<i class="fas fa-binoculars" href="#" role="button"></i>' +
                 'View' +
                 '</button>' +
                 '<button id="_refresh_download_raw_data"' +
@@ -1066,13 +1065,13 @@
                 '<h6 class="card-header"><small class="text-muted">Dictionary</small></h6>' +
                 '<div class="btn-group btn-group-sm btn-block" role="group">' +
                 '<button id="_refresh_dictionary"' +
-                'class="btn btn-outline-primary">' +
-                '<i class="fas fa-download" href="#" role="button"></i>' +
+                'class="btn btn-outline-success">' +
+                '<i class="fas fa-binoculars" href="#" role="button"></i>' +
                 'View' +
                 '</button>' +
                 '<button id="_refresh_dictionary_order"' +
                 'class="btn btn-outline-primary">' +
-                '<i class="fas fa-download" href="#" role="button"></i>' +
+                '<i class="fas fa-sort-amount-up-alt" href="#" role="button"></i>' +
                 'View Order' +
                 '</button>' +
                 '<button id="_refresh_delete_dict"' +
@@ -1138,7 +1137,7 @@
             });
         }
         function changeDataSource() {
-            $('#data_source_clean').on('select2:select', function(e){
+            $('#data_source_clean').on('change', function(e){
                 let selectedText = this.options[e.target.selectedIndex].text;
                 getDataSource(selectedText);
             });
@@ -1170,10 +1169,11 @@
                 },
             }).done(function (data, status) {
 
+
             }).fail(function (jqXHR, textStatus) {
 
             }).always(function () {
-
+                $('#loadingBtn')
             });
         }
         $(document).ready(function(){
@@ -1204,35 +1204,39 @@
             }
         }
         $(document).ready(function() {
-            $('#duplication_type').on('select2:select', function(e){
+            $('#duplication_type').on('change', function(e){
                 checkHideElem(this);
             });
         });
         $(document).ready(function() {
-            $('#name_create_type').on('select2:select', function(e){
+            $('#name_create_type').on('change', function(e){
                 SubmitForm('', 'form_continue');
                 loadingBtn($(this).parent(), '');
             });
         });
         $(document).ready(function() {
-            $('#viewSelector').on('select2:select', function(e){
+            $('#viewSelector').on('change', function(e){
                 window.location = e.params.data.id;
             });
         });
 
-        function addSelect2() {
-            let selectString = "select"
-            $(selectString).select2({
-                tags: true
-            });
-            $("ul.select2-selection__rendered").sortable({
-                containment: 'parent'
+        function addSelectize() {
+            $('select').selectize({
+                persist: false,
+                plugins: ['drag_drop', 'remove_button', 'restore_on_backspace'],
+                create: function (input) {
+                    return {
+                        value: input,
+                        text: input
+                    }
+                }
             });
         }
+
         function loadJS(){
             addFilePond()
             addFilePondMeta()
-            addSelect2()
+            addSelectize()
             refreshButtons()
             changeDataSource()
             getSelectedDashboard()

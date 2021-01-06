@@ -959,7 +959,6 @@ def save_datasource():
         new_data = get_col_from_serialize_dict(data, col)
         new_data = '\r\n'.join(new_data)
         ds_dict[col] = new_data
-    print(ds_dict)
     msg_text = ('Setting data source {} in vendormatrix for {}'
                 '').format(datasource_name, obj_name)
     task = cur_proc.launch_task('.set_data_sources', _(msg_text),

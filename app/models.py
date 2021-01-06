@@ -694,8 +694,10 @@ class ProcessorDatasources(db.Model):
             if source[x]:
                 if '\r\n' in source[x]:
                     source[x] = '|'.join([y for y in source[x].split('\r\n')])
-                else:
+                elif '\n' in source[x]:
                     source[x] = '|'.join([y for y in source[x].split('\n')])
+                else:
+                    source[x] = '|'.join(self.convert_string_to_list(source[x]))
         return source
 
     def get_form_dict_with_split(self):

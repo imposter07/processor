@@ -241,7 +241,7 @@ class PlacementForm(FlaskForm):
     def __init__(self, *args, **kwargs):
         super(PlacementForm, self).__init__(*args, **kwargs)
 
-    def set_column_choices(self, current_ds_id):
+    def set_column_choices(self, current_ds_id, ds_dict):
         import processor.reporting.analyze as az
         import pandas as pd
         ds = ProcessorDatasources.query.filter_by(id=current_ds_id).first()
@@ -254,19 +254,18 @@ class PlacementForm(FlaskForm):
             raw_cols = raw_cols[0]
         else:
             raw_cols = []
-        ds_dict = ds.get_ds_form_dict()
-        fp_cols = ds_dict['full_placement_columns'].split('\n')
+        fp_cols = ds_dict['full_placement_columns']
         fp_cols = [x for x in fp_cols if x not in raw_cols and x[:2] != '::']
         choices = [(x, x) for x in fp_cols + raw_cols]
         self.placement_columns.choices = choices
-        fp_cols = ds_dict['full_placement_columns'].split('\n')
+        fp_cols = ds_dict['full_placement_columns']
         fp_cols = [x for x in fp_cols if x not in raw_cols]
         full_choices = [(x, x) for x in fp_cols + raw_cols]
         full_choices.extend([('::' + x, '::' + x) for x in fp_cols + raw_cols
-                             if x[:2] != '::'])
+                             if x[:2] != '::' and ('::' + x, '::' + x) not in
+                             full_choices])
         self.full_placement_columns.choices = full_choices
-        print(full_choices)
-        auto_choices = ds_dict['auto_dictionary_order'].split('\n')
+        auto_choices = ds_dict['auto_dictionary_order']
         dict_choices = [x for x in dctc.COLS if x not in auto_choices]
         choices = [(x, x) for x in auto_choices + dict_choices]
         self.auto_dictionary_order.choices = choices

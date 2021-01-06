@@ -23,7 +23,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
-    UploaderRelations, Dashboard, DashboardFilter
+    UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -878,14 +878,31 @@ def df_to_html(df, name):
     return {'data': {'data': data, 'cols': cols, 'name': name}}
 
 
+def rename_duplicates(old):
+    seen = {}
+    for x in old:
+        if x in seen:
+            seen[x] += 1
+            new_val = '{} {}'.format(x, seen[x])
+            if new_val in old:
+                yield '{}-{}'.format(new_val, 1)
+            else:
+                yield new_val
+        else:
+            seen[x] = 0
+            yield x
+
+
 def get_placement_form(data_source):
     form = PlacementForm()
-    form.set_column_choices(data_source.id)
-    ds_dict = data_source.get_ds_form_dict()
-    form.full_placement_columns.data = ds_dict['full_placement_columns'].split('\n')
+    ds_dict = data_source.get_form_dict_with_split()
+    auto_order_cols = list(rename_duplicates(ds_dict['auto_dictionary_order']))
+    ds_dict['auto_dictionary_order'] = auto_order_cols
+    form.set_column_choices(data_source.id, ds_dict)
+    form.full_placement_columns.data = ds_dict['full_placement_columns']
     form.placement_columns.data = ds_dict['placement_columns']
     form.auto_dictionary_placement.data = ds_dict['auto_dictionary_placement']
-    form.auto_dictionary_order.data = ds_dict['auto_dictionary_order'].split('\n')
+    form.auto_dictionary_order.data = ds_dict['auto_dictionary_order']
     form = render_template('_form.html', form=form, form_id='formPlacement')
     return form
 
@@ -940,20 +957,97 @@ def save_datasource():
     for col in ['full_placement_columns', 'placement_columns',
                 'auto_dictionary_placement', 'auto_dictionary_order']:
         new_data = get_col_from_serialize_dict(data, col)
-        new_data = json.dumps(new_data)
+        new_data = '\r\n'.join(new_data)
         ds_dict[col] = new_data
     print(ds_dict)
-    """
     msg_text = ('Setting data source {} in vendormatrix for {}'
                 '').format(datasource_name, obj_name)
     task = cur_proc.launch_task('.set_data_sources', _(msg_text),
                                 running_user=current_user.id,
                                 form_sources=[ds_dict])
     db.session.commit()
-    
     task.wait_and_get_job(loops=20)
-    """
-    return jsonify({'data': 'ok', })
+    return jsonify({'message': 'This data source {} was saved!'.format(
+        datasource_name), 'level': 'success'})
+
+
+@bp.route('/get_datasource_table', methods=['GET', 'POST'])
+@login_required
+def get_datasource_table():
+    obj_name = request.form['object_name']
+    cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
+    import processor.reporting.analyze as az
+    analysis = ProcessorAnalysis.query.filter_by(
+        processor_id=cur_proc.id, key=az.Analyze.raw_columns).first()
+    if analysis and analysis.data:
+        df = pd.DataFrame(analysis.data)
+    else:
+        df = pd.DataFrame(columns=['Vendor Key'])
+    analysis = ProcessorAnalysis.query.filter_by(
+        processor_id=cur_proc.id, key=az.Analyze.raw_file_update_col).first()
+    if analysis and analysis.data:
+        tdf = pd.DataFrame(analysis.data)
+    else:
+        tdf = pd.DataFrame(columns=['source'])
+    if df.empty:
+        df = pd.merge(tdf, df, how='outer', left_on='source',
+                      right_on='Vendor Key')
+        df = df.drop(['Vendor Key'], axis=1)
+        df = df.rename(columns={'source': 'Vendor Key'})
+    else:
+        df = pd.merge(df, tdf, how='outer', left_on='Vendor Key',
+                      right_on='source')
+        df = df.drop(['source'], axis=1)
+    analysis = ProcessorAnalysis.query.filter_by(
+        processor_id=cur_proc.id, key=az.Analyze.unknown_col).first()
+    if analysis and analysis.data:
+        tdf = pd.DataFrame(analysis.data)
+        tdf['Vendor Key'] = tdf['Vendor Key'].str.strip("'")
+        cols = [x for x in tdf.columns if x != 'Vendor Key']
+        col = 'Undefined Plan Net'
+        tdf[col] = tdf[cols].values.tolist()
+        tdf[col] = tdf[col].str.join('_')
+        tdf = tdf.drop(cols, axis=1)
+        tdf = tdf.groupby(['Vendor Key'], as_index=False).agg(
+            {col: '|'.join})
+    else:
+        tdf = pd.DataFrame(columns=['Vendor Key'])
+    df = pd.merge(df, tdf, how='outer', left_on='Vendor Key',
+                  right_on='Vendor Key')
+    analysis = ProcessorAnalysis.query.filter_by(
+        processor_id=cur_proc.id, key=az.Analyze.vk_metrics).first()
+    if analysis and analysis.data:
+        tdf = pd.DataFrame(analysis.data)
+    else:
+        tdf = pd.DataFrame(columns=['Vendor Key'])
+    df = pd.merge(df, tdf, how='outer', left_on='Vendor Key',
+                  right_on='Vendor Key')
+    table_data = df_to_html(df, 'datasource_table')
+    return jsonify({'data': table_data})
+
+
+@bp.route('/processor/<processor_name>/edit/clean/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_clean_upload_file(processor_name):
+    current_key, object_name, object_form, object_level = \
+        parse_upload_file_request(request)
+    cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
+    mem, file_name = get_file_in_memory_from_request(request, current_key)
+    ds = [x for x in object_form if x['name'] == 'data_source_clean']
+    if ds:
+        ds = ds[0]['value']
+    search_dict = {}
+    search_dict['processor_id'] = cur_proc.id
+    search_dict['vendor_key'] = ds
+    ds = ProcessorDatasources.query.filter_by(**search_dict).first()
+    msg_text = 'Adding raw data for {}'.format(ds.vendor_key)
+    cur_proc.launch_task(
+        '.write_raw_data', _(msg_text),
+        running_user=current_user.id, new_data=mem,
+        vk=ds.vendor_key, mem_file=True)
+    db.session.commit()
+    return jsonify({'data': 'success: {}'.format(processor_name)})
 
 
 @bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
@@ -962,30 +1056,9 @@ def edit_processor_clean(processor_name):
     kwargs = get_current_processor(processor_name, 'edit_processor_clean',
                                    edit_progress=75, edit_name='Clean')
     cur_proc = kwargs['processor']
-    # ds = ProcessorCleanForm().set_datasources(ProcessorDatasources, cur_proc)
-    # form = ProcessorCleanForm(datasources=[ds[0]])
     form = ProcessorCleanForm()
     form.set_vendor_key_choices(current_processor_id=cur_proc.id)
     kwargs['form'] = form
-    if request.method == 'POST':
-        form.validate()
-        if cur_proc.get_task_in_progress('.set_data_sources'):
-            flash(_('The data sources are already being set.'))
-        else:
-            msg_text = ('Setting data sources in vendormatrix for {}'
-                        '').format(processor_name)
-            task = cur_proc.launch_task('.set_data_sources', _(msg_text),
-                                        running_user=current_user.id,
-                                        form_sources=form.datasources.data)
-            db.session.commit()
-            task.wait_and_get_job(loops=20)
-            if form.form_continue.data == 'continue':
-                return redirect(url_for('main.edit_processor_export',
-                                        processor_name=cur_proc.name))
-            else:
-                task.wait_and_get_job()
-                return redirect(url_for('main.edit_processor_clean',
-                                        processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 

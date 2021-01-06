@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block app_header %}
+    <div id="alertContainer">
     <div id="alertPlaceholder"></div>
+    </div>
     <h3>{{ _('{} - {}'.format(title, object_name)) }}</h3>
     <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
@@ -430,7 +432,7 @@
             let validForm = document.getElementById('base_form_id').reportValidity()
             if (validForm) {
                 if ("{{ edit_name }}" === "Clean") {
-                    submitCleanForm()
+                    submitCleanForm(form_continue)
                 } else {
                     document.getElementById("base_form_id").submit();
                 }
@@ -732,15 +734,19 @@
             });
         });
         function displayAlert(message, level) {
-            let alertPlaceholder = '#alertPlaceholder'
-            $(alertPlaceholder).addClass('alert alert-' + level);
-            $(alertPlaceholder).html(message);
-            $(alertPlaceholder).append('' +
+            let alertPlaceholderId = '#alertPlaceholder'
+            if ($(alertPlaceholderId).length === 0) {
+                $('#alertContainer').append('<div id="alertPlaceholder"></div>')
+            }
+            let alertPlaceholder = $(alertPlaceholderId)
+            alertPlaceholder.addClass('alert alert-' + level);
+            alertPlaceholder.html(message);
+            alertPlaceholder.append('' +
                 '<button type="button" class="close" data-dismiss="alert"' +
                 ' aria-label="Close">\n' +
                 '    <span aria-hidden="true">&times;</span>\n' +
                 '  </button>')
-            $(alertPlaceholder).fadeIn('slow');
+            alertPlaceholder.fadeIn('slow');
         }
         function runObject(runType, clickElem=null, oldHtml=null, modalElem=null) {
             $.ajax({
@@ -900,10 +906,12 @@
             $('button[id^="load"]').click(function() {
                 if (document.getElementById('base_form_id').checkValidity()) {
                     animateBar();
-                    $(this).prop("disabled", true);
-                    $(this).html(
-                        `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
-                    role="status" aria-hidden="true"></span> Loading...`
+                    let elem = $('#' + this.id)
+                    elem.hide()
+                    elem.parent().append(
+                        '<a class="page-link" id="loadingBtn" disabled>' +
+                        '<span class="spinner-grow spinner-grow-sm" disabled' +
+                        'role="status" aria-hidden="true"></span> Loading...</a>'
                     );
                 }
             });
@@ -1133,16 +1141,20 @@
             }).fail(function(jqXHR, textStatus ) {
 
             }).always(function(){
-
+                $('#loadingBtn').remove()
+                unanimateBar()
             });
         }
         function changeDataSource() {
             $('#data_source_clean').on('change', function(e){
                 let selectedText = this.options[e.target.selectedIndex].text;
                 getDataSource(selectedText);
+                $('#data_source_clean').parent().append(
+                    `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"' +
+                    'role="status" aria-hidden="true"></span> Loading...`)
             });
         }
-        function submitCleanForm() {
+        function submitCleanForm(formContinue) {
             let dataSourceName = $('#data_source_clean').val();
             let formPlacement = $('#formPlacement').serializeArray()
             let tableMetrics = JSON.stringify(
@@ -1150,11 +1162,11 @@
             let tableRules = JSON.stringify(
                 $('#rules_table').DataTable().data().toArray())
             saveDataSource(dataSourceName, formPlacement, tableMetrics,
-                tableRules)
+                tableRules, formContinue)
         }
 
         function saveDataSource(dataSourceName, formPlacement, tableMetrics,
-                                tableRules) {
+                                tableRules, formContinue) {
             $.ajax({
                 type: "POST",
                 url: "/save_datasource",
@@ -1168,12 +1180,46 @@
                     rules_table: tableRules
                 },
             }).done(function (data, status) {
-
+                displayAlert(data['message'], data['level'])
+                if (data['level'] === 'success') {
+                    let element = document.getElementsByClassName('jumbotron')[0];
+                    let originalColor = element.style.backgroundColor;
+                    element.style.backgroundColor = "#b3ecff";
+                    let t = setTimeout(function () {
+                        element.style.backgroundColor = originalColor;
+                    }, (2 * 1000));
+                if (formContinue) {
+                    let nextPage = window.location.href.replace(
+                        '#', '').replace('clean', 'export')
+                    window.location.href = nextPage
+                    }
+                }
 
             }).fail(function (jqXHR, textStatus) {
 
             }).always(function () {
-                $('#loadingBtn')
+                $('#loadingBtn').remove()
+                $('#loadRefresh').show()
+                unanimateBar()
+            });
+        }
+        function getDatasourceTable(){
+            $.ajax({
+                type: "POST",
+                url: "/get_datasource_table",
+                data: {
+                    object_name: "{{ object_name }}",
+                    object_type:  "{{ title }}",
+                    object_level: "{{ edit_name }}",
+                },
+            }).done(function(data, status) {
+                appendRows();
+                appendCardAsTable(data['data'], "dsCardCol",
+                    "#rowOne", 'Data Source Table');
+            }).fail(function(jqXHR, textStatus ) {
+
+            }).always(function(){
+
             });
         }
         $(document).ready(function(){
@@ -1222,6 +1268,7 @@
 
         function addSelectize() {
             $('select').selectize({
+                duplicates: true,
                 persist: false,
                 plugins: ['drag_drop', 'remove_button', 'restore_on_backspace'],
                 create: function (input) {
@@ -1243,6 +1290,9 @@
         }
         $(document).ready(function(){
             loadJS()
+            if ("{{ edit_name }}" === "Clean") {
+                getDatasourceTable()
+            }
         })
     </script>
     {% include "_dash_builder.html" %}

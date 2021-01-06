@@ -692,8 +692,21 @@ class ProcessorDatasources(db.Model):
                 pass
         for x in [vmc.autodicord, vmc.fullplacename]:
             if source[x]:
-                source[x] = '|'.join([y for y in source[x].split('\r\n')])
+                if '\r\n' in source[x]:
+                    source[x] = '|'.join([y for y in source[x].split('\r\n')])
+                else:
+                    source[x] = '|'.join([y for y in source[x].split('\n')])
         return source
+
+    def get_form_dict_with_split(self):
+        form_dict = self.get_ds_form_dict()
+        for x in ['auto_dictionary_order', 'full_placement_columns']:
+            if form_dict[x]:
+                if '\r\n' in form_dict[x]:
+                    form_dict[x] = form_dict[x].split('\r\n')
+                else:
+                    form_dict[x] = form_dict[x].split('\n')
+        return form_dict
 
 
 class Account(db.Model):

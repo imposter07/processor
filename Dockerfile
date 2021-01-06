@@ -15,10 +15,10 @@ COPY requirements.txt requirements.txt
 RUN apt-get update
 RUN apt-get install -y software-properties-common
 RUN add-apt-repository ppa:deadsnakes/ppa
-RUN apt-get install python3.6
+RUN apt-get install python3.7 -y
 RUN apt-get install -y git
-RUN apt-get install python3-venv -y
-RUN python3.6 -m venv venv
+RUN apt-get install python3.7-venv -y
+RUN python3.7 -m venv venv
 RUN venv/bin/pip install -r requirements.txt
 RUN venv/bin/pip install gunicorn
 

@@ -247,9 +247,12 @@ class PlacementForm(FlaskForm):
         ds = ProcessorDatasources.query.filter_by(id=current_ds_id).first()
         all_analysis = ProcessorAnalysis.query.filter_by(
             processor_id=ds.processor_id, key=az.Analyze.raw_columns).first()
-        df = pd.DataFrame(all_analysis.data)
-        raw_cols = df[df[vmc.vendorkey] == ds.vendor_key][
-            az.Analyze.raw_columns]
+        if all_analysis and all_analysis.data:
+            df = pd.DataFrame(all_analysis.data)
+            raw_cols = df[df[vmc.vendorkey] == ds.vendor_key][
+                az.Analyze.raw_columns]
+        else:
+            raw_cols = []
         if len(raw_cols) > 0:
             raw_cols = raw_cols[0]
         else:

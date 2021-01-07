@@ -925,6 +925,7 @@ def get_datasource():
     ds = cur_proc.processor_datasources.filter_by(
         vendor_key=datasource_name).first()
     metrics = ds.get_datasource_for_processor()['active_metrics']
+    metrics = {k: ['|'.join(v)] for k, v in metrics.items()}
     df = pd.DataFrame(metrics).T.reset_index()
     df = df.rename({'index': 'Metric Name', 0: 'Metric Value'}, axis=1)
     data = df_to_html(df, 'metrics_table')

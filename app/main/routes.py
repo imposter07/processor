@@ -453,8 +453,16 @@ def create_processor():
 def get_processor_run_links():
     run_links = {}
     for idx, run_arg in enumerate(
-            ('full', 'import', 'basic', 'export', 'update')):
-        run_link = dict(title=run_arg.capitalize())
+            (('full', 'Runs all processor modes from import to export.'),
+             ('import', 'Runs api import. A modal will '
+                        'popup specifying a specific API or all.'),
+             ('basic', 'Runs regular processor that cleans all data '
+                       'and generates Raw Data Output.'),
+             ('export', 'Runs export to database and tableau refresh.'),
+             ('update', 'RARELY NEEDED - Runs processor update on vendormatrix '
+                        'and dictionaries based on code changes.'))):
+        run_link = dict(title=run_arg[0].capitalize(),
+                        tooltip=run_arg[1])
         run_links[idx] = run_link
     return run_links
 
@@ -462,8 +470,17 @@ def get_processor_run_links():
 def get_processor_edit_links():
     edit_links = {}
     for idx, edit_file in enumerate(
-            ('Vendormatrix', 'Translate', 'Constant', 'Relation')):
-        edit_links[idx] = dict(title=edit_file, nest=[])
+            (('Vendormatrix', 'Directly edit the vendormatrix. '
+                              'This is the config file for all datasources.'),
+             ('Translate', 'Directly edit the translation config. This config '
+                           'file changes a dictionary value into another.'),
+             ('Constant', 'Directly edit the constant config. This config file '
+                          'sets a dictionary value for all dictionaries in '
+                          'the processor instance.'),
+             ('Relation', 'Directly edit relation config. This config file '
+                          'specifies relations between dictionary values. '))):
+        edit_links[idx] = dict(title=edit_file[0],
+                               nest=[], tooltip=edit_file[1])
         if edit_file == 'Relation':
             edit_links[idx]['nest'] = ['Campaign', 'Targeting', 'Creative',
                                        'Vendor', 'Country', 'Serving', 'Copy']
@@ -473,24 +490,40 @@ def get_processor_edit_links():
 def get_processor_output_links():
     output_links = {}
     for idx, out_file in enumerate(
-            ('FullOutput', 'Vendor', 'Target', 'Creative', 'Copy', 'BuyModel')):
-        output_links[idx] = dict(title=out_file, nest=[])
+            (('FullOutput', 'Downloads the Raw Data Output.'),
+             ('Vendor', 'View modal table of data grouped by Vendor'),
+             ('Target', 'View modal table of data grouped by Target'),
+             ('Creative', 'View modal table of data grouped by Creative'),
+             ('Copy', 'View modal table of data grouped by Copy'),
+             ('BuyModel', 'View modal table of data grouped by BuyModel'))):
+        output_links[idx] = dict(title=out_file[0], nest=[],
+                                 tooltip=out_file[1])
     return output_links
 
 
 def get_processor_request_links(processor_name):
     run_links = {0: {'title': 'View Initial Request',
                      'href': url_for('main.edit_request_processor',
-                                     processor_name=processor_name)},
+                                     processor_name=processor_name),
+                     'tooltip': 'View/Edits the initial request that made this '
+                                'processor instance. This will not change '
+                                'anything unless the processor is rebuilt.'},
                  1: {'title': 'Request Data Fix',
                      'href': url_for('main.edit_processor_request_fix',
-                                     processor_name=processor_name)},
+                                     processor_name=processor_name),
+                     'tooltip': 'Request a fix for the current processor data '
+                                'set, including changing values, adding'
+                                ' files etc.'},
                  2: {'title': 'Request Duplication',
                      'href': url_for('main.edit_processor_duplication',
-                                     processor_name=processor_name)},
+                                     processor_name=processor_name),
+                     'tooltip': 'Duplicates current processor instance based on'
+                                ' date to use new instance going forward.'},
                  3: {'title': 'Request Dashboard',
                      'href': url_for('main.processor_dashboard_create',
-                                     processor_name=processor_name)}
+                                     processor_name=processor_name),
+                     'tooltip': 'Create a dashboard in the app that queries the'
+                                ' database based on this processor instance.'}
                  }
     return run_links
 
@@ -924,6 +957,12 @@ def get_datasource():
                                 form_id="formDash")
     ds = cur_proc.processor_datasources.filter_by(
         vendor_key=datasource_name).first()
+    if not ds:
+        return jsonify({'datasource_form': form,
+                        'dashboard_form': dash_form,
+                        'metrics_table': {},
+                        'rules_table': {},
+                        'placement_form': {}})
     metrics = ds.get_datasource_for_processor()['active_metrics']
     metrics = {k: ['|'.join(v)] for k, v in metrics.items()}
     df = pd.DataFrame(metrics).T.reset_index()

@@ -180,6 +180,9 @@
                     {% if run_links %}
                         {% for run_link_idx in run_links %}
                           <a class="dropdown-item" href="#"
+                            data-toggle="hover" data-placement="bottom"
+                            title="{{ run_links[run_link_idx]['title']}}"
+                            data-content="{{ run_links[run_link_idx]['tooltip'] }}"
                             id="{{ 'runObject{}'.format(run_links[run_link_idx]['title']) }}">
                               {{ run_links[run_link_idx]['title'] }}</a>
                         {% endfor %}
@@ -205,6 +208,9 @@
                     {% if edit_links %}
                         {% for edit_link_idx in edit_links %}
                               <a class="dropdown-item" href="#"
+                                 data-toggle="hover" data-placement="bottom"
+                                 title="{{ edit_links[edit_link_idx]['title'] }}"
+                                 data-content="{{ edit_links[edit_link_idx]['tooltip'] }}"
                                  id="{{ 'editTable{}'.format(edit_links[edit_link_idx]['title']) }}">
                                   {{ edit_links[edit_link_idx]['title'] }}</a>
                               {% if edit_links[edit_link_idx]['nest'] %}
@@ -257,6 +263,9 @@
                     {% if output_links %}
                         {% for out_link_idx in output_links %}
                           <a class="dropdown-item"
+                             data-toggle="hover" data-placement="bottom"
+                             title="{{ output_links[out_link_idx]['title'] }}"
+                             data-content="{{ output_links[out_link_idx]['tooltip'] }}"
                              id="{{ 'editTableOutputData{}'.format(output_links[out_link_idx]['title']) }}"
                              href="#">
                               {{ output_links[out_link_idx]['title'] }}</a>
@@ -284,6 +293,9 @@
                     {% if request_links %}
                         {% for request_link_idx in request_links %}
                           <a class="dropdown-item"
+                             data-toggle="hover" data-placement="bottom"
+                             title="{{ request_links[request_link_idx]['title'] }}"
+                             data-content="{{ request_links[request_link_idx]['tooltip'] }}"
                              href="{{ request_links[request_link_idx]['href'] }}">
                               {{ request_links[request_link_idx]['title'] }}</a>
                         {% endfor %}
@@ -1131,12 +1143,16 @@
                 appendRows();
                 appendButtonRow();
                 appendCleanDashboard(data['dashboard_form']);
-                appendForm(data['placement_form'], '#rowOne',
-                    'placeForm', 'Column Selection')
-                appendCardAsTable(data['metrics_table'], "metricsCardCol",
-                    "#rowOne", 'Active Metrics');
-                appendCardAsTable(data['rules_table'], "rulesCardCol",
-                    '#rowThree', 'Rules');
+                if ('message' in data) {
+                    displayAlert(data['message'], 'danger')
+                } else {
+                    appendForm(data['placement_form'], '#rowOne',
+                        'placeForm', 'Column Selection')
+                    appendCardAsTable(data['metrics_table'], "metricsCardCol",
+                        "#rowOne", 'Active Metrics');
+                    appendCardAsTable(data['rules_table'], "rulesCardCol",
+                        '#rowThree', 'Rules');
+                }
                 loadJS();
             }).fail(function(jqXHR, textStatus ) {
 
@@ -1280,6 +1296,10 @@
             });
         }
 
+        function addPopovers() {
+            $('[data-toggle="hover"]').popover({trigger: "hover"})
+        }
+
         function loadJS(){
             addFilePond()
             addFilePondMeta()
@@ -1287,6 +1307,7 @@
             refreshButtons()
             changeDataSource()
             getSelectedDashboard()
+            addPopovers()
         }
         $(document).ready(function(){
             loadJS()

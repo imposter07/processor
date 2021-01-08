@@ -6,19 +6,30 @@
 {% endblock %}
 
 {% block vertical_navbar %}
-<div id="list-example" class="list-group bd-sidebar">
-  <a class="navbar-brand" href="#">Navigate Help</a>
-  <a class="list-group-item list-group-item-action" href="#Homepage">Homepage</a>
-  <a class="list-group-item list-group-item-action" href="#processor">Processor</a>
-  <a class="list-group-item list-group-item-action" href="#processorPage">Processor Page</a>
-  <a class="list-group-item list-group-item-action" href="#processorBasic">Processor - Basic</a>
-  <a class="list-group-item list-group-item-action" href="#processorImport">Processor - Import</a>
-  <a class="list-group-item list-group-item-action" href="#processorClean">Processor - Clean</a>
-  <a class="list-group-item list-group-item-action" href="#processorTable">Processor - DataTable</a>
-  <a class="list-group-item list-group-item-action" href="#processorRequestAcccount">Processor - Request - Account</a>
-  <a class="list-group-item list-group-item-action" href="#processorRequestFees">Processor - Request - Fees</a>
-  <a class="list-group-item list-group-item-action" href="#processorRequestConversions">Processor - Request - Conversions</a>
-</div>
+    <div id="list-example" class="list-group bd-sidebar">
+        <a class="navbar-brand" href="#">Navigate Help</a>
+        <a class="list-group-item list-group-item-action" href="#Homepage">Homepage</a>
+        <a class="list-group-item list-group-item-action" href="#processor">Processor</a>
+        <a class="list-group-item list-group-item-action" href="#processorPage">Processor
+            Page</a>
+        <a class="list-group-item list-group-item-action"
+           href="#processorBasic">Processor - Basic</a>
+        <a class="list-group-item list-group-item-action"
+           href="#processorImport">Processor - Import</a>
+        <a class="list-group-item list-group-item-action"
+           href="#processorClean">Processor - Clean - All Datsources</a>
+        <a class="list-group-item list-group-item-action"
+           href="#processorCleanOne">Processor - Clean - One Datasource</a>
+        <a class="list-group-item list-group-item-action"
+           href="#processorTable">Processor - DataTable</a>
+        <a class="list-group-item list-group-item-action"
+           href="#processorRequestAcccount">Processor - Request - Account</a>
+        <a class="list-group-item list-group-item-action"
+           href="#processorRequestFees">Processor - Request - Fees</a>
+        <a class="list-group-item list-group-item-action"
+           href="#processorRequestConversions">Processor - Request -
+            Conversions</a>
+    </div>
 {% endblock %}
 
 {% block app_content %}
@@ -41,8 +52,9 @@
         <div class="dropdown-menu">
           <a class="dropdown-item" href="#processorBasic">Processor - Basic</a>
           <a class="dropdown-item" href="#processorImport">Processor - Import</a>
-          <a class="dropdown-item" href="#processorClean">Processor - Clean</a>
-          <a class="dropdown-item" href="#processorTable">Processor - Clean</a>
+          <a class="dropdown-item" href="#processorClean">Processor - Clean - All Datsources</a>
+          <a class="dropdown-item" href="#processorCleanOne">Processor - Clean - One Datasource</a>
+          <a class="dropdown-item" href="#processorTable">Processor - Table</a>
           <div role="separator" class="dropdown-divider"></div>
           <a class="dropdown-item" href="#processorRequestAcccount">Processor - Request - Account</a>
           <a class="dropdown-item" href="#processorRequestFees">Processor - Request - Fees</a>
@@ -292,48 +304,87 @@
         </span>
     </div>
     <hr><hr>
-    <h2 id="processorClean">Processor - Clean</h2>
-    <h5><a href="{{ url_for('main.edit_processor_clean',  processor_name='Reporting Request - Test') }}">
-        {{ url_for('main.edit_processor_clean',  processor_name='PROCESSOR_NAME') }}</a></h5>
-    <div class="media">
-         <div class="media-body">
-             <h6>1 - Refresh from Processor.</h6>
-             <p>Gets all datasources from data processor, to ensure the card
-                 forms are the same as what is there.</p>
-             <h6>2 - Clean Card - Show Raw Data</h6>
-             <p>Generates a modal that shows the raw data file
-                 for this data source.  Can be edited and saved.
-             </p>
-             <h6>3 - Clean Card - Full Placement Columns/Placement Columns/Auto Dictionary Placement</h6>
-             <p>Corresponds to the vendormatrix columns for the data source.
-             </p>
-             <h6>4 - Clean Card - Show Dictionary Order</h6>
-             <p>Generates a modal that shows example of the auto dictionary placement
-                 for this data source being split into
-                 specified auto dictionary columns.
-             </p>
-             <h6>5 - Clean Card - Delete Dictionary</h6>
-             <p>Deletes the dictionary for this data source.
-                 The dictionary then will repopulate based on auto dictionary order.
-                 Shows a non-editable modal of the new dictionary.
-             </p>
-             <h6>6 - Clean Card - Show Dictionary</h6>
-             <p>Filter and API Fields value for the processor.  View import_config.csv.
-             </p>
-             <h6>8 - Import Card - Raw File</h6>
-             <p>Generates a modal that shows the dictionary file
-                 for this data source.  Can be edited and saved.
-             </p>
-             <h6>7 - Save & Continue/Refresh</h6>
-             <p>Saves all edited data sources and sends to the processor.
-                 Will then refresh from processor.
-             </p>
-        </div>
-        <span class="media-left">
+      <h2 id="processorClean">Processor - Clean - All Datsources</h2>
+      <h5>
+          <a href="{{ url_for('main.edit_processor_clean',  processor_name='Reporting Request - Test') }}">
+              {{ url_for('main.edit_processor_clean',  processor_name='PROCESSOR_NAME') }}</a>
+      </h5>
+      <div class="media">
+          <div class="media-body">
+              <h6>1 - Processor Data Source Filter.</h6>
+              <p>Get detailed and editable information about an individual
+                  datasource.</p>
+              <h6>2 - Datasource table</h6>
+              <p>A list of all datasources by vendor key.
+                  Information in this table is not editable and for informative
+                  purposes only.
+              </p>
+              <h6>3 - Raw File Columns / Missing</h6>
+              <p>Columns present in the raw file as of the last processor run.
+                  Missing details any columns specified in the vendormatrix but
+                  not in the raw file.
+              </p>
+              <h6>4 - Update Time / Update Tier</h6>
+              <p>When the raw file was last updated.
+              </p>
+              <h6>5 - Undefined Plan Net</h6>
+              <p>Data that is not contained within the plan net dictionary.
+              </p>
+              <h6>6 - Metrics</h6>
+              <p>Sum total of metrics as they appear in the raw data output.
+                  Includes min and max date.
+              </p>
+          </div>
+          <span class="media-left">
             <img style="float:right" src='static/processor_clean.JPG'>
         </span>
-    </div>
-    <hr><hr>
+      </div>
+      <hr>
+      <hr>
+      <h2 id="processorCleanOne">Processor - Clean - Selected Datasource</h2>
+      <h5>
+          <a href="{{ url_for('main.edit_processor_clean',  processor_name='Reporting Request - Test') }}">
+              {{ url_for('main.edit_processor_clean',  processor_name='PROCESSOR_NAME') }}</a>
+      </h5>
+      <div class="media">
+          <div class="media-body">
+              <h6>1 - Raw Data Buttons</h6>
+              <p>Download or view the raw data.</p>
+              <h6>2 - Dictionary Buttons</h6>
+              <p>View, View Order of or Delete the data dictionary.
+              </p>
+              <h6>3 - Column Selection</h6>
+              <p>Define teh full placement and placement columns.
+                  The column to automatically split on for the dictionary, and
+                  that order to split.
+                  If the processor has run with the current file, selectable
+                  fields will be the same ones that are in the raw data.
+                  Multi select boxes can be dragged and dropped, as well as
+                  given custom inputs by typing.
+              </p>
+              <h6>4 - Active Metrics</h6>
+              <p>Editable list of all metrics specified for this source.
+                  Metric Name is the processor vendormatrix name.
+                  Metric value is the column name as it appears in the raw data set.
+                  Can add new metrics, and change their values.
+              </p>
+              <h6>5 - Add New Raw File</h6>
+              <p>Add a new raw file to replace current dataset used.
+                  Must be a .csv
+              </p>
+              <h6>6 - Select Plot</h6>
+              <p>View a plot based on the cleaned version of the dataset.
+                  Selectable plots are all dictionary values and date.
+                  Metrics generated will be Impressions/Clicks/Net Cost.
+                  Does not include any buy model/buy rate calculations for net cost.
+              </p>
+          </div>
+          <span class="media-left">
+            <img style="float:right" src='static/processor_clean_one.JPG'>
+        </span>
+      </div>
+      <hr>
+      <hr>
     <h2 id="processorTable">Processor - DataTable</h2>
     <div class="media">
          <div class="media-body">

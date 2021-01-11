@@ -481,7 +481,7 @@ def get_processor_edit_links():
                           'specifies relations between dictionary values. '))):
         edit_links[idx] = dict(title=edit_file[0],
                                nest=[], tooltip=edit_file[1])
-        if edit_file == 'Relation':
+        if edit_file[0] == 'Relation':
             edit_links[idx]['nest'] = ['Campaign', 'Targeting', 'Creative',
                                        'Vendor', 'Country', 'Serving', 'Copy']
     return edit_links

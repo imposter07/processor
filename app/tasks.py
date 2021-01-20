@@ -1963,11 +1963,13 @@ def set_processor_config_file(processor_id, current_user_id, config_type,
 
 def set_processor_config_files(processor_id, current_user_id):
     try:
-        for config_type in [('twitter', 'twconfig.json'),
-                            ('dc', 'dcapi.json'), ('dv', 'dvapi.json')]:
+        for ct in [('twitter', 'twconfig.json'),
+                   ('dc', 'dcapi.json'), ('dv', 'dvapi.json'),
+                   ('s3', 's3config.json'),
+                   ('exp', 'export_handler.csv')]:
             set_processor_config_file(
                 processor_id=processor_id, current_user_id=current_user_id,
-                config_type=config_type[0], config_file_name=config_type[1])
+                config_type=ct[0], config_file_name=ct[1])
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(

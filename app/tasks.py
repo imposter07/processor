@@ -180,6 +180,7 @@ def run_processor(processor_id, current_user_id, run_args):
         if 'analyze' in run_args:
             os.chdir(cur_path)
             update_analysis_in_db(processor_id, current_user_id)
+            update_automatic_requests(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(proc=processor_to_run, usr=user_that_ran,
                                text=msg_text, run_complete=True)
@@ -2771,6 +2772,99 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
                 processor_id, current_user_id, parameter),
             exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def create_processor_request(processor_id, current_user_id, fix_type,
+                             fix_description):
+    try:
+        cur_proc = Processor.query.get(processor_id)
+        ali_user = User.query.get(4)
+        new_processor_request = Requests(
+            processor_id=cur_proc.id, fix_type=fix_type,
+            fix_description=fix_description
+        )
+        db.session.add(new_processor_request)
+        db.session.commit()
+        creation_text = "Processor {} fix request {} was created".format(
+            cur_proc.name, new_processor_request.id)
+        post = Post(body=creation_text, author=ali_user,
+                    processor_id=cur_proc.id,
+                    request_id=new_processor_request.id)
+        db.session.add(post)
+        db.session.commit()
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def update_single_auto_request(processor_id, current_user_id, fix_type,
+                               fix_description, undefined):
+    try:
+        ali_user = User.query.get(4)
+        cur_processor = Processor.query.get(processor_id)
+        cur_request = [x for x in cur_processor.get_all_requests()
+                       if x.fix_type == fix_type]
+        if len(undefined) > 0 and len(cur_request) == 0:
+            create_processor_request(processor_id, current_user_id, fix_type,
+                                     fix_description)
+        elif len(undefined) > 0 and len(cur_request) > 0:
+            cur_request = cur_request[0]
+            cur_request.fix_description = fix_description
+            cur_request.complete = False
+            db.session.add(cur_request)
+            db.session.commit()
+        elif len(undefined) == 0 and len(cur_request) > 0:
+            cur_request = cur_request[0]
+            if not cur_request.complete:
+                msg_txt = 'The fix #{} has been marked as resolved!'.format(
+                    cur_request.id)
+                cur_request.mark_resolved()
+                post = Post(body=msg_txt, author=ali_user,
+                            processor_id=cur_request.processor.id,
+                            request_id=cur_request.id)
+                db.session.add(post)
+                db.session.commit()
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+    return False
+
+
+def update_automatic_requests(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.analyze as az
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=az.Analyze.unknown_col).first()
+        tdf = pd.DataFrame(analysis.data)
+        for col in tdf.columns:
+            tdf[col] = tdf[col].str.strip("'")
+        cols = [x for x in tdf.columns if x != 'Vendor Key']
+        col = 'Undefined Plan Net'
+        tdf[col] = tdf[cols].values.tolist()
+        tdf[col] = tdf[col].str.join('_')
+        undefined = tdf[col].to_list()
+        fix_type = az.Analyze.unknown_col
+        fix_description = '{} {}'.format(analysis.message, undefined)
+        update_single_auto_request(processor_id, current_user_id,
+                                   fix_type=fix_type,
+                                   fix_description=fix_description,
+                                   undefined=undefined)
+
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
 
 
 def update_analysis_in_db(processor_id, current_user_id):

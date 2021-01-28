@@ -2760,7 +2760,7 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
             calculated_metrics = az.ValueCalc().metric_names
             metric_names = [x for x in kpis if x in calculated_metrics]
             df = az.ValueCalc().calculate_all_metrics(
-                metric_names=metric_names, df=df, db_translate=True)
+                metric_names=metric_names, df=df, db_translate=False)
             df = df.replace([np.inf, -np.inf], np.nan)
             df = df.fillna(0)
         _set_task_progress(100)

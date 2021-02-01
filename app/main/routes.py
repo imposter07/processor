@@ -763,6 +763,7 @@ def post_table():
     else:
         cur_obj = Uploader
         proc_arg['object_level'] = request.form['object_level']
+        proc_arg['uploader_type'] = request.form['uploader_type']
     if 'vendorkey' in table_name:
         split_table_name = table_name.split('vendorkey')
         table_name = split_table_name[0]
@@ -837,6 +838,7 @@ def get_table():
         cur_obj = Uploader
         proc_arg['parameter'] = table_name
         table_name = 'Uploader'
+        proc_arg['uploader_type'] = request.form['uploader_type']
         proc_arg['object_level'] = request.form['object_level']
     cur_proc = cur_obj.query.filter_by(
         name=request.form['object_name']).first_or_404()
@@ -2146,7 +2148,8 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
             'run_links': run_links, 'edit_links': edit_links,
             'request_links': request_links,
             'next_url': next_url, 'prev_url': prev_url,
-            'view_selector': view_selector}
+            'view_selector': view_selector,
+            'uploader_type': uploader_type}
     return args
 
 

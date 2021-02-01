@@ -7,7 +7,7 @@
     <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
              class="progress-bar progress-bar-striped bg-info"
-             role="progressbar" style="width: {{ edit_progress }}%;"
+             role="progressbar" style="width:{{ edit_progress }}%;"
              aria-valuenow={{ edit_progress }} aria-valuemin="0"
              aria-valuemax="100">{{ edit_name }}</div>
     </div><br>
@@ -417,7 +417,7 @@
             FilePond.parse(document.body);
             FilePond.setOptions({
                 server: {
-                    url: window.location.href + '/upload_file',
+                    url: window.location.href.replace('#', '') + '/upload_file',
                     method: 'POST',
                 },
                 allowPaste: false,
@@ -644,12 +644,14 @@
                       '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
                       'Loading...' +
                     '</button>');
+            let uploaderType = ("{{ title }}" === "Uploader") ? "{{uploader_type}}" : "None";
             $.post('/post_table',
                 {
                     data: json,
                     object_name:  "{{ object_name }}",
                     object_type: "{{ title }}",
                     object_level: "{{ edit_name }}",
+                    uploader_type: uploaderType,
                     table: sendTableName
                 }).done(function(data, status) {
                     if ("{{ edit_name }}" === 'Import') {
@@ -800,7 +802,9 @@
                 getTable(tableName, dropdownButton, oldHtml, 'None', pond)
             });
         });
-        function getTable(tableName, clickElem, oldHtml, vendorKey='None', pond='None'){
+        function getTable(tableName, clickElem, oldHtml, vendorKey='None',
+                          pond='None'){
+            let uploaderType = ("{{ title }}" === "Uploader") ? "{{uploader_type}}" : "None";
             $.ajax({
                 type: "POST",
                 url: "/get_table",
@@ -809,6 +813,7 @@
                     object_name: "{{ object_name }}",
                     object_type:  "{{ title }}",
                     object_level: "{{ edit_name }}",
+                    uploader_type: uploaderType,
                     vendorkey: vendorKey
                 },
             }).done(function(data, status) {
@@ -939,7 +944,6 @@
         function refreshButtons() {
             $('input[id*="refresh_"], button[id*="refresh_"]').click(function () {
                 let tableName = $(this)[0].id.split('refresh_')[1];
-                console.log(tableName)
                 if (tableName === 'rate_card') {
                     var vendorKey = $('#' + tableName)[0].value;
                 } else if ("{{ edit_name }}" === 'Clean') {
@@ -1278,7 +1282,7 @@
         });
         $(document).ready(function() {
             $('#viewSelector').on('change', function(e){
-                window.location = e.params.data.id;
+                window.location = this.selectize.getValue()
             });
         });
 

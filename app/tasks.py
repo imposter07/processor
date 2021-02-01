@@ -993,14 +993,17 @@ def parse_uploader_error_dict(uploader_id, current_user_id, error_dict):
             if key == 'fb/campaign_upload.xlsx':
                 upo = UploaderObjects.query.filter_by(
                     uploader_id=uploader_to_run.id,
+                    uploader_type='Facebook',
                     object_level='Campaign').first()
             elif key == 'fb/adset_upload.xlsx':
                 upo = UploaderObjects.query.filter_by(
                     uploader_id=uploader_to_run.id,
+                    uploader_type='Facebook',
                     object_level='Adset').first()
             elif key == 'fb/ad_upload.xlsx':
                 upo = UploaderObjects.query.filter_by(
                     uploader_id=uploader_to_run.id,
+                    uploader_type='Facebook',
                     object_level='Ad').first()
             else:
                 continue
@@ -1008,6 +1011,8 @@ def parse_uploader_error_dict(uploader_id, current_user_id, error_dict):
                 relation = UploaderRelations.query.filter_by(
                     uploader_objects_id=upo.id,
                     impacted_column_name=rel_col_name).first()
+                print(upo.id)
+                print(rel_col_name)
                 relation.unresolved_relations = error_dict[key][rel_col_name]
                 db.session.commit()
     except:
@@ -1122,13 +1127,14 @@ def get_uploader_relation_values_from_position(rel_pos, df, vk, object_level):
 
 
 def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
-                      object_level='Campaign'):
+                      object_level='Campaign', uploader_type='Facebook'):
     try:
         uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
         _set_task_progress(0)
         upo = UploaderObjects.query.filter_by(
             uploader_id=uploader_to_run.id,
+            uploader_type=uploader_type,
             object_level=object_level).first()
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         file_path = adjust_path(uploader_to_run.local_path)
@@ -1234,7 +1240,8 @@ def set_uploader_config_file(uploader_id, current_user_id, id_val=None,
 
 
 def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
-                        vk=None, mem_file=False, object_level='Campaign'):
+                        vk=None, mem_file=False, object_level='Campaign',
+                        uploader_type='Facebook'):
     try:
         cur_up, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
@@ -1271,12 +1278,13 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
 
 
 def set_object_relation_file(uploader_id, current_user_id,
-                             object_level='Campaign'):
+                             object_level='Campaign', uploader_type='Facebook'):
     try:
         cur_up, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
         up_cam = UploaderObjects.query.filter_by(
-            uploader_id=cur_up.id, object_level=object_level).first()
+            uploader_id=cur_up.id, object_level=object_level,
+            uploader_type=uploader_type).first()
         up_rel = UploaderRelations.query.filter_by(
             uploader_objects_id=up_cam.id).all()
         import uploader.upload.utils as utl
@@ -1401,12 +1409,13 @@ def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
 
 
 def uploader_create_objects(uploader_id, current_user_id,
-                            object_level='Campaign'):
+                            object_level='Campaign', uploader_type='Facebook'):
     try:
         cur_up, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
         up_obj = UploaderObjects.query.filter_by(
-            uploader_id=cur_up.id, object_level=object_level).first()
+            uploader_id=cur_up.id, object_level=object_level,
+            uploader_type=uploader_type).first()
         _set_task_progress(0)
         import uploader.upload.creator as cre
         import uploader.upload.utils as utl
@@ -1424,7 +1433,8 @@ def uploader_create_objects(uploader_id, current_user_id,
         utl.write_df(df, file_name)
         os.chdir(cur_path)
         set_object_relation_file(uploader_id, current_user_id,
-                                 object_level=object_level)
+                                 object_level=object_level,
+                                 uploader_type=uploader_type)
         os.chdir(cur_path)
         run_uploader(uploader_id, current_user_id, run_args='--create')
         msg_text = ('{} uploader {} creation file was updated.'
@@ -2757,6 +2767,7 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
             df = df[df['Date'] != 'None']
         df = df.fillna(0)
         if kpis:
+            df['Net Cost Final'] = df['Net Cost']
             calculated_metrics = az.ValueCalc().metric_names
             metric_names = [x for x in kpis if x in calculated_metrics]
             df = az.ValueCalc().calculate_all_metrics(

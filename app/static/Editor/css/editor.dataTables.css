@@ -26,7 +26,7 @@ div.DTE div.DTE_Footer {
   width: 100%;
   background-color: #e8e9eb;
   border-top: 1px solid rgba(0, 0, 0, 0.15);
-  padding: 10px;
+  padding-bottom: 5%;
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   box-sizing: border-box;
@@ -691,7 +691,7 @@ div.DTE_Action_Create {
   max-height: 93vh;
 }
 div.DTED_Lightbox_Wrapper{
-  position:fixed;padding-top: 45px; top:0;left:5%;margin-left:0;width:90%;height:90%;z-index:11}
+  position:fixed;padding-top: 5%; top:0;left:5%;margin-left:0;width:90%;height:90%;z-index:11}
 
 div.DTED_Lightbox_Wrapper div.DTED_Lightbox_Container div.DTED_Lightbox_Content_Wrapper div.DTED_Lightbox_Content div.DTE div.DTE_Body_Content {
   min-height: 20vh;

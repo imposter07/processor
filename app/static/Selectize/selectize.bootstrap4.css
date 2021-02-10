@@ -108,7 +108,7 @@
 }
 
 .selectize-dropdown, .selectize-input, .selectize-input input {
-    color: #343a40;
+    color: black;
     font-family: inherit;
     font-size: inherit;
     line-height: 1.5;
@@ -377,7 +377,7 @@
     padding: 0;
     margin: 2px 0 0 0;
     z-index: 1000;
-    background: #fff;
+    background: #888;
     border: 1px solid rgba(0, 0, 0, .15);
     border-radius: .25rem;
     box-shadow: 0 6px 12px rgba(0, 0, 0, .175)

@@ -15,7 +15,7 @@
                     aria-expanded="false"
                     aria-controls="collapse{{ loop.index }}">
               {{ client.name }}<span class="caret"></span>
-            </button><br>
+            </button>
             <div id="collapse{{ loop.index }}" class="collapse"
                  aria-labelledby="heading{{ loop.index }}"
                  data-parent="#accordionClient">
@@ -67,7 +67,6 @@
                                       </div>
                                       </div>
                                   {% endfor %}
-
                               </div>
                           </div>
                         </div>

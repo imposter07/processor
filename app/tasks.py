@@ -1054,18 +1054,32 @@ def run_uploader(uploader_id, current_user_id, run_args):
         return False
 
 
-def uploader_file_translation(uploader_file_name, object_level='Campaign'):
+def uploader_file_translation(uploader_file_name, object_level='Campaign',
+                              uploader_type='Facebook'):
     base_config_path = 'config'
     base_create_path = os.path.join(base_config_path, 'create')
-    base_fb_path = os.path.join(base_config_path, 'fb')
+    if uploader_type == 'Facebook':
+        uploader_type_path = 'fb'
+    elif uploader_type == 'Adwords':
+        uploader_type_path = 'aw'
+    elif uploader_type == 'DCM':
+        uploader_type_path = 'dcm'
+    else:
+        uploader_type_path = 'fb'
+    base_fb_path = os.path.join(base_config_path, uploader_type_path)
     file_translation = {
         'Creator': os.path.join(base_create_path, 'creator_config.xlsx'),
         'uploader_creative_files': ''}
     for name in ['Campaign', 'Adset', 'Ad', 'uploader_current_name']:
+        prefix = ''
+        if uploader_type == 'Adwords':
+            prefix = 'aw_'
+            if name == 'Adset':
+                name = 'Adgroup'
         if name == 'uploader_current_name':
-            file_name = object_level.lower()
+            file_name = '{}{}'.format(prefix, object_level.lower())
         else:
-            file_name = name.lower()
+            file_name = '{}{}'.format(prefix, name.lower())
         file_name = '{}_upload.xlsx'.format(file_name)
         file_translation[name] = os.path.join(base_fb_path, file_name)
     for name in ['edit_relation', 'uploader_full_relation']:
@@ -1140,7 +1154,8 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
         file_path = adjust_path(uploader_to_run.local_path)
         os.chdir(file_path)
         file_name = uploader_file_translation(
-            uploader_file_name=parameter, object_level=object_level)
+            uploader_file_name=parameter, object_level=object_level,
+            uploader_type=uploader_type)
         if parameter in ['uploader_current_name']:
             df = get_current_uploader_obj_names(
                 uploader_id, current_user_id, cur_path, file_path, file_name,
@@ -2868,7 +2883,6 @@ def update_automatic_requests(processor_id, current_user_id):
                                        fix_type=fix_type,
                                        fix_description=fix_description,
                                        undefined=undefined)
-
         _set_task_progress(100)
         return True
     except:

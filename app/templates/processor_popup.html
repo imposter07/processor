@@ -1,4 +1,4 @@
-<div class="card bg-light mb-3">
+<div class="card">
     <div class="card-header">
         <h6>
             <a href="{{ url_for('main.processor_page',
@@ -18,7 +18,7 @@
             {% endif %}
         </h6>
     </div>
-    <div class="card">
+
         <div class="card-body">
         <p class="card-text" style="font-size: 70%;">
             <span id="campaign{{ processor.id }}">
@@ -66,5 +66,4 @@
                 {% endif %}
             {% endwith %}
         </div>
-    </div>
 </div>

@@ -2409,7 +2409,7 @@ def uploader_file_upload(uploader_name):
 @login_required
 def edit_uploader_ad(uploader_name):
     object_level = 'Ad'
-    next_level = 'Page'
+    next_level = 'Ad'
     return edit_uploader_base_objects(uploader_name, object_level, next_level)
 
 
@@ -2495,7 +2495,7 @@ def edit_uploader_adset_aw(uploader_name):
 def edit_uploader_ad_aw(uploader_name):
     uploader_type = 'Adwords'
     object_level = 'Ad'
-    next_level = 'Page'
+    next_level = 'Ad'
     return edit_uploader_base_objects(uploader_name, object_level, next_level,
                                       uploader_type)
 

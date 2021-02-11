@@ -1091,24 +1091,48 @@ def uploader_file_translation(uploader_file_name, object_level='Campaign',
     return file_translation[uploader_file_name]
 
 
-def get_primary_column(object_level):
-    if object_level == 'Campaign':
-        col = 'campaign_name'
-    elif object_level == 'Adset':
-        col = 'adset_name'
-    elif object_level == 'Ad':
-        col = 'ad_name'
+def get_primary_column(object_level, uploader_type='Facebook'):
+    if uploader_type == 'Facebook':
+        if object_level == 'Campaign':
+            col = 'campaign_name'
+        elif object_level == 'Adset':
+            col = 'adset_name'
+        elif object_level == 'Ad':
+            col = 'ad_name'
+        else:
+            col = ''
+    elif uploader_type == 'Adwords':
+        if object_level == 'Campaign':
+            col = 'name'
+        elif object_level == 'Adset':
+            col = 'name’'
+        elif object_level == 'Ad':
+            col = 'name'
+        else:
+            col = ''
+    elif uploader_type == 'DCM':
+        if object_level == 'Campaign':
+            col = 'name'
+        elif object_level == 'Adset':
+            col = 'name'
+        elif object_level == 'Ad':
+            col = 'ad_name'
+        else:
+            col = ''
     else:
         col = ''
     return col
 
 
 def get_current_uploader_obj_names(uploader_id, current_user_id, cur_path,
-                                   file_path, file_name, object_level):
-    col = get_primary_column(object_level=object_level)
+                                   file_path, file_name, object_level,
+                                   uploader_type='Facebook'):
+    col = get_primary_column(object_level=object_level,
+                             uploader_type=uploader_type)
     os.chdir(cur_path)
     uploader_create_objects(uploader_id, current_user_id,
-                            object_level=object_level)
+                            object_level=object_level,
+                            uploader_type=uploader_type)
     os.chdir(file_path)
     ndf = pd.read_excel(file_name)
     df = ndf[col].str.split('_', expand=True)
@@ -1159,7 +1183,7 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
         if parameter in ['uploader_current_name']:
             df = get_current_uploader_obj_names(
                 uploader_id, current_user_id, cur_path, file_path, file_name,
-                object_level=object_level)
+                object_level=object_level, uploader_type=uploader_type)
         elif parameter in ['uploader_creative_files']:
             file_names = os.listdir("./creative/")
             df = pd.DataFrame(file_names, columns=['creative_file_names'])
@@ -1325,76 +1349,101 @@ def set_object_relation_file(uploader_id, current_user_id,
 
 def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
                              creator_column=None, file_filter=None,
-                             duplication_type=None):
+                             duplication_type=None, uploader_type='Facebook'):
     import uploader.upload.creator as cre
+    primary_column = get_primary_column(object_level, uploader_type)
     if object_level == 'Campaign':
+        if uploader_type == 'Facebook':
+            upload_file = 'fb/campaign_upload.xlsx'
+        elif uploader_type == 'Adwords':
+            upload_file = 'aw/aw_campaign_upload.xlsx'
+        elif uploader_type == 'DCM':
+            upload_file = 'dcm/campaign_upload.xlsx'
+        else:
+            upload_file = 'fb/campaign_upload.xlsx'
         if create_type == 'Media Plan':
             col_file_name = [
                 'mediaplan.xlsx', '/create/campaign_name_creator.xlsx',
                 '/create/campaign_relation.xlsx']
             col_new_file = [
-                'create/campaign_name_creator.xlsx',
-                'fb/campaign_upload.xlsx', 'fb/campaign_upload.xlsx']
+                'create/campaign_name_creator.xlsx', upload_file, upload_file]
             col_create_type = ['mediaplan', 'create', 'relation']
-            col_column_name = [creator_column, 'campaign_name', '']
+            col_column_name = [creator_column, primary_column, '']
             col_overwrite = [True, True, '']
             col_filter = [file_filter, '', '']
         else:
             col_file_name = [
                 '/create/campaign_name_creator.xlsx',
                 '/create/campaign_relation.xlsx']
-            col_new_file = [
-                'fb/campaign_upload.xlsx', 'fb/campaign_upload.xlsx']
+            col_new_file = [upload_file, upload_file]
             col_create_type = ['create', 'relation']
-            col_column_name = ['campaign_name', '']
+            col_column_name = [primary_column, '']
             col_overwrite = [True, '']
             col_filter = ['', '']
     elif object_level == 'Adset':
+        if uploader_type == 'Facebook':
+            upload_file = 'fb/adset_upload.xlsx'
+        elif uploader_type == 'Adwords':
+            upload_file = 'aw/aw_adgroup_upload.xlsx'
+        elif uploader_type == 'DCM':
+            upload_file = 'dcm/placement_upload.xlsx'
+        else:
+            upload_file = 'fb/adset_upload.xlsx'
         if create_type == 'Media Plan':
             col_file_name = [
                 'mediaplan.xlsx', '/create/adset_name_creator.xlsx',
                 '/create/adset_relation.xlsx']
             col_new_file = [
-                'create/adset_name_creator.xlsx',
-                'fb/adset_upload.xlsx', 'fb/adset_upload.xlsx']
+                'create/adset_name_creator.xlsx', upload_file, upload_file]
             col_create_type = ['mediaplan', 'create', 'relation']
-            col_column_name = [creator_column, 'adset_name', '']
+            col_column_name = [creator_column, primary_column, '']
             col_overwrite = [True, True, '']
             col_filter = [file_filter, '', '']
         else:
             col_file_name = ['/create/adset_name_creator.xlsx',
                              '/create/adset_relation.xlsx']
-            col_new_file = ['fb/adset_upload.xlsx', 'fb/adset_upload.xlsx']
+            col_new_file = [upload_file, upload_file]
             col_create_type = ['create', 'relation']
-            col_column_name = ['adset_name', '']
+            col_column_name = [primary_column, '']
             col_overwrite = [True, '']
             col_filter = ['', '']
     elif object_level == 'Ad':
+        if uploader_type == 'Facebook':
+            upload_file = 'fb/ad_upload.xlsx'
+            previous_upload_file = '/fb/adset_upload.xlsx'
+        elif uploader_type == 'Adwords':
+            upload_file = 'aw/aw_ad_upload.xlsx'
+            previous_upload_file = '/aw/aw_adgroup_upload.xlsx'
+        elif uploader_type == 'DCM':
+            upload_file = 'dcm/ad_upload.xlsx'
+            previous_upload_file = '/dcm/placement_upload.xlsx'
+        else:
+            upload_file = 'fb/ad_upload.xlsx'
+            previous_upload_file = '/fb/adset_upload.xlsx'
         if create_type == 'Media Plan':
             col_file_name = [
                 'mediaplan.xlsx', '/create/ad_name_creator.xlsx',
                 '/create/ad_relation.xlsx']
             col_new_file = [
-                'create/ad_name_creator.xlsx',
-                'fb/ad_upload.xlsx', 'fb/ad_upload.xlsx']
+                'create/ad_name_creator.xlsx', upload_file, upload_file]
             col_create_type = ['mediaplan', 'create', 'relation']
-            col_column_name = [creator_column, 'ad_name', '']
+            col_column_name = [creator_column, primary_column, '']
             col_overwrite = [True, True, '']
             col_filter = [file_filter, '', '']
         else:
+            campaign_primary_col = get_primary_column('Campaign', uploader_type)
+            adset_primary_col = get_primary_column('Adset', uploader_type)
             if duplication_type == 'Custom':
-                dup_col_name = ('ad_name::campaign_name|adset_name::'
-                                '/create/ad_upload_filter.xlsx')
+                dup_col_name = '{}::{}|{}::/create/ad_upload_filter.xlsx'.format(
+                    primary_column, campaign_primary_col, adset_primary_col)
             else:
-                dup_col_name = 'ad_name::campaign_name|adset_name'
-            col_file_name = [
-                '/create/ad_name_creator.xlsx', '/fb/adset_upload.xlsx',
-                '/create/ad_relation.xlsx']
-            col_new_file = [
-                'fb/ad_upload.xlsx', 'fb/ad_upload.xlsx',
-                'fb/ad_upload.xlsx']
+                dup_col_name = '{}::{}|{}'.format(
+                    primary_column, campaign_primary_col, adset_primary_col)
+            col_file_name = [previous_upload_file, previous_upload_file,
+                             '/create/ad_relation.xlsx']
+            col_new_file = [upload_file, upload_file, upload_file]
             col_create_type = ['create', 'duplicate', 'relation']
-            col_column_name = ['ad_name', dup_col_name, '']
+            col_column_name = [primary_column, dup_col_name, '']
             col_overwrite = [True, '', '']
             col_filter = ['', '', '']
             if create_type == 'Match Table':
@@ -1441,7 +1490,8 @@ def uploader_create_objects(uploader_id, current_user_id,
         new_dict = get_uploader_create_dict(
             object_level=object_level, create_type=up_obj.name_create_type,
             creator_column=creator_column, file_filter=file_filter,
-            duplication_type=up_obj.duplication_type)
+            duplication_type=up_obj.duplication_type,
+            uploader_type=uploader_type)
         df = pd.DataFrame(new_dict)
         os.chdir(adjust_path(cur_up.local_path))
         file_name = uploader_file_translation('Creator')
@@ -1467,16 +1517,26 @@ def uploader_create_objects(uploader_id, current_user_id,
 
 
 def uploader_create_and_upload_objects(uploader_id, current_user_id,
-                                       object_level='Campaign'):
+                                       object_level='Campaign',
+                                       uploader_type='Facebook'):
     try:
         uploader_create_objects(uploader_id, current_user_id,
-                                object_level=object_level)
+                                object_level=object_level,
+                                uploader_type=uploader_type)
+        if uploader_type == 'Facebook':
+            uploader_type_arg = 'fb'
+        elif uploader_type == 'Adwords':
+            uploader_type_arg = 'aw'
+        elif uploader_type == 'DCM':
+            uploader_type_arg = 'dcm'
+        else:
+            uploader_type_arg = 'fb'
         if object_level == 'Campaign':
-            run_args = '--api fb --upload c'
+            run_args = '--api {} --upload c'.format(uploader_type_arg)
         elif object_level == 'Adset':
-            run_args = '--api fb --upload as'
+            run_args = '--api {} --upload as'.format(uploader_type_arg)
         elif object_level == 'Ad':
-            run_args = '--api fb --upload ad'
+            run_args = '--api {} --upload ad'.format(uploader_type_arg)
         else:
             run_args = ''
         run_uploader(uploader_id, current_user_id, run_args=run_args)

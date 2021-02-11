@@ -2328,6 +2328,12 @@ def edit_uploader_base_objects(uploader_name, object_level, next_level='Page',
             form.name_create_type.data = up_obj.name_create_type
             form.duplication_type.data = up_obj.duplication_type
     if request.method == 'POST':
+        if uploader_type == 'Adwords':
+            route_suffix = '_aw'
+        elif uploader_type == 'DCM':
+            route_suffix = '_dcm'
+        else:
+            route_suffix = ''
         set_uploader_relations_in_db(
             uploader_id=cur_up.id, form_relations=form.relations.data,
             object_level=object_level, uploader_type=uploader_type)
@@ -2336,20 +2342,24 @@ def edit_uploader_base_objects(uploader_name, object_level, next_level='Page',
                 object_level)
             cur_up.launch_task(
                 '.uploader_create_and_upload_objects', _(msg_text),
-                running_user=current_user.id, object_level=object_level)
+                running_user=current_user.id, object_level=object_level,
+                uploader_type=uploader_type)
             db.session.commit()
             return redirect(url_for(
-                'main.edit_uploader_{}'.format(next_level.lower()),
+                'main.edit_uploader_{}{}'.format(
+                    next_level.lower(), route_suffix),
                 uploader_name=cur_up.name))
         else:
             msg_text = 'Creating {} for uploader.'.format(object_level)
             task = cur_up.launch_task(
                 '.uploader_create_objects', _(msg_text),
-                running_user=current_user.id, object_level=object_level)
+                running_user=current_user.id, object_level=object_level,
+                uploader_type=uploader_type)
             db.session.commit()
             task.wait_and_get_job(loops=30)
             return redirect(url_for(
-                'main.edit_uploader_{}'.format(object_level.lower()),
+                'main.edit_uploader_{}{}'.format(
+                    object_level.lower(), route_suffix),
                 uploader_name=cur_up.name))
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)

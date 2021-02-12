@@ -2918,7 +2918,7 @@ def update_single_auto_request(processor_id, current_user_id, fix_type,
         app.logger.error(
             'Unhandled exception - Processor {} User {}'.format(
                 processor_id, current_user_id), exc_info=sys.exc_info())
-    return False
+        return False
 
 
 def update_automatic_requests(processor_id, current_user_id):
@@ -2928,6 +2928,7 @@ def update_automatic_requests(processor_id, current_user_id):
         import processor.reporting.analyze as az
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_processor.id, key=az.Analyze.unknown_col).first()
+        fix_type = az.Analyze.unknown_col
         if analysis.data:
             tdf = pd.DataFrame(analysis.data)
             for col in tdf.columns:
@@ -2937,12 +2938,14 @@ def update_automatic_requests(processor_id, current_user_id):
             tdf[col] = tdf[cols].values.tolist()
             tdf[col] = tdf[col].str.join('_')
             undefined = tdf[col].to_list()
-            fix_type = az.Analyze.unknown_col
             fix_description = '{} {}'.format(analysis.message, undefined)
-            update_single_auto_request(processor_id, current_user_id,
-                                       fix_type=fix_type,
-                                       fix_description=fix_description,
-                                       undefined=undefined)
+        else:
+            undefined = []
+            fix_description = '{}'.format(analysis.message)
+        update_single_auto_request(processor_id, current_user_id,
+                                   fix_type=fix_type,
+                                   fix_description=fix_description,
+                                   undefined=undefined)
         _set_task_progress(100)
         return True
     except:

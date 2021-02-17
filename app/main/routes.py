@@ -1805,6 +1805,7 @@ def edit_processor_view_fix(processor_name, fix_id):
 def uploader():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     page = request.args.get('page', 1, type=int)
+    current_clients = Client.query.order_by(Client.name)
     uploaders = current_user.uploader.order_by(
         Uploader.last_run_time.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -1815,8 +1816,10 @@ def uploader():
                         page=uploaders.prev_num)
                 if uploaders.has_prev else None)
     return render_template('uploader.html', title=_('Uploader'),
-                           user=cur_user, uploaders=uploaders.items,
-                           next_url=next_url, prev_url=prev_url)
+                           user=cur_user, processors=uploaders.items,
+                           uploaders=uploaders.items,
+                           next_url=next_url, prev_url=prev_url,
+                           clients=current_clients)
 
 
 def check_base_uploader_object(uploader_id, object_level='Campaign',

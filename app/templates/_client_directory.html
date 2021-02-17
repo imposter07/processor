@@ -57,10 +57,10 @@
                                          aria-labelledby="heading{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
                                          data-parent="#accordionCampaign">
                                       <div class="card-body">
-                                      {% for processor in campaign.processor.order_by('name') %}
+                                      {% for processor in campaign.get_objects(title).order_by('name') %}
                                       <a class="btn btn-outline-success btn-block text-center"
                                          style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;"
-                                         href="{{ url_for('main.processor_page', processor_name=processor.name) }}">
+                                         href="{{ processor.get_url() }}">
                                           {{ processor.name }}</a>
                                       {% endfor %}
                                       </div>

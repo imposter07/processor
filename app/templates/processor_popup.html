@@ -1,8 +1,7 @@
 <div class="card">
     <div class="card-header">
         <h6>
-            <a href="{{ url_for('main.processor_page',
-            processor_name=processor.name) }}">
+            <a href="{{ processor.get_url() }}">
             {{ processor.name }}
         </a>
             {% if not current_user.is_following_processor(processor) %}

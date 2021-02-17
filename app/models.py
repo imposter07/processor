@@ -8,7 +8,7 @@ import redis
 from datetime import datetime, timedelta
 from datetime import time as datetime_time
 from hashlib import md5
-from flask import current_app
+from flask import current_app, url_for
 from flask_login import UserMixin
 import processor.reporting.vmcolumns as vmc
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -369,6 +369,9 @@ class Campaign(db.Model):
             campaign_check = self.check()
         return campaign_check
 
+    def get_objects(self, object_type):
+        return self.uploader if object_type == 'Uploader' else self.processor
+
 
 class RateCard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -526,6 +529,9 @@ class Processor(db.Model):
 
     def get_all_dashboards(self):
         return self.dashboard.order_by(Dashboard.created_at.desc()).all()
+
+    def get_url(self):
+        return url_for('main.processor_page', processor_name=self.name)
 
 
 class TaskScheduler(db.Model):
@@ -849,6 +855,9 @@ class Uploader(db.Model):
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                      if not k.startswith("_") and k != 'id'])
+
+    def get_url(self):
+        return url_for('main.uploader_page', uploader_name=self.name)
 
 
 class UploaderObjects(db.Model):

@@ -1,0 +1,9 @@
+Dear {{ user.username }},
+
+The user {{ assigner.username }} has assigned the processor {{ cur_processor.name }} to the user {{ assignee.username }}.
+
+The processor can be found at : https://lqadata.com/processor/{{ processor_name }}
+
+Sincerely,
+
+Liquid App

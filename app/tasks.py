@@ -1826,6 +1826,36 @@ def send_processor_build_email(
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+def processor_assignment_email(
+        processor_id, current_user_id,
+        title='[Liquid App] New Processor Assignment!'):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        cur_user = User.query.get(current_user_id)
+        from urllib.parse import quote
+        processor_name = quote(cur_processor.name)
+        recipients = [cur_processor.user, cur_user]
+        for user in recipients:
+            send_email(title,
+                       sender=app.config['ADMINS'][0],
+                       recipients=[user.email],
+                       text_body=render_template(
+                           'email/processor_assignment.txt', user=user,
+                           processor_name=processor_name,
+                           cur_processor=cur_processor,
+                           assigner=cur_user, assignee=cur_processor.user),
+                       html_body=render_template(
+                           'email/processor_assignment.html', user=user,
+                           cur_processor=cur_processor,
+                           processor_name=processor_name,
+                           assigner=cur_user, assignee=cur_processor.user),
+                       sync=True)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
 def send_processor_request_email(processor_id, current_user_id, progress):
     try:
         progress = ['Request #{}.....{}'.format(k, v)

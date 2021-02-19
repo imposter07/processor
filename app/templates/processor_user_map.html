@@ -21,17 +21,26 @@
                 <div class="card-body">
                     {% for processor in processor_list %}
                         <div class="card">
-                            <div class="card-header">
+                            <div class="card-header form-inline">
+                                <div class="col">
                                     <a href="{{ processor.get_url() }}">
                                         {{ processor.name }}
                                     </a>
+                                    <span class="badge badge-pill
+                                        {% if processor_status == 'Live' %} badge-success
+                                        {% elif processor_status == 'Completed' %} badge-secondary
+                                        {% else %} badge-info{% endif %}">{{ processor.status }}</span>
+                                </div>
+                                <div class="col">
                                     <select id="ownerSelect{{ processor.name }}"
-                                            class="form-control form-control-sm">
+                                            class="">
                                         <option value="">Change Owner...</option>
                                         {% for user_opt in current_users %}
                                             <option value="{{ user_opt.username }}">{{ user_opt.username }}</option>
                                         {% endfor %}
                                     </select>
+                                </div>
+                                <div class="col">
                                     <div class="btn-group"
                                          role="group"
                                          style="float: right;">
@@ -58,6 +67,7 @@
                                             </a>
                                         {% endif %}
                                     </div>
+                                </div>
                             </div>
                         </div>
                     {% endfor %}

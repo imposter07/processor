@@ -137,9 +137,6 @@ def get_processor_by_user():
     processors = Processor.query.order_by(Processor.created_at)
     seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
     processors = processors.filter(Processor.end_date > seven_days_ago.date())
-    for p in processors:
-        p.ppd = '{0:.0f}'.format(p.posts.filter(
-            Post.timestamp > seven_days_ago.date()).count() / 7)
     from collections import defaultdict
     groups = defaultdict(list)
     for obj in processors:
@@ -154,6 +151,21 @@ def get_processor_by_user():
             cu.data = True
         else:
             cu.data = False
+        for p in u:
+            p.ppd = '{0:.0f}'.format(p.posts.filter(
+                Post.timestamp > seven_days_ago.date()).count() / 7)
+            cu.live = 0
+            cu.upcoming = 0
+            cu.completed = 0
+            if p.start_date > dt.datetime.today().date():
+                p.status = 'Upcoming'
+                cu.upcoming +=1
+            elif p.end_date < dt.datetime.today().date():
+                p.status = 'Completed'
+                cu.completed += 1
+            else:
+                cu.live += 1
+                p.status = 'Live'
     current_users = User.query.order_by(User.username).all()
     processor_html = render_template('processor_user_map.html',
                                      processors=new_list,
@@ -186,10 +198,15 @@ def processor_change_owner():
     cur_obj = Processor.query.filter_by(name=processor_name).first_or_404()
     new_user = User.query.filter_by(username=new_owner).first_or_404()
     cur_obj.user_id = new_user.id
+    msg = 'You have successfully assigned {} as the owner of {}'.format(
+        new_user.username, cur_obj.name)
+    post = Post(body=msg, author=current_user,
+                processor_id=cur_obj.id)
+    db.session.add(post)
+    cur_obj.launch_task('.processor_assignment_email', _(msg),
+                        current_user.id)
     db.session.commit()
     lvl = 'success'
-    msg = 'You have successfully assigned {} as the owner {}'.format(
-        new_user.username, cur_obj.name)
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg)
     return jsonify({'data': 'success', 'message': msg, 'level': lvl})
 
@@ -199,9 +216,15 @@ def processor_change_owner():
 def clients():
     current_clients = Client.query.order_by(Client.name).all()
     current_users = User.query.order_by(User.username).all()
+    current_products = Product.query.order_by(Product.name).all()
+    current_campaigns = Campaign.query.order_by(Campaign.name).all()
+    current_processors = Processor.query.order_by(Processor.name).all()
     return render_template('clients.html', title=_('Clients'),
                            clients=current_clients,
-                           current_users=current_users)
+                           current_users=current_users,
+                           current_products=current_products,
+                           current_campaigns=current_campaigns,
+                           current_processors=current_processors)
 
 
 @bp.route('/user/<username>')

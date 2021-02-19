@@ -1820,6 +1820,7 @@ def send_processor_build_email(
                            processor_name=processor_name,
                            progress=progress),
                        sync=True)
+        _set_task_progress(100)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
@@ -1850,6 +1851,7 @@ def processor_assignment_email(
                            processor_name=processor_name,
                            assigner=cur_user, assignee=cur_processor.user),
                        sync=True)
+        _set_task_progress(100)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(

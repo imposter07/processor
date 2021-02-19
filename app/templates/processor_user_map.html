@@ -1,0 +1,69 @@
+<div class="accordion" id="accordionClient">
+    {% for processor_list in processors %}
+        <div class="card">
+            <button class="btn {% if  processor_list[0].user.data%}
+            btn-secondary{% else %}btn-danger{% endif %} btn-block btn-secondary collapsed text-left"
+                    id="heading{{ loop.index }}"
+                    type="button"
+                    data-toggle="collapse"
+                    data-target="#collapseUser{{ loop.index }}"
+                    aria-expanded="false"
+                    aria-controls="collapseUser{{ loop.index }}">
+                <a href="{{ url_for('main.user', username=processor_list[0].user.username) }}">
+                    <img class="mr-3"
+                         src="{{ processor_list[0].user.avatar(40) }}"
+                         alt="Generic placeholder image"></a>
+                {{ processor_list|length }} Processors owned - {{ processor_list[0].user.ppd }} Posts Per Day - {{ processor_list[0].user.username }}
+            </button>
+            <div id="collapseUser{{ loop.index }}" class="collapse"
+                 aria-labelledby="heading{{ loop.index }}"
+                 data-parent="#accordionClient">
+                <div class="card-body">
+                    {% for processor in processor_list %}
+                        <div class="card">
+                            <div class="card-header">
+                                    <a href="{{ processor.get_url() }}">
+                                        {{ processor.name }}
+                                    </a>
+                                    <select id="ownerSelect{{ processor.name }}"
+                                            class="form-control form-control-sm">
+                                        <option value="">Change Owner...</option>
+                                        {% for user_opt in current_users %}
+                                            <option value="{{ user_opt.username }}">{{ user_opt.username }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="btn-group"
+                                         role="group"
+                                         style="float: right;">
+                                        {% if processor.get_open_requests()|length > 0 %}
+                                            <a href="{{ url_for('main.edit_processor_submit_fix',
+                       processor_name=processor.name) }}"
+                                               type="button"
+                                               class="btn btn-outline-danger">
+                                                Open Requests <span
+                                                    class="badge badge-light">
+                    {{ processor.get_open_requests()|length }}</span>
+                                                <span class="sr-only">Open Requests</span>
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ url_for('main.edit_processor_request_fix',
+                       processor_name=processor.name) }}"
+                                               type="button"
+                                               class="btn btn-outline-success"
+                                            >
+                                                No Open Requests <span
+                                                    class="badge badge-light">
+                    {{ processor.get_open_requests()|length }}</span>
+                                                <span class="sr-only">No Open Requests</span>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    {% endfor %}
+</div>

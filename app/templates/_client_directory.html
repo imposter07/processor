@@ -3,6 +3,7 @@
               <span>{{ _('Client Directory') }}</span>
 </h4>
 <div class="accordion" id="accordionClient">
+    {% set clients=client_dict if client_dict else clients %}
     {% for client in clients %}
         {% set client_loop = loop %}
         <div class="card">
@@ -21,7 +22,8 @@
                  data-parent="#accordionClient">
               <div class="card-body">
                 <div class="accordion" id="accordionProduct">
-                  {% for product in client.product.order_by('name') %}
+                {% set products=client_dict[client] if client_dict else client.product.order_by('name')%}
+                  {% for product in products %}
                     {% set product_loop = loop %}
                     <div class="card">
                         <button class="btn btn-outline-primary
@@ -40,7 +42,8 @@
                              data-parent="#accordionProduct">
                           <div class="card-body">
                               <div class="accordion" id="accordionCampaign">
-                                  {% for campaign in product.campaign.order_by('name') %}
+                              {% set campaigns=client_dict[client][product] if client_dict else product.campaign.order_by('name')%}
+                                  {% for campaign in campaigns %}
                                       <div class="card">
                                         <button class="btn btn-outline-info
                                                        btn-block text-left collapsed"
@@ -57,7 +60,8 @@
                                          aria-labelledby="heading{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
                                          data-parent="#accordionCampaign">
                                       <div class="card-body">
-                                      {% for processor in campaign.get_objects(title).order_by('name') %}
+                                      {% set processors=client_dict[client][product][campaign] if client_dict else campaign.get_objects(title).order_by('name') %}
+                                      {% for processor in processors %}
                                       <a class="btn btn-outline-success btn-block text-center"
                                          style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;"
                                          href="{{ processor.get_url() }}">

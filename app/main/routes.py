@@ -130,12 +130,78 @@ def get_live_processors():
                     'has_prev': processors.has_prev})
 
 
+@bp.route('/get_processor_by_user', methods=['GET', 'POST'])
+@login_required
+def get_processor_by_user():
+    import datetime as dt
+    processors = Processor.query.order_by(Processor.created_at)
+    seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
+    processors = processors.filter(Processor.end_date > seven_days_ago.date())
+    for p in processors:
+        p.ppd = '{0:.0f}'.format(p.posts.filter(
+            Post.timestamp > seven_days_ago.date()).count() / 7)
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for obj in processors:
+        groups[obj.user_id].append(obj)
+    new_list = list(groups.values())
+    new_list.sort(key=len, reverse=True)
+    for u in new_list:
+        cu = u[0].user
+        cu.ppd = '{0:.0f}'.format(cu.posts.filter(
+            Post.timestamp > seven_days_ago.date()).count() / 7)
+        if cu.id in [3, 5, 7, 9, 10, 11, 51, 63, 66]:
+            cu.data = True
+        else:
+            cu.data = False
+    current_users = User.query.order_by(User.username).all()
+    processor_html = render_template('processor_user_map.html',
+                                     processors=new_list,
+                                     current_users=current_users)
+    new_dict = {}
+    for x in processors:
+        client = x.campaign.product.client
+        product = x.campaign.product
+        campaign = x.campaign
+        if client not in new_dict:
+            new_dict[client] = {}
+        if product not in new_dict[client]:
+            new_dict[client][product] = {}
+        if campaign not in new_dict[client][product]:
+            new_dict[client][product][campaign] = []
+        new_dict[client][product][campaign].append(x)
+    new_dict = {key: new_dict[key] for
+                key in sorted(new_dict.keys(), key=lambda x: x.name)}
+    clients_html = render_template('_client_directory.html',
+                                   client_dict=new_dict)
+    return jsonify({'items': processor_html,
+                    'client_directory': clients_html})
+
+
+@bp.route('/processor_change_owner', methods=['GET', 'POST'])
+@login_required
+def processor_change_owner():
+    processor_name = request.form['processor_name']
+    new_owner = request.form['new_owner']
+    cur_obj = Processor.query.filter_by(name=processor_name).first_or_404()
+    new_user = User.query.filter_by(username=new_owner).first_or_404()
+    cur_obj.user_id = new_user.id
+    db.session.commit()
+    lvl = 'success'
+    msg = 'You have successfully assigned {} as the owner {}'.format(
+        new_user.username, cur_obj.name)
+    msg = '<strong>{}</strong>, {}'.format(current_user.username, msg)
+    return jsonify({'data': 'success', 'message': msg, 'level': lvl})
+
+
 @bp.route('/clients')
 @login_required
 def clients():
     current_clients = Client.query.order_by(Client.name).all()
+    current_users = User.query.order_by(User.username).all()
     return render_template('clients.html', title=_('Clients'),
-                           clients=current_clients)
+                           clients=current_clients,
+                           current_users=current_users)
 
 
 @bp.route('/user/<username>')

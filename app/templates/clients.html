@@ -2,32 +2,35 @@
 
 {% block app_header %}
     <h4>{{ _('Client Calendar') }}</h4>
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var calendarEl = document.getElementById('calendar');
-
-        var calendar = new FullCalendar.Calendar(calendarEl, {
-          events: '/get_processor_by_date',
-          plugins: ['dayGrid' , 'timeGrid', 'list', 'bootstrap'],
-          themeSystem: 'bootstrap',
-          header: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,dayGridWeek,listDay'
-          }
-        },
-        );
-        calendar.render();
-      });
-    </script>
 {% endblock %}
 
 {% block vertical_navbar %}
-    {% include '_client_directory.html' %}
+    <h4 class="sidebar-heading d-flex justify-content-between align-items-center
+           text-dark text-center">
+        <span>{{ _('Filters') }}</span></h4>
+    <div class="custom-control custom-switch" id="customSwitchDiv">
+        <input type="checkbox" class="custom-control-input" id="customSwitch1"
+               checked>
+        <label class="custom-control-label" for="customSwitch1">
+            {{ _("Live Processors") }}</label>
+    </div>
+    <div class="col mb-3">
+        <select id="usernameSelect" multiple=""
+                class="form-control form-control-sm">
+            <option value="">Select users...</option>
+            {% for user_opt in current_users %}
+                <option value="{{ user_opt.username }}">{{ user_opt.username }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div id="clientDirectory"></div>
 {% endblock %}
 
 {% block app_content %}
+    <div id="processors"></div>
+
     <div id='calendar'></div>
+
     <link href="{{ url_for('static', filename='fullcalendar/core/main.css') }}" rel='stylesheet' />
     <link href="{{ url_for('static', filename='fullcalendar/daygrid/main.css') }}" rel='stylesheet' />
     <link href="{{ url_for('static', filename='fullcalendar/list/main.css') }}"  rel='stylesheet' />
@@ -37,4 +40,89 @@
     <script src="{{ url_for('static', filename='fullcalendar/daygrid/main.js') }}"></script>
     <script src="{{ url_for('static', filename='fullcalendar/list/main.js') }}"></script>
     <script src="{{ url_for('static', filename='fullcalendar/bootstrap/main.js') }}"></script>
+    <link rel="stylesheet" type="text/css"
+          href="{{ url_for('static', filename='Selectize/selectize.bootstrap4.css') }}">
+    <link rel="stylesheet" type="text/css" id="selectizeDark"
+          href="{{ url_for('static', filename='Selectize/selectize.dark.css') }}">
+    <script type="text/javascript"
+            src="{{ url_for('static', filename='Selectize/selectize.js') }}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            let calendarEl = document.getElementById('calendar');
+            let calendar = new FullCalendar.Calendar(calendarEl, {
+                    events: '/get_processor_by_date',
+                    plugins: ['dayGrid', 'timeGrid', 'list', 'bootstrap'],
+                    themeSystem: 'bootstrap',
+                    header: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,dayGridWeek,listDay'
+                    }
+                },
+            );
+            calendar.render();
+        });
+        function addSelectize() {
+            $('select').selectize({
+                duplicates: true,
+                persist: false,
+                plugins: ['drag_drop', 'remove_button', 'restore_on_backspace'],
+                create: function (input) {
+                    return {
+                        value: input,
+                        text: input
+                    }
+                }
+            });
+        }
+        function getProcessorUserMap() {
+            let proc = $('#processors');
+            let clientDir = $('#clientDirectory')
+            proc.html('' +
+                '<button class="btn btn-primary btn-block btn-lg" type="button" disabled>' +
+                '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                'Loading Live Processors...' +
+                '</button>');
+            $.post('/get_processor_by_user',
+                {
+                    title: '{{ title }}',
+                }).done(function (data) {
+                proc.html(data['items']);
+                clientDir.html(data['client_directory']);
+                addSelectize()
+                ownerSelectChange()
+            }).fail(function (jqXHR, textStatus) {
+                console.log("Request failed: " + textStatus);
+
+            }).always(function () {
+            });
+        }
+        function ownerSelectChange(){
+           $('[id^=ownerSelect]').on('change', function(e){
+               let selectedText = this.options[e.target.selectedIndex].text;
+               let procName = this.id.replace('ownerSelect', '')
+               changeProcessorOwner(procName, selectedText);
+           })
+        }
+        function changeProcessorOwner(processorName, newOwner) {
+            $.post('/processor_change_owner',
+                {
+                    title: '{{ title }}',
+                    processor_name: processorName,
+                    new_owner: newOwner
+                }).done(function (data) {
+
+            }).fail(function (jqXHR, textStatus) {
+                console.log("Request failed: " + textStatus);
+
+            }).always(function () {
+                window.location.reload()
+            });
+        }
+        $(document).ready(function () {
+            getProcessorUserMap();
+            addSelectize()
+        });
+    </script>
 {% endblock %}

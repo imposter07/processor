@@ -136,7 +136,40 @@ def get_processor_by_user():
     import datetime as dt
     processors = Processor.query.order_by(Processor.created_at)
     seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
-    processors = processors.filter(Processor.end_date > seven_days_ago.date())
+    if 'filter_dict' in request.form:
+        current_filters = json.loads(request.form['filter_dict'])
+        filter_types = [
+            ('username', User, 'username', Processor.user_id),
+            ('client', Client, 'name', ''),
+            ('product', Product, 'name', ''),
+            ('campaign', Campaign, 'name', Processor.campaign_id),
+            ('processor', Processor, 'name', Processor.name)]
+        live = [x for x in current_filters if 'live' in x.keys()]
+        if live and live[0]['live']:
+            processors = processors.filter(
+                Processor.end_date > seven_days_ago.date())
+        for filter_type in filter_types:
+            filt_name = filter_type[0]
+            db_model = filter_type[1]
+            db_attr = filter_type[2]
+            proc_rel = filter_type[3]
+            cur_filter = [x for x in current_filters if filt_name in x.keys()]
+            if cur_filter and cur_filter[0][filt_name]:
+                cur_list = cur_filter[0][filt_name]
+                user_list = [
+                    db_model.query.filter(
+                        getattr(db_model, db_attr) == x).first().id for x in
+                    cur_list]
+                if filt_name == 'client':
+                    processors = [
+                        x for x in processors if
+                        x.campaign.product.client_id in user_list]
+                elif filt_name == 'product':
+                    processors = [
+                        x for x in processors if
+                        x.campaign.product_id in user_list]
+                else:
+                    processors = processors.filter(proc_rel.in_(user_list))
     from collections import defaultdict
     groups = defaultdict(list)
     for obj in processors:
@@ -157,12 +190,14 @@ def get_processor_by_user():
             cu.live = 0
             cu.upcoming = 0
             cu.completed = 0
-            if p.start_date > dt.datetime.today().date():
+            if p.start_date and p.start_date > dt.datetime.today().date():
                 p.status = 'Upcoming'
-                cu.upcoming +=1
-            elif p.end_date < dt.datetime.today().date():
+                cu.upcoming += 1
+            elif p.end_date and p.end_date < dt.datetime.today().date():
                 p.status = 'Completed'
                 cu.completed += 1
+            elif not p.end_date or not p.start_date:
+                cu.status = 'Missing start/end date'
             else:
                 cu.live += 1
                 p.status = 'Live'

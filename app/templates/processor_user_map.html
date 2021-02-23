@@ -24,7 +24,7 @@
                             <div class="card-header form-inline">
                                 <div class="col">
                                     <a href="{{ processor.get_url() }}">
-                                        {{ processor.name }}
+                                        {{ processor.name }} - {{ processor.ppd }} Posts Per Day
                                     </a>
                                     <span class="badge badge-pill
                                         {% if processor_status == 'Live' %} badge-success

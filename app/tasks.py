@@ -1070,6 +1070,7 @@ def uploader_file_translation(uploader_file_name, object_level='Campaign',
     file_translation = {
         'Creator': os.path.join(base_create_path, 'creator_config.xlsx'),
         'uploader_creative_files': ''}
+    base_create_path = os.path.join(base_create_path, uploader_type_path)
     for name in ['Campaign', 'Adset', 'Ad', 'uploader_current_name']:
         prefix = ''
         if uploader_type == 'Adwords':
@@ -1329,7 +1330,8 @@ def set_object_relation_file(uploader_id, current_user_id,
         import uploader.upload.utils as utl
         os.chdir(adjust_path(cur_up.local_path))
         file_name = uploader_file_translation(
-            'uploader_full_relation', object_level=object_level)
+            'uploader_full_relation', object_level=object_level,
+            uploader_type=uploader_type)
         df = pd.read_excel(file_name)
         for rel in up_rel:
             if rel.relation_constant:
@@ -1352,6 +1354,15 @@ def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
                              duplication_type=None, uploader_type='Facebook'):
     import uploader.upload.creator as cre
     primary_column = get_primary_column(object_level, uploader_type)
+    if uploader_type == 'Facebook':
+        upload_create_path = 'fb'
+    elif uploader_type == 'Adwords':
+        upload_create_path = 'aw'
+    elif uploader_type == 'DCM':
+        upload_create_path = 'dcm'
+    else:
+        upload_create_path = 'fb'
+    base_create_path = '{}/{}/'.format('create', upload_create_path)
     if object_level == 'Campaign':
         if uploader_type == 'Facebook':
             upload_file = 'fb/campaign_upload.xlsx'
@@ -1363,18 +1374,20 @@ def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
             upload_file = 'fb/campaign_upload.xlsx'
         if create_type == 'Media Plan':
             col_file_name = [
-                'mediaplan.xlsx', '/create/campaign_name_creator.xlsx',
-                '/create/campaign_relation.xlsx']
+                'mediaplan.xlsx',
+                '/{}{}'.format(base_create_path, 'campaign_name_creator.xlsx'),
+                '/{}{}'.format(base_create_path, 'campaign_relation.xlsx')]
             col_new_file = [
-                'create/campaign_name_creator.xlsx', upload_file, upload_file]
+                '{}{}'.format(base_create_path, 'campaign_name_creator.xlsx'),
+                upload_file, upload_file]
             col_create_type = ['mediaplan', 'create', 'relation']
             col_column_name = [creator_column, primary_column, '']
             col_overwrite = [True, True, '']
             col_filter = [file_filter, '', '']
         else:
             col_file_name = [
-                '/create/campaign_name_creator.xlsx',
-                '/create/campaign_relation.xlsx']
+                '/{}{}'.format(base_create_path, 'campaign_name_creator.xlsx'),
+                '/{}{}'.format(base_create_path, 'campaign_relation.xlsx')]
             col_new_file = [upload_file, upload_file]
             col_create_type = ['create', 'relation']
             col_column_name = [primary_column, '']
@@ -1391,17 +1404,20 @@ def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
             upload_file = 'fb/adset_upload.xlsx'
         if create_type == 'Media Plan':
             col_file_name = [
-                'mediaplan.xlsx', '/create/adset_name_creator.xlsx',
-                '/create/adset_relation.xlsx']
+                'mediaplan.xlsx',
+                '/{}{}'.format(base_create_path, 'adset_name_creator.xlsx'),
+                '/{}{}'.format(base_create_path, 'adset_relation.xlsx')]
             col_new_file = [
-                'create/adset_name_creator.xlsx', upload_file, upload_file]
+                '{}{}'.format(base_create_path, 'adset_name_creator.xlsx'),
+                upload_file, upload_file]
             col_create_type = ['mediaplan', 'create', 'relation']
             col_column_name = [creator_column, primary_column, '']
             col_overwrite = [True, True, '']
             col_filter = [file_filter, '', '']
         else:
-            col_file_name = ['/create/adset_name_creator.xlsx',
-                             '/create/adset_relation.xlsx']
+            col_file_name = [
+                '/{}{}'.format(base_create_path, 'adset_name_creator.xlsx'),
+                '/{}{}'.format(base_create_path, 'adset_relation.xlsx')]
             col_new_file = [upload_file, upload_file]
             col_create_type = ['create', 'relation']
             col_column_name = [primary_column, '']
@@ -1422,10 +1438,12 @@ def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
             previous_upload_file = '/fb/adset_upload.xlsx'
         if create_type == 'Media Plan':
             col_file_name = [
-                'mediaplan.xlsx', '/create/ad_name_creator.xlsx',
-                '/create/ad_relation.xlsx']
+                'mediaplan.xlsx',
+                '/{}{}'.format(base_create_path, 'ad_name_creator.xlsx'),
+                '/{}{}'.format(base_create_path, 'ad_relation.xlsx')]
             col_new_file = [
-                'create/ad_name_creator.xlsx', upload_file, upload_file]
+                '{}{}'.format(base_create_path, 'ad_name_creator.xlsx'),
+                upload_file, upload_file]
             col_create_type = ['mediaplan', 'create', 'relation']
             col_column_name = [creator_column, primary_column, '']
             col_overwrite = [True, True, '']
@@ -1434,23 +1452,27 @@ def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
             campaign_primary_col = get_primary_column('Campaign', uploader_type)
             adset_primary_col = get_primary_column('Adset', uploader_type)
             if duplication_type == 'Custom':
-                dup_col_name = '{}::{}|{}::/create/ad_upload_filter.xlsx'.format(
-                    primary_column, campaign_primary_col, adset_primary_col)
+                dup_col_name = '{}::{}|{}::/{}ad_upload_filter.xlsx'.format(
+                    primary_column, campaign_primary_col, adset_primary_col,
+                    base_create_path)
             else:
                 dup_col_name = '{}::{}|{}'.format(
                     primary_column, campaign_primary_col, adset_primary_col)
             col_file_name = [previous_upload_file, previous_upload_file,
-                             '/create/ad_relation.xlsx']
+                             '/{}ad_relation.xlsx'.format(base_create_path)]
             col_new_file = [upload_file, upload_file, upload_file]
             col_create_type = ['create', 'duplicate', 'relation']
             col_column_name = [primary_column, dup_col_name, '']
             col_overwrite = [True, '', '']
             col_filter = ['', '', '']
             if create_type == 'Match Table':
-                col_file_name.insert(0, '/create/ad_match_table.xlsx')
+                col_file_name.insert(
+                    0, '/{}ad_match_table.xlsx'.format(base_create_path))
                 col_new_file.insert(
-                    0, '/create/ad_name_creator.xlsx|'
-                       '/create/ad_upload_filter.xlsx|/create/ad_relation.xlsx')
+                    0,
+                    '/{}ad_name_creator.xlsx|'.format(base_create_path),
+                    '/{}ad_upload_filter.xlsx|/{}ad_relation.xlsx'.format(
+                        base_create_path, base_create_path))
                 col_create_type.insert(0, 'match')
                 col_column_name.insert(0, '')
                 col_overwrite.insert(0, '')

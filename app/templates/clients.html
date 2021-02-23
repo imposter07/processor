@@ -122,7 +122,7 @@
                 }
             });
         }
-        function getProcessorUserMap() {
+        function getProcessorUserMap(filterDict, clickElem, oldHtml) {
             let proc = $('#processors');
             let clientDir = $('#clientDirectory')
             proc.html('' +
@@ -133,6 +133,7 @@
             $.post('/get_processor_by_user',
                 {
                     title: '{{ title }}',
+                    filter_dict: JSON.stringify(filterDict)
                 }).done(function (data) {
                 proc.html(data['items']);
                 clientDir.html(data['client_directory']);
@@ -142,6 +143,10 @@
                 console.log("Request failed: " + textStatus);
 
             }).always(function () {
+                if (oldHtml) {
+                    $(clickElem).prop("disabled", false);
+                    $(clickElem).html(oldHtml);
+                }
             });
         }
         function ownerSelectChange(){
@@ -165,6 +170,7 @@
                 console.log("Request failed: " + textStatus);
                 displayAlert('Owner change failed, please try again later.', 'danger')
             }).always(function () {
+
             });
         }
 
@@ -186,16 +192,13 @@
 
         function getFilters(colName, filterDict) {
             let newFilter = {};
-            newFilter[colName] = $('#' + colName + 'Select').selectize('data').map(
-                function (elem) {
-                    return elem.text
-                });
+            newFilter[colName] = $('#' + colName + 'Select')[0].selectize.items
             filterDict = filterDict.concat(newFilter)
             return filterDict
         }
 
         function addApplyFilterBtn(){
-            $('button[id^="applyFilter"]').click(function () {
+            $('button[id*="applyFilter"]').click(function () {
                 let dropdownButton = "#" + $(this)[0].id;
                 $(dropdownButton).prop("disabled", true);
                 let oldHtml = $(dropdownButton).html();
@@ -203,16 +206,21 @@
                     `<span class="spinner-grow spinner-grow-sm" role="status"
                       aria-hidden="true"></span> Loading...`
                   );
-                animateBar();
-                let filterDict = {'live': $('#liveProcessorsSwitch')[0].checked};
+                let filterDict = [{'live': $('#liveProcessorsSwitch')[0].checked}];
                 filterDict = getFilters('username', filterDict);
-
-                getAllCharts(filterDict, dropdownButton, oldHtml);
+                filterDict = getFilters('client', filterDict);
+                filterDict = getFilters('product', filterDict);
+                filterDict = getFilters('campaign', filterDict);
+                filterDict = getFilters('processor', filterDict);
+                getProcessorUserMap(filterDict, dropdownButton, oldHtml);
             });
         }
+
         $(document).ready(function () {
-            getProcessorUserMap();
+            let filterDict = [{'live': $('#liveProcessorsSwitch')[0].checked}];
+            getProcessorUserMap(filterDict);
             addSelectize()
+            addApplyFilterBtn()
         });
     </script>
 {% endblock %}

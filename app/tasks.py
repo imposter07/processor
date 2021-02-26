@@ -657,6 +657,7 @@ def write_dictionary(processor_id, current_user_id, new_data, vk):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
+        import processor.reporting.utils as utl
         import processor.reporting.vmcolumns as vmc
         import processor.reporting.dictionary as dct
         import processor.reporting.vendormatrix as vm
@@ -666,6 +667,17 @@ def write_dictionary(processor_id, current_user_id, new_data, vk):
         data_source = matrix.get_data_source(vk)
         dic = dct.Dict(data_source.p[vmc.filenamedict])
         df = pd.read_json(new_data)
+        if df.empty:
+            try:
+                os.remove(os.path.join(utl.dict_path,
+                                       data_source.p[vmc.filenamedict]))
+            except FileNotFoundError as e:
+                app.logger.warning('File not found error: {}'.format(e))
+            msg_text = ('{} processor dictionary: {} was deleted.'
+                        ''.format(cur_processor.name, vk))
+            processor_post_message(cur_processor, user_that_ran, msg_text)
+            _set_task_progress(100)
+            return True
         if 'index' in df.columns:
             df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
@@ -1141,12 +1153,21 @@ def get_current_uploader_obj_names(uploader_id, current_user_id, cur_path,
     return df
 
 
-def get_uploader_relation_values_from_position(rel_pos, df, vk, object_level):
+def get_uploader_relation_values_from_position(rel_pos, df, vk, object_level,
+                                               uploader_type='Facebook'):
     rel_pos = [int(x) for x in rel_pos]
-    col = get_primary_column(object_level)
+    col = get_primary_column(object_level, uploader_type=uploader_type)
     df = df.loc[df['impacted_column_name'] == vk]
-    cdf = pd.read_excel(uploader_file_translation(object_level))
+    cdf = pd.read_excel(uploader_file_translation(object_level,
+                                                  uploader_type=uploader_type))
     cdf = cdf[col].str.split('_', expand=True)
+    max_split = max(x for x in cdf.columns if isinstance(x, int))
+    if max(rel_pos) > max_split:
+        df = pd.DataFrame([
+            {'Result': 'RELATION VALUE {} IS GREATER THAN THE MAX {}.  '
+                       'CHANGE RELATION POSITIONS'.format(
+                            max(rel_pos), max_split)}])
+        return df
     new_values = list(itertools.product(*[cdf[x].dropna().unique().tolist()
                       for x in rel_pos]))
     new_values = ['|'.join(map(str, x)) for x in new_values]
@@ -1198,7 +1219,8 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
                 string_value=relation.position)
             if rel_pos and rel_pos != ['']:
                 df = get_uploader_relation_values_from_position(
-                    rel_pos=rel_pos, df=df, vk=vk, object_level=object_level)
+                    rel_pos=rel_pos, df=df, vk=vk, object_level=object_level,
+                    uploader_type=uploader_type)
             else:
                 df = pd.DataFrame([
                     {'Result': 'RELATION DOES NOT HAVE A POSITION SET ONE ' 
@@ -1290,7 +1312,8 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(cur_up.local_path))
         file_name = uploader_file_translation(
-            uploader_file_name=parameter, object_level=object_level)
+            uploader_file_name=parameter, object_level=object_level,
+            uploader_type=uploader_type)
         if mem_file:
             new_data.seek(0)
             with open(file_name, 'wb') as f:

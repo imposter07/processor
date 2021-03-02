@@ -1113,9 +1113,12 @@ def save_datasource():
     cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
     data = request.form.to_dict()
     df = pd.read_json(html.unescape(data['metrics_table']))
-    metric_dict = df.drop('index', axis=1).to_dict(orient='index')
-    metric_dict = {v['Metric Name']: [v['Metric Value']] for k, v in
-                   metric_dict.items()}
+    if 'index' in df.columns:
+        metric_dict = df.drop('index', axis=1).to_dict(orient='index')
+        metric_dict = {v['Metric Name']: [v['Metric Value']] for k, v in
+                       metric_dict.items()}
+    else:
+        metric_dict = {}
     ds_dict = {'original_vendor_key': datasource_name,
                'vendor_key': datasource_name,
                'active_metrics': json.dumps(metric_dict),

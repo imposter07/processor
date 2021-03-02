@@ -1001,7 +1001,7 @@
             '</button>');
         }
         function refreshButtons() {
-            $('input[id*="refresh_"], button[id*="refresh_"]').click(function () {
+            $('input[id*="refresh_"], button[id*="refresh_"]').unbind('click').click(function () {
                 let tableName = $(this)[0].id.split('refresh_')[1];
                 if (tableName === 'rate_card') {
                     var vendorKey = $('#' + tableName)[0].value;
@@ -1125,46 +1125,73 @@
         }
 
         function appendButtonRow() {
-            $('#rowZero').append(
-                '<div class="col">' +
-                '<div class="card">' +
-                '<h6 class="card-header"><small class="text-muted">Raw File</small></h6>' +
-                '<div class="btn-group btn-group-sm btn-block" role="group">' +
-                '<button id="_refresh_raw_data"' +
-                'class="btn btn-outline-success">' +
-                '<i class="fas fa-binoculars" href="#" role="button"></i>' +
-                'View' +
-                '</button>' +
-                '<button id="_refresh_download_raw_data"' +
-                'class="btn btn-outline-primary">' +
-                '<i class="fas fa-download" href="#" role="button"></i>' +
-                'Download' +
-                '</button>' +
-                '</div>' +
-                '</div>' +
-                '</div>' +
-                '<div class="col">' +
-                '<div class="card">' +
-                '<h6 class="card-header"><small class="text-muted">Dictionary</small></h6>' +
-                '<div class="btn-group btn-group-sm btn-block" role="group">' +
-                '<button id="_refresh_dictionary"' +
-                'class="btn btn-outline-success">' +
-                '<i class="fas fa-binoculars" href="#" role="button"></i>' +
-                'View' +
-                '</button>' +
-                '<button id="_refresh_dictionary_order"' +
-                'class="btn btn-outline-primary">' +
-                '<i class="fas fa-sort-amount-up-alt" href="#" role="button"></i>' +
-                'View Order' +
-                '</button>' +
-                '<button id="_refresh_delete_dict"' +
-                'class="btn btn-outline-danger">' +
-                '<i class="fas fa-trash" href="#" role="button"></i>' +
-                'Delete' +
-                '</button>' +
-                '</div>' +
-                '</div>'
-            )
+            let dataSourceName = $('#data_source_clean').val();
+            if (dataSourceName === 'Plan Net') {
+                $('#rowZero').append(
+                    '<div class="col">' +
+                    '<div class="card">' +
+                    '<h6 class="card-header"><small class="text-muted">Raw File</small></h6>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="col">' +
+                    '<div class="card">' +
+                    '<h6 class="card-header"><small class="text-muted">Dictionary</small></h6>' +
+                    '<div class="btn-group btn-group-sm btn-block" role="group">' +
+                    '<button id="_refresh_dictionary"' +
+                    'class="btn btn-outline-success">' +
+                    '<i class="fas fa-binoculars" href="#" role="button"></i>' +
+                    'View' +
+                    '</button>' +
+                    '<button id="_refresh_delete_dict"' +
+                    'class="btn btn-outline-danger">' +
+                    '<i class="fas fa-trash" href="#" role="button"></i>' +
+                    'Delete' +
+                    '</button>' +
+                    '</div>' +
+                    '</div>'
+                )
+            } else {
+                $('#rowZero').append(
+                    '<div class="col">' +
+                    '<div class="card">' +
+                    '<h6 class="card-header"><small class="text-muted">Raw File</small></h6>' +
+                    '<div class="btn-group btn-group-sm btn-block" role="group">' +
+                    '<button id="_refresh_raw_data"' +
+                    'class="btn btn-outline-success">' +
+                    '<i class="fas fa-binoculars" href="#" role="button"></i>' +
+                    'View' +
+                    '</button>' +
+                    '<button id="_refresh_download_raw_data"' +
+                    'class="btn btn-outline-primary">' +
+                    '<i class="fas fa-download" href="#" role="button"></i>' +
+                    'Download' +
+                    '</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="col">' +
+                    '<div class="card">' +
+                    '<h6 class="card-header"><small class="text-muted">Dictionary</small></h6>' +
+                    '<div class="btn-group btn-group-sm btn-block" role="group">' +
+                    '<button id="_refresh_dictionary"' +
+                    'class="btn btn-outline-success">' +
+                    '<i class="fas fa-binoculars" href="#" role="button"></i>' +
+                    'View' +
+                    '</button>' +
+                    '<button id="_refresh_dictionary_order"' +
+                    'class="btn btn-outline-primary">' +
+                    '<i class="fas fa-sort-amount-up-alt" href="#" role="button"></i>' +
+                    'View Order' +
+                    '</button>' +
+                    '<button id="_refresh_delete_dict"' +
+                    'class="btn btn-outline-danger">' +
+                    '<i class="fas fa-trash" href="#" role="button"></i>' +
+                    'Delete' +
+                    '</button>' +
+                    '</div>' +
+                    '</div>'
+                )
+            }
         }
 
         function appendRows() {
@@ -1202,7 +1229,6 @@
                     object_level: "{{ edit_name }}",
                 },
             }).done(function(data, status) {
-                console.log(data)
                 $('#base_form_id').html(data['datasource_form']);
                 appendRows();
                 appendButtonRow();

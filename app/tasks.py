@@ -1998,7 +1998,7 @@ def monthly_email_app_updates(current_user_id, text_body, header, tab=0):
     try:
         import datetime as dt
         new_posts = Post.query.filter(Post.timestamp >= datetime.today() -
-                                      dt.timedelta(days=28))
+                                      dt.timedelta(days=1))
         new_posts = new_posts.filter_by(user_id=3)
         new_posts = new_posts.filter_by(processor_id=None)
         new_posts = new_posts.filter_by(uploader_id=None)
@@ -3023,6 +3023,31 @@ def update_automatic_requests(processor_id, current_user_id):
                                    fix_type=fix_type,
                                    fix_description=fix_description,
                                    undefined=undefined)
+        fix_type = az.Analyze.raw_file_update_col
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis.data:
+            df = pd.DataFrame(analysis.data)
+            tdf = df[df['source'].str[:3] == 'API']
+            tdf = tdf[tdf['source'].str[:len('API_Rawfile')] == 'API_Rawfile']
+            tdf = tdf[tdf['update_tier'] == 'Greater Than One Week']
+            undefined = tdf['source'].tolist()
+            msg = ''
+            if len(tdf) > 0:
+                msg += ('The following raw files have not been '
+                        'updated for a week {}\n\n'.format(','.join(undefined)))
+            tdf = df[df['source'].str[:3] == 'API']
+            tdf = tdf[tdf['source'].str[:len('API_Rawfile')] != 'API_Rawfile']
+            tdf = tdf[tdf['update_tier'] != 'Today']
+            if len(tdf) > 0:
+                api_undefined = tdf['source'].tolist()
+                msg += ('The following API files did not update today: '
+                        ' {}\n'.format(','.join(api_undefined)))
+                undefined.extend(api_undefined)
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
         _set_task_progress(100)
         return True
     except:

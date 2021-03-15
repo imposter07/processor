@@ -860,6 +860,66 @@ def write_relational_config(processor_id, current_user_id, new_data,
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+def get_import_config_file(processor_id, current_user_id, vk):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        ic = vm.ImportConfig()
+        data_source = matrix.get_data_source(vk=vk)
+        f_lib = ic.set_config_file_lib(data_source.params[ic.config_file])
+        config_file = ic.load_file(data_source.params[ic.config_file], f_lib)
+        if vk.split('_')[1] == 'Adwords':
+            df = pd.DataFrame(config_file)
+        else:
+            df = pd.DataFrame({'values': config_file})
+        tables = [df]
+        _set_task_progress(100)
+        return tables
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def write_import_config_file(processor_id, current_user_id, new_data, vk):
+    try:
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
+        import processor.reporting.vendormatrix as vm
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        ic = vm.ImportConfig()
+        data_source = matrix.get_data_source(vk)
+        file_name = data_source.params[ic.config_file]
+        f_lib = ic.set_config_file_lib(file_name)
+        df = pd.read_json(new_data)
+        df = df.set_index('index')
+        df.index.name = None
+        config_file = df.to_dict()
+        if 'values' in config_file:
+            config_file = config_file['values']
+        print(config_file)
+        new_file = os.path.join(ic.file_path, file_name)
+        with open(new_file, 'w') as f:
+            f_lib.dump(config_file, f)
+        msg_text = ('{} processor config file: {} was updated.'
+                    ''.format(cur_processor.name, vk))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        os.chdir(cur_path)
+        get_processor_sources(processor_id, current_user_id)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+
+
 def full_run_processor(processor_id, current_user_id, processor_args=None):
     try:
         _set_task_progress(0)
@@ -3034,8 +3094,8 @@ def update_automatic_requests(processor_id, current_user_id):
             undefined = tdf['source'].tolist()
             msg = ''
             if len(tdf) > 0:
-                msg += ('The following raw files have not been '
-                        'updated for a week {}\n\n'.format(','.join(undefined)))
+                msg += ('The following raw files have not been updated for '
+                        'over a week: {}\n\n'.format(','.join(undefined)))
             tdf = df[df['source'].str[:3] == 'API']
             tdf = tdf[tdf['source'].str[:len('API_Rawfile')] != 'API_Rawfile']
             tdf = tdf[tdf['update_tier'] != 'Today']

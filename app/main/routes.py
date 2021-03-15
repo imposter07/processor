@@ -907,7 +907,8 @@ def post_table():
                  'rate_card': '.write_rate_card',
                  'edit_conversions': '.write_conversions',
                  'raw_data': '.write_raw_data',
-                 'Uploader': '.write_uploader_file'}
+                 'Uploader': '.write_uploader_file',
+                 'import_config': '.write_import_config_file'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData']:
         return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
@@ -939,7 +940,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'rate_card': '.get_rate_card',
                  'edit_conversions': '.get_processor_conversions',
                  'data_sources': '.get_processor_sources',
-                 'imports': '.get_processor_sources'}
+                 'imports': '.get_processor_sources',
+                 'import_config': '.get_import_config_file'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -1002,7 +1004,7 @@ def get_table():
                          )
     pd.set_option('display.max_colwidth', -1)
     df = df.reset_index()
-    if 'index' in df.columns:
+    if 'index' in df.columns and job_name != '.get_import_config_file':
         df = df[[x for x in df.columns if x != 'index'] + ['index']]
     cols = json.dumps(df.columns.tolist())
     for base_name in ['Relation', 'Uploader']:

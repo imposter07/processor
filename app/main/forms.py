@@ -120,15 +120,16 @@ class ProcessorForm(FlaskForm):
 
 
 class APIForm(FlaskForm):
+    vendor_key = StringField('Vendor Key', render_kw={'readonly': True})
     name = StringField('Name')
     key = SelectField('API Type', choices=[(x, x) for x in vmc.api_keys])
     account_id = StringField('Account ID')
     start_date = DateField('Start Date', format='%Y-%m-%d')
     account_filter = StringField('Filter')
     api_fields = StringField('API Fields')
+    refresh_import_config = SubmitField('Edit Config File')
     raw_file = FileField('Raw File')
     delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
-    vendor_key = StringField('Vendor Key', render_kw={'readonly': True})
 
 
 class ImportForm(FlaskForm):

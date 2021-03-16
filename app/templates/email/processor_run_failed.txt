@@ -1,0 +1,11 @@
+Dear {{ user.username }},
+
+The most recent processor run for the processor {{ processor_name }} failed.
+
+The exception captured in the log file is as follows:
+
+{{ exception_text }}
+
+Sincerely,
+
+Liquid App

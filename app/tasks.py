@@ -159,6 +159,37 @@ def copy_processor_local(file_path, copy_back=False):
         return file_path
 
 
+def processor_failed_email(processor_id, current_user_id, exception_text):
+    try:
+        user_that_ran = User.query.get(current_user_id)
+        cur_processor = Processor.query.get(processor_id)
+        from urllib.parse import quote
+        recipients = [user_that_ran]
+        exception_text = '{} - {}'.format(exception_text[0], exception_text[1])
+        title = '[Liquid App] Run Failed - Processor {}'.format(
+            cur_processor.name)
+        if user_that_ran.id != cur_processor.user.id:
+            recipients = [user_that_ran, cur_processor.user]
+        for user in recipients:
+            send_email(title,
+                       sender=app.config['ADMINS'][0],
+                       recipients=[user.email],
+                       text_body=render_template(
+                           'email/processor_run_failed.txt', user=user,
+                           processor_name=cur_processor.name,
+                           exception_text=exception_text),
+                       html_body=render_template(
+                           'email/processor_run_failed.html', user=user,
+                           processor_name=cur_processor.name,
+                           exception_text=exception_text),
+                       sync=True)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+
+
 def run_processor(processor_id, current_user_id, run_args):
     try:
         processor_to_run, user_that_ran = get_processor_and_user_from_id(
@@ -194,6 +225,7 @@ def run_processor(processor_id, current_user_id, run_args):
         user_that_ran = User.query.get(current_user_id)
         msg_text = ("{} run failed.".format(processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, msg_text)
+        processor_failed_email(processor_id, current_user_id, sys.exc_info())
         return False
 
 

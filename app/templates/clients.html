@@ -5,6 +5,15 @@
         <div id="alertPlaceholder"></div>
     </div>
     <h4>{{ _('Client Calendar') }}</h4>
+    <div class="form-group">
+        <select class="form-control" id="viewSelector">
+            {% for view_select in view_selector %}
+                <option {% if view_select['active'] == True %} selected{% endif %}
+                 value="{{ url_for(view_select['value']) }}">
+                    {{ view_select['view'] }}</option>
+            {% endfor %}
+        </select>
+    </div>
 {% endblock %}
 
 {% block vertical_navbar %}
@@ -91,7 +100,24 @@
           href="{{ url_for('static', filename='Selectize/selectize.dark.css') }}">
     <script type="text/javascript"
             src="{{ url_for('static', filename='Selectize/selectize.js') }}"></script>
-
+    <link rel="stylesheet" type="text/css"
+          href="https://cdn.datatables.net/v/bs4/jszip-2.5.0/dt-1.10.20/b-1.6.1/b-html5-1.6.1/sl-1.3.1/af-2.3.4/kt-2.5.1/datatables.min.css"/>
+    <script type="text/javascript"
+            src="https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.js"></script>
+    <script type="text/javascript"
+            src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
+    <script type="text/javascript"
+            src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>
+    <script type="text/javascript"
+            src="https://cdn.datatables.net/v/bs4/jszip-2.5.0/dt-1.10.20/b-1.6.1/b-html5-1.6.1/sl-1.3.1/af-2.3.4/kt-2.5.1/datatables.min.js"></script>
+    <script type="text/javascript"
+            src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js"></script>
+    <script type="text/javascript"
+            src="{{ url_for('static', filename='Editor/dataTable.js') }}"></script>
+    <link rel="stylesheet" type="text/css"
+          href="{{ url_for('static', filename='Editor/css/editor.dataTables.css') }}">
+    <script type="text/javascript"
+            src="{{ url_for('static', filename='Editor/js/dataTables.editor.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             let calendarEl = document.getElementById('calendar');
@@ -130,15 +156,25 @@
                 '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
                 'Loading Live Processors...' +
                 '</button>');
-            $.post('/get_processor_by_user',
+            let destUrl = ('{{ title }}' === 'Clients') ?
+                "/get_processor_by_user" : "/get_project_numbers";
+            $.post(destUrl,
                 {
                     title: '{{ title }}',
                     filter_dict: JSON.stringify(filterDict)
                 }).done(function (data) {
-                proc.html(data['items']);
-                clientDir.html(data['client_directory']);
-                addSelectize()
-                ownerSelectChange()
+                    if ('{{ title }}' === 'Clients') {
+                        proc.html(data['items']);
+                    }
+                    else {
+                        proc.html('<div id="projectNumberTableElem"></div>');
+                        createTable(data['items']['cols'], data['items']['data'],
+                                    'projectNumberTable', 'projectNumberTableElem')
+
+                    }
+                    clientDir.html(data['client_directory']);
+                    addSelectize()
+                    ownerSelectChange()
             }).fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);
 
@@ -217,7 +253,14 @@
         }
 
         $(document).ready(function () {
+            $('#viewSelector').on('change', function (e) {
+                window.location = this.selectize.getValue()
+            });
+        });
+
+        $(document).ready(function () {
             let filterDict = [{'live': $('#liveProcessorsSwitch')[0].checked}];
+
             getProcessorUserMap(filterDict);
             addSelectize()
             addApplyFilterBtn()

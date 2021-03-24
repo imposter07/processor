@@ -1,3 +1,4 @@
+"""
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, \
     TextAreaField
@@ -66,3 +67,4 @@ class ResetPasswordForm(FlaskForm):
     password2 = PasswordField(_l('Repeat Password'),
                               validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField(_l('Request Password Reset'))
+"""

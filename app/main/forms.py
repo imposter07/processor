@@ -5,7 +5,7 @@ from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
     DecimalField, SelectMultipleField, MultipleFileField
 from wtforms.fields.html5 import DateField, TimeField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
-from wtforms.validators import ValidationError, DataRequired, Length
+from wtforms.validators import ValidationError, DataRequired, Length, Regexp
 from flask_babel import _, lazy_gettext as _l
 from app.models import User, Processor, Client, Product, Campaign, Uploader,\
     RateCard, ProcessorDatasources, ProcessorAnalysis
@@ -121,7 +121,7 @@ class ProcessorForm(FlaskForm):
 
 class APIForm(FlaskForm):
     vendor_key = StringField('Vendor Key', render_kw={'readonly': True})
-    name = StringField('Name')
+    name = StringField('Name', validators=[Regexp(r'\W+')])
     key = SelectField('API Type', choices=[(x, x) for x in vmc.api_keys])
     account_id = StringField('Account ID')
     start_date = DateField('Start Date', format='%Y-%m-%d')

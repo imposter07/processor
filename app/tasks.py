@@ -2310,7 +2310,8 @@ def build_processor_from_request(processor_id, current_user_id):
             progress['create'] = 'Success!'
         _set_task_progress(25)
         import_names = (cur_processor.campaign.name.
-                        replace(' ', '').replace('_', '').replace('|', ''))
+                        replace(' ', '').replace('_', '').replace('|', '').
+                        replace(':', '').replace('.', ''))
         proc_dict = [
             x.get_dict_for_processor(import_names, cur_processor.start_date)
             for x in cur_processor.accounts]
@@ -3342,3 +3343,24 @@ def get_kpis_for_processor(processor_id, current_user_id):
             'Unhandled exception - Processor {} User {}'.format(
                 processor_id, current_user_id), exc_info=sys.exc_info())
         return [], []
+
+
+def get_project_numbers(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        import processor.reporting.gsapi as gsapi
+        import processor.reporting.utils as utl
+        os.chdir('processor')
+        api = gsapi.GsApi()
+        api.input_config('gsapi.json')
+        df = api.get_data()
+        df = utl.first_last_adj(df, 3, 0)
+        df = df.rename_axis(None, axis=1).rename_axis(
+            'index', axis=0).reset_index(drop=True)
+        df = df.sort_index(ascending=False)
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        return pd.DataFrame()

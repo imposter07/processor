@@ -130,6 +130,43 @@ def get_live_processors():
                     'has_prev': processors.has_prev})
 
 
+def parse_filter_dict_from_clients(processors, seven_days_ago):
+    current_filters = json.loads(request.form['filter_dict'])
+    filter_types = [
+        ('username', User, 'username', Processor.user_id),
+        ('client', Client, 'name', ''),
+        ('product', Product, 'name', ''),
+        ('campaign', Campaign, 'name', Processor.campaign_id),
+        ('processor', Processor, 'name', Processor.name)]
+    live = [x for x in current_filters if 'live' in x.keys()]
+    if live and live[0]['live']:
+        processors = processors.filter(
+            Processor.end_date > seven_days_ago.date())
+    for filter_type in filter_types:
+        filt_name = filter_type[0]
+        db_model = filter_type[1]
+        db_attr = filter_type[2]
+        proc_rel = filter_type[3]
+        cur_filter = [x for x in current_filters if filt_name in x.keys()]
+        if cur_filter and cur_filter[0][filt_name]:
+            cur_list = cur_filter[0][filt_name]
+            user_list = [
+                db_model.query.filter(
+                    getattr(db_model, db_attr) == x).first().id for x in
+                cur_list]
+            if filt_name == 'client':
+                processors = [
+                    x for x in processors if
+                    x.campaign.product.client_id in user_list]
+            elif filt_name == 'product':
+                processors = [
+                    x for x in processors if
+                    x.campaign.product_id in user_list]
+            else:
+                processors = processors.filter(proc_rel.in_(user_list))
+    return processors
+
+
 @bp.route('/get_processor_by_user', methods=['GET', 'POST'])
 @login_required
 def get_processor_by_user():
@@ -137,39 +174,7 @@ def get_processor_by_user():
     processors = Processor.query.order_by(Processor.created_at)
     seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
     if 'filter_dict' in request.form:
-        current_filters = json.loads(request.form['filter_dict'])
-        filter_types = [
-            ('username', User, 'username', Processor.user_id),
-            ('client', Client, 'name', ''),
-            ('product', Product, 'name', ''),
-            ('campaign', Campaign, 'name', Processor.campaign_id),
-            ('processor', Processor, 'name', Processor.name)]
-        live = [x for x in current_filters if 'live' in x.keys()]
-        if live and live[0]['live']:
-            processors = processors.filter(
-                Processor.end_date > seven_days_ago.date())
-        for filter_type in filter_types:
-            filt_name = filter_type[0]
-            db_model = filter_type[1]
-            db_attr = filter_type[2]
-            proc_rel = filter_type[3]
-            cur_filter = [x for x in current_filters if filt_name in x.keys()]
-            if cur_filter and cur_filter[0][filt_name]:
-                cur_list = cur_filter[0][filt_name]
-                user_list = [
-                    db_model.query.filter(
-                        getattr(db_model, db_attr) == x).first().id for x in
-                    cur_list]
-                if filt_name == 'client':
-                    processors = [
-                        x for x in processors if
-                        x.campaign.product.client_id in user_list]
-                elif filt_name == 'product':
-                    processors = [
-                        x for x in processors if
-                        x.campaign.product_id in user_list]
-                else:
-                    processors = processors.filter(proc_rel.in_(user_list))
+        processors = parse_filter_dict_from_clients(processors, seven_days_ago)
     from collections import defaultdict
     groups = defaultdict(list)
     for obj in processors:
@@ -225,6 +230,42 @@ def get_processor_by_user():
                     'client_directory': clients_html})
 
 
+@bp.route('/get_project_numbers', methods=['GET', 'POST'])
+@login_required
+def get_project_numbers():
+    import datetime as dt
+    processors = Processor.query.order_by(Processor.created_at)
+    seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
+    if 'filter_dict' in request.form:
+        processors = parse_filter_dict_from_clients(processors, seven_days_ago)
+    cur_processor = Processor.query.get(23)
+    task = cur_processor.launch_task(
+        '.get_project_numbers', _('Getting project numbers.'),
+        running_user=current_user.id)
+    db.session.commit()
+    job = task.wait_and_get_job(loops=20)
+    df = job.result[0]
+    data = df_to_html(df, 'projectNumberTable')
+    new_dict = {}
+    for x in processors:
+        client = x.campaign.product.client
+        product = x.campaign.product
+        campaign = x.campaign
+        if client not in new_dict:
+            new_dict[client] = {}
+        if product not in new_dict[client]:
+            new_dict[client][product] = {}
+        if campaign not in new_dict[client][product]:
+            new_dict[client][product][campaign] = []
+        new_dict[client][product][campaign].append(x)
+    new_dict = {key: new_dict[key] for
+                key in sorted(new_dict.keys(), key=lambda x: x.name)}
+    clients_html = render_template('_client_directory.html',
+                                   client_dict=new_dict)
+    return jsonify({'items': data['data'],
+                    'client_directory': clients_html})
+
+
 @bp.route('/processor_change_owner', methods=['GET', 'POST'])
 @login_required
 def processor_change_owner():
@@ -246,6 +287,17 @@ def processor_change_owner():
     return jsonify({'data': 'success', 'message': msg, 'level': lvl})
 
 
+def get_client_view_selector(current_view='Clients'):
+    view_selector = [{'view': 'Clients', 'active': False,
+                      'value': 'main.clients'},
+                     {'view': 'Project Numbers', 'active': False,
+                      'value': 'main.project_numbers'}]
+    for v in view_selector:
+        if v['view'] == current_view:
+            v['active'] = True
+    return view_selector
+
+
 @bp.route('/clients')
 @login_required
 def clients():
@@ -254,12 +306,32 @@ def clients():
     current_products = Product.query.order_by(Product.name).all()
     current_campaigns = Campaign.query.order_by(Campaign.name).all()
     current_processors = Processor.query.order_by(Processor.name).all()
+    view_selector = get_client_view_selector('Clients')
     return render_template('clients.html', title=_('Clients'),
                            clients=current_clients,
                            current_users=current_users,
                            current_products=current_products,
                            current_campaigns=current_campaigns,
-                           current_processors=current_processors)
+                           current_processors=current_processors,
+                           view_selector=view_selector)
+
+
+@bp.route('/project_numbers')
+@login_required
+def project_numbers():
+    current_clients = Client.query.order_by(Client.name).all()
+    current_users = User.query.order_by(User.username).all()
+    current_products = Product.query.order_by(Product.name).all()
+    current_campaigns = Campaign.query.order_by(Campaign.name).all()
+    current_processors = Processor.query.order_by(Processor.name).all()
+    view_selector = get_client_view_selector('Project Numbers')
+    return render_template('clients.html', title=_('Project Numbers'),
+                           clients=current_clients,
+                           current_users=current_users,
+                           current_products=current_products,
+                           current_campaigns=current_campaigns,
+                           current_processors=current_processors,
+                           view_selector=view_selector)
 
 
 @bp.route('/user/<username>')

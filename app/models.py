@@ -77,6 +77,13 @@ processor_followers = db.Table(
 )
 
 
+project_number_processor = db.Table(
+    'project_number_processor',
+    db.Column('project_id', db.Integer, db.ForeignKey('project.id')),
+    db.Column('processor_id', db.Integer, db.ForeignKey('processor.id'))
+)
+
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
@@ -453,6 +460,12 @@ class Processor(db.Model):
                                          backref='processor', lazy='dynamic')
     dashboard = db.relationship(
         'Dashboard', backref='processor', lazy='dynamic')
+    projects = db.relationship(
+        'Projects', secondary=project_number_processor,
+        primaryjoin=(project_number_processor.c.processor_id == id),
+        secondaryjoin="project_number_processor.c.project_id == Project.id",
+        backref=db.backref('project_number_processor', lazy='dynamic'),
+        lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -1026,3 +1039,26 @@ class DashboardFilter(db.Model):
         if val:
             val = ProcessorDatasources.convert_string_to_list(val)
         return val
+
+
+class Project(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_number = db.Column(db.Text)
+    initial_project_number = db.Column(db.Text)
+    client_id = db.Column(db.Integer, db.ForeignKey('client.id'))
+    project_name = db.Column(db.Text)
+    media = db.Column(db.Boolean)
+    creative = db.Column(db.Boolean)
+    date_opened = db.Column(db.Date)
+    flight_start_date = db.Column(db.Date)
+    flight_end_date = db.Column(db.Date)
+    exhibit = db.Column(db.Text)
+    sow_received = db.Column(db.Text)
+    billing_dates = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    processor_associated = db.relationship(
+        'Processor', secondary=project_number_processor,
+        primaryjoin=(project_number_processor.c.project_id == id),
+        secondaryjoin="project_number_processor.c.processor_id == Processor.id",
+        backref=db.backref('project_number_processor', lazy='dynamic'),
+        lazy='dynamic')

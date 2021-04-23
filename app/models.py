@@ -1062,3 +1062,8 @@ class Project(db.Model):
         secondaryjoin="project_number_processor.c.processor_id == Processor.id",
         backref=db.backref('project_number_processor', lazy='dynamic'),
         lazy='dynamic')
+
+
+class ProjectNumberMax(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    max_number = db.Column(db.Integer)

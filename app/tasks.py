@@ -15,7 +15,7 @@ from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
-    ProcessorAnalysis, Project, ProjectNumberMax, Client
+    ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign
 
 app = create_app()
 app.app_context().push()
@@ -3395,7 +3395,20 @@ def get_project_numbers(processor_id, current_user_id):
                 billing_dates=pn['Billings + date(s)'], notes=pn['NOTES'])
             db.session.add(new_project)
             db.commit()
-
+            form_product = Product(
+                name='None',
+                client_id=cur_client.id).check_and_add()
+            form_campaign = Campaign(
+                name=pn['Project'],
+                product_id=form_product.id).check_and_add()
+            description = ('Automatically generated from '
+                           'project number: {}').format(pn['#'])
+            new_processor = Processor(
+                name=pn['Project'], description=description,
+                user_id=4, created_at=datetime.utcnow(),
+                start_date=sd, end_date=ed, campaign_id=form_campaign.id)
+            db.session.add(new_processor)
+            db.session.commit()
         _set_task_progress(100)
         return [df]
     except:

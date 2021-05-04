@@ -20,5 +20,5 @@ xlrd==1.2.0
 werkzeug==0.15.5
 pandas==0.24.2
 Numpy==1.16.4
-seaborn==0.10.0
+seaborn==0.11.1
 git+https://github.com/jamezzz5/processor.git

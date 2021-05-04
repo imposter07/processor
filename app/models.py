@@ -461,7 +461,7 @@ class Processor(db.Model):
     dashboard = db.relationship(
         'Dashboard', backref='processor', lazy='dynamic')
     projects = db.relationship(
-        'Projects', secondary=project_number_processor,
+        'Project', secondary=project_number_processor,
         primaryjoin=(project_number_processor.c.processor_id == id),
         secondaryjoin="project_number_processor.c.project_id == Project.id",
         backref=db.backref('project_number_processor', lazy='dynamic'),

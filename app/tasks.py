@@ -3346,13 +3346,16 @@ def get_kpis_for_processor(processor_id, current_user_id):
 
 
 def parse_date_from_project_number(cur_string, date_opened):
-    sd = cur_string.strip().split('/')
-    if len(sd) > 2:
-        cur_year = int(sd[2])
-    else:
-        cur_year = date_opened.year
-    sd = datetime(cur_year, int(sd[0]), int(sd[1]))
-    return sd
+    try:
+        sd = cur_string.strip().split('/')
+        if len(sd) > 2:
+            cur_year = int(sd[2])
+        else:
+            cur_year = date_opened.year
+        sd = datetime(cur_year, int(sd[0]), int(sd[1]))
+        return sd
+    except:
+        return None
 
 
 def get_project_numbers(processor_id, current_user_id):
@@ -3369,46 +3372,62 @@ def get_project_numbers(processor_id, current_user_id):
             'index', axis=0).reset_index(drop=True)
         df = df.sort_index(ascending=False)
         pn_max = ProjectNumberMax.query.get(1)
-        ndf = df[(df.index > pn_max.max_number) & (~df['Client'].isna())]
+        ndf = df[(df.index >= pn_max.max_number) & (~df['Client'].isna())]
         for pn in ndf.to_dict(orient='records'):
-            cur_client = Client.query.filter_by(name=pn['Client']).first()
-            if not cur_client:
-                cur_client = Client(name=pn['Client'])
-                db.session.add(cur_client)
+            c_project = Project.query.filter_by(project_number=pn['#']).first()
+            if not c_project:
+                cur_client = Client.query.filter_by(name=pn['Client']).first()
+                if not cur_client:
+                    cur_client = Client(name=pn['Client'])
+                    db.session.add(cur_client)
+                    db.session.commit()
+                if pn['Date Opened']:
+                    try:
+                        date_opened = datetime.strptime(
+                            pn['Date Opened'], '%m/%d/%y')
+                    except:
+                        date_opened = None
+                else:
+                    date_opened = None
+                if pn['FLIGHT DATES']:
+                    flight = pn['FLIGHT DATES'].split(
+                        '-' if '-' in pn['FLIGHT DATES'] else 'to')
+                    sd = parse_date_from_project_number(flight[0], date_opened)
+                    if len(flight) > 1:
+                        ed = parse_date_from_project_number(flight[1],
+                                                            date_opened)
+                    else:
+                        ed = sd
+                else:
+                    sd = ed = None
+                new_project = Project(
+                    project_number=pn['#'],
+                    initial_project_number=pn['initial PN'],
+                    client_id=cur_client.id, project_name=pn['Project'],
+                    media=True if pn['Media'] else False,
+                    creative=True if pn['Creative'] else False,
+                    date_opened=date_opened, flight_start_date=sd,
+                    flight_end_date=ed, exhibit=pn['Exhibit #'],
+                    sow_received=pn["SOW rec'd"],
+                    billing_dates=pn['Billings + date(s)'], notes=pn['NOTES'])
+                db.session.add(new_project)
                 db.session.commit()
-            date_opened = datetime.strptime(pn['Date Opened'], '%m/%d/%y')
-            flight = pn['FLIGHT DATES'].split(
-                '-' if '-' in pn['FLIGHT DATES'] else 'to')
-            sd = parse_date_from_project_number(flight[0], date_opened)
-            if len(flight) > 0:
-                ed = parse_date_from_project_number(flight[1], date_opened)
-            else:
-                ed = sd
-            new_project = Project(
-                project_number=pn['#'], initial_project_number=pn['initial PN'],
-                client_id=cur_client.id, project_name=pn['Project'],
-                media=True if pn['Media'] else False,
-                creative=True if pn['Creative'] else False,
-                date_opened=date_opened, flight_start_date=sd,
-                flight_end_date=ed, exhibit=pn['Exhibit #'],
-                sow_received=pn["SOW rec'd"],
-                billing_dates=pn['Billings + date(s)'], notes=pn['NOTES'])
-            db.session.add(new_project)
-            db.commit()
-            form_product = Product(
-                name='None',
-                client_id=cur_client.id).check_and_add()
-            form_campaign = Campaign(
-                name=pn['Project'],
-                product_id=form_product.id).check_and_add()
-            description = ('Automatically generated from '
-                           'project number: {}').format(pn['#'])
-            new_processor = Processor(
-                name=pn['Project'], description=description,
-                user_id=4, created_at=datetime.utcnow(),
-                start_date=sd, end_date=ed, campaign_id=form_campaign.id)
-            db.session.add(new_processor)
-            db.session.commit()
+                form_product = Product(
+                    name='None',
+                    client_id=cur_client.id).check_and_add()
+                form_campaign = Campaign(
+                    name=pn['Project'],
+                    product_id=form_product.id).check_and_add()
+                description = ('Automatically generated from '
+                               'project number: {}').format(pn['#'])
+                new_processor = Processor(
+                    name=pn['Project'], description=description,
+                    user_id=4, created_at=datetime.utcnow(),
+                    start_date=sd, end_date=ed, campaign_id=form_campaign.id)
+                db.session.add(new_processor)
+                db.session.commit()
+        pn_max.max_number = max(ndf.index)
+        db.session.commit()
         _set_task_progress(100)
         return [df]
     except:

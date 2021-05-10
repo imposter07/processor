@@ -1,5 +1,6 @@
 <div class="accordion" id="accordionClient">
     {% for processor_list in processors %}
+        {% set outer_loop = loop %}
         <div class="card">
             <button class="btn {% if  processor_list[0].user.data%}
             btn-secondary{% else %}btn-danger{% endif %} btn-block btn-secondary collapsed text-left"
@@ -19,9 +20,16 @@
                  aria-labelledby="heading{{ loop.index }}"
                  data-parent="#accordionClient">
                 <div class="card-body">
+                    <div class="accordion" id="accordionProcessor">
                     {% for processor in processor_list %}
                         <div class="card">
-                            <div class="card-header form-inline">
+                            <div class="card-header form-inline collapsed"
+                                 id="heading{{ loop.index }}"
+                                 type="button"
+                                 data-toggle="collapse"
+                                 data-target="#collapseProcessor{{ loop.index }}_{{ outer_loop.index }}"
+                                 aria-expanded="false"
+                                 aria-controls="collapseProcessor{{ loop.index }}_{{ outer_loop.index }}">
                                 <div class="col">
                                     <a href="{{ processor.get_url() }}">
                                         {{ processor.name }} - {{ processor.ppd }} Posts Per Day
@@ -30,15 +38,6 @@
                                         {% if processor_status == 'Live' %} badge-success
                                         {% elif processor_status == 'Completed' %} badge-secondary
                                         {% else %} badge-info{% endif %}">{{ processor.status }}</span>
-                                </div>
-                                <div class="col">
-                                    <select id="ownerSelect{{ processor.name }}"
-                                            class="">
-                                        <option value="">Change Owner...</option>
-                                        {% for user_opt in current_users %}
-                                            <option value="{{ user_opt.username }}">{{ user_opt.username }}</option>
-                                        {% endfor %}
-                                    </select>
                                 </div>
                                 <div class="col">
                                     <div class="btn-group"
@@ -70,7 +69,29 @@
                                 </div>
                             </div>
                         </div>
+                        <div id="collapseProcessor{{ loop.index }}_{{ outer_loop.index }}" class="collapse"
+                             aria-labelledby="heading{{ loop.index }}_{{ outer_loop.index }}"
+                             data-parent="#accordionProcessor">
+                            <div class="card-body">
+                                <select id="ownerSelect{{ processor.name }}"
+                                        class="">
+                                    <option value="">Change Owner...</option>
+                                    {% for user_opt in current_users %}
+                                        <option value="{{ user_opt.username }}">{{ user_opt.username }}</option>
+                                    {% endfor %}
+                                </select>
+                                <select id="projectSelect{{ processor.name }}"  multiple=""
+                                        class="">
+                                    <option value="">Project Numbers</option>
+                                    {% for project in project_numbers %}
+                                        <option value="{{ project.project_number }}_{{ project.project_name }}">
+                                            {{ project.projcect_number }} - {{ project.project_name }}</option>
+                                    {% endfor %}
+                                </select>
+                        </div>
+                        </div>
                     {% endfor %}
+                </div>
                 </div>
             </div>
         </div>

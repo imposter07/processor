@@ -23,7 +23,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
-    UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis
+    UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -207,9 +207,11 @@ def get_processor_by_user():
                 cu.live += 1
                 p.status = 'Live'
     current_users = User.query.order_by(User.username).all()
+    projects = Project.query.order_by(Project.project_name).all()
     processor_html = render_template('processor_user_map.html',
                                      processors=new_list,
-                                     current_users=current_users)
+                                     current_users=current_users,
+                                     project_numbers=projects)
     new_dict = {}
     for x in processors:
         client = x.campaign.product.client

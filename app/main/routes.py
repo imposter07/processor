@@ -208,10 +208,12 @@ def get_processor_by_user():
                 p.status = 'Live'
     current_users = User.query.order_by(User.username).all()
     projects = Project.query.order_by(Project.project_name).all()
+    print('getting')
     processor_html = render_template('processor_user_map.html',
                                      processors=new_list,
                                      current_users=current_users,
                                      project_numbers=projects)
+    print('got')
     new_dict = {}
     for x in processors:
         client = x.campaign.product.client
@@ -2981,3 +2983,36 @@ def save_dashboard():
     set_dashboard_filters_in_db(dash.id, object_form['static_filters'])
     msg = 'The dashboard {} has been saved!'.format(dash.name)
     return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
+
+
+@bp.route('/delete_processor', methods=['GET', 'POST'])
+@login_required
+def delete_processor(processor_name):
+    print('delete: {}'.format(processor_name))
+    return jsonify({'data': 'deleted'})
+
+
+@bp.route('/processor_change_project_number', methods=['GET', 'POST'])
+@login_required
+def processor_change_project_number():
+    processor_name = request.form['processor_name']
+    p_numbers = request.form['project_numbers']
+    cur_obj = Processor.query.filter_by(name=processor_name).first_or_404()
+    print('project_numbers: {}'.format(p_numbers))
+    """
+    new_user = User.query.filter_by(username=new_owner).first_or_404()
+    cur_obj.user_id = new_user.id
+
+    msg = 'You have successfully assigned {} as the owner of {}'.format(
+        new_user.username, cur_obj.name)
+    post = Post(body=msg, author=current_user,
+                processor_id=cur_obj.id)
+    db.session.add(post)
+    cur_obj.launch_task('.processor_assignment_email', _(msg),
+                        current_user.id)
+    db.session.commit()
+    """
+    msg = 'test'
+    lvl = 'success'
+    msg = '<strong>{}</strong>, {}'.format(current_user.username, msg)
+    return jsonify({'data': 'success', 'message': msg, 'level': lvl})

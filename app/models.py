@@ -549,6 +549,9 @@ class Processor(db.Model):
     def get_url(self):
         return url_for('main.processor_page', processor_name=self.name)
 
+    def get_project_numbers(self):
+        return [x.project_number for x in self.projects]
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)

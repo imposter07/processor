@@ -73,21 +73,56 @@
                              aria-labelledby="heading{{ loop.index }}_{{ outer_loop.index }}"
                              data-parent="#accordionProcessor">
                             <div class="card-body">
-                                <select id="ownerSelect{{ processor.name }}"
-                                        class="">
-                                    <option value="">Change Owner...</option>
-                                    {% for user_opt in current_users %}
-                                        <option value="{{ user_opt.username }}">{{ user_opt.username }}</option>
-                                    {% endfor %}
-                                </select>
-                                <select id="projectSelect{{ processor.name }}"  multiple=""
-                                        class="">
-                                    <option value="">Project Numbers</option>
-                                    {% for project in project_numbers %}
-                                        <option value="{{ project.project_number }}_{{ project.project_name }}">
-                                            {{ project.projcect_number }} - {{ project.project_name }}</option>
-                                    {% endfor %}
-                                </select>
+                                <div class="row">
+                                    <div class="col">
+                                        <select id="ownerSelect{{ processor.name }}"
+                                                class="">
+                                            <option value="">Change Owner...
+                                            </option>
+                                            {% for user_opt in current_users %}
+                                                <option value="{{ user_opt.username }}">{{ user_opt.username }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <select id="projectSelect{{ processor.name }}"
+                                                multiple=""
+                                                class="">
+                                            <option value="">Project Numbers
+                                            </option>
+                                            {% set pn = processor.get_project_numbers() %}
+                                            {% for project in project_numbers %}
+                                                <option value="{{ project.project_number }}_{{ project.project_name }}"
+                                                        {% if pn and project.project_number in pn %}
+                                                        selected="selected"{% endif %}>
+                                                    {{ project.project_number|string }}-{{ project.project_name|string }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col">
+                                        <a href="{{ url_for('main.create_processor') }}">
+                                            <button class="btn btn-outline-success btn-block text-left"
+                                                    type="button"
+                                                    href="{{ url_for('main.create_processor') }}">
+                                                <i class="fas fa-plus-circle"
+                                                   role="button"></i>
+                                                {{ _('Create Processor') }}
+                                            </button>
+                                        </a>
+                                        <a href="{{ url_for('main.delete_processor', processor_name=processor.name) }}">
+                                            <button class="btn btn-outline-danger btn-block text-left"
+                                                    type="button"
+                                                    href="{{ url_for('main.delete_processor', processor_name=processor.name) }}">
+                                                <i class="fas fa-times-circle"
+                                                   role="button"></i>
+                                                {{ _('Delete Processor') }}
+                                            </button>
+                                        </a><br>
+                                    </div>
+                                </div>
+                                {% with post = processor.get_last_post() %}
+                                    {% if post %}
+                                        {% include '_post.html' %}
+                                    {% endif %}
+                                {% endwith %}
                         </div>
                         </div>
                     {% endfor %}
@@ -95,6 +130,5 @@
                 </div>
             </div>
         </div>
-
     {% endfor %}
 </div>

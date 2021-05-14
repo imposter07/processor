@@ -3426,6 +3426,8 @@ def get_project_numbers(processor_id, current_user_id):
                     start_date=sd, end_date=ed, campaign_id=form_campaign.id)
                 db.session.add(new_processor)
                 db.session.commit()
+                new_processor.projects.append(new_project)
+                db.session.commit()
         pn_max.max_number = max(ndf.index)
         db.session.commit()
         _set_task_progress(100)

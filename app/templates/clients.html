@@ -210,6 +210,32 @@
             });
         }
 
+
+        function projectNumberSelectChange() {
+            $('[id^=projectSelect]').on('change', function (e) {
+                let selectedText = this.options[e.target.selectedIndex].text;
+                let procName = this.id.replace('ownerSelect', '')
+                changeProcessorProjectNumber(procName, selectedText);
+            })
+        }
+
+        function changeProcessorProjectNumber(processorName, projectNumbers) {
+            $.post('/processor_change_project_number',
+                {
+                    title: '{{ title }}',
+                    processor_name: processorName,
+                    project_numbers: projectNumbers
+                }).done(function (data) {
+                displayAlert(data['message'], data['level'])
+
+            }).fail(function (jqXHR, textStatus) {
+                console.log("Request failed: " + textStatus);
+                displayAlert('Could not assign project number.', 'danger')
+            }).always(function () {
+
+            });
+        }
+
         function displayAlert(message, level) {
             let alertPlaceholderId = '#alertPlaceholder'
             if ($(alertPlaceholderId).length === 0) {
@@ -264,6 +290,7 @@
             getProcessorUserMap(filterDict);
             addSelectize()
             addApplyFilterBtn()
+            projectNumberSelectChange()
         });
     </script>
 {% endblock %}

@@ -85,7 +85,11 @@ def get_processor_and_user_from_id(processor_id, current_user_id):
 def processor_post_message(proc, usr, text, run_complete=False,
                            request_id=False, object_name='Processor'):
     try:
-        msg = Message(author=usr, recipient=usr, body=text)
+        if len(text) > 139:
+            msg_body = text[:139]
+        else:
+            msg_body = text
+        msg = Message(author=usr, recipient=usr, body=msg_body)
         db.session.add(msg)
         usr.add_notification('unread_message_count', usr.new_messages())
         if object_name == 'Uploader':

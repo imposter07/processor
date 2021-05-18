@@ -2506,7 +2506,10 @@ def duplicate_processor_in_db(processor_id, current_user_id, form_data):
     try:
         cur_processor = Processor.query.get(processor_id)
         proc_dict = cur_processor.to_dict()
-        new_processor = Processor()
+        if 'old_proc' in form_data:
+            new_processor = form_data['old_proc']
+        else:
+            new_processor = Processor()
         for k, v in proc_dict.items():
             new_processor.__setattr__(k, v)
         new_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
@@ -2517,7 +2520,8 @@ def duplicate_processor_in_db(processor_id, current_user_id, form_data):
         new_processor.name = form_data['new_name']
         new_processor.start_date = form_data['new_start_date']
         new_processor.end_date = form_data['new_end_date']
-        db.session.add(new_processor)
+        if 'old_proc' in form_data:
+            db.session.add(new_processor)
         db.session.commit()
         return new_processor.id
     except:
@@ -3440,3 +3444,25 @@ def get_project_numbers(processor_id, current_user_id):
         _set_task_progress(100)
         app.logger.error('Unhandled exception', exc_info=sys.exc_info())
         return pd.DataFrame()
+
+
+def get_all_processors(user_id, running_user):
+    try:
+        _set_task_progress(0)
+        p = Processor.query.all()
+        df = pd.DataFrame([
+            {'name': x.name, 'id': x.id, 'campaign': x.campaign.name,
+             'product': x.campaign.product.name,
+             'client': x.campaign.product.client.name,
+             'project_numbers': ','.join(
+                 [y.project_number for y in x.projects.all()]),
+             'url': 'lqadata.com/processor/{}'.format(x.name)} for x in p])
+        tables = [df]
+        _set_task_progress(100)
+        return tables
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - User {}'.format(user_id),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

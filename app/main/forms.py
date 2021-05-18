@@ -713,3 +713,24 @@ class ProcessorMetricForm(FlaskForm):
 class ProcessorMetricsForm(FlaskForm):
     add_sub_form_metric = SubmitField(label='Add Static Filter')
     proc_metrics = FieldList(FormField(ProcessorMetricForm, label=''))
+
+
+class ProcessorDeleteForm(FlaskForm):
+    processor_name = StringField(
+        'Processor Name', render_kw={'readonly': True},
+        description='WARNING - Clicking this will delete this processor. \n'
+                    'This can not be undone.')
+    delete_metric = SubmitField(
+        'Delete', render_kw={'style': 'background-color:red'})
+
+
+class ProcessorDuplicateAnotherForm(FlaskForm):
+    old_proc = QuerySelectField(_l('Processor To Duplicate'),
+                                query_factory=lambda: Processor.query.all(),
+                                get_label='name')
+    new_name = StringField(_('New Name'), validators=[DataRequired()])
+    new_start_date = DateField('New Start Date', format='%Y-%m-%d',
+                               validators=[DataRequired()])
+    new_end_date = DateField('New End Date', format='%Y-%m-%d',
+                             validators=[DataRequired()])
+    form_continue = HiddenField('form_continue')

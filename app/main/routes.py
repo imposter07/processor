@@ -19,7 +19,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorDuplicateForm, EditUploaderMediaPlanForm,\
     EditUploaderNameCreateForm, EditUploaderCreativeForm,\
     UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
-    ProcessorMetricsForm, ProcessorMetricForm, PlacementForm
+    ProcessorMetricsForm, ProcessorMetricForm, PlacementForm,\
+    ProcessorDeleteForm, ProcessorDuplicateAnotherForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -208,12 +209,10 @@ def get_processor_by_user():
                 p.status = 'Live'
     current_users = User.query.order_by(User.username).all()
     projects = Project.query.order_by(Project.project_name).all()
-    print('getting')
     processor_html = render_template('processor_user_map.html',
                                      processors=new_list,
                                      current_users=current_users,
                                      project_numbers=projects)
-    print('got')
     new_dict = {}
     for x in processors:
         client = x.campaign.product.client
@@ -1017,7 +1016,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'edit_conversions': '.get_processor_conversions',
                  'data_sources': '.get_processor_sources',
                  'imports': '.get_processor_sources',
-                 'import_config': '.get_import_config_file'}
+                 'import_config': '.get_import_config_file',
+                 'all_processors': '.get_all_processors'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -1036,14 +1036,19 @@ def get_table():
     table_name = request.form['table']
     if cur_obj == 'Processor':
         cur_obj = Processor
-    else:
+        cur_proc = cur_obj.query.filter_by(
+            name=request.form['object_name']).first_or_404()
+    elif cur_obj == 'Uploader':
         cur_obj = Uploader
         proc_arg['parameter'] = table_name
         table_name = 'Uploader'
         proc_arg['uploader_type'] = request.form['uploader_type']
         proc_arg['object_level'] = request.form['object_level']
-    cur_proc = cur_obj.query.filter_by(
-        name=request.form['object_name']).first_or_404()
+        cur_proc = cur_obj.query.filter_by(
+            name=request.form['object_name']).first_or_404()
+    else:
+        cur_proc = current_user
+        cur_proc.name = cur_proc.username
     job_name, table_name, proc_arg = translate_table_name_to_job(
         table_name=table_name, proc_arg=proc_arg)
     if cur_proc.get_task_in_progress(job_name):
@@ -1362,6 +1367,9 @@ def edit_processor_export(processor_name):
 def processor_page(processor_name):
     kwargs = get_current_processor(processor_name, 'processor_page',
                                    edit_progress=100, edit_name='Page')
+    if not kwargs['object'].local_path:
+        return redirect(url_for('main.edit_request_processor',
+                                processor_name=processor_name))
     return render_template('dashboard.html', **kwargs)
 
 
@@ -2985,34 +2993,84 @@ def save_dashboard():
     return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
 
 
-@bp.route('/delete_processor', methods=['GET', 'POST'])
+@bp.route('/delete_processor/<processor_name>', methods=['GET', 'POST'])
 @login_required
 def delete_processor(processor_name):
-    print('delete: {}'.format(processor_name))
-    return jsonify({'data': 'deleted'})
+    form = ProcessorDeleteForm()
+    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+    del_processor = Processor.query.filter_by(name=processor_name).first()
+    form.processor_name.data = del_processor.name
+    if request.method == 'POST':
+        form.validate()
+        for p_number in del_processor.projects:
+            del_processor.projects.remove(p_number)
+            db.session.commit()
+        db.session.delete(del_processor)
+        db.session.commit()
+        delete_text = 'Processor {} has been deleted.'.format(processor_name)
+        flash(_(delete_text))
+        post = Post(body=delete_text, author=current_user)
+        db.session.add(post)
+        db.session.commit()
+        return redirect(url_for('main.clients'))
+    return render_template('create_processor.html', user=cur_user,
+                           title=_('Delete Processor'), form=form,
+                           edit_progress="100", edit_name='Delete')
 
 
 @bp.route('/processor_change_project_number', methods=['GET', 'POST'])
 @login_required
 def processor_change_project_number():
     processor_name = request.form['processor_name']
-    p_numbers = request.form['project_numbers']
-    cur_obj = Processor.query.filter_by(name=processor_name).first_or_404()
-    print('project_numbers: {}'.format(p_numbers))
-    """
-    new_user = User.query.filter_by(username=new_owner).first_or_404()
-    cur_obj.user_id = new_user.id
-
-    msg = 'You have successfully assigned {} as the owner of {}'.format(
-        new_user.username, cur_obj.name)
+    p_numbers = json.loads(request.form['project_numbers'])
+    cur_obj = Processor.query.filter_by(id=processor_name).first_or_404()
+    if p_numbers:
+        for p_number in p_numbers:
+            parse_number = p_number.split('_')[0]
+            proj = Project.query.filter_by(project_number=parse_number).first()
+            if proj and proj not in cur_obj.projects:
+                cur_obj.projects.append(proj)
+                db.session.commit()
+        msg = 'Project numbers {} now associated with {}'.format(
+            ', '.join(p_numbers), cur_obj.name)
+    else:
+        for p_number in cur_obj.projects:
+            cur_obj.projects.remove(p_number)
+            db.session.commit()
+        msg = 'Project numbers removed from {}'.format(cur_obj.name)
     post = Post(body=msg, author=current_user,
                 processor_id=cur_obj.id)
     db.session.add(post)
-    cur_obj.launch_task('.processor_assignment_email', _(msg),
-                        current_user.id)
     db.session.commit()
-    """
-    msg = 'test'
     lvl = 'success'
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg)
     return jsonify({'data': 'success', 'message': msg, 'level': lvl})
+
+
+@bp.route('/processor/<processor_name>/edit/duplicate_from_another',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_duplication_from_another(processor_name):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_duplication',
+                                   edit_progress=100, edit_name='Duplicate',
+                                   buttons='ProcessorDuplicate')
+    cur_proc = kwargs['processor']
+    form = ProcessorDuplicateAnotherForm()
+    form.new_name.data = cur_proc.name
+    form.new_start_date.data = cur_proc.start_date
+    form.new_end_date.data = cur_proc.end_date
+    kwargs['form'] = form
+    if request.method == 'POST':
+        msg_text = 'Sending request and attempting to duplicate processor: {}' \
+                   ''.format(processor_name)
+        proc_dup = Processor.query.get(form.data['old_proc'].id).first()
+        proc_dup.launch_task(
+            '.duplicate_processor', _(msg_text),
+            running_user=current_user.id, form_data=form.data)
+        db.session.commit()
+        return redirect(url_for('main.processor_page',
+                                processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
+
+

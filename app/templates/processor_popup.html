@@ -40,25 +40,7 @@
         </p>
         </div>
         <div class="card-footer">
-        <div class="btn-group btn-block" role="group">
-            {% if processor.get_open_requests()|length > 0 %}
-                <a href="{{ url_for('main.edit_processor_submit_fix',
-                       processor_name=processor.name) }}"
-                        type="button" class="btn btn-outline-danger btn-large">
-                  Open Requests <span class="badge badge-light">
-                    {{ processor.get_open_requests()|length }}</span>
-                  <span class="sr-only">Open Requests</span>
-                </a>
-            {% else %}
-                <a href="{{ url_for('main.edit_processor_request_fix',
-                       processor_name=processor.name) }}"
-                        type="button" class="btn btn-outline-success btn-large">
-                  No Open Requests <span class="badge badge-light">
-                    {{ processor.get_open_requests()|length }}</span>
-                  <span class="sr-only">No Open Requests</span>
-                </a>
-            {% endif %}
-        </div>
+        {% include 'processor_requests_button.html' %}
             {% with post = processor.get_last_post() %}
                 {% if post %}
                     {% include '_post.html' %}

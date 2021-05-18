@@ -4,13 +4,13 @@
     <h4 class="sidebar-heading d-flex justify-content-between align-items-center">
                   <span>{{ _('Data Processor') }}</span>
     </h4>
-    <a href="{{ url_for('main.request_processor') }}">
-        <button class="btn btn-outline-info btn-block text-left"
-            type="button" href="{{ url_for('main.request_processor') }}">
+        <button id="requestProcessor"
+            class="btn btn-outline-info btn-block text-left"
+            type="button" href="">
                 <i class="fas fa-blender-phone"
                    role="button"></i>
                 {{ _('Request Processor') }}
-    </button></a><br>
+    </button><br>
     <div class="custom-control custom-switch" id="customSwitchDiv">
       <input type="checkbox" class="custom-control-input" id="customSwitch1" checked>
       <label class="custom-control-label" for="customSwitch1">
@@ -32,13 +32,58 @@
         </tr>
     </table>
     <br>
-    {% include '_client_directory.html' %}
+
 {% endblock %}
 
 {% block app_header %}
 
 {% endblock %}
 {% block app_content %}
+    <button id="tableModalButton" type="button" class="btn btn-primary"
+            data-toggle="modal" data-target="#tableModal"
+            style="display: none;">
+        Launch demo modal
+    </button>
+    <div class="modal fade bd-example-modal-xl" id="tableModal" tabindex="-1"
+         role="dialog" aria-labelledby="exampleModalLabel">
+        <div class="modal-dialog modal-xl mw-100 w-90" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">
+                        Data Tables - {{ object_name }}</h5>
+                    <button type="button" class="close" data-dismiss="modal"
+                            aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div>You may not need to request a brand new processor
+                 if it has been automatically created from project numbers below.
+                    Instead search for the instance and click on the link in the table.
+                    If you really need a completely new request the button at the end of
+                    this modal can be clicked.
+                </div>
+                <div class="modal-body">
+                    <div id="modal-body-table"></div>
+                </div>
+                <div class="modal-footer">
+                    <div class="btn-group btn-group-lg btn-block" role="group"
+                         aria-label="Basic example">
+                        <button id=""
+                                class="btn btn-outline-info btn-block text-left"
+                                type="button"
+                                href="{{ url_for('main.request_processor') }}">
+                            <i class="fas fa-blender-phone"
+                               role="button"></i>
+                            {{ _('Request Processor') }}
+                        </button>
+                        <button type="button" class="btn btn-secondary"
+                                data-dismiss="modal">Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="carousel" class="carousel slide" data-ride="carousel"
          data-interval="false">
         <div class="carousel-inner text-center">
@@ -62,6 +107,25 @@
     {% for post in posts %}
         {% include '_post.html' %}
     {% endfor %}
+    <link rel="stylesheet" type="text/css"
+          href="https://cdn.datatables.net/v/bs4/jszip-2.5.0/dt-1.10.20/b-1.6.1/b-html5-1.6.1/sl-1.3.1/af-2.3.4/kt-2.5.1/datatables.min.css"/>
+    <script type="text/javascript"
+            src="https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.js"></script>
+    <script type="text/javascript"
+            src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
+    <script type="text/javascript"
+            src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>
+    <script type="text/javascript"
+            src="https://cdn.datatables.net/v/bs4/jszip-2.5.0/dt-1.10.20/b-1.6.1/b-html5-1.6.1/sl-1.3.1/af-2.3.4/kt-2.5.1/datatables.min.js"></script>
+    <script type="text/javascript"
+            src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js"></script>
+    <script type="text/javascript"
+            src="{{ url_for('static', filename='Editor/dataTable.js') }}"></script>
+    <link rel="stylesheet" type="text/css"
+          href="{{ url_for('static', filename='Editor/css/editor.dataTables.css') }}">
+    <script type="text/javascript"
+            src="{{ url_for('static', filename='Editor/js/dataTables.editor.js') }}"></script>
+
     <script>
         $(document).ready(function() {
             $('select').on('change', function(e){
@@ -100,5 +164,49 @@
                 unanimateBar();
             });
         }
+
+        function requestProcessor() {
+            $('[id^=requestProcessor]').click(function () {
+                let dropdownButton = "#" + $(this)[0].id;
+                $(dropdownButton).prop("disabled", true);
+                let oldHtml = $(dropdownButton).html();
+                $(dropdownButton).html(
+                    `<span class="spinner-grow spinner-grow-sm" role="status"
+                      aria-hidden="true"></span> Loading...`
+                );
+                requestProcessorModal(dropdownButton, oldHtml);
+            })
+        }
+
+        function show_modal_table(destElem) {
+            document.getElementById(destElem).click();
+        }
+
+        function requestProcessorModal(clickElem, oldHtml) {
+            $.post('/get_table',
+                {
+                    table: 'all_processors',
+                    object_name: "None",
+                    object_type:  "User",
+                    object_level: "None",
+                    uploader_type: 'None',
+                    vendorkey: 'None'
+                }).done(function (data) {
+                    show_modal_table('tableModalButton');
+                    let newTableName = data['data']['name'];
+                    createTable(data['data']['cols'], data['data']['data'],
+                        newTableName);
+            }).fail(function (jqXHR, textStatus) {
+                console.log("Request failed: " + textStatus);
+            }).always(function () {
+                if (oldHtml) {
+                    $(clickElem).prop("disabled", false);
+                    $(clickElem).html(oldHtml);
+                }
+            });
+        }
+        $(document).ready(function() {
+            requestProcessor()
+        });
     </script>
 {% endblock %}

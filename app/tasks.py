@@ -2520,7 +2520,7 @@ def duplicate_processor_in_db(processor_id, current_user_id, form_data):
         new_processor.name = form_data['new_name']
         new_processor.start_date = form_data['new_start_date']
         new_processor.end_date = form_data['new_end_date']
-        if 'old_proc' in form_data:
+        if 'old_proc' not in form_data:
             db.session.add(new_processor)
         db.session.commit()
         return new_processor.id

@@ -3072,5 +3072,3 @@ def edit_processor_duplication_from_another(processor_name):
         return redirect(url_for('main.processor_page',
                                 processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
-
-

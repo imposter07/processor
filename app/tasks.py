@@ -939,7 +939,7 @@ def write_import_config_file(processor_id, current_user_id, new_data, vk):
         config_file = df.to_dict()
         if 'values' in config_file:
             config_file = config_file['values']
-        print(config_file)
+
         new_file = os.path.join(ic.file_path, file_name)
         with open(new_file, 'w') as f:
             f_lib.dump(config_file, f)
@@ -1119,8 +1119,7 @@ def parse_uploader_error_dict(uploader_id, current_user_id, error_dict):
                 relation = UploaderRelations.query.filter_by(
                     uploader_objects_id=upo.id,
                     impacted_column_name=rel_col_name).first()
-                print(upo.id)
-                print(rel_col_name)
+
                 relation.unresolved_relations = error_dict[key][rel_col_name]
                 db.session.commit()
     except:
@@ -2315,7 +2314,7 @@ def build_processor_from_request(processor_id, current_user_id):
         _set_task_progress(25)
         import_names = (cur_processor.campaign.name.
                         replace(' ', '').replace('_', '').replace('|', '').
-                        replace(':', '').replace('.', ''))
+                        replace(':', '').replace('.', '').replace("'", ''))
         proc_dict = [
             x.get_dict_for_processor(import_names, cur_processor.start_date)
             for x in cur_processor.accounts]
@@ -3428,8 +3427,11 @@ def get_project_numbers(processor_id, current_user_id):
                     product_id=form_product.id).check_and_add()
                 description = ('Automatically generated from '
                                'project number: {}').format(pn['#'])
+                name = (pn['Project'].campaign.name.
+                        replace(' ', '').replace('_', '').replace('|', '').
+                        replace(':', '').replace('.', '').replace("'", ''))
                 new_processor = Processor(
-                    name=pn['Project'], description=description,
+                    name=name, description=description,
                     user_id=4, created_at=datetime.utcnow(),
                     start_date=sd, end_date=ed, campaign_id=form_campaign.id)
                 db.session.add(new_processor)

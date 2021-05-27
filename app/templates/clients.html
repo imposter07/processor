@@ -71,6 +71,17 @@
             {% endfor %}
         </select>
     </div>
+    <div class="col mb-3">
+        <select id="projectSelect" multiple=""
+                class="form-control form-control-sm">
+            <option value="">Select Project Numbers...</option>
+            {% for p in current_projects %}
+                <option value="{{ p.project_number }}_{{ p.project_name }}">
+                    {{ p.project_number }}-{{ p.project_name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
     <div class="col">
         <button id="applyFilter" type="button"
                 class="btn btn-block btn-outline-primary btn-sm">
@@ -176,6 +187,7 @@
                     addSelectize()
                     ownerSelectChange()
                     projectNumberSelectChange()
+                    getSelectedDashboard()
             }).fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);
 
@@ -287,7 +299,28 @@
                 filterDict = getFilters('product', filterDict);
                 filterDict = getFilters('campaign', filterDict);
                 filterDict = getFilters('processor', filterDict);
+                filterDict = getFilters('project', filterDict);
                 getProcessorUserMap(filterDict, dropdownButton, oldHtml);
+            });
+        }
+
+        function getSelectedDashboard(){
+            $('[id^=dashSelect]').on('change', function(e){
+                let selectedText = this.options[e.target.selectedIndex].text
+                let procName = this.id.replace('dashSelect', '')
+                $('#dashFooter' + procName).removeAttr('style')
+                let metrics = ['kpi']
+                let filterDict = {}
+                let chartFunction = (function () {
+                    if (selectedText === 'Date') {
+                        return generateAreaChart;
+                    } else {
+                        return generateBarChart;
+                    }
+                })
+                getMetrics('#dash_placeholderMetrics' + procName, chartFunction(),
+                    selectedText, metrics,
+                    filterDict, "", 250, null, null, null, null, null, procName);
             });
         }
 
@@ -305,4 +338,5 @@
             addApplyFilterBtn()
         });
     </script>
+    {% include "_dash_builder.html" %}
 {% endblock %}

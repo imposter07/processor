@@ -138,7 +138,8 @@ def parse_filter_dict_from_clients(processors, seven_days_ago):
         ('client', Client, 'name', ''),
         ('product', Product, 'name', ''),
         ('campaign', Campaign, 'name', Processor.campaign_id),
-        ('processor', Processor, 'name', Processor.name)]
+        ('processor', Processor, 'name', Processor.id),
+        ('project', Project, 'project_number', Processor.projects)]
     live = [x for x in current_filters if 'live' in x.keys()]
     if live and live[0]['live']:
         processors = processors.filter(
@@ -151,6 +152,8 @@ def parse_filter_dict_from_clients(processors, seven_days_ago):
         cur_filter = [x for x in current_filters if filt_name in x.keys()]
         if cur_filter and cur_filter[0][filt_name]:
             cur_list = cur_filter[0][filt_name]
+            if filt_name == 'project':
+                cur_list = [x.split('_')[0] for x in cur_list]
             user_list = [
                 db_model.query.filter(
                     getattr(db_model, db_attr) == x).first().id for x in
@@ -163,6 +166,10 @@ def parse_filter_dict_from_clients(processors, seven_days_ago):
                 processors = [
                     x for x in processors if
                     x.campaign.product_id in user_list]
+            elif filt_name == 'project':
+                processors = [x for x in processors
+                              if any(e in [y.id for y in x.projects]
+                                     for e in user_list)]
             else:
                 processors = processors.filter(proc_rel.in_(user_list))
     return processors
@@ -309,6 +316,7 @@ def clients():
     current_products = Product.query.order_by(Product.name).all()
     current_campaigns = Campaign.query.order_by(Campaign.name).all()
     current_processors = Processor.query.order_by(Processor.name).all()
+    current_projects = Project.query.order_by(Project.project_name).all()
     view_selector = get_client_view_selector('Clients')
     return render_template('clients.html', title=_('Clients'),
                            clients=current_clients,
@@ -316,6 +324,7 @@ def clients():
                            current_products=current_products,
                            current_campaigns=current_campaigns,
                            current_processors=current_processors,
+                           current_projects=current_projects,
                            view_selector=view_selector)
 
 
@@ -442,7 +451,10 @@ def get_task_progress():
         cur_obj = Uploader
     job_name, table_name, proc_arg = translate_table_name_to_job(
         task_name, proc_arg={})
-    cur_obj = cur_obj.query.filter_by(name=object_name).first()
+    if request.form['object_id']:
+        cur_obj = Processor.query.get(request.form['object_id'])
+    else:
+        cur_obj = cur_obj.query.filter_by(name=object_name).first()
     task = cur_obj.get_task_in_progress(name=job_name)
     if task:
         percent = task.get_progress()
@@ -2775,7 +2787,10 @@ def get_metrics():
     if 'filter_dict' in request.form:
         proc_arg['filter_dict'] = json.loads(request.form['filter_dict'])
     obj_name = request.form['object_name']
-    cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
+    if request.form['object_id']:
+        cur_proc = Processor.query.get(request.form['object_id'])
+    else:
+        cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
     msg_text = 'Getting metric table for {}'.format(cur_proc.name)
     if request.form['elem'] == '#totalMetrics':
         job_name = '.get_processor_total_metrics'

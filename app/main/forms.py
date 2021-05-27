@@ -56,7 +56,7 @@ class MessageForm(FlaskForm):
 
 class ProcessorForm(FlaskForm):
     name = StringField(_l('Name'), validators=[
-        DataRequired()])
+        DataRequired(), Regexp("[^']", message='Remove special characters')])
     description = StringField(_l('Description'), validators=[
         DataRequired()])
     local_path = StringField(_l('Local Path'), validators=[DataRequired()])
@@ -289,7 +289,7 @@ class ProcessorExportForm(FlaskForm):
 
 class ProcessorRequestForm(FlaskForm):
     name = StringField(_l('Name'), validators=[
-        DataRequired()])
+        DataRequired(), Regexp("[^']", message='Remove special characters')])
     description = StringField(_l('Description'), validators=[
         DataRequired()])
     plan_path = StringField(_l('Media Plan Path'), validators=[DataRequired()])

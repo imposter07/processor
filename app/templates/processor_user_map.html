@@ -110,6 +110,41 @@
                                         {% include '_post.html' %}
                                     {% endif %}
                                 {% endwith %}
+                                {% if processor.local_path %}
+                                <div class="row">
+                                    <div class="col mb-3">
+                                        <select id="dashSelect{{ processor.id }}"
+                                                class="form-control form-control-sm">
+                                            <option value="">Select Dashboard...
+                                            </option>
+                                            {% for dash in ['eventdate', 'campaignname', 'vendorname', 'countryname', 'kpiname', 'environmentname'] %}
+                                                <option value="{{ dash }}">{{ dash }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="dashFooter{{ processor.id }}"
+                                     class="card-footer" style="display: none;">
+                                    <div id="" class="row">
+                                        <div class="col-md-12 h-50">
+                                            <div class="card-header">
+                                                <h7 class="mb-3"></h7>
+                                                <select id="dash_placeholderMetrics{{ processor.id }}Select"
+                                                        class="form-control form-control-sm">
+                                                    <option>Select Metric
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div class="card container-fluid shadow outer">
+                                                <div id="dash_placeholderMetricsProgress{{ processor.id }}"
+                                                     class="widget">
+                                                </div>
+                                                <div id="dash_placeholderMetrics{{ processor.id }}"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
                         </div>
                         </div>
                     {% endfor %}

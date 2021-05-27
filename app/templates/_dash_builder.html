@@ -912,7 +912,8 @@
         });
     }
 
-    function getDownloadProgressForRadial(tableName, chart, downloadingProgress) {
+    function getDownloadProgressForRadial(tableName, chart, downloadingProgress,
+                                          procId = null) {
         downloadingProgress = setInterval(function () {
             $.post('/get_task_progress',
                 {
@@ -920,6 +921,7 @@
                     object_name: "{{ object_name }}",
                     object_level: "{{ edit_name }}",
                     task_name: tableName,
+                    object_id: procId
                 }).done(function (data, status) {
                 let newPercent = data['percent'];
                 chart.update(parseInt(newPercent))
@@ -931,7 +933,7 @@
     function getMetrics(elem, createVisualFunction, xCol, yCol,
                         filterDict = null, parentClass = "", parentHeight = 250,
                         clickElem = null, oldHtml = null, addSelect = false,
-                        dashboardId = null, vendorKey = null) {
+                        dashboardId = null, vendorKey = null, procId = null) {
         if (filterDict) {
             $(elem).parent().html(
                 '<div id="' + elem.substring(1) +
@@ -953,7 +955,8 @@
                 y_col: yCol.join('|'),
                 filter_dict: JSON.stringify(filterDict),
                 dashboard_id: dashboardId,
-                vendor_key: vendorKey
+                vendor_key: vendorKey,
+                object_id: procId
             },
         }).done(function (data, status) {
             chart.update(100);
@@ -981,7 +984,7 @@
         let chart = radialProgress(elem + 'Progress')
         let downloadingProgress = null
         downloadingProgress = getDownloadProgressForRadial('OutputData',
-            chart, downloadingProgress)
+            chart, downloadingProgress, procId)
     }
 
     function radialProgress(selector) {

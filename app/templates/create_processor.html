@@ -454,7 +454,12 @@
                 }
             }
             else {
-                displayAlert('Please correct the required fields.', 'danger')
+                if ($('#name').val().includes("'")) {
+                    displayAlert('Remove apostrophe from name.', 'danger')
+                }
+                else {
+                    displayAlert('Please correct the required fields.', 'danger')
+                }
             }
         }
         function selectColumns ( editor, csv, header ) {

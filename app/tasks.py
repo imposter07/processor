@@ -3428,8 +3428,8 @@ def get_project_numbers(processor_id, current_user_id):
                 description = ('Automatically generated from '
                                'project number: {}').format(pn['#'])
                 name = (pn['Project'].
-                        replace(' ', '').replace('_', '').replace('|', '').
-                        replace(':', '').replace('.', '').replace("'", ''))
+                        replace('_', ' ').replace('|', ' ').
+                        replace(':', ' ').replace('.', ' ').replace("'", ' '))
                 new_processor = Processor(
                     name=name, description=description,
                     user_id=4, created_at=datetime.utcnow(),

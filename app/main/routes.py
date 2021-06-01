@@ -191,15 +191,19 @@ def get_processor_by_user():
     new_list.sort(key=len, reverse=True)
     for u in new_list:
         cu = u[0].user
+        """
         cu.ppd = '{0:.0f}'.format(cu.posts.filter(
             Post.timestamp > seven_days_ago.date()).count() / 7)
+        """
         if cu.id in [3, 5, 7, 9, 10, 11, 51, 63, 66]:
             cu.data = True
         else:
             cu.data = False
         for p in u:
+            """
             p.ppd = '{0:.0f}'.format(p.posts.filter(
                 Post.timestamp > seven_days_ago.date()).count() / 7)
+            """
             cu.live = 0
             cu.upcoming = 0
             cu.completed = 0
@@ -3079,7 +3083,7 @@ def edit_processor_duplication_from_another(processor_name):
     if request.method == 'POST':
         msg_text = 'Sending request and attempting to duplicate processor: {}' \
                    ''.format(processor_name)
-        proc_dup = Processor.query.get(form.data['old_proc'].id).first()
+        proc_dup = Processor.query.get(form.data['old_proc'].id)
         proc_dup.launch_task(
             '.duplicate_processor', _(msg_text),
             running_user=current_user.id, form_data=form.data)

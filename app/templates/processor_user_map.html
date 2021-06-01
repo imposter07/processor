@@ -14,7 +14,7 @@
                     <img class="mr-3"
                          src="{{ processor_list[0].user.avatar(40) }}"
                          alt="Generic placeholder image"></a>
-                {{ processor_list|length }} Processors owned - {{ processor_list[0].user.ppd }} Posts Per Day - {{ processor_list[0].user.username }}
+                {{ processor_list|length }} Processors owned - {{ processor_list[0].user.username }}
             </button>
             <div id="collapseUser{{ loop.index }}" class="collapse"
                  aria-labelledby="heading{{ loop.index }}"
@@ -32,7 +32,7 @@
                                  aria-controls="collapseProcessor{{ loop.index }}_{{ outer_loop.index }}">
                                 <div class="col">
                                     <a href="{{ processor.get_url() }}">
-                                        {{ processor.name }} - {{ processor.ppd }} Posts Per Day
+                                        {{ processor.name }}
                                     </a>
                                     <span class="badge badge-pill
                                         {% if processor_status == 'Live' %} badge-success
@@ -145,7 +145,7 @@
                                     </div>
                                 </div>
                                 {% endif %}
-                        </div>
+                            </div>
                         </div>
                     {% endfor %}
                 </div>

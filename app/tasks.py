@@ -3427,7 +3427,7 @@ def get_project_numbers(processor_id, current_user_id):
                     product_id=form_product.id).check_and_add()
                 description = ('Automatically generated from '
                                'project number: {}').format(pn['#'])
-                name = (pn['Project'].campaign.name.
+                name = (pn['Project'].
                         replace(' ', '').replace('_', '').replace('|', '').
                         replace(':', '').replace('.', '').replace("'", ''))
                 new_processor = Processor(

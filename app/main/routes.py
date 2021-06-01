@@ -3076,6 +3076,7 @@ def edit_processor_duplication_from_another(processor_name):
                                    buttons='ProcessorDuplicate')
     cur_proc = kwargs['processor']
     form = ProcessorDuplicateAnotherForm()
+    form.new_proc.data = cur_proc.id
     form.new_name.data = cur_proc.name
     form.new_start_date.data = cur_proc.start_date
     form.new_end_date.data = cur_proc.end_date

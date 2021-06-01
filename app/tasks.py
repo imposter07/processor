@@ -2505,8 +2505,8 @@ def duplicate_processor_in_db(processor_id, current_user_id, form_data):
     try:
         cur_processor = Processor.query.get(processor_id)
         proc_dict = cur_processor.to_dict()
-        if 'old_proc' in form_data:
-            new_processor = form_data['old_proc']
+        if 'new_proc' in form_data:
+            new_processor = Processor.query.get(form_data['new_proc'])
         else:
             new_processor = Processor()
         for k, v in proc_dict.items():
@@ -2519,7 +2519,7 @@ def duplicate_processor_in_db(processor_id, current_user_id, form_data):
         new_processor.name = form_data['new_name']
         new_processor.start_date = form_data['new_start_date']
         new_processor.end_date = form_data['new_end_date']
-        if 'old_proc' not in form_data:
+        if 'new_proc' not in form_data:
             db.session.add(new_processor)
         db.session.commit()
         return new_processor.id

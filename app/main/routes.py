@@ -1435,7 +1435,10 @@ def run_object():
             'tik': '--api tik --analyze',
             'amz': '--api amz --analyze',
             'cri': '--api cri --analyze',
-            'pm': '--api pm --analyze'}
+            'pm': '--api pm --analyze',
+            'sam': '--api sam --analyze',
+            'gs': '--api gs --analyze',
+            'qt': '--api qt --analyze'}
     else:
         cur_obj = Uploader
         task_name = '.run_uploader'

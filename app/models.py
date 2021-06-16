@@ -231,6 +231,7 @@ class Post(SearchableMixin, db.Model):
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
     uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
     request_id = db.Column(db.Integer, db.ForeignKey('requests.id'))
+    note_id = db.Column(db.Integer, db.ForeignKey('notes.id'))
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
@@ -456,6 +457,7 @@ class Processor(db.Model):
                                             backref='processor', lazy='dynamic')
     accounts = db.relationship('Account', backref='processor', lazy='dynamic')
     requests = db.relationship('Requests', backref='processor', lazy='dynamic')
+    notes = db.relationship('Notes', backref='processor', lazy='dynamic')
     processor_analysis = db.relationship('ProcessorAnalysis',
                                          backref='processor', lazy='dynamic')
     dashboard = db.relationship(
@@ -551,6 +553,9 @@ class Processor(db.Model):
 
     def get_project_numbers(self):
         return [x.project_number for x in self.projects]
+
+    def get_notes(self):
+        return self.notes.order_by(Notes.created_at.desc()).all()
 
 
 class TaskScheduler(db.Model):
@@ -820,6 +825,28 @@ class Requests(db.Model):
 
     def mark_unresolved(self):
         self.complete = False
+
+
+class Notes(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    note_text = db.Column(db.Text)
+    complete = db.Column(db.Boolean, default=False)
+    notification = db.Column(db.Text)
+    notification_day = db.column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    posts = db.relationship('Post', backref='requests', lazy='dynamic')
+
+    def get_form_dict(self):
+        form_dict = {
+            'processor_id': self.processor_id,
+            'note_text': self.note_text,
+            'complete': self.complete,
+            'notification': self.notification,
+            'notification_day': self.notification_day
+        }
+        return form_dict
 
 
 class Uploader(db.Model):

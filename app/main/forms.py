@@ -482,7 +482,6 @@ class ProcessorFixForm(FlaskForm):
     data_source = SelectField(_l('Processor Data Source'))
     new_file = FileField(_l('New File'))
     form_continue = HiddenField('form_continue')
-    # delete = SubmitField(_l('Delete'))
 
     def set_vendor_key_choices(self, current_processor_id):
         choices = [('', '')]
@@ -499,6 +498,23 @@ class ProcessorRequestCommentForm(FlaskForm):
 
 class ProcessorContinueForm(FlaskForm):
     form_continue = HiddenField('form_continue')
+
+
+class ProcessorNoteForm(FlaskForm):
+    note_text = TextAreaField(_l('Note Text'))
+    notification = SelectField(
+        choices=[(x, x) for x in ['', 'Daily', 'Weekly', 'Monthly']])
+    notification_day = SelectField(
+        choices=[(x, x) for x in ['Monday', 'Tuesday', 'Wednesday', 'Thursday'
+                                  'Friday', 'Saturday', 'Sunday']])
+    form_continue = HiddenField('form_continue')
+
+    def set_vendor_key_choices(self, current_processor_id):
+        choices = [('', '')]
+        choices.extend([(x.vendor_key, x.vendor_key) for x in
+                        ProcessorDatasources.query.filter_by(
+                            processor_id=current_processor_id).all()])
+        self.data_source.choices = choices
 
 
 class UploaderForm(FlaskForm):

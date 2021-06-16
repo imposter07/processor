@@ -214,7 +214,14 @@
                     new_owner: newOwner
                 }).done(function (data) {
                     displayAlert(data['message'], data['level'])
-                    getProcessorUserMap()
+                    let filterDict = [{'live': $('#liveProcessorsSwitch')[0].checked}];
+                    filterDict = getFilters('username', filterDict);
+                    filterDict = getFilters('client', filterDict);
+                    filterDict = getFilters('product', filterDict);
+                    filterDict = getFilters('campaign', filterDict);
+                    filterDict = getFilters('processor', filterDict);
+                    filterDict = getFilters('project', filterDict);
+                    getProcessorUserMap(filterDict)
             }).fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);
                 displayAlert('Owner change failed, please try again later.', 'danger')

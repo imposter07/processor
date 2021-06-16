@@ -20,11 +20,12 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     EditUploaderNameCreateForm, EditUploaderCreativeForm,\
     UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
     ProcessorMetricsForm, ProcessorMetricForm, PlacementForm,\
-    ProcessorDeleteForm, ProcessorDuplicateAnotherForm
+    ProcessorDeleteForm, ProcessorDuplicateAnotherForm, ProcessorNoteForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
-    UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project
+    UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project,\
+    Notes
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -593,6 +594,9 @@ def get_navigation_buttons(buttons=None):
         buttons = [{'New Fix': 'main.edit_processor_request_fix'},
                    {'Submit Fixes': 'main.edit_processor_submit_fix'},
                    {'All Fixes': 'main.edit_processor_all_fix'}]
+    elif buttons == 'ProcessorNote':
+        buttons = [{'New Fix': 'main.edit_processor_note'},
+                   {'All Notes': 'main.edit_processor_all_notes'}]
     elif buttons == 'ProcessorDuplicate':
         buttons = [{'Duplicate': 'main.edit_processor_duplication'}]
     elif buttons == 'ProcessorDashboard':
@@ -743,11 +747,14 @@ def get_processor_request_links(processor_name):
     return run_links
 
 
-def get_posts_for_objects(cur_obj, fix_id, current_page, object_name):
+def get_posts_for_objects(cur_obj, fix_id, current_page, object_name,
+                          note_id=None):
     page = request.args.get('page', 1, type=int)
     post_filter = {'{}_id'.format(object_name): cur_obj.id}
     if fix_id:
         post_filter['request_id'] = fix_id
+    if note_id:
+        post_filter['note_id'] = note_id
     query = Post.query
     for attr, value in post_filter.items():
         query = query.filter(getattr(Post, attr) == value)
@@ -764,12 +771,13 @@ def get_posts_for_objects(cur_obj, fix_id, current_page, object_name):
 
 
 def get_current_processor(processor_name, current_page, edit_progress=0,
-                          edit_name='Page', buttons=None, fix_id=None):
+                          edit_name='Page', buttons=None, fix_id=None,
+                          note_id=None):
     cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     posts, next_url, prev_url = get_posts_for_objects(
         cur_obj=cur_proc, fix_id=fix_id, current_page=current_page,
-        object_name='processor')
+        object_name='processor', note_id=note_id)
     api_imports = {0: {'All': 'import'}}
     for idx, (k, v) in enumerate(vmc.api_translation.items()):
         api_imports[idx + 1] = {k: v}
@@ -2030,6 +2038,100 @@ def edit_processor_view_fix(processor_name, fix_id):
             return redirect(url_for('main.edit_processor_view_fix',
                                     processor_name=cur_proc.name,
                                     fix_id=fix_id))
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/edit/note',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_note(processor_name):
+    kwargs = get_current_processor(processor_name=processor_name,
+                                   current_page='edit_processor_note',
+                                   edit_progress=33, edit_name='New Note',
+                                   buttons='ProcessorNote')
+    cur_proc = kwargs['processor']
+    form = ProcessorNoteForm()
+    kwargs['form'] = form
+    if request.method == 'POST':
+        new_note = Notes(
+            processor_id=cur_proc.id, user_id=current_user.id,
+            note_text=form.note_text.data, notification=form.notification.data,
+            notification_day=form.notification_day.data,
+            created_at=datetime.utcnow()
+        )
+        db.session.add(new_note)
+        db.session.commit()
+        creation_text = "Processor {} note {} was created".format(
+            cur_proc.name, new_note.id)
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    processor_id=cur_proc.id, note_id=new_note.id)
+        db.session.add(post)
+        db.session.commit()
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_processor_all_notes',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_note',
+                                    processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/edit/note/all',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_all_notes(processor_name):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_all_notes',
+                                   edit_progress=100, edit_name='All Notes',
+                                   buttons='ProcessorNote')
+    cur_proc = kwargs['processor']
+    fixes = cur_proc.get_notes()
+    form = ProcessorContinueForm()
+    kwargs['fixes'] = fixes
+    kwargs['form'] = form
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.processor_page',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_all_notes',
+                                    processor_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<processor_name>/edit/note/<note_id>',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_view_note(processor_name, note_id):
+    kwargs = get_current_processor(processor_name,
+                                   current_page='edit_processor_note_fix',
+                                   edit_progress=100, edit_name='View Notes',
+                                   buttons='ProcessorRequestFix',
+                                   note_id=note_id)
+    cur_proc = kwargs['processor']
+    fixes = Requests.query.filter_by(id=note_id).all()
+    form = ProcessorRequestCommentForm()
+    kwargs['fixes'] = fixes
+    kwargs['form'] = form
+    if request.method == 'POST':
+        if form.post.data:
+            language = guess_language(form.post.data)
+            if language == 'UNKNOWN' or len(language) > 5:
+                language = ''
+            post = Post(body=form.post.data, author=current_user,
+                        language=language, processor_id=cur_proc.id,
+                        note_id=note_id)
+            db.session.add(post)
+            db.session.commit()
+            flash(_('Your post is now live!'))
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_processor_all_notes',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_view_note',
+                                    processor_name=cur_proc.name,
+                                    note_id=note_id))
     return render_template('create_processor.html', **kwargs)
 
 

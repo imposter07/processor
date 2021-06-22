@@ -349,6 +349,11 @@
             {% include '_fix.html' %}
         {% endfor %}
     {% endif %}
+    {% if notes %}
+        {% for note in notes %}
+            {% include '_note.html' %}
+        {% endfor %}
+    {% endif %}
     {% if dashboards %}
         {% for dash in dashboards %}
             {% include '_dash_card.html' %}

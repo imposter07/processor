@@ -40,7 +40,16 @@
     <div class="row">
         <div class="col-md-12">
             <div class="card-header">
-                <div class="row">
+                <div class="row" id="navRow">
+                    <div class="btn-group btn-group-sm btn-block" role="group">
+                        <button id="getAllCharts"
+                                class="btn btn-outline-primary"><i
+                                class="fas fa-chart-bar" href="#" role="button"
+                                aria-hidden="true"></i>Get All Charts
+                        </button>
+                    </div>
+                </div>
+                <div class="row" id="filterRow" hidden="">
                     <div class="col mb-3">
                         <select id="campaignnameSelect" multiple=""
                                 class="form-control form-control-sm">
@@ -131,7 +140,7 @@
         </div>
     </div>
     <br>
-    <div class="row">
+    <div class="row" id="thirdRow" hidden="">
         <div class="col-md-6 h-50">
             <div class="card-header">
                 <h7 class="mb-3">Partner</h7>
@@ -159,7 +168,7 @@
             </div>
         </div>
     </div><br>
-    <div class="row">
+    <div class="row" id="fourthRow" hidden="">
         <div class="col-md-4 h-50">
             <div class="card-header">
                 <h7 class="mb-3">Campaign</h7>
@@ -202,8 +211,8 @@
     </div>
 
     <script>
-        function getAllCharts(filterDict, clickElem=null, oldHtml=null) {
-            let addSelect = !(clickElem)
+        function getAllCharts(filterDict, clickElem=null, oldHtml=null,
+                              allCharts=false) {
             let metrics = ['kpi']
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name',
                  metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
@@ -211,6 +220,17 @@
                 metrics, filterDict);
             getMetrics('#deliveryMetrics', generateProgressBars, 'vendorname',
                 ['netcost', 'plannednetcost'], filterDict);
+            if (allCharts) {
+                getSecondaryCharts(filterDict, clickElem)
+            }
+        }
+
+        function getSecondaryCharts(filterDict, clickElem=null) {
+            let addSelect = !(clickElem)
+            let metrics = ['kpi']
+            $('#thirdRow').removeAttr('hidden')
+            $('#fourthRow').removeAttr('hidden')
+            $('#filterRow').removeAttr('hidden')
             getMetrics('#partnerMetrics', generateBarChart, 'vendorname',
                 metrics, filterDict, null, null, null, null, addSelect);
             getMetrics('#countryMetrics', generateBarChart, 'countryname',
@@ -252,7 +272,27 @@
                 filterDict = getFilters('environmentname', filterDict);
                 filterDict = getFilters('kpiname', filterDict);
                 console.log(filterDict)
-                getAllCharts(filterDict, dropdownButton, oldHtml);
+                getAllCharts(filterDict, dropdownButton, oldHtml, true);
+            });
+        });
+
+        $(document).ready(function() {
+            $('button[id^="getAllCharts"]').unbind('click').click(function () {
+                let dropdownButton = "#" + $(this)[0].id;
+                $(dropdownButton).prop("disabled", true);
+                $(dropdownButton).html(
+                    `<span class="spinner-grow spinner-grow-sm" role="status"
+                      aria-hidden="true"></span> Loading...`
+                  );
+                animateBar();
+                let filterDict = getDates();
+                filterDict = getFilters('campaignname', filterDict);
+                filterDict = getFilters('vendorname', filterDict);
+                filterDict = getFilters('countryname', filterDict);
+                filterDict = getFilters('environmentname', filterDict);
+                filterDict = getFilters('kpiname', filterDict);
+                getSecondaryCharts(filterDict, dropdownButton);
+                $(dropdownButton).attr("hidden",true);
             });
         });
 

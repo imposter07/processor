@@ -26,13 +26,11 @@
         </a>
     {% endif %}
     {% set notes = processor.get_notes() %}
-    {% if notes|length > 0 %}
-        <a href="{{ url_for('main.edit_processor_submit_fix',
-                           processor_name=processor.name) }}"
-           type="button" class="btn btn-outline-secondary btn-large">
-            Notes <span class="badge badge-light">
-                        {{ processor.get_notes()|length }}</span>
-            <span class="sr-only">Open Requests</span>
-        </a>
-    {% endif %}
+    <a href="{{ url_for('main.edit_processor_note',
+                       processor_name=processor.name) }}"
+       type="button" class="btn btn-outline-info btn-large">
+        Notes <span class="badge badge-light">
+                    {{ notes|length }}</span>
+        <span class="sr-only">Open Requests</span>
+    </a>
 </div>

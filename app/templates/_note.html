@@ -1,0 +1,69 @@
+<div class="card mb-3">
+    <div class="card-header">
+        <h3>
+            <span class="nowrap">
+            <a href="{{ url_for('main.edit_processor_view_note',
+            processor_name=note.processor.name, note_id=note.id) }}">
+            {{ processor.name }} - Note #{{ note.id }}</a>
+            {% if not note.complete %}
+                <div class="dropdown" style="float: right;">
+                  <button class="btn btn-success rounded-pill dropdown-toggle
+                                 dropdown-toggle-split"
+                          type="button" id="dropdownMenu2"
+                          data-toggle="dropdown" aria-haspopup="true"
+                          aria-expanded="false" style="float: right;">
+                    Active
+                  </button>
+                  <div class="dropdown-menu" aria-labelledby="dropdownMenu2">
+                    <a class="dropdown-item"
+                       href="{{  url_for('main.close_note', note_id=note.id) }}"
+                       type="button">Close Note</a>
+                  </div>
+                </div>
+             {% else %}
+                <div class="dropdown" style="float: right;">
+                  <button class="btn btn-success rounded-pill dropdown-toggle
+                                 dropdown-toggle-split"
+                          type="button" id="dropdownMenu2"
+                          data-toggle="dropdown" aria-haspopup="true"
+                          aria-expanded="false" style="float: right;">
+                    Resolved
+                  </button>
+                  <div class="dropdown-menu" aria-labelledby="dropdownMenu2">
+                    <a class="dropdown-item"
+                       href="{{ url_for('main.open_note', note_id=note.id) }}"
+                       type="button">Mark Unresolved</a>
+                  </div>
+                </div>
+            {% endif %}
+            <h6 class="mt-0">{{ _('was created %(when)s',
+            when=moment(note.created_at).fromNow()) }}</h6>
+            </span>
+        </h3>
+    </div>
+    <div class="card">
+        <div class="card-body">
+        <p class="card-text">
+            {% for col, value in note.to_dict().items() %}
+                {% if value %}
+                    <span id="campaign{{ processor.id }}">
+                        {{ col }}: {{ value }}</span>
+                    <br>
+                {% endif %}
+            {% endfor %}
+        </p>
+        </div>
+        <div class="card-footer">
+            {% with post = note.get_last_post() %}
+                {% if post %}
+                    {% include '_post.html' %}
+                {% else %}
+                    <h5 class="sidebar-heading d-flex
+                    justify-content-between align-items-center">
+                        <span>{{ _('Note has no posts') }}</span>
+                    </h5>
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+</div>

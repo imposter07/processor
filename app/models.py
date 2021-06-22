@@ -122,6 +122,7 @@ class User(UserMixin, db.Model):
                                backref='user', lazy='dynamic')
     schedule = db.relationship('TaskScheduler', backref='user', lazy='dynamic')
     dashboard = db.relationship('Dashboard', backref='user', lazy='dynamic')
+    notes = db.relationship('Notes', backref='user', lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -834,9 +835,9 @@ class Notes(db.Model):
     note_text = db.Column(db.Text)
     complete = db.Column(db.Boolean, default=False)
     notification = db.Column(db.Text)
-    notification_day = db.column(db.Text)
+    notification_day = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    posts = db.relationship('Post', backref='requests', lazy='dynamic')
+    posts = db.relationship('Post', backref='notes', lazy='dynamic')
 
     def get_form_dict(self):
         form_dict = {
@@ -847,6 +848,21 @@ class Notes(db.Model):
             'notification_day': self.notification_day
         }
         return form_dict
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and 'id' not in k
+                     and k not in ['created_at', 'fixed_time', 'complete',
+                                   'processor']])
+
+    def get_last_post(self):
+        return self.posts.order_by(Post.timestamp.desc()).first()
+
+    def mark_resolved(self):
+        self.complete = True
+
+    def mark_unresolved(self):
+        self.complete = False
 
 
 class Uploader(db.Model):

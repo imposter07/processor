@@ -19,8 +19,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorDuplicateForm, EditUploaderMediaPlanForm,\
     EditUploaderNameCreateForm, EditUploaderCreativeForm,\
     UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
-    ProcessorMetricsForm, ProcessorMetricForm, PlacementForm,\
-    ProcessorDeleteForm, ProcessorDuplicateAnotherForm, ProcessorNoteForm
+    PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm,\
+    ProcessorNoteForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -595,8 +595,9 @@ def get_navigation_buttons(buttons=None):
                    {'Submit Fixes': 'main.edit_processor_submit_fix'},
                    {'All Fixes': 'main.edit_processor_all_fix'}]
     elif buttons == 'ProcessorNote':
-        buttons = [{'New Fix': 'main.edit_processor_note'},
-                   {'All Notes': 'main.edit_processor_all_notes'}]
+        buttons = [{'New Note': 'main.edit_processor_note'},
+                   {'All Notes': 'main.edit_processor_all_notes'},
+                   {'Automatic Notes': 'main.edit_processor_auto_notes'}]
     elif buttons == 'ProcessorDuplicate':
         buttons = [{'Duplicate': 'main.edit_processor_duplication'}]
     elif buttons == 'ProcessorDashboard':
@@ -2086,9 +2087,9 @@ def edit_processor_all_notes(processor_name):
                                    edit_progress=100, edit_name='All Notes',
                                    buttons='ProcessorNote')
     cur_proc = kwargs['processor']
-    fixes = cur_proc.get_notes()
+    all_notes = cur_proc.get_notes()
     form = ProcessorContinueForm()
-    kwargs['fixes'] = fixes
+    kwargs['notes'] = all_notes
     kwargs['form'] = form
     if request.method == 'POST':
         if form.form_continue.data == 'continue':
@@ -2107,12 +2108,11 @@ def edit_processor_view_note(processor_name, note_id):
     kwargs = get_current_processor(processor_name,
                                    current_page='edit_processor_note_fix',
                                    edit_progress=100, edit_name='View Notes',
-                                   buttons='ProcessorRequestFix',
-                                   note_id=note_id)
+                                   buttons='ProcessorNote', note_id=note_id)
     cur_proc = kwargs['processor']
-    fixes = Requests.query.filter_by(id=note_id).all()
+    all_notes = Notes.query.filter_by(id=note_id).all()
     form = ProcessorRequestCommentForm()
-    kwargs['fixes'] = fixes
+    kwargs['notes'] = all_notes
     kwargs['form'] = form
     if request.method == 'POST':
         if form.post.data:
@@ -2132,6 +2132,67 @@ def edit_processor_view_note(processor_name, note_id):
             return redirect(url_for('main.edit_processor_view_note',
                                     processor_name=cur_proc.name,
                                     note_id=note_id))
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/close_note/<note_id>')
+@login_required
+def close_note(note_id):
+    cur_note = Notes.query.get(note_id)
+    if cur_note is None:
+        flash(_('Note #{} not found.'.format(cur_note)))
+        return redirect(url_for('main.explore'))
+    msg_txt = 'The note #{} has been closed!'.format(cur_note.id)
+    cur_note.mark_resolved()
+    post = Post(body=msg_txt, author=current_user,
+                processor_id=cur_note.processor.id, note_id=note_id)
+    db.session.add(post)
+    db.session.commit()
+    flash(_(msg_txt.format(cur_note.id)))
+    return redirect(url_for('main.edit_processor_view_note',
+                            processor_name=cur_note.processor.name,
+                            note_id=cur_note.id))
+
+
+@bp.route('/open_note/<note_id>')
+@login_required
+def open_note(note_id):
+    cur_note = Notes.query.get(note_id)
+    if cur_note is None:
+        flash(_('Note #{} not found.'.format(cur_note)))
+        return redirect(url_for('main.explore'))
+    msg_txt = 'The note #{} has been opened!'.format(cur_note.id)
+    cur_note.mark_unresolved()
+    post = Post(body=msg_txt, author=current_user,
+                processor_id=cur_note.processor.id, note_id=note_id)
+    db.session.add(post)
+    db.session.commit()
+    flash(_(msg_txt))
+    return redirect(url_for('main.edit_processor_view_note',
+                            processor_name=cur_note.processor.name,
+                            note_id=cur_note.id))
+
+
+@bp.route('/processor/<processor_name>/edit/note/auto',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_auto_notes(processor_name):
+    kwargs = get_current_processor(
+        processor_name,  current_page='edit_processor_auto_notes',
+        edit_progress=100,  edit_name='Automatic Notes',
+        buttons='ProcessorNote')
+    cur_proc = kwargs['processor']
+    # all_notes = cur_proc.get_notes()
+    form = ProcessorContinueForm()
+    # kwargs['notes'] = all_notes
+    kwargs['form'] = form
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.processor_page',
+                                    processor_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_all_notes',
+                                    processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 

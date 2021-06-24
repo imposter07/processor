@@ -354,6 +354,11 @@
             {% include '_note.html' %}
         {% endfor %}
     {% endif %}
+    {% if processor_analysis %}
+        {% for analysis in processor_analysis %}
+            {% include 'processor_auto_analysis.html' %}
+        {% endfor %}
+    {% endif %}
     {% if dashboards %}
         {% for dash in dashboards %}
             {% include '_dash_card.html' %}

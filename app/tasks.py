@@ -2034,7 +2034,7 @@ def send_processor_analysis_email(processor_id, current_user_id):
         from urllib.parse import quote
         processor_name = quote(cur_processor.name)
         text_body = build_processor_analysis_email(
-            processor_id, current_user_id)
+            processor_id, current_user_id)[0]
         for user in cur_processor.processor_followers:
             send_email('[Liquid App] {} | Analysis | {}'.format(
                 cur_processor.name,
@@ -3314,7 +3314,8 @@ def build_processor_analysis_email(processor_id, current_user_id):
                 processor_id, current_user_id, text_body=text_body,
                 header=arg[0], full_analysis=analysis,
                 analysis_keys=arg[1])
-        return text_body
+        _set_task_progress(100)
+        return [text_body]
     except:
         _set_task_progress(100)
         app.logger.error(

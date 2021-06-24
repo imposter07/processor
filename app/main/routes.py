@@ -2182,9 +2182,13 @@ def edit_processor_auto_notes(processor_name):
         edit_progress=100,  edit_name='Automatic Notes',
         buttons='ProcessorNote')
     cur_proc = kwargs['processor']
-    # all_notes = cur_proc.get_notes()
     form = ProcessorContinueForm()
-    # kwargs['notes'] = all_notes
+    task = cur_proc.launch_task(
+        '.build_processor_analysis_email', _('Getting processor analysis.'),
+        running_user=current_user.id)
+    db.session.commit()
+    job = task.wait_and_get_job(loops=30)
+    kwargs['processor_analysis'] = job.result
     kwargs['form'] = form
     if request.method == 'POST':
         if form.form_continue.data == 'continue':

@@ -1,4 +1,5 @@
 {% for x in analysis %}
+    {% set current_loop = loop %}
     <p style="margin-left:{{ x['tab'] * 2 }}em;">{{ x['message'] }}</p>
     {% if 'data' in x %}
         <p style="margin-left:{{ x['tab'] * 2 }}em;">{{ x['data'].to_html()|safe }}</p>

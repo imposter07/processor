@@ -400,7 +400,7 @@ class FeeForm(FlaskForm):
                                  get_label='name', validators=[DataRequired()])
     refresh_rate_card = SubmitField('View Rate Card')
     dcm_service_fees = SelectField('DCM Service Fee', choices=[
-        ('0%', '0%'), ('10%', '10%'), ('15%', '15%')])
+        (x, x) for x in ['0%', '5%', '10%', '15%']])
     form_continue = HiddenField('form_continue')
 
 
@@ -750,4 +750,12 @@ class ProcessorDuplicateAnotherForm(FlaskForm):
     new_end_date = DateField('New End Date', format='%Y-%m-%d',
                              validators=[DataRequired()])
     new_proc = HiddenField('New Proc')
+    form_continue = HiddenField('form_continue')
+
+
+class ProcessorAutoAnalysisForm(FlaskForm):
+    auto_analysis_select = SelectField(
+        _l('Analysis'),
+        choices=[(x, x) for x in ['Topline', 'Delivery', 'KPI', 'QA']])
+    datasources = FieldList(FormField(DataSourceForm, label=''))
     form_continue = HiddenField('form_continue')

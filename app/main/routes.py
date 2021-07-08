@@ -20,7 +20,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     EditUploaderNameCreateForm, EditUploaderCreativeForm,\
     UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
     PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm,\
-    ProcessorNoteForm
+    ProcessorNoteForm, ProcessorAutoAnalysisForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -2182,13 +2182,7 @@ def edit_processor_auto_notes(processor_name):
         edit_progress=100,  edit_name='Automatic Notes',
         buttons='ProcessorNote')
     cur_proc = kwargs['processor']
-    form = ProcessorContinueForm()
-    task = cur_proc.launch_task(
-        '.build_processor_analysis_email', _('Getting processor analysis.'),
-        running_user=current_user.id)
-    db.session.commit()
-    job = task.wait_and_get_job(loops=30)
-    kwargs['processor_analysis'] = job.result
+    form = ProcessorAutoAnalysisForm()
     kwargs['form'] = form
     if request.method == 'POST':
         if form.form_continue.data == 'continue':
@@ -2198,6 +2192,36 @@ def edit_processor_auto_notes(processor_name):
             return redirect(url_for('main.edit_processor_all_notes',
                                     processor_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/get_auto_note', methods=['GET', 'POST'])
+@login_required
+def get_auto_note():
+    obj_name = request.form['object_name']
+    cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
+    note_name = request.form['note_name']
+    sub_note_name = request.form['sub_note_name']
+    form = ProcessorAutoAnalysisForm()
+    form = render_template('_form.html', form=form)
+    import processor.reporting.analyze as az
+    if note_name == 'Topline':
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.topline_col).first()
+        buttons = ['Total', 'Two Week', 'Last Week']
+        button_dict = [{'name': x, 'active': x == sub_note_name} for x in buttons]
+    if analysis and analysis.data:
+        df = pd.DataFrame(analysis.data).T
+    else:
+        df = pd.DataFrame()
+    table_data = df_to_html(df, 'datasource_table')
+    raw_data = df[df.columns].replace({'\$': '', ',': ''}, regex=True)
+    raw_data = raw_data.reset_index().to_dict(orient='records')
+    return jsonify({'data': table_data,
+                    'raw_data': raw_data,
+                    'raw_data_columns': df.columns.tolist(),
+                    'auto_note_form': form,
+                    'buttons': button_dict,
+                    'data_message': analysis.message.capitalize()})
 
 
 @bp.route('/uploader')

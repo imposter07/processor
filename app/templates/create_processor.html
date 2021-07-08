@@ -1288,6 +1288,70 @@
 
             });
         }
+        function getAutoNote(noteName='Topline', subNoteName='Total'){
+            $.ajax({
+                type: "POST",
+                url: "/get_auto_note",
+                data: {
+                    object_name: "{{ object_name }}",
+                    object_type:  "{{ title }}",
+                    object_level: "{{ edit_name }}",
+                    note_name: noteName,
+                    sub_note_name: subNoteName
+                },
+            }).done(function(data, status) {
+                $('#base_form_id').html(data['auto_note_form']);
+                appendRows();
+                addMessageButtons(data['data_message'], data['buttons'])
+                appendCardAsTable(data['data'], "dsCardCol",
+                    "#rowOne", noteName + ' Table');
+                appendCleanDashboard('<div></div>')
+                addSelectize();
+                generateBarChart('#dash_placeholderMetrics',
+                    data['raw_data'], 'index', data['raw_data_columns'])
+                $('#dash_placeholderMetricsProgress').remove()
+                loadJS()
+            }).fail(function(jqXHR, textStatus ) {
+
+            }).always(function(){
+                $('#loadingBtn').remove()
+                unanimateBar()
+            });
+        }
+
+        function changeAutoNote() {
+            $('#auto_analysis_select').on('change', function(e){
+                let selectedText = this.options[e.target.selectedIndex].text;
+                getAutoNote(selectedText);
+                $('#data_source_clean').parent().append(
+                    `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"' +
+                    'role="status" aria-hidden="true"></span> Loading...`)
+            });
+        }
+
+        function addMessageButtons(message, buttons) {
+            $('#rowZero').append(
+                '<div class="col">' +
+                '<div class="card">' +
+                '<h6 class="card-header"><small class="text-muted">Message</small></h6>' +
+                '<button class="btn btn-outline-primary">' +
+                message +
+                '</button>' +
+                '</div>' +
+                '</div>' +
+                '<div class="col">' +
+                '<div class="card">' +
+                '<h6 class="card-header"><small class="text-muted">Categories</small></h6>' +
+                '<div id="noteButtons" class="btn-group btn-group-sm btn-block" role="group">' +
+                '</div>' +
+                '</div>')
+            for (var i = 0; i < buttons.length; i++) {
+                let btnClass =  buttons[i]['active'] ?
+                    'btn btn-outline-info active' : 'btn btn-outline-info';
+                document.getElementById("noteButtons").innerHTML +=
+                    '<button class="' + btnClass + '">' + buttons[i]['name'] + '</button>';
+            }
+        }
         $(document).ready(function(){
             $('input[id*="unresolved_relations"]').each(function(index){
                 if (($(this)[0].value === '0') || ($(this)[0].value === '')
@@ -1356,13 +1420,18 @@
             addSelectize()
             refreshButtons()
             changeDataSource()
+            changeAutoNote()
             getSelectedDashboard()
             addPopovers()
         }
+
         $(document).ready(function(){
             loadJS()
             if ("{{ edit_name }}" === "Clean") {
                 getDatasourceTable()
+            }
+            else if ("{{ edit_name }}" === "Automatic Notes") {
+                getAutoNote()
             }
         })
     </script>

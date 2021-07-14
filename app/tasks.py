@@ -3315,6 +3315,7 @@ def build_processor_analysis_email(processor_id, current_user_id):
                 header=arg[0], full_analysis=analysis,
                 analysis_keys=arg[1])
         _set_task_progress(100)
+        print(text_body)
         return [text_body]
     except:
         _set_task_progress(100)

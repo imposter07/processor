@@ -2203,12 +2203,25 @@ def get_auto_note():
     sub_note_name = request.form['sub_note_name']
     form = ProcessorAutoAnalysisForm()
     form = render_template('_form.html', form=form)
+    raw_html = ''
+    button_dict = {}
+    analysis = None
     import processor.reporting.analyze as az
     if note_name == 'Topline':
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_proc.id, key=az.Analyze.topline_col).first()
         buttons = ['Total', 'Two Week', 'Last Week']
-        button_dict = [{'name': x, 'active': x == sub_note_name} for x in buttons]
+        button_dict = [{'name': x, 'active': x == sub_note_name}
+                       for x in buttons]
+    elif note_name == 'All':
+        task = cur_proc.launch_task(
+            '.build_processor_analysis_email', _('Getting processor analysis.'),
+            running_user=current_user.id)
+        db.session.commit()
+        job = task.wait_and_get_job(loops=20)
+        job_result = job.result[0]
+        raw_html = render_template('processor_auto_analysis.html',
+                                   analysis=job_result)
     if analysis and analysis.data:
         df = pd.DataFrame(analysis.data).T
     else:
@@ -2216,12 +2229,15 @@ def get_auto_note():
     table_data = df_to_html(df, 'datasource_table')
     raw_data = df[df.columns].replace({'\$': '', ',': ''}, regex=True)
     raw_data = raw_data.reset_index().to_dict(orient='records')
+    if analysis:
+        analysis = analysis.message.capitalize()
     return jsonify({'data': table_data,
                     'raw_data': raw_data,
                     'raw_data_columns': df.columns.tolist(),
                     'auto_note_form': form,
                     'buttons': button_dict,
-                    'data_message': analysis.message.capitalize()})
+                    'data_message': analysis,
+                    'raw_html': raw_html})
 
 
 @bp.route('/uploader')

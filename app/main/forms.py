@@ -756,6 +756,6 @@ class ProcessorDuplicateAnotherForm(FlaskForm):
 class ProcessorAutoAnalysisForm(FlaskForm):
     auto_analysis_select = SelectField(
         _l('Analysis'),
-        choices=[(x, x) for x in ['Topline', 'Delivery', 'KPI', 'QA']])
+        choices=[(x, x) for x in ['Topline', 'Delivery', 'KPI', 'QA', 'All']])
     datasources = FieldList(FormField(DataSourceForm, label=''))
     form_continue = HiddenField('form_continue')

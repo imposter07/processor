@@ -1302,14 +1302,19 @@
             }).done(function(data, status) {
                 $('#base_form_id').html(data['auto_note_form']);
                 appendRows();
-                addMessageButtons(data['data_message'], data['buttons'])
-                appendCardAsTable(data['data'], "dsCardCol",
-                    "#rowOne", noteName + ' Table');
-                appendCleanDashboard('<div></div>')
-                addSelectize();
-                generateBarChart('#dash_placeholderMetrics',
-                    data['raw_data'], 'index', data['raw_data_columns'])
-                $('#dash_placeholderMetricsProgress').remove()
+                if (noteName === 'All'){
+                    $('#rowThree').append(data['raw_html'])
+                }
+                else {
+                    addMessageButtons(data['data_message'], data['buttons'])
+                    appendCardAsTable(data['data'], "dsCardCol",
+                        "#rowOne", noteName + ' Table');
+                    appendCleanDashboard('<div></div>')
+                    addSelectize();
+                    generateBarChart('#dash_placeholderMetrics',
+                        data['raw_data'], 'index', data['raw_data_columns'])
+                    $('#dash_placeholderMetricsProgress').remove()
+                }
                 loadJS()
             }).fail(function(jqXHR, textStatus ) {
 

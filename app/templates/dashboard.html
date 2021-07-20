@@ -290,7 +290,7 @@
                 filterDict = getFilters('countryname', filterDict);
                 filterDict = getFilters('environmentname', filterDict);
                 filterDict = getFilters('kpiname', filterDict);
-                getSecondaryCharts(filterDict, dropdownButton);
+                getSecondaryCharts(filterDict);
                 $(dropdownButton).attr("hidden",true);
             });
         });
@@ -316,7 +316,6 @@
             $("#datePicker").flatpickr({
                 mode: "range"
             });
-            console.log('getting the charts')
             getAllCharts()
         });
     </script>

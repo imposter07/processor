@@ -16,7 +16,9 @@ from app import db, login
 from app.search import add_to_index, remove_from_index, query_index
 
 
-class SearchableMixin(object):
+class SearchableMixin(db.Model):
+    __abstract__ = True
+
     @classmethod
     def search(cls, expression, page, per_page):
         ids, total = query_index(cls.__tablename__, expression, page, per_page)

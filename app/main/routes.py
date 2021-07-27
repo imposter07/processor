@@ -238,7 +238,7 @@ def get_processor_by_user():
             new_dict[client][product][campaign] = []
         new_dict[client][product][campaign].append(x)
     new_dict = {key: new_dict[key] for
-                key in sorted(new_dict.keys(), key=lambda x: x.name)}
+                key in sorted(new_dict.keys(), key=lambda y: y.name)}
     clients_html = render_template('_client_directory.html',
                                    client_dict=new_dict)
     return jsonify({'items': processor_html,
@@ -274,7 +274,7 @@ def get_project_numbers():
             new_dict[client][product][campaign] = []
         new_dict[client][product][campaign].append(x)
     new_dict = {key: new_dict[key] for
-                key in sorted(new_dict.keys(), key=lambda x: x.name)}
+                key in sorted(new_dict.keys(), key=lambda y: y.name)}
     clients_html = render_template('_client_directory.html',
                                    client_dict=new_dict)
     return jsonify({'items': data['data'],
@@ -1108,11 +1108,6 @@ def get_table():
                          attachment_filename='test.csv',
                          mimetype='text/csv'
                          )
-    pd.set_option('display.max_colwidth', -1)
-    df = df.reset_index()
-    if 'index' in df.columns and job_name != '.get_import_config_file':
-        df = df[[x for x in df.columns if x != 'index'] + ['index']]
-    cols = json.dumps(df.columns.tolist())
     for base_name in ['Relation', 'Uploader']:
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])
@@ -1120,9 +1115,8 @@ def get_table():
                 table_name = '{}vendorkey{}'.format(
                     table_name, request.form['vendorkey'].replace(' ', '___'))
     table_name = "modalTable{}".format(table_name)
-    data = df.to_html(index=False, table_id=table_name,
-                      classes="table table-responsive-sm small table-dark")
-    return jsonify({'data': {'data': data, 'cols': cols, 'name': table_name}})
+    data = df_to_html(df, table_name, job_name)
+    return jsonify(data)
 
 
 @bp.context_processor
@@ -1132,10 +1126,10 @@ def utility_functions():
     return dict(mdebug=print_in_console)
 
 
-def df_to_html(df, name):
-    pd.set_option('display.max_colwidth', -1)
+def df_to_html(df, name, job_name=''):
+    pd.set_option('display.max_colwidth', None)
     df = df.reset_index()
-    if 'index' in df.columns:
+    if 'index' in df.columns and job_name != '.get_import_config_file':
         df = df[[x for x in df.columns if x != 'index'] + ['index']]
     data = df.to_html(
         index=False, table_id=name,
@@ -1313,9 +1307,7 @@ def edit_processor_clean_upload_file(processor_name):
     ds = [x for x in object_form if x['name'] == 'data_source_clean']
     if ds:
         ds = ds[0]['value']
-    search_dict = {}
-    search_dict['processor_id'] = cur_proc.id
-    search_dict['vendor_key'] = ds
+    search_dict = {'processor_id': cur_proc.id, 'vendor_key': ds}
     ds = ProcessorDatasources.query.filter_by(**search_dict).first()
     msg_text = 'Adding raw data for {}'.format(ds.vendor_key)
     cur_proc.launch_task(
@@ -1970,8 +1962,7 @@ def resolve_fix(fix_id):
     request_fix = Requests.query.get(fix_id)
     if request_fix is None:
         flash(_('Request #{} not found.'.format(request_fix)))
-        return redirect(url_for('main.edit_processor_submit_fix',
-                                processor_name=request_fix.processor.name))
+        return redirect(url_for('main.index'))
     msg_txt = 'The fix #{} has been marked as resolved!'.format(request_fix.id)
     request_fix.mark_resolved()
     post = Post(body=msg_txt, author=current_user,
@@ -1991,8 +1982,7 @@ def unresolve_fix(fix_id):
     request_fix = Requests.query.get(fix_id)
     if request_fix is None:
         flash(_('Request #{} not found.'.format(request_fix)))
-        return redirect(url_for('main.edit_processor_submit_fix',
-                                processor_name=request_fix.processor.name))
+        return redirect(url_for('main.index'))
     msg_txt = 'The fix #{} has been marked as unresolved!'.format(
         request_fix.id)
     request_fix.mark_unresolved()
@@ -2227,7 +2217,7 @@ def get_auto_note():
     else:
         df = pd.DataFrame()
     table_data = df_to_html(df, 'datasource_table')
-    raw_data = df[df.columns].replace({'\$': '', ',': ''}, regex=True)
+    raw_data = df[df.columns].replace({'\\$': '', ',': ''}, regex=True)
     raw_data = raw_data.reset_index().to_dict(orient='records')
     if analysis:
         analysis = analysis.message.capitalize()

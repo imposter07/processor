@@ -101,8 +101,10 @@ function createTable(colData, rawData, tableName,
             "deferRender": true,
             "orderClasses": false,
             "scrollX": true,
-            autoFill: true,
             responsive: true,
+            fixedColumns:   {
+                leftColumns: 1,
+            },
             keys: {
                 columns: ':not(:first-child)',
                 editor: editor

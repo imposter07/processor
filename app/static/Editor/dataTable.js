@@ -95,6 +95,7 @@ function createTable(colData, rawData, tableName,
                 }
             }]
         });
+        let dom = "<div class='row'><div class='col'>B</div><div class='col'>f</div></div>";
         var table = $(tableJquery).DataTable({
             dom: "Bfrtip",
             columns: tableCols,
@@ -102,9 +103,6 @@ function createTable(colData, rawData, tableName,
             "orderClasses": false,
             "scrollX": true,
             responsive: true,
-            fixedColumns:   {
-                leftColumns: 1,
-            },
             keys: {
                 columns: ':not(:first-child)',
                 editor: editor
@@ -115,6 +113,14 @@ function createTable(colData, rawData, tableName,
                 blurable: true
             },
             buttons: [
+                {
+                    extend: 'searchPanes',
+                    config: {
+                        cascadePanes: true,
+                        viewTotal: true,
+                        layout: 'columns-3'
+                    }
+                },
                 {
                     extend: 'collection',
                     text: 'Export',
@@ -154,7 +160,12 @@ function createTable(colData, rawData, tableName,
                     extend: 'selectAll',
                     className: 'btn-space'
                 },
+                {
+                    extend: 'colvis',
+                    collectionLayout: 'fixed two-column'
+                },
             ]
         });
+
     });
 }

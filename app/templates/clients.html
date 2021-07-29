@@ -111,24 +111,6 @@
           href="{{ url_for('static', filename='Selectize/selectize.dark.css') }}">
     <script type="text/javascript"
             src="{{ url_for('static', filename='Selectize/selectize.js') }}"></script>
-    <link rel="stylesheet" type="text/css"
-          href="https://cdn.datatables.net/v/bs4/jszip-2.5.0/dt-1.10.20/b-1.6.1/b-html5-1.6.1/sl-1.3.1/af-2.3.4/kt-2.5.1/datatables.min.css"/>
-    <script type="text/javascript"
-            src="https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.js"></script>
-    <script type="text/javascript"
-            src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
-    <script type="text/javascript"
-            src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>
-    <script type="text/javascript"
-            src="https://cdn.datatables.net/v/bs4/jszip-2.5.0/dt-1.10.20/b-1.6.1/b-html5-1.6.1/sl-1.3.1/af-2.3.4/kt-2.5.1/datatables.min.js"></script>
-    <script type="text/javascript"
-            src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js"></script>
-    <script type="text/javascript"
-            src="{{ url_for('static', filename='Editor/dataTable.js') }}"></script>
-    <link rel="stylesheet" type="text/css"
-          href="{{ url_for('static', filename='Editor/css/editor.dataTables.css') }}">
-    <script type="text/javascript"
-            src="{{ url_for('static', filename='Editor/js/dataTables.editor.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             let calendarEl = document.getElementById('calendar');
@@ -346,4 +328,5 @@
         });
     </script>
     {% include "_dash_builder.html" %}
+    {% include "_table_builder.html" %}
 {% endblock %}

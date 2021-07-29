@@ -1127,7 +1127,7 @@ def utility_functions():
 
 
 def df_to_html(df, name, job_name=''):
-    pd.set_option('display.max_colwidth', None)
+    pd.set_option('display.max_colwidth', -1)
     df = df.reset_index()
     if 'index' in df.columns and job_name != '.get_import_config_file':
         df = df[[x for x in df.columns if x != 'index'] + ['index']]

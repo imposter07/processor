@@ -1103,11 +1103,8 @@ def get_table():
         mem = io.BytesIO()
         mem.write(df)
         mem.seek(0)
-        return send_file(mem,
-                         as_attachment=True,
-                         attachment_filename='test.csv',
-                         mimetype='text/csv'
-                         )
+        return send_file(mem, as_attachment=True,
+                         attachment_filename='test.csv', mimetype='text/csv')
     for base_name in ['Relation', 'Uploader']:
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])

@@ -1115,3 +1115,30 @@ class Project(db.Model):
 class ProjectNumberMax(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     max_number = db.Column(db.Integer)
+
+
+class Tutorial(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text)
+    tutorial_stage = db.relationship('TutorialStage',
+                                     backref='tutorial', lazy='dynamic')
+
+
+class TutorialStage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tutorial_id = db.Column(db.Integer, db.ForeignKey('tutorial.id'))
+    tutorial_level = db.Column(db.Integer)
+    header = db.Column(db.Text)
+    sub_header = db.Column(db.Text)
+    message = db.Column(db.Text)
+    alert = db.Column(db.Text)
+    alert_level = db.Column(db.Text)
+    image = db.Column(db.Text)
+
+
+user_tutorial = db.Table(
+    'user_tutorial',
+    db.Column('tutorial_stage_id', db.Integer,
+              db.ForeignKey('tutorial_stage.id')),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+)

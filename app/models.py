@@ -1134,6 +1134,9 @@ class TutorialStage(db.Model):
     alert = db.Column(db.Text)
     alert_level = db.Column(db.Text)
     image = db.Column(db.Text)
+    question = db.Column(db.Text)
+    question_answers = db.Column(db.Text)
+    correct_answer = db.Column(db.Text)
 
 
 user_tutorial = db.Table(

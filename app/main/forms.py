@@ -759,3 +759,9 @@ class ProcessorAutoAnalysisForm(FlaskForm):
         choices=[(x, x) for x in ['Topline', 'Delivery', 'KPI', 'QA', 'All']])
     datasources = FieldList(FormField(DataSourceForm, label=''))
     form_continue = HiddenField('form_continue')
+
+
+class TutorialUploadForm(FlaskForm):
+    tutorial_select = SelectField(
+        _l('Tutorial Select'), choices=[(x, x) for x in ['Processor Basic']])
+    new_file = FileField(_l('New File'))

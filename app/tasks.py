@@ -15,7 +15,8 @@ from app.email import send_email
 from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
-    ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign
+    ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
+    Tutorial, TutorialStage
 
 app = create_app()
 app.app_context().push()
@@ -3469,3 +3470,54 @@ def get_all_processors(user_id, running_user):
             'Unhandled exception - User {}'.format(user_id),
             exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def update_tutorial(user_id, running_user, tutorial_name, new_data):
+    try:
+        _set_task_progress(0)
+        cur_tutorial = Tutorial.query.filter_by(name=tutorial_name).first()
+        if not cur_tutorial:
+            cur_tutorial = Tutorial(name=tutorial_name)
+            db.session.add(cur_tutorial)
+            db.session.commit()
+        new_data.seek(0)
+        df = pd.read_csv(new_data)
+        df = df.fillna('')
+        tut_dict = df.to_dict(orient='index')
+        for tut_stage_id in tut_dict:
+            tut_stage = tut_dict[tut_stage_id]
+            tut_level = int(tut_stage['tutorial_level'])
+            db_stage = TutorialStage.query.filter_by(
+                tutorial_id=cur_tutorial.id, tutorial_level=tut_level).first()
+            if not db_stage:
+                new_stage = TutorialStage(
+                    tutorial_id=cur_tutorial.id,
+                    tutorial_level=tut_level,
+                    header=tut_stage['header'],
+                    sub_header=tut_stage['sub_header'],
+                    message=tut_stage['message'], alert=tut_stage['alert'],
+                    alert_level=tut_stage['alert_level'],
+                    image=tut_stage['image'], question=tut_stage['question'],
+                    question_answers=tut_stage['question_answers'],
+                    correct_answer=tut_stage['correct_answer'])
+                db.session.add(new_stage)
+                db.session.commit()
+            else:
+                db_stage.header = tut_stage['header']
+                db_stage.sub_header = tut_stage['sub_header']
+                db_stage.message = tut_stage['message']
+                db_stage.alert = tut_stage['alert']
+                db_stage.alert_level = tut_stage['alert_level']
+                db_stage.image = tut_stage['image']
+                db_stage.question = tut_stage['question']
+                db_stage.question_answers = tut_stage['question_answers']
+                db_stage.correct_answer = tut_stage['correct_answer']
+                db.session.commit()
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - User {}'.format(user_id),
+            exc_info=sys.exc_info())
+        return False

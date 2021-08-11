@@ -76,6 +76,9 @@ def create_app(config_class=Config()):
     from app.main import bp as main_bp
     app.register_blueprint(main_bp)
 
+    from app.tutorials import bp as tutorials_bp
+    app.register_blueprint(tutorials_bp)
+
     app.config.from_object(rq_dashboard.default_settings)
     app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rq")
 

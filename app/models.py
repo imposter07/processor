@@ -1138,6 +1138,9 @@ class TutorialStage(db.Model):
     question_answers = db.Column(db.Text)
     correct_answer = db.Column(db.Text)
 
+    def get_question_answers(self):
+        return self.question_answers.split('|')
+
 
 user_tutorial = db.Table(
     'user_tutorial',

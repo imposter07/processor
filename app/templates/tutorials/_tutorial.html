@@ -1,0 +1,43 @@
+<div class="card">
+    <div class="card-header">{{ tutorial_stage.header }}</div>
+    <div class="card-subtitle">{{ tutorial_stage.sub_header }}</div>
+    <div class="card-body">
+        <div class="row">
+            {% if tutorial_stage.message %}
+                <div class="col">
+                    <p class="card-text">{{ tutorial_stage.message }}</p>
+                </div>
+            {% endif %}
+            {% if tutorial_stage.question %}
+                <div class="col">
+                    <p class="card-text">{{ tutorial_stage.question }}</p>
+                </div>
+            {% endif %}
+            {% if tutorial_stage.image %}
+                <div class="col">
+                    <p class="card-text">{{ tutorial_stage.question }}</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% if tutorial_stage.question_answers %}
+        <div class="card-footer">
+            <div class="btn-group btn-group-sm btn-block">
+            {% set answers = tutorial_stage.get_question_answers() %}
+                {% for answer in answers %}
+                    <button type="button" class="btn btn-outline-primary">{{ answer }}</button>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+<script>
+    function displayInitialMessage(){
+        if ("{{ tutorial_stage.alert}}" && !("{{ tutorial_stage.question}}")) {
+            displayAlert("{{ tutorial_stage.alert|safe }}", "{{ tutorial_stage.alert_level|safe }}")
+        }
+    }
+     $(document).ready(function () {
+         displayInitialMessage();
+     });
+</script>

@@ -1,0 +1,6 @@
+{% extends "create_processor.html" %}
+{% block app_content_2 %}
+    {% if tutorial_stage %}
+        {% include 'tutorials/_tutorial.html' %}
+    {% endif %}
+{% endblock %}

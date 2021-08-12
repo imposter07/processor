@@ -13,7 +13,7 @@ from app.models import Tutorial, TutorialStage
 def edit_tutorial():
     form = TutorialUploadForm()
     kwargs = {'form': form}
-    return render_template('create_processor.html', **kwargs)
+    return render_template('tutorials/tutorials.html', **kwargs)
 
 
 @bp.route('/tutorial/edit/upload_file', methods=['GET', 'POST'])
@@ -30,3 +30,16 @@ def edit_tutorial_upload_file():
         running_user=current_user.id, tutorial_name=tutorial_name, new_data=mem)
     db.session.commit()
     return jsonify({'data': 'success: {}'.format(tutorial_name)})
+
+
+@bp.route('/tutorial/get/<tutorial_name>/<tutorial_level>',
+          methods=['GET', 'POST'])
+@login_required
+def get_tutorial(tutorial_name, tutorial_level=0):
+    cur_tutorial = Tutorial.query.filter_by(name=tutorial_name).first_or_404()
+    tutorial_stage = TutorialStage.query.filter_by(
+        tutorial_id=cur_tutorial.id, tutorial_level=tutorial_level).first_or_404()
+    kwargs = {'object_name': cur_tutorial.name,
+              'title': 'Tutorial',
+              'tutorial_stage': tutorial_stage}
+    return render_template('tutorials/tutorials.html', **kwargs)

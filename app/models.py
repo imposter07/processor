@@ -86,6 +86,14 @@ project_number_processor = db.Table(
 )
 
 
+user_tutorial = db.Table(
+    'user_tutorial',
+    db.Column('tutorial_stage_id', db.Integer,
+              db.ForeignKey('tutorial_stage.id')),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+)
+
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
@@ -125,6 +133,12 @@ class User(UserMixin, db.Model):
     schedule = db.relationship('TaskScheduler', backref='user', lazy='dynamic')
     dashboard = db.relationship('Dashboard', backref='user', lazy='dynamic')
     notes = db.relationship('Notes', backref='user', lazy='dynamic')
+    tutorial_stages_completed = db.relationship(
+        'TutorialStage', secondary=user_tutorial,
+        primaryjoin=(user_tutorial.c.user_id == id),
+        secondaryjoin="user_tutorial.c.tutorial_stage_id == TutorialStage.id",
+        backref=db.backref('user_tutorial', lazy='dynamic'),
+        lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -176,6 +190,10 @@ class User(UserMixin, db.Model):
     def is_following_processor(self, processor):
         return self.processor_followed.filter(
             processor_followers.c.followed_id == processor.id).count() > 0
+
+    def complete_tutorial_stage(self, tutorial_stage):
+        if tutorial_stage not in self.tutorial_stages_completed.all():
+            self.tutorial_stages_completed.append(tutorial_stage)
 
     def get_reset_password_token(self, expires_in=600):
         return jwt.encode(
@@ -1140,11 +1158,3 @@ class TutorialStage(db.Model):
 
     def get_question_answers(self):
         return self.question_answers.split('|')
-
-
-user_tutorial = db.Table(
-    'user_tutorial',
-    db.Column('tutorial_stage_id', db.Integer,
-              db.ForeignKey('tutorial_stage.id')),
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
-)

@@ -25,7 +25,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project,\
-    Notes
+    Notes, Tutorial
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -358,13 +358,15 @@ def user(username):
     page = request.args.get('page', 1, type=int)
     posts = user_page.posts.order_by(Post.timestamp.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
+    tutorials = Tutorial.query.all()
     next_url = url_for('main.user', username=user_page.username,
                        page=posts.next_num) if posts.has_next else None
     prev_url = url_for('main.user', username=user_page.username,
                        page=posts.prev_num) if posts.has_prev else None
     return render_template('user.html', user=user_page, posts=posts.items,
                            next_url=next_url, prev_url=prev_url,
-                           title=_('User | {}'.format(username)))
+                           title=_('User | {}'.format(username)),
+                           tutorials=tutorials)
 
 
 @bp.route('/edit_profile', methods=['GET', 'POST'])

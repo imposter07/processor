@@ -1138,8 +1138,20 @@ class ProjectNumberMax(db.Model):
 class Tutorial(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Text)
+    description = db.Column(db.Text)
     tutorial_stage = db.relationship('TutorialStage',
                                      backref='tutorial', lazy='dynamic')
+
+    def get_url(self):
+        return url_for('tutorials.get_tutorial', tutorial_name=self.name,
+                       tutorial_level=0)
+
+    def get_progress(self, user_id):
+        cu = User.query.get(user_id)
+        total_stages = len(self.tutorial_stage.all())
+        completed_stages = len(cu.tutorial_stages_completed.filter_by(
+            tutorial_id=self.id).all())
+        return (completed_stages / total_stages) * 100
 
 
 class TutorialStage(db.Model):

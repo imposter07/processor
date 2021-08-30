@@ -1,0 +1,26 @@
+<div class="card">
+    <div class="card-header">
+        <h6>
+            <a href="{{ tutorial.get_url() }}">{{ tutorial.name }}</a>
+        </h6>
+    </div>
+
+    <div class="card-body">
+        <p class="card-text" style="font-size: 70%;">
+            <span id="tutorial{{ tutorial.id }}">
+                Tutorial: {{ tutorial.name }}</span>
+            <br>
+        </p>
+    </div>
+    <div class="card-footer">
+        {% set progress = tutorial.get_progress(user_id=user.id) %}
+        <div class="progress mx-auto">
+            <div id="progressBar"
+                 class="progress-bar progress-bar-striped bg-info"
+                 role="progressbar" style="width:{{ progress }}%;"
+                 aria-valuenow={{ progress }} aria-valuemin="0"
+                 aria-valuemax="100">{{ progress }}% Completed</div>
+        </div>
+        <br>
+    </div>
+</div>

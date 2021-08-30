@@ -31,7 +31,7 @@
     </table>
 {% endblock %}
 
-{% block app_content %}
+{% block vertical_navbar %}
     {% for post in posts %}
         {% include '_post.html' %}
     {% endfor %}
@@ -49,4 +49,10 @@
             </li>
         </ul>
     </nav>
+{% endblock %}
+
+{% block app_content %}
+    {% for tutorial in tutorials %}
+        {% include 'tutorials/tutorial_card.html' %}
+    {% endfor %}
 {% endblock %}

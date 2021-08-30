@@ -1,6 +1,6 @@
 <div class="card">
     <div class="card-header">{{ tutorial_stage.header }}</div>
-    <div class="card-subtitle">{{ tutorial_stage.sub_header }}</div>
+    <h5 class="card-title">{{ tutorial_stage.sub_header }}</h5>
     <div class="card-body">
         <div class="row">
             {% if tutorial_stage.message %}
@@ -30,7 +30,8 @@
             <div class="btn-group btn-group-sm btn-block">
             {% set answers = tutorial_stage.get_question_answers() %}
                 {% for answer in answers %}
-                    <button type="button" class="btn btn-outline-primary">{{ answer }}</button>
+                    <button id="answer{{ loop.index }}" type="button"
+                            class="btn btn-outline-primary">{{ answer }}</button>
                 {% endfor %}
             </div>
         </div>
@@ -42,7 +43,33 @@
             displayAlert("{{ tutorial_stage.alert|safe }}", "{{ tutorial_stage.alert_level|safe }}")
         }
     }
+    function answerButtonClicked(){
+        $('button[id*="answer"]').unbind('click').click(function () {
+            $('#alertPlaceholder').alert('close')
+            let answerNum = parseInt($(this)[0].id.split('answer')[1]);
+            let correctAnswer = parseInt("{{ tutorial_stage.correct_answer }}")
+            if (answerNum === correctAnswer) {
+                displayAlert("{{ tutorial_stage.alert|safe }}", "success")
+                toggleContinue(false);
+                return true
+            }
+            else {
+                displayAlert("That answer is incorrect please try again.", "danger")
+                return false
+            }
+        })
+    }
+    function toggleContinue(disabled=true){
+        $("#loadContinue").prop("disabled", disabled);
+    }
+    function checkDisableContinue(){
+        if ("{{ tutorial_stage.question}}") {
+            toggleContinue(true);
+        }
+    }
      $(document).ready(function () {
          displayInitialMessage();
+         answerButtonClicked();
+         checkDisableContinue();
      });
 </script>

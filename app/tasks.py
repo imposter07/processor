@@ -977,8 +977,8 @@ def write_tableau_config_file(processor_id, current_user_id):
     except:
         _set_task_progress(100)
         app.logger.error(
-            'Unhandled exception - Processor {} User {} VK {}'.format(
-                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
 
 
 def full_run_processor(processor_id, current_user_id, processor_args=None):

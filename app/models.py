@@ -460,6 +460,7 @@ class Processor(db.Model):
     end_date = db.Column(db.Date)
     tableau_workbook = db.Column(db.Text)
     tableau_view = db.Column(db.Text)
+    tableau_datasource = db.Column(db.Text)
     requesting_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     plan_path = db.Column(db.Text)
     first_report_ = db.Column(db.Date)

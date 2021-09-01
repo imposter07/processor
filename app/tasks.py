@@ -957,6 +957,30 @@ def write_import_config_file(processor_id, current_user_id, new_data, vk):
                 processor_id, current_user_id, vk), exc_info=sys.exc_info())
 
 
+def write_tableau_config_file(processor_id, current_user_id):
+    try:
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        file_name = os.path.join('processor', 'config', 'tabconfig.json')
+        if cur_processor.tableau_datasource:
+            with open(file_name, 'r') as f:
+                tab_config = json.load(f)
+            tab_config['datasource'] = cur_processor.tableau_datasource
+            with open(file_name, 'w') as f:
+                json.dump(tab_config, f)
+            msg_text = ('{} processor tableau config file was updated.'
+                        ''.format(cur_processor.name))
+            processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+
+
 def full_run_processor(processor_id, current_user_id, processor_args=None):
     try:
         _set_task_progress(0)

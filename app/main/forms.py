@@ -62,6 +62,7 @@ class ProcessorForm(FlaskForm):
     local_path = StringField(_l('Local Path'), validators=[DataRequired()])
     tableau_workbook = StringField(_l('Tableau Workbook'))
     tableau_view = StringField(_l('Tableau View'))
+    tableau_datasource = StringField(_l('Tableau Datasource'))
     start_date = DateField(_l('Start Date'))
     end_date = DateField(_l('End Date'))
     cur_client = QuerySelectField(_l('Client'), allow_blank=True,
@@ -278,6 +279,7 @@ class PlacementForm(FlaskForm):
 class ProcessorExportForm(FlaskForm):
     tableau_workbook = StringField(_l('Tableau Workbook'))
     tableau_view = StringField(_l('Tableau View'))
+    tableau_datasource = StringField(_l('Tableau Datasource'))
     schedule = BooleanField(_l('Schedule'), )
     schedule_start = DateField(_l('Schedule Start'), format='%Y-%m-%d')
     schedule_end = DateField(_l('Schedule End'), format='%Y-%m-%d')

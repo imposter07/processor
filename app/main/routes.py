@@ -647,7 +647,9 @@ def create_processor():
             local_path=form.local_path.data, start_date=form.start_date.data,
             end_date=form.end_date.data,
             tableau_workbook=form.tableau_workbook.data,
-            tableau_view=form.tableau_view.data, campaign_id=form_campaign.id)
+            tableau_view=form.tableau_view.data,
+            tableau_datasource=form.tableau_datasource.data,
+            campaign_id=form_campaign.id)
         db.session.add(new_processor)
         db.session.commit()
         cur_user.follow_processor(new_processor)
@@ -1350,6 +1352,7 @@ def edit_processor_export(processor_name):
     if request.method == 'GET':
         form.tableau_workbook.data = cur_proc.tableau_workbook
         form.tableau_view.data = cur_proc.tableau_view
+        form.tableau_datasource.data = cur_proc.tableau_datasource
         if sched:
             form.schedule.data = True
             form.schedule_start.data = sched.start_date
@@ -1360,6 +1363,7 @@ def edit_processor_export(processor_name):
         form.validate()
         cur_proc.tableau_workbook = form.tableau_workbook.data
         cur_proc.tableau_view = form.tableau_view.data
+        cur_proc.tableau_datasource = form.tableau_datasource.data
         cancel_schedule(sched)
         if form.schedule.data:
             msg_text = 'Scheduling processor: {}'.format(processor_name)
@@ -1368,6 +1372,10 @@ def edit_processor_export(processor_name):
                                   end_date=form.schedule_end.data,
                                   scheduled_time=form.run_time.data,
                                   interval=form.interval.data)
+        if form.tableau_datasource.data:
+            msg_text = 'Adding tableau export file: {}'.format(processor_name)
+            cur_proc.launch_task('.write_tableau_config_file', msg_text,
+                                 running_user=current_user.id)
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_page',
@@ -1488,6 +1496,7 @@ def edit_processor(processor_name):
         processor_to_edit.local_path = form.local_path.data
         processor_to_edit.tableau_workbook = form.tableau_workbook.data
         processor_to_edit.tableau_view = form.tableau_view.data
+        processor_to_edit.tableau_datasource = form.tableau_datasource.data
         processor_to_edit.start_date = form.start_date.data
         processor_to_edit.end_date = form.end_date.data
         processor_to_edit.campaign_id = form_campaign.id
@@ -1503,6 +1512,12 @@ def edit_processor(processor_name):
                     processor_id=processor_to_edit.id)
         db.session.add(post)
         db.session.commit()
+        if form.tableau_datasource.data:
+            msg_text = 'Adding tableau export file: {}'.format(processor_name)
+            processor_to_edit.launch_task('.write_tableau_config_file',
+                                          msg_text,
+                                          running_user=current_user.id)
+            db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_import',
                                     processor_name=processor_to_edit.name))
@@ -1515,6 +1530,7 @@ def edit_processor(processor_name):
         form.local_path.data = processor_to_edit.local_path
         form.tableau_workbook.data = processor_to_edit.tableau_workbook
         form.tableau_view.data = processor_to_edit.tableau_view
+        form.tableau_datasource.data = processor_to_edit.tableau_datasource
         form.start_date.data = processor_to_edit.start_date
         form.end_date.data = processor_to_edit.end_date
         form_campaign = Campaign.query.filter_by(

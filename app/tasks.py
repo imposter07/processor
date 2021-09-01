@@ -963,7 +963,7 @@ def write_tableau_config_file(processor_id, current_user_id):
             processor_id=processor_id, current_user_id=current_user_id)
         import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
-        file_name = os.path.join('processor', 'config', 'tabconfig.json')
+        file_name = os.path.join('config', 'tabconfig.json')
         if cur_processor.tableau_datasource:
             with open(file_name, 'r') as f:
                 tab_config = json.load(f)

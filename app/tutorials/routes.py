@@ -58,9 +58,13 @@ def get_tutorial(tutorial_name, tutorial_level=0):
         cur_user.complete_tutorial_stage(tutorial_stage)
         db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('tutorials.get_tutorial',
-                                    tutorial_name=tutorial_name,
-                                    tutorial_level=tutorial_level+1))
+            if tutorial_level + 1 >= tutorial_stage_num:
+                return redirect(url_for('main.user',
+                                        username=current_user.username))
+            else:
+                return redirect(url_for('tutorials.get_tutorial',
+                                        tutorial_name=tutorial_name,
+                                        tutorial_level=tutorial_level+1))
         else:
             return redirect(url_for('tutorials.get_tutorial',
                                     tutorial_name=tutorial_name,

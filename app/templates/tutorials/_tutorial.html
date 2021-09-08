@@ -13,16 +13,6 @@
                     <p class="card-text">{{ tutorial_stage.question }}</p>
                 </div>
             {% endif %}
-            {% if tutorial_stage.image %}
-                <div class="col">
-                    <div class="media">
-                        <span class="media-right">
-                            <img alt="tutorial image"
-                                 class="img-fluid" src={{ tutorial_stage.image }}>
-                        </span>
-                    </div>
-                </div>
-            {% endif %}
         </div>
     </div>
     {% if tutorial_stage.question_answers %}
@@ -35,6 +25,9 @@
                 {% endfor %}
             </div>
         </div>
+    {% endif %}
+    {% if tutorial_stage.image %}
+        <img alt="tutorial image" class="img-fluid card-img-bottom" src={{ tutorial_stage.image }}>
     {% endif %}
 </div>
 <script>

@@ -676,6 +676,7 @@ class ProcessorDuplicateForm(FlaskForm):
                                validators=[DataRequired()])
     new_end_date = DateField('New End Date', format='%Y-%m-%d',
                              validators=[DataRequired()])
+    old_processor_run = BooleanField('Run Old Processor?')
     form_continue = HiddenField('form_continue')
 
 

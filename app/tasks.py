@@ -2667,8 +2667,12 @@ def duplicate_processor(processor_id, current_user_id, form_data):
             progress['new_processor_run'] = 'Success!'
         _set_task_progress(75)
         os.chdir(cur_path)
-        result = run_processor(processor_id, current_user_id,
-                               '--api all --ftp all --dbi all --exp all --tab')
+        if form_data['old_processor_run']:
+            result = run_processor(
+                processor_id, current_user_id,
+                '--api all --ftp all --dbi all --exp all --tab')
+        else:
+            result = True
         if result:
             progress['old_processor_run'] = 'Success!'
         _set_task_progress(88)
@@ -3455,7 +3459,8 @@ def get_project_numbers(processor_id, current_user_id):
                                'project number: {}').format(pn['#'])
                 name = (pn['Project'].
                         replace('_', ' ').replace('|', ' ').
-                        replace(':', ' ').replace('.', ' ').replace("'", ' '))
+                        replace(':', ' ').replace('.', ' ').replace("'", ' ').
+                        replace('&', ' '))
                 new_processor = Processor(
                     name=name, description=description,
                     user_id=4, created_at=datetime.utcnow(),

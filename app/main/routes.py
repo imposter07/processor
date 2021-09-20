@@ -114,6 +114,7 @@ def get_processor_by_date():
 @bp.route('/get_live_processors', methods=['GET', 'POST'])
 @login_required
 def get_live_processors():
+    import datetime as dt
     page_num = int(request.form['page'])
     page = request.args.get('page', page_num, type=int)
     if request.form['followed'] == 'true':
@@ -122,14 +123,19 @@ def get_live_processors():
         processors = Processor.query
     processors = processors.filter(
         Processor.end_date > datetime.today().date()).order_by(
-        Processor.created_at.desc()).paginate(
-        page, 3, False)
+        Processor.created_at.desc())
+    processors_all = [x.name for x in processors.all()]
+    seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
+    if 'filter_dict' in request.form and request.form['filter_dict'] != 'null':
+        processors = parse_filter_dict_from_clients(processors, seven_days_ago)
+    processors = processors.paginate(page, 3, False)
     processor_html = [render_template('processor_popup.html', processor=x)
                       for x in processors.items]
     return jsonify({'items': processor_html,
                     'pages': processors.pages,
                     'has_next': processors.has_next,
-                    'has_prev': processors.has_prev})
+                    'has_prev': processors.has_prev,
+                    'processors': processors_all})
 
 
 def parse_filter_dict_from_clients(processors, seven_days_ago):

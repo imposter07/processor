@@ -59,7 +59,8 @@ class ProcessorForm(FlaskForm):
         DataRequired(), Regexp("[^']", message='Remove special characters')])
     description = StringField(_l('Description'), validators=[
         DataRequired()])
-    local_path = StringField(_l('Local Path'), validators=[DataRequired()])
+    local_path = StringField(_l('Local Path'), validators=[DataRequired()],
+                             render_kw={'readonly': True})
     tableau_workbook = StringField(_l('Tableau Workbook'))
     tableau_view = StringField(_l('Tableau View'))
     tableau_datasource = StringField(_l('Tableau Datasource'))

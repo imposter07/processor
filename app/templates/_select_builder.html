@@ -1,0 +1,25 @@
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='Selectize/selectize.bootstrap4.css') }}">
+<link rel="stylesheet" type="text/css" id="selectizeDark" href="{{ url_for('static', filename='Selectize/selectize.dark.css') }}">
+<script type="text/javascript" src="{{ url_for('static', filename='Selectize/selectize.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='bootstrap-dark/darkModeHelper.js') }}"></script>
+<script>
+    function addSelectize() {
+        $('select').selectize({
+            duplicates: true,
+            persist: false,
+            plugins: ['drag_drop', 'remove_button', 'restore_on_backspace'],
+            create: function (input) {
+                return {
+                    value: input,
+                    text: input
+                }
+            }
+        });
+    }
+    function getFilters(colName, filterDict) {
+        let newFilter = {};
+        newFilter[colName] = $('#' + colName + 'Select')[0].selectize.items
+        filterDict = filterDict.concat(newFilter)
+        return filterDict
+    }
+</script>

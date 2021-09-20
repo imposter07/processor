@@ -44,11 +44,14 @@
 {% endblock %}
 
 {% block app_content %}
+
 <nav aria-label="Page navigation example">
   <ul id="processorsPage" class="pagination justify-content-center">
   </ul>
 </nav>
-
+<div class="col mb-3">
+    <div id="processorSelectContainer"></div>
+</div>
 <div id="processors" class="card-deck"></div>
 
 <div id="carousel" class="carousel slide" data-ride="carousel">
@@ -130,7 +133,28 @@
            document.getElementById("page" + newText).classList.add("disabled");
         }
     }
-    function getProcessors(pageNum, followed){
+    function addProcessorsToSelect(data){
+        let processorsSelectId = 'processorsSelect';
+        let baseSelectBox =
+            '<div class="input-group">' +
+            '<select id=' + processorsSelectId + ' multiple=""' +
+            'class="form-control form-control-sm">' +
+            '<option value="">Select Processors...</option></select>' +
+            '<div class="input-group-btn">' +
+            '<button id="processorFilterSave"' +
+            'class="btn btn-outline-success" type="button">Save</button></div>'
+            '</div>';
+        let baseSelect = $('#processorSelectContainer');
+        baseSelect.empty();
+        baseSelect.append(baseSelectBox);
+        let selectBox = document.getElementById(processorsSelectId);
+        data.forEach(function (d) {
+            selectBox.add(new Option(d));
+        });
+        addSelectize();
+        projectNumberSelectChange();
+    }
+    function getProcessors(pageNum, followed, filterDict=null){
         let proc = $('#processors');
         let procNav = $('#processorsPage');
         proc.html('' +
@@ -142,8 +166,10 @@
         $.post('/get_live_processors',
             {
                 page: pageNum,
-                followed: followed
+                followed: followed,
+                filter_dict: JSON.stringify(filterDict)
         }).done(function(data) {
+            addProcessorsToSelect(data['processors']);
             procNav.html('<ul id="processorsPage" class="pagination justify-content-center">\n' +
                 '  </ul>');
             proc.html('<div id="processors" class="card-deck"></div>');
@@ -169,13 +195,34 @@
         }).always(function(){
         });
     }
-    $(document).ready(function() {
-       if (window.location.pathname === "/explore"){
-           getProcessors(1, false);
+    function projectNumberSelectChange() {
+        $('[id^=processorFilterSave]').click(function () {
+            let dropdownButton = "#" + $(this)[0].id;
+            $(dropdownButton).prop("disabled", true);
+            let oldHtml = $(dropdownButton).html();
+            $(dropdownButton).html(
+                `<span class="spinner-grow spinner-grow-sm" role="status"
+                  aria-hidden="true"></span> Loading...`
+            );
+            let filterDict = [{'live': true}];
+            filterDict = getFilters('processors', filterDict);
+            getProcessorBasedOnPage(filterDict)
+        })
+    }
+    function getProcessorBasedOnPage(filterDict=null) {
+        if (window.location.pathname === "/explore"){
+           getProcessors(1, false, filterDict);
        }
        else {
-           getProcessors(1, true);
+           getProcessors(1, true, filterDict);
        }
+    }
+    function loadJS(){
+        getProcessorBasedOnPage()
+    }
+    $(document).ready(function() {
+        loadJS()
     });
 </script>
+{% include "_select_builder.html" %}
 {% endblock %}

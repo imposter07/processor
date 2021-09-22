@@ -585,7 +585,12 @@ def delete_dict(processor_id, current_user_id, vk):
             app.logger.warning('File not found error: {}'.format(e))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
-        tables = [data_source.get_dict_order_df().head()]
+        if vk == 'Plan Net':
+            message = ('THE PLANNED NET DICTIONARY WAS DELETED.  '
+                       'REPOPULATE MANUALLY OR FROM MEDIA PLAN')
+            tables = [pd.DataFrame([{'Result': message}])]
+        else:
+            tables = [data_source.get_dict_order_df().head()]
         _set_task_progress(100)
         return tables
     except:

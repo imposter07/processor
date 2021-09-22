@@ -114,7 +114,6 @@ def get_processor_by_date():
 @bp.route('/get_live_processors', methods=['GET', 'POST'])
 @login_required
 def get_live_processors():
-    import datetime as dt
     page_num = int(request.form['page'])
     page = request.args.get('page', page_num, type=int)
     if request.form['followed'] == 'true':
@@ -125,9 +124,11 @@ def get_live_processors():
         Processor.end_date > datetime.today().date()).order_by(
         Processor.created_at.desc())
     processors_all = [x.name for x in processors.all()]
-    seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
     if 'filter_dict' in request.form and request.form['filter_dict'] != 'null':
-        processors = parse_filter_dict_from_clients(processors, seven_days_ago)
+        for d in json.loads(request.form['filter_dict']):
+            for k, v in d.items():
+                if k == "processors":
+                    processors = processors.filter(Processor.name.in_(v))
     processors = processors.paginate(page, 3, False)
     processor_html = [render_template('processor_popup.html', processor=x)
                       for x in processors.items]
@@ -202,7 +203,7 @@ def get_processor_by_user():
         cu.ppd = '{0:.0f}'.format(cu.posts.filter(
             Post.timestamp > seven_days_ago.date()).count() / 7)
         """
-        if cu.id in [3, 5, 7, 9, 10, 11, 51, 63, 66]:
+        if cu.id in [3, 5, 7, 9, 10, 11, 51, 63, 66, 76]:
             cu.data = True
         else:
             cu.data = False

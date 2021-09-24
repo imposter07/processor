@@ -183,14 +183,8 @@ def parse_filter_dict_from_clients(processors, seven_days_ago):
     return processors
 
 
-@bp.route('/get_processor_by_user', methods=['GET', 'POST'])
-@login_required
-def get_processor_by_user():
+def get_processor_user_map(processors):
     import datetime as dt
-    processors = Processor.query.order_by(Processor.created_at)
-    seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
-    if 'filter_dict' in request.form:
-        processors = parse_filter_dict_from_clients(processors, seven_days_ago)
     from collections import defaultdict
     groups = defaultdict(list)
     for obj in processors:
@@ -232,6 +226,10 @@ def get_processor_by_user():
                                      processors=new_list,
                                      current_users=current_users,
                                      project_numbers=projects)
+    return processor_html
+
+
+def get_processor_client_directory(processors):
     new_dict = {}
     for x in processors:
         client = x.campaign.product.client
@@ -248,8 +246,39 @@ def get_processor_by_user():
                 key in sorted(new_dict.keys(), key=lambda y: y.name)}
     clients_html = render_template('_client_directory.html',
                                    client_dict=new_dict)
-    return jsonify({'items': processor_html,
-                    'client_directory': clients_html})
+    return clients_html
+1
+
+@bp.route('/get_processor_body', methods=['GET', 'POST'])
+@login_required
+def get_processor_body():
+    response = {}
+    cur_processor = Processor.query.get(request.form['processor_id'])
+    current_users = User.query.order_by(User.username).all()
+    current_projects = Project.query.order_by(Project.project_name).all()
+    proc_html = render_template(
+        'processor_user_map_body.html', processor=cur_processor,
+        current_users=current_users, project_numbers=current_projects)
+    response['processor_body'] = proc_html
+    return jsonify(response)
+
+
+@bp.route('/get_processor_by_user', methods=['GET', 'POST'])
+@login_required
+def get_processor_by_user():
+    response = {}
+    import datetime as dt
+    processors = Processor.query.order_by(Processor.created_at)
+    seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
+    if 'filter_dict' in request.form:
+        processors = parse_filter_dict_from_clients(processors, seven_days_ago)
+    if 'user_map' in request.form and request.form['user_map']:
+        processor_html = get_processor_user_map(processors)
+        response['items'] = processor_html
+    else:
+        clients_html = get_processor_client_directory(processors)
+        response['client_directory'] = clients_html
+    return jsonify(response)
 
 
 @bp.route('/get_project_numbers', methods=['GET', 'POST'])

@@ -1,0 +1,95 @@
+<div class="card-body">
+    <div class="row">
+        <div class="col">
+            <select id="ownerSelect{{ processor.name }}"
+                    class="">
+                <option value="">Change Owner...
+                </option>
+                {% for user_opt in current_users %}
+                    <option value="{{ user_opt.username }}">{{ user_opt.username }}</option>
+                {% endfor %}
+            </select>
+            <div class="input-group">
+                <select id="projectSelect{{ processor.id }}"
+                        multiple=""
+                        class="width100 form-control">
+                    <option value="">Project Numbers
+                    </option>
+                    {% set pn = processor.get_project_numbers() %}
+                    {% for project in project_numbers %}
+                        <option value="{{ project.project_number }}_{{ project.project_name }}"
+                                {% if pn and project.project_number in pn %}
+                                selected="selected"{% endif %}>
+                            {{ project.project_number|string }}-{{ project.project_name|string }}</option>
+                    {% endfor %}
+                </select>
+                <div class="input-group-btn">
+                    <button id="projectSelectSave{{ processor.id }}"
+                            class="btn btn-outline-success" type="button">Save</button>
+                </div>
+            </div>
+        </div>
+        {% if not processor.local_path %}
+        <div class="col">
+            <a href="{{ url_for('main.edit_processor_duplication_from_another', processor_name=processor.name) }}">
+                <button class="btn btn-outline-success btn-block text-left"
+                        type="button"
+                        href="{{ url_for('main.edit_processor_duplication_from_another', processor_name=processor.name) }}">
+                    <i class="fas fa-plus-circle"
+                       role="button"></i>
+                    {{ _('Create From Existing Processor') }}
+                </button>
+            </a>
+            <a href="{{ url_for('main.delete_processor', processor_name=processor.name) }}">
+                <button class="btn btn-outline-danger btn-block text-left"
+                        type="button"
+                        href="{{ url_for('main.delete_processor', processor_name=processor.name) }}">
+                    <i class="fas fa-times-circle"
+                       role="button"></i>
+                    {{ _('Delete Processor') }}
+                </button>
+            </a><br>
+        </div>
+        {% endif %}
+    </div>
+    {% if processor.local_path %}
+    {% with post = processor.get_last_post() %}
+        {% if post %}
+            {% include '_post.html' %}
+        {% endif %}
+    {% endwith %}
+    <div class="row">
+        <div class="col mb-3">
+            <select id="dashSelect{{ processor.id }}"
+                    class="form-control form-control-sm">
+                <option value="">Select Dashboard...
+                </option>
+                {% for dash in ['eventdate', 'campaignname', 'vendorname', 'countryname', 'kpiname', 'environmentname'] %}
+                    <option value="{{ dash }}">{{ dash }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div id="dashFooter{{ processor.id }}"
+         class="card-footer" style="display: none;">
+        <div id="" class="row">
+            <div class="col-md-12 h-50">
+                <div class="card-header">
+                    <h7 class="mb-3"></h7>
+                    <select id="dash_placeholderMetrics{{ processor.id }}Select"
+                            class="form-control form-control-sm">
+                        <option>Select Metric
+                        </option>
+                    </select>
+                </div>
+                <div class="card container-fluid shadow outer">
+                    <div id="dash_placeholderMetricsProgress{{ processor.id }}"
+                         class="widget">
+                    </div>
+                    <div id="dash_placeholderMetrics{{ processor.id }}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>

@@ -105,12 +105,7 @@
     <script src="{{ url_for('static', filename='fullcalendar/daygrid/main.js') }}"></script>
     <script src="{{ url_for('static', filename='fullcalendar/list/main.js') }}"></script>
     <script src="{{ url_for('static', filename='fullcalendar/bootstrap/main.js') }}"></script>
-    <link rel="stylesheet" type="text/css"
-          href="{{ url_for('static', filename='Selectize/selectize.bootstrap4.css') }}">
-    <link rel="stylesheet" type="text/css" id="selectizeDark"
-          href="{{ url_for('static', filename='Selectize/selectize.dark.css') }}">
-    <script type="text/javascript"
-            src="{{ url_for('static', filename='Selectize/selectize.js') }}"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             let calendarEl = document.getElementById('calendar');
@@ -143,7 +138,7 @@
         }
         function getProcessorUserMap(filterDict, clickElem, oldHtml) {
             let proc = $('#processors');
-            let clientDir = $('#clientDirectory')
+            let clientDir = $('#clientDirectory');
             proc.html('' +
                 '<button class="btn btn-primary btn-block btn-lg" type="button" disabled>' +
                 '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
@@ -154,7 +149,8 @@
             $.post(destUrl,
                 {
                     title: '{{ title }}',
-                    filter_dict: JSON.stringify(filterDict)
+                    filter_dict: JSON.stringify(filterDict),
+                    user_map: true
                 }).done(function (data) {
                     if ('{{ title }}' === 'Clients') {
                         proc.html(data['items']);
@@ -162,14 +158,12 @@
                     else {
                         proc.html('<div id="projectNumberTableElem"></div>');
                         createTable(data['items']['cols'], data['items']['data'],
-                                    'projectNumberTable', 'projectNumberTableElem')
-
-                    }
-                    clientDir.html(data['client_directory']);
+                                    'projectNumberTable', 'projectNumberTableElem')}
                     addSelectize()
                     ownerSelectChange()
                     projectNumberSelectChange()
                     getSelectedDashboard()
+                    getProcessorBody()
             }).fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);
 
@@ -179,9 +173,21 @@
                     $(clickElem).html(oldHtml);
                 }
             });
+            if (destUrl === "/get_processor_by_user") {
+                $.post(destUrl,
+                    {
+                        title: '{{ title }}',
+                        filter_dict: JSON.stringify(filterDict)
+                    }).done(function (responseData) {
+                        console.log(responseData)
+                        clientDir.html(responseData['client_directory']);
+                }).fail(function (jqXHR, textStatus) {
+                    console.log("Request failed: " + textStatus);
+                });
+            }
         }
         function ownerSelectChange(){
-           $('[id^=ownerSelect]').on('change', function(e){
+           $('[id^=ownerSelect]').unbind().on('change', function(e){
                let selectedText = this.options[e.target.selectedIndex].text;
                let procName = this.id.replace('ownerSelect', '')
                changeProcessorOwner(procName, selectedText);
@@ -214,7 +220,7 @@
 
 
         function projectNumberSelectChange() {
-            $('[id^=projectSelectSave]').click(function () {
+            $('[id^=projectSelectSave]').unbind().click(function () {
                 let dropdownButton = "#" + $(this)[0].id;
                 $(dropdownButton).prop("disabled", true);
                 let oldHtml = $(dropdownButton).html();
@@ -274,7 +280,7 @@
         }
 
         function addApplyFilterBtn(){
-            $('button[id*="applyFilter"]').click(function () {
+            $('button[id*="applyFilter"]').unbind().click(function () {
                 let dropdownButton = "#" + $(this)[0].id;
                 $(dropdownButton).prop("disabled", true);
                 let oldHtml = $(dropdownButton).html();
@@ -293,8 +299,29 @@
             });
         }
 
+        function getProcessorBody(){
+            $('div[id*="headingProcessor"]').unbind().click(function () {
+                let processorId = $(this)[0].id.replace('headingProcessor', '');
+                $.post('/get_processor_body',
+                    {
+                        title: '{{ title }}',
+                        processor_id: processorId
+                    }).done(function (data) {
+                        let proc = $('#processorBody' + processorId)
+                        proc.html(data['processor_body'])
+                        addSelectize()
+                        ownerSelectChange()
+                        projectNumberSelectChange()
+                        getSelectedDashboard()
+                        getProcessorBody()
+                }).fail(function (jqXHR, textStatus) {
+                    console.log("Request failed: " + textStatus);
+                });
+            });
+        }
+
         function getSelectedDashboard(){
-            $('[id^=dashSelect]').on('change', function(e){
+            $('[id^=dashSelect]').unbind().on('change', function(e){
                 let selectedText = this.options[e.target.selectedIndex].text
                 let procName = this.id.replace('dashSelect', '')
                 $('#dashFooter' + procName).removeAttr('style')
@@ -329,4 +356,5 @@
     </script>
     {% include "_dash_builder.html" %}
     {% include "_table_builder.html" %}
+    {% include "_select_builder.html" %}
 {% endblock %}

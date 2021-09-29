@@ -46,6 +46,7 @@ def before_request():
 @login_required
 def index():
     form = PostForm()
+    tutorials = Tutorial.query.all()
     if form.validate_on_submit():
         language = guess_language(form.post.data)
         if language == 'UNKNOWN' or len(language) > 5:
@@ -64,7 +65,8 @@ def index():
         if posts.has_prev else None
     return render_template('index.html', title=_('Home'), form=form,
                            posts=posts.items, next_url=next_url,
-                           prev_url=prev_url)
+                           prev_url=prev_url, tutorials=tutorials,
+                           user=current_user)
 
 
 @bp.route('/health_check', methods=['GET'])
@@ -75,6 +77,7 @@ def health_check():
 @bp.route('/explore')
 @login_required
 def explore():
+    tutorials = Tutorial.query.all()
     page = request.args.get('page', 1, type=int)
     posts = Post.query.order_by(Post.timestamp.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
@@ -84,7 +87,8 @@ def explore():
         if posts.has_prev else None
     return render_template('index.html', title=_('Explore'),
                            posts=posts.items, next_url=next_url,
-                           prev_url=prev_url)
+                           prev_url=prev_url, tutorials=tutorials,
+                           user=current_user)
 
 
 @bp.route('/get_processor_by_date', methods=['GET', 'POST'])
@@ -137,6 +141,26 @@ def get_live_processors():
                     'has_next': processors.has_next,
                     'has_prev': processors.has_prev,
                     'processors': processors_all})
+
+
+@bp.route('/get_open_processor_requests', methods=['GET', 'POST'])
+@login_required
+def get_open_processor_requests():
+    if request.form['followed'] == 'true':
+        processors = current_user.processor_followed
+    else:
+        processors = Processor.query
+    processors = processors.filter(
+        Processor.end_date > datetime.today().date()).order_by(
+        Processor.created_at.desc())
+    if 'filter_dict' in request.form and request.form['filter_dict'] != 'null':
+        for d in json.loads(request.form['filter_dict']):
+            for k, v in d.items():
+                if k == "processors":
+                    processors = processors.filter(Processor.name.in_(v))
+    processor_html = render_template('all_open_requests.html',
+                                     processors=processors.all())
+    return jsonify({'items': processor_html})
 
 
 def parse_filter_dict_from_clients(processors, seven_days_ago):
@@ -247,7 +271,7 @@ def get_processor_client_directory(processors):
     clients_html = render_template('_client_directory.html',
                                    client_dict=new_dict)
     return clients_html
-1
+
 
 @bp.route('/get_processor_body', methods=['GET', 'POST'])
 @login_required

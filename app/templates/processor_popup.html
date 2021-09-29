@@ -1,6 +1,6 @@
-<div class="card">
+<div class="card shadow outer">
     <div class="card-header">
-        <h6>
+        <h5>
             <a href="{{ processor.get_url() }}">
             {{ processor.name }}
         </a>
@@ -15,36 +15,65 @@
                    processor_name=processor.name) }}"
                 style="float: right;">Following</a>
             {% endif %}
-        </h6>
+        </h5>
+        <h6 class="card-subtitle mb-2 text-muted">{{ processor.campaign.product.client.name}} - {{ processor.campaign.product.name}}</h6>
+        <h6 class="card-subtitle mb-2 text-muted">{{ processor.description }}</h6>
     </div>
-
-        <div class="card-body">
-        <p class="card-text" style="font-size: 70%;">
-            <span id="campaign{{ processor.id }}">
-                Campaign: {{ processor.campaign.name}}</span>
-            <br>
-            <span id="product{{ processor.id }}">
-                Product: {{ processor.campaign.product.name}}</span>
-            <br>
-            <span id="client{{ processor.id }}">
-                Client: {{ processor.campaign.product.client.name}}</span>
-            <br>
-            <span id="location{{ processor.id }}">
-                Location: {{ processor.local_path }}</span>
-            <br>
-            <span id="last_run{{ processor.id }}">
-                Last Run: {{ moment(processor.last_run_time).fromNow() }}</span>
-            <br>
-            <span id="description{{ processor.id }}">
-                Description: {{ processor.description}}</span>
-        </p>
+    {% if processor.local_path %}
+    <div class="card-body">
+        <ul id="listTabs" class="pagination pagination justify-content-center">
+            {% for button in processor.get_current_buttons() %}
+                {% for button_name, button_link in button.items() %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="{{ url_for(button_link, processor_name=processor.name) }}">
+                            {{ button_name }}
+                        </a>
+                    </li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    <div class="row">
+        <div class="col mb-3">
+            <select id="dashSelect{{ processor.id }}"
+                    class="form-control form-control-sm">
+                <option value="">Select Dashboard...
+                </option>
+                {% for dash in ['eventdate', 'campaignname', 'vendorname', 'countryname', 'kpiname', 'environmentname'] %}
+                    <option value="{{ dash }}">{{ dash }}</option>
+                {% endfor %}
+            </select>
         </div>
-        <div class="card-footer">
+    </div>
+        <div id="dashFooter{{ processor.id }}"
+             class="card-footer" style="display: none;">
+            <div id="" class="row">
+                <div class="col-md-12 h-50">
+                    <div class="card-header">
+                        <h7 class="mb-3"></h7>
+                        <select id="dash_placeholderMetrics{{ processor.id }}Select"
+                                class="form-control form-control-sm">
+                            <option>Select Metric
+                            </option>
+                        </select>
+                    </div>
+                    <div class="card container-fluid shadow outer">
+                        <div id="dash_placeholderMetricsProgress{{ processor.id }}"
+                             class="widget">
+                        </div>
+                        <div id="dash_placeholderMetrics{{ processor.id }}"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    <div class="card-footer">
         {% include 'processor_requests_button.html' %}
-            {% with post = processor.get_last_post() %}
-                {% if post %}
-                    {% include '_post.html' %}
-                {% endif %}
-            {% endwith %}
-        </div>
+        {% with post = processor.get_last_post() %}
+            {% if post %}
+                {% include '_post.html' %}
+            {% endif %}
+        {% endwith %}
+    </div>
 </div>

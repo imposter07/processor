@@ -52,7 +52,14 @@
 {% endblock %}
 
 {% block app_content %}
-    {% for tutorial in tutorials %}
-        {% include 'tutorials/tutorial_card.html' %}
-    {% endfor %}
+    <div class="card shadow outer">
+        <div class="card-header">
+            <h6>All Tutorials Available and Progress</h6>
+        </div>
+        <div class="card-body">
+            {% for tutorial in tutorials %}
+                {% include 'tutorials/tutorial_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
 {% endblock %}

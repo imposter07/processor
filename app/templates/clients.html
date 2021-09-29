@@ -96,28 +96,22 @@
 
     <div id='calendar'></div>
 
-    <link href="{{ url_for('static', filename='fullcalendar/core/main.css') }}" rel='stylesheet' />
-    <link href="{{ url_for('static', filename='fullcalendar/daygrid/main.css') }}" rel='stylesheet' />
-    <link href="{{ url_for('static', filename='fullcalendar/list/main.css') }}"  rel='stylesheet' />
-    <link href="{{ url_for('static', filename='fullcalendar/bootstrap/main.css') }}"  rel='stylesheet' />
+    <link href="{{ url_for('static', filename='fullcalendar/main.css') }}" rel='stylesheet' />
 
-    <script src="{{ url_for('static', filename='fullcalendar/core/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='fullcalendar/daygrid/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='fullcalendar/list/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='fullcalendar/bootstrap/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='fullcalendar/main.js') }}"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             let calendarEl = document.getElementById('calendar');
             let calendar = new FullCalendar.Calendar(calendarEl, {
                     events: '/get_processor_by_date',
-                    plugins: ['dayGrid', 'timeGrid', 'list', 'bootstrap'],
                     themeSystem: 'bootstrap',
-                    header: {
+                    initialView: 'timeGridWeek',
+                    headerToolbar: {
                         left: 'prev,next today',
                         center: 'title',
-                        right: 'dayGridMonth,dayGridWeek,listDay'
-                    }
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                    },
                 },
             );
             calendar.render();
@@ -179,7 +173,6 @@
                         title: '{{ title }}',
                         filter_dict: JSON.stringify(filterDict)
                     }).done(function (responseData) {
-                        console.log(responseData)
                         clientDir.html(responseData['client_directory']);
                 }).fail(function (jqXHR, textStatus) {
                     console.log("Request failed: " + textStatus);

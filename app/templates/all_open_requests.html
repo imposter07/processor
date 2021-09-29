@@ -1,0 +1,31 @@
+<div class="accordion" id="accordionClient">
+    {% for processor in processors %}
+        {% set open_requests = processor.get_open_requests() %}
+        {% set outer_loop = loop %}
+        {% if open_requests|length > 0 %}
+            <div class="card">
+                <button class="btn btn-block collapsed text-left progress-bar"
+                        id="heading{{ loop.index }}"
+                        type="button"
+                        style="background-color: #ffcccb;width:{{ open_requests|length * 20 }}%;color:black;"
+                        data-toggle="collapse"
+                        data-target="#collapseUser{{ loop.index }}"
+                        aria-expanded="false"
+                        aria-controls="collapseUser{{ loop.index }}">
+                    {{ processor.name }} - {{ open_requests|length }} Open Requests
+                </button>
+                <div id="collapseUser{{ loop.index }}" class="collapse"
+                     aria-labelledby="heading{{ loop.index }}"
+                     data-parent="#accordionClient">
+                    <div class="card-body">
+                        <div class="accordion" id="accordionProcessor">
+                            {% for fix in open_requests %}
+                                {% include '_fix.html' %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>

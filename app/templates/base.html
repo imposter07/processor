@@ -19,7 +19,7 @@
 </head>
 
 {% block navbar %}
-<nav class="navbar navbar-expand-lg bg-secondary fixed-top"
+<nav class="navbar navbar-expand-lg bg-secondary fixed-top shadow outer"
      style="padding-top:1px; padding-bottom:1px;">
   <a class="navbar-brand" href="{{ url_for('main.index') }}" >
       <img alt="Brand" class="img-responsive" style="height: 30px;"
@@ -108,7 +108,7 @@
 {% endblock %}
 
 
-<div class="row">
+<div class="row" style="">
     <div class="bd-sidebar col-md-3"
          style="overflow-y: auto; max-height: calc(100vh);
                 padding-top: 50px; }">
@@ -118,7 +118,7 @@
     </div>
     <main class="col-md-9 ml-sm-auto px-3" role="main"
           style="padding-top: 50px; ">
-        <div class="jumbotron text-center"
+        <div class="jumbotron text-center shadow outer"
              style="padding-top: 5px; padding-bottom: 5px;">
             <div class="container-fluid">
                 {% if current_user.is_authenticated %}
@@ -162,7 +162,7 @@
                 {% block app_header %}{% endblock %}
             </div>
         </div>
-        <div class="container-fluid">
+        <div class="container-fluid shadow outer">
             {% block app_content %}{% endblock %}
             {% block app_content_2 %}{% endblock %}
         </div>

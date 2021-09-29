@@ -579,6 +579,13 @@ class Processor(db.Model):
     def get_notes(self):
         return self.notes.order_by(Notes.created_at.desc()).all()
 
+    def get_current_buttons(self):
+        buttons = [{'Basic': 'main.edit_processor'},
+                   {'Import': 'main.edit_processor_import'},
+                   {'Clean': 'main.edit_processor_clean'},
+                   {'Export': 'main.edit_processor_export'}]
+        return buttons
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -1152,7 +1159,11 @@ class Tutorial(db.Model):
         total_stages = len(self.tutorial_stage.all())
         completed_stages = len(cu.tutorial_stages_completed.filter_by(
             tutorial_id=self.id).all())
-        return (completed_stages / total_stages) * 100
+        return int((completed_stages / total_stages) * 100)
+
+    def get_stages(self):
+        total_stages = self.tutorial_stage.all()
+        return total_stages
 
 
 class TutorialStage(db.Model):

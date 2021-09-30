@@ -3182,6 +3182,24 @@ def update_automatic_requests(processor_id, current_user_id):
                                        fix_type=fix_type,
                                        fix_description=msg,
                                        undefined=undefined)
+        fix_type = az.Analyze.missing_metrics
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis.data:
+            df = pd.DataFrame(analysis.data)
+            undefined = (df['mpVendor'] + ' - ' + df['missing_metrics']).to_list()
+            msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
+        else:
+            undefined = []
+            msg = '{}'.format(analysis.message)
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
         _set_task_progress(100)
         return True
     except:
@@ -3234,6 +3252,7 @@ def update_analysis_in_db(processor_id, current_user_id):
                 old_analysis.message = analysis[
                     az.Analyze.analysis_dict_msg_col]
                 old_analysis.date = datetime.today().date()
+                db.session.commit()
             else:
                 new_analysis = ProcessorAnalysis(
                     key=analysis[az.Analyze.analysis_dict_key_col],
@@ -3247,7 +3266,7 @@ def update_analysis_in_db(processor_id, current_user_id):
                     processor_id=cur_processor.id,
                     date=datetime.today().date())
                 db.session.add(new_analysis)
-            db.session.commit()
+                db.session.commit()
         _set_task_progress(100)
         return True
     except:

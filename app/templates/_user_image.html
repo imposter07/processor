@@ -1,0 +1,15 @@
+<style>
+    .img_wrp {
+        display: inline-block;
+        position: relative;
+    }
+</style>
+<a href="{{ url_for('main.user', username=post.author.username) }}">
+    <div class="img_wrp">
+        <img class="mr-3" src="{{ post.author.avatar(size) }}"
+             alt="Generic placeholder image">
+        {% with trophy_user=post.author %}
+            {% include 'tutorials/_tutorial_trophy.html' %}
+        {% endwith %}
+    </div>
+</a>

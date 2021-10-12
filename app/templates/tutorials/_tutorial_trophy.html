@@ -1,0 +1,12 @@
+<style>
+    .fa-trophy {
+        color: goldenrod;
+        position: absolute;
+        top: 0;
+        right: 0;
+    }
+</style>
+
+{% if trophy_user.tutorial_stages_completed.all()|length >= 28 %}
+    <i class="fas fa-trophy"></i>
+{% endif %}

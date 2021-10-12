@@ -11,11 +11,10 @@
                 </a>
             </span>
         {% endset %}
-            <div class="media">
-                <a href="{{ url_for('main.user', username=post.author.username) }}">
-                    <img class="mr-3"
-                       src="{{ post.author.avatar(40) }}"
-                       alt="Generic placeholder image"></a>
+        <div class="media">
+        {% with size=40 %}
+            {% include '_user_image.html' %}
+        {% endwith %}
           <div class="media-body">
             <a class="mt-0">{{ _('%(username)s said %(when)s',
             username=user_link, when=moment(post.timestamp).fromNow()) }}</a>

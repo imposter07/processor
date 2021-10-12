@@ -2,6 +2,9 @@
     <div class="card-header">
         <h5>
             <a href="{{ tutorial.get_url() }}">{{ tutorial.name }} - {{ tutorial.get_stages()|length }} Total Levels</a>
+            {% with trophy_user=user %}
+                {% include'tutorials/_tutorial_trophy.html' %}
+            {% endwith %}
         </h5>
             <h6 class="card-subtitle mb-2 text-muted">{{ tutorial.description }}</h6>
             {% set progress = tutorial.get_progress(user_id=user.id) %}

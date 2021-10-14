@@ -21,10 +21,10 @@
 {% block navbar %}
 <nav class="navbar navbar-expand-lg bg-secondary fixed-top shadow outer"
      style="padding-top:1px; padding-bottom:1px;">
-  <a class="navbar-brand" href="{{ url_for('main.index') }}" >
-      <img alt="Brand" class="img-responsive" style="height: 30px;"
-           src={{ url_for('static', filename='logo-light.png') }}>
-  </a>
+    <a class="navbar-brand" href="{{ url_for('main.index') }}">
+        <img alt="Brand" class="img-responsive" style="height: 30px;"
+             src={{ url_for('static', filename='logo-light.png') }}>
+    </a>
   <button class="navbar-toggler navbar-light btn btn-secondary" type="button"
           data-toggle="collapse" data-target="#navbarToggler"
           aria-controls="navbarToggler" aria-expanded="false"
@@ -33,6 +33,9 @@
   </button>
     <div class="collapse navbar-collapse" id="navbarToggler">
       <ul class="navbar-nav mr-auto">
+          <li class="nav-item"><a class="nav-link" data-toggle="collapse"
+                                  href="#" data-target=".collapse" role="button">
+              <i class="fas fa-bars btn btn-secondary" style="color:black"></i></a>
           <li class="nav-item"><a class="nav-link" title={{ _('Explore') }}
                   href="{{ url_for('main.explore') }}">
               <i class="fas fa-paper-plane btn btn-secondary" href="#" style="color:black"></i></a>
@@ -98,7 +101,7 @@
             <li class="nav-item">
                 <a class="nav-link" title={{ _('Logout') }}
                         href="{{ url_for('auth.logout') }}">
-                    <i class="fas fa-times-circle btn btn-secondary" href="#"style="color:black"></i>
+                    <i class="fas fa-times-circle btn btn-secondary" href="#" style="color:black"></i>
                 </a>
             </li>
             {% endif %}
@@ -107,17 +110,12 @@
 </nav>
 {% endblock %}
 
-
-<div class="row" style="">
-    <div class="bd-sidebar col-md-3"
-         style="overflow-y: auto; max-height: calc(100vh);
-                padding-top: 50px; }">
-        <div class="sidebar-sticky">
-            {% block vertical_navbar %}{% endblock %}
-        </div>
+<div class="container-fluid"></div>
+<div class="row vh-100 flex-nowrap" style="">
+    <div class="sidebar bd-sidebar col-md-3 collapse show" style="overflow-y: auto; max-height: calc(100vh);">
+        {% block vertical_navbar %}{% endblock %}
     </div>
-    <main class="col-md-9 ml-sm-auto px-3" role="main"
-          style="padding-top: 50px; ">
+    <main class="col" role="main">
         <div class="jumbotron text-center shadow outer"
              style="padding-top: 5px; padding-bottom: 5px;">
             <div class="container-fluid">
@@ -168,10 +166,32 @@
         </div>
     </main>
 </div>
-<style type="text/css">
+
+<style>
     .custom-control-input {
       transform: scale(5);
     }
+
+    body {
+        overflow-x: hidden;
+        padding-top: 55px;
+    }
+
+    .sidebar.collapse.show,
+    .sidebar.collapse.show + .col {
+        transition: .18s linear;
+        left: 0;
+    }
+
+    .sidebar.collapse,
+    .sidebar.collapsing,
+    .sidebar.collapsing + .col {
+        transition: .18s linear;
+        z-index: 1050;
+        left: -25%;
+        height: auto !important;
+    }
+
 </style>
 
 

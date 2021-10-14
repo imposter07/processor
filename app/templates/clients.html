@@ -17,9 +17,13 @@
 {% endblock %}
 
 {% block vertical_navbar %}
-    <h4 class="sidebar-heading d-flex justify-content-between align-items-center
-           text-dark text-center">
-        <span>{{ _('Filters') }}</span></h4>
+<div class="card shadow outer">
+    <div class="card-header">
+        <h3>Filters<i class="fas fa-filter btn btn-secondary"
+                           style="float:right;"></i></h3>
+        <h6 class="card-subtitle mb-2 text-muted">Use the filters below to quickly find a processor instance.</h6>
+    </div>
+    <div class="card-body">
     <div class="custom-control custom-switch" id="customSwitchDiv">
         <input type="checkbox" class="custom-control-input" id="liveProcessorsSwitch"
                checked>
@@ -88,7 +92,9 @@
             Apply Filter
         </button>
     </div>
-    <div id="clientDirectory"></div>
+    </div>
+</div>
+<div id="clientDirectory"></div>
 {% endblock %}
 
 {% block app_content %}

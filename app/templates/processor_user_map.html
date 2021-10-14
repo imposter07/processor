@@ -1,3 +1,10 @@
+<div class="card shadow outer">
+    <div class="card-header">
+        <h3>Processors by User<i class="fas fa-chart-bar btn btn-info"
+                           style="float:right;"></i></h3>
+        <h6 class="card-subtitle mb-2 text-muted">Processor instances organized by owner.</h6>
+    </div>
+    <div class="card-body">
 <div class="accordion" id="accordionClient">
     {% for processor_list in processors %}
         {% set outer_loop = loop %}
@@ -59,4 +66,6 @@
             </div>
         </div>
     {% endfor %}
+</div>
+</div>
 </div>

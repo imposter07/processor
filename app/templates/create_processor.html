@@ -315,29 +315,36 @@
         </div>
     <br>
     {% endif %}
-    <h3 class="sidebar-heading d-flex justify-content-between align-items-center
-               text-center">
-                  <span>{{ _('Posts') }}</span>
-    </h3>
-    <table class="table table-hover">
-        {% for post in posts %}
-            {% include '_post.html' %}
-        {% endfor %}
-        <nav aria-label="...">
-        <ul class="pagination justify-content-center">
-            <li class="page-item{% if not prev_url %} page-item disabled{% endif %}">
-                <a class="page-link" href="{{ prev_url or '#' }}">
-                    <span aria-hidden="true">&larr;</span> {{ _('Newer posts') }}
-                </a>
-            </li>
-            <li class="page-item{% if not next_url %} page-item disabled{% endif %}">
-                <a class="page-link" href="{{ next_url or '#' }}">
-                    {{ _('Older posts') }} <span aria-hidden="true">&rarr;</span>
-                </a>
-            </li>
-        </ul>
-        </nav>
-    </table>
+    <div class="card shadow outer">
+        <div class="card-header">
+            <h3>Latest Posts<i class="fas fa-comments btn btn-secondary"
+                               style="float:right;"></i></h3>
+            <h6 class="card-subtitle mb-2 text-muted">Latest posts automatically
+            generated for this processor.  Use to confirm last run,
+                who/what has been changed and when etc.</h6>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover">
+                {% for post in posts %}
+                    {% include '_post.html' %}
+                {% endfor %}
+                <nav aria-label="...">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item{% if not prev_url %} page-item disabled{% endif %}">
+                            <a class="page-link" href="{{ prev_url or '#' }}">
+                                <span aria-hidden="true">&larr;</span> {{ _('Newer posts') }}
+                            </a>
+                        </li>
+                        <li class="page-item{% if not next_url %} page-item disabled{% endif %}">
+                            <a class="page-link" href="{{ next_url or '#' }}">
+                                {{ _('Older posts') }} <span aria-hidden="true">&rarr;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </table>
+        </div>
+    </div>
 {% endblock %}
 
 {% block app_content %}

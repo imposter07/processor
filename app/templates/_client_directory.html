@@ -1,84 +1,89 @@
-<h4 class="sidebar-heading d-flex justify-content-between align-items-center
-           text-dark text-center">
-              <span>{{ _('Client Directory') }}</span>
-</h4>
-<div class="accordion" id="accordionClient">
-    {% set clients=client_dict if client_dict else clients %}
-    {% for client in clients %}
-        {% set client_loop = loop %}
-        <div class="card">
-            <button class="btn btn-dark btn-block
-                           collapsed text-left"
-                    id="heading{{ loop.index }}"
-                    type="button"
-                    data-toggle="collapse"
-                    data-target="#collapse{{ loop.index }}"
-                    aria-expanded="false"
-                    aria-controls="collapse{{ loop.index }}">
-              {{ client.name }}<span class="caret"></span>
-            </button>
-            <div id="collapse{{ loop.index }}" class="collapse"
-                 aria-labelledby="heading{{ loop.index }}"
-                 data-parent="#accordionClient">
-              <div class="card-body">
-                <div class="accordion" id="accordionProduct">
-                {% set products=client_dict[client] if client_dict else client.product.order_by('name')%}
-                  {% for product in products %}
-                    {% set product_loop = loop %}
-                    <div class="card">
-                        <button class="btn btn-outline-primary
-                                       btn-block text-left collapsed"
-                                type="button"
-                                data-toggle="collapse"
-                                data-target="#collapse{{ client_loop.index }}_{{ product_loop.index }}"
-                                aria-expanded="false"
-                                aria-controls="collapse{{ client_loop.index }}_{{ product_loop.index }}"
-                                id="heading{{ client_loop.index }}_{{ product_loop.index }}">
-                          {{ product.name }}
-                        </button>
-                        <div id="collapse{{ client_loop.index }}_{{ product_loop.index }}"
-                             class="collapse"
-                             aria-labelledby="heading{{ client_loop.index }}_{{ product_loop.index }}"
-                             data-parent="#accordionProduct">
-                          <div class="card-body">
-                              <div class="accordion" id="accordionCampaign">
-                              {% set campaigns=client_dict[client][product] if client_dict else product.campaign.order_by('name')%}
-                                  {% for campaign in campaigns %}
-                                      <div class="card">
-                                        <button class="btn btn-outline-info
-                                                       btn-block text-left collapsed"
-                                                type="button"
-                                                data-toggle="collapse"
-                                                data-target="#collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
-                                                aria-expanded="false"
-                                                aria-controls="collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
-                                                id="heading{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}">
-                                          {{ campaign.name }}
-                                        </button>
-                                      <div id="collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
-                                         class="collapse"
-                                         aria-labelledby="heading{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
-                                         data-parent="#accordionCampaign">
-                                      <div class="card-body">
-                                      {% set processors=client_dict[client][product][campaign] if client_dict else campaign.get_objects(title).order_by('name') %}
-                                      {% for processor in processors %}
-                                      <a class="btn btn-outline-success btn-block text-center"
-                                         style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;"
-                                         href="{{ processor.get_url() }}">
-                                          {{ processor.name }}</a>
+<div class="card shadow outer">
+    <div class="card-header">
+        <h3>Client Directory<i class="fas fa-sitemap btn btn-secondary"
+                           style="float:right;"></i></h3>
+        <h6 class="card-subtitle mb-2 text-muted">Simple listings and links that have been filtered.</h6>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="accordionClient">
+        {% set clients=client_dict if client_dict else clients %}
+        {% for client in clients %}
+            {% set client_loop = loop %}
+            <div class="card">
+                <button class="btn btn-dark btn-block
+                               collapsed text-left"
+                        id="heading{{ loop.index }}"
+                        type="button"
+                        data-toggle="collapse"
+                        data-target="#collapse{{ loop.index }}"
+                        aria-expanded="false"
+                        aria-controls="collapse{{ loop.index }}">
+                  {{ client.name }}<span class="caret"></span>
+                </button>
+                <div id="collapse{{ loop.index }}" class="collapse"
+                     aria-labelledby="heading{{ loop.index }}"
+                     data-parent="#accordionClient">
+                  <div class="card-body">
+                    <div class="accordion" id="accordionProduct">
+                    {% set products=client_dict[client] if client_dict else client.product.order_by('name')%}
+                      {% for product in products %}
+                        {% set product_loop = loop %}
+                        <div class="card">
+                            <button class="btn btn-outline-primary
+                                           btn-block text-left collapsed"
+                                    type="button"
+                                    data-toggle="collapse"
+                                    data-target="#collapse{{ client_loop.index }}_{{ product_loop.index }}"
+                                    aria-expanded="false"
+                                    aria-controls="collapse{{ client_loop.index }}_{{ product_loop.index }}"
+                                    id="heading{{ client_loop.index }}_{{ product_loop.index }}">
+                              {{ product.name }}
+                            </button>
+                            <div id="collapse{{ client_loop.index }}_{{ product_loop.index }}"
+                                 class="collapse"
+                                 aria-labelledby="heading{{ client_loop.index }}_{{ product_loop.index }}"
+                                 data-parent="#accordionProduct">
+                              <div class="card-body">
+                                  <div class="accordion" id="accordionCampaign">
+                                  {% set campaigns=client_dict[client][product] if client_dict else product.campaign.order_by('name')%}
+                                      {% for campaign in campaigns %}
+                                          <div class="card">
+                                            <button class="btn btn-outline-info
+                                                           btn-block text-left collapsed"
+                                                    type="button"
+                                                    data-toggle="collapse"
+                                                    data-target="#collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                                    aria-expanded="false"
+                                                    aria-controls="collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                                    id="heading{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}">
+                                              {{ campaign.name }}
+                                            </button>
+                                          <div id="collapse{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                             class="collapse"
+                                             aria-labelledby="heading{{ client_loop.index }}_{{ product_loop.index }}_{{ loop.index }}"
+                                             data-parent="#accordionCampaign">
+                                          <div class="card-body">
+                                          {% set processors=client_dict[client][product][campaign] if client_dict else campaign.get_objects(title).order_by('name') %}
+                                          {% for processor in processors %}
+                                          <a class="btn btn-outline-success btn-block text-center"
+                                             style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;"
+                                             href="{{ processor.get_url() }}">
+                                              {{ processor.name }}</a>
+                                          {% endfor %}
+                                          </div>
+                                          </div>
+                                          </div>
                                       {% endfor %}
-                                      </div>
-                                      </div>
-                                      </div>
-                                  {% endfor %}
+                                  </div>
                               </div>
-                          </div>
+                            </div>
                         </div>
-                    </div>
-                  {% endfor %}
-              </div>
-              </div>
+                      {% endfor %}
+                  </div>
+                  </div>
+                </div>
             </div>
+        {% endfor %}
+    </div>
         </div>
-    {% endfor %}
 </div>

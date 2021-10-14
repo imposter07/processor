@@ -1182,3 +1182,6 @@ class TutorialStage(db.Model):
 
     def get_question_answers(self):
         return self.question_answers.split('|')
+
+    def get_message_split_on_newline(self):
+        return self.message.split('\n')

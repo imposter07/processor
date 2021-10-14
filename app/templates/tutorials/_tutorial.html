@@ -1,11 +1,16 @@
-<div class="card">
-    <div class="card-header">{{ tutorial_stage.header }}</div>
-    <h5 class="card-title">{{ tutorial_stage.sub_header }}</h5>
+<div class="card shadow outer">
+    <div class="card-header">
+        <h3>{{ tutorial_stage.header }}</h3>
+        <h6 class="card-subtitle mb-2 text-muted">{{ tutorial_stage.sub_header }}</h6>
+    </div>
     <div class="card-body">
         <div class="row">
             {% if tutorial_stage.message %}
                 <div class="col">
-                    <p class="card-text">{{ tutorial_stage.message }}</p>
+                    {% set message = tutorial_stage.get_message_split_on_newline() %}
+                    {% for m in message %}
+                        <p class="card-text">{{ m }}</p>
+                    {% endfor %}
                 </div>
             {% endif %}
             {% if tutorial_stage.question %}

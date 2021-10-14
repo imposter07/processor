@@ -3,9 +3,9 @@ import app.utils as utl
 from flask_babel import _
 from app.tutorials import bp
 from flask_login import current_user, login_required
-from flask import render_template, redirect, url_for, flash, request, jsonify
+from flask import render_template, redirect, url_for, request, jsonify
 from app.tutorials.forms import TutorialUploadForm, TutorialContinueForm
-from app.models import Tutorial, TutorialStage, user_tutorial, User
+from app.models import Tutorial, TutorialStage, User
 
 
 @bp.route('/tutorial/edit', methods=['GET', 'POST'])
@@ -44,9 +44,14 @@ def get_tutorial(tutorial_name, tutorial_level=0):
     tutorial_level = int(tutorial_level)
     tutorial_stage_num = len(cur_tutorial.tutorial_stage.all())
     edit_progress = ((tutorial_level + 1) / (tutorial_stage_num + 1)) * 100
-    buttons = [
-        {'lvl {}'.format(x): 'tutorials.get_tutorial'}
-        for x in range(tutorial_stage_num)]
+    buttons = [x for x in range(tutorial_level - 2, tutorial_level + 3)
+               if 0 < x < tutorial_stage_num]
+    buttons = list(set([0] + buttons + [tutorial_stage_num]))
+    if 1 not in buttons:
+        buttons[1:1] = ['...']
+    if tutorial_stage_num - 1 not in buttons:
+        buttons[-1:-1] = ['...']
+    buttons = [{'lvl {}'.format(x): 'tutorials.get_tutorial'} for x in buttons]
     kwargs = dict(object_name=cur_tutorial.name, title='Tutorial',
                   tutorial_stage=tutorial_stage,
                   edit_name='lvl {}'.format(tutorial_level),

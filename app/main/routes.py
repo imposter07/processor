@@ -98,7 +98,7 @@ def get_processor_by_date():
     event_response = [{'title': 'Created: {}'.format(x.name),
                        'start': x.created_at.date().isoformat(),
                        'url': url_for(
-                           'main.processor_page', processor_name=x.name),
+                           'main.processor_page', object_name=x.name),
                        'color': 'LightGreen',
                        'textColor': 'Black',
                        'borderColor': 'DimGray'}
@@ -107,7 +107,7 @@ def get_processor_by_date():
         [{'title': x.name,
           'start': x.start_date.isoformat(),
           'end': x.end_date.isoformat(),
-          'url': url_for('main.processor_page', processor_name=x.name),
+          'url': url_for('main.processor_page', object_name=x.name),
           'color': 'LightSkyBlue',
           'textColor': 'Black',
           'borderColor': 'DimGray'}
@@ -344,9 +344,9 @@ def get_project_numbers():
 @bp.route('/processor_change_owner', methods=['GET', 'POST'])
 @login_required
 def processor_change_owner():
-    processor_name = request.form['processor_name']
+    object_name = request.form['object_name']
     new_owner = request.form['new_owner']
-    cur_obj = Processor.query.filter_by(name=processor_name).first_or_404()
+    cur_obj = Processor.query.filter_by(name=object_name).first_or_404()
     new_user = User.query.filter_by(username=new_owner).first_or_404()
     cur_obj.user_id = new_user.id
     msg = 'You have successfully assigned {} as the owner of {}'.format(
@@ -478,32 +478,32 @@ def unfollow(username):
     return redirect(url_for('main.user', username=username))
 
 
-@bp.route('/follow_processor/<processor_name>')
+@bp.route('/follow_processor/<object_name>')
 @login_required
-def follow_processor(processor_name):
-    processor_follow = Processor.query.filter_by(name=processor_name).first()
+def follow_processor(object_name):
+    processor_follow = Processor.query.filter_by(name=object_name).first()
     if processor_follow is None:
-        flash(_('Processor {} not found.'.format(processor_name)))
+        flash(_('Processor {} not found.'.format(object_name)))
         return redirect(url_for('main.index'))
     current_user.follow_processor(processor_follow)
     db.session.commit()
-    flash(_('You are following {}!'.format(processor_name)))
+    flash(_('You are following {}!'.format(processor_follow.name)))
     return redirect(url_for('main.processor_page',
-                            processor_name=processor_name))
+                            object_name=processor_follow.name))
 
 
-@bp.route('/unfollow_processor/<processor_name>')
+@bp.route('/unfollow_processor/<object_name>')
 @login_required
-def unfollow_processor(processor_name):
-    processor_unfollow = Processor.query.filter_by(name=processor_name).first()
+def unfollow_processor(object_name):
+    processor_unfollow = Processor.query.filter_by(name=object_name).first()
     if processor_unfollow is None:
-        flash(_('Processor {} not found.'.format(processor_name)))
+        flash(_('Processor {} not found.'.format(object_name)))
         return redirect(url_for('main.index'))
     current_user.unfollow_processor(processor_unfollow)
     db.session.commit()
-    flash(_('You are no longer following {}!'.format(processor_name)))
+    flash(_('You are no longer following {}!'.format(processor_unfollow.name)))
     return redirect(url_for('main.processor_page',
-                            processor_name=processor_name))
+                            object_name=processor_unfollow.name))
 
 
 @bp.route('/get_task_progress', methods=['GET', 'POST'])
@@ -726,7 +726,7 @@ def create_processor():
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_import',
-                                    processor_name=new_processor.name))
+                                    object_name=new_processor.name))
         else:
             return redirect(url_for('main.processor'))
     return render_template('create_processor.html', user=cur_user,
@@ -785,27 +785,27 @@ def get_processor_output_links():
     return output_links
 
 
-def get_processor_request_links(processor_name):
+def get_processor_request_links(object_name):
     run_links = {0: {'title': 'View Initial Request',
                      'href': url_for('main.edit_request_processor',
-                                     processor_name=processor_name),
+                                     object_name=object_name),
                      'tooltip': 'View/Edits the initial request that made this '
                                 'processor instance. This will not change '
                                 'anything unless the processor is rebuilt.'},
                  1: {'title': 'Request Data Fix',
                      'href': url_for('main.edit_processor_request_fix',
-                                     processor_name=processor_name),
+                                     object_name=object_name),
                      'tooltip': 'Request a fix for the current processor data '
                                 'set, including changing values, adding'
                                 ' files etc.'},
                  2: {'title': 'Request Duplication',
                      'href': url_for('main.edit_processor_duplication',
-                                     processor_name=processor_name),
+                                     object_name=object_name),
                      'tooltip': 'Duplicates current processor instance based on'
                                 ' date to use new instance going forward.'},
                  3: {'title': 'Request Dashboard',
                      'href': url_for('main.processor_dashboard_create',
-                                     processor_name=processor_name),
+                                     object_name=object_name),
                      'tooltip': 'Create a dashboard in the app that queries the'
                                 ' database based on this processor instance.'}
                  }
@@ -827,18 +827,16 @@ def get_posts_for_objects(cur_obj, fix_id, current_page, object_name,
              order_by(Post.timestamp.desc()).
              paginate(page, 5, False))
     next_url = url_for('main.' + current_page, page=posts.next_num,
-                       **{'{}_name'.format(object_name): cur_obj.name}
-                       ) if posts.has_next else None
+                       object_name=cur_obj.name) if posts.has_next else None
     prev_url = url_for('main.' + current_page, page=posts.prev_num,
-                       **{'{}_name'.format(object_name): cur_obj.name}
-                       ) if posts.has_prev else None
+                       object_name=cur_obj.name) if posts.has_prev else None
     return posts, next_url, prev_url
 
 
-def get_current_processor(processor_name, current_page, edit_progress=0,
+def get_current_processor(object_name, current_page, edit_progress=0,
                           edit_name='Page', buttons=None, fix_id=None,
                           note_id=None):
-    cur_proc = Processor.query.filter_by(name=processor_name).first_or_404()
+    cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     posts, next_url, prev_url = get_posts_for_objects(
         cur_obj=cur_proc, fix_id=fix_id, current_page=current_page,
@@ -849,13 +847,13 @@ def get_current_processor(processor_name, current_page, edit_progress=0,
     run_links = get_processor_run_links()
     edit_links = get_processor_edit_links()
     output_links = get_processor_output_links()
-    request_links = get_processor_request_links(processor_name)
+    request_links = get_processor_request_links(cur_proc.name)
     args = dict(object=cur_proc, processor=cur_proc,
                 posts=posts.items, title=_('Processor'),
                 object_name=cur_proc.name, user=cur_user,
                 edit_progress=edit_progress, edit_name=edit_name,
                 api_imports=api_imports,
-                object_function_call={'processor_name': cur_proc.name},
+                object_function_call={'object_name': cur_proc.name},
                 run_links=run_links, edit_links=edit_links,
                 output_links=output_links, request_links=request_links,
                 next_url=next_url, prev_url=prev_url)
@@ -926,10 +924,10 @@ def parse_upload_file_request(current_request):
     return current_key, object_name, object_form, object_level
 
 
-@bp.route('/processor/<processor_name>/edit/import/upload_file',
+@bp.route('/processor/<object_name>/edit/import/upload_file',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_import_upload_file(processor_name):
+def edit_processor_import_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
         parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
@@ -960,13 +958,13 @@ def edit_processor_import_upload_file(processor_name):
             running_user=current_user.id, new_data=mem,
             vk=ds.vendor_key, mem_file=True)
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(processor_name)})
+    return jsonify({'data': 'success: {}'.format(cur_proc.name)})
 
 
-@bp.route('/processor/<processor_name>/edit/import', methods=['GET', 'POST'])
+@bp.route('/processor/<object_name>/edit/import', methods=['GET', 'POST'])
 @login_required
-def edit_processor_import(processor_name):
-    kwargs = get_current_processor(processor_name, 'edit_processor_import',
+def edit_processor_import(object_name):
+    kwargs = get_current_processor(object_name, 'edit_processor_import',
                                    50, 'Import')
     cur_proc = kwargs['processor']
     apis = ImportForm().set_apis(ProcessorDatasources, kwargs['processor'])
@@ -992,7 +990,7 @@ def edit_processor_import(processor_name):
                 db.session.delete(ds)
                 db.session.commit()
             return redirect(url_for('main.edit_processor_import',
-                                    processor_name=processor_name))
+                                    object_name=cur_proc.name))
     if request.method == 'POST':
         if cur_proc.get_task_in_progress('.set_processor_imports'):
             flash(_('The data sources are already being set.'))
@@ -1000,7 +998,7 @@ def edit_processor_import(processor_name):
             form_imports = set_processor_imports_in_db(
                 processor_id=cur_proc.id, form_imports=form.apis.data)
             msg_text = ('Setting imports in '
-                        'vendormatrix for {}').format(processor_name)
+                        'vendormatrix for {}').format(cur_proc.name)
             task = cur_proc.launch_task(
                 '.set_processor_imports', _(msg_text),
                 running_user=current_user.id, form_imports=form_imports,
@@ -1009,10 +1007,10 @@ def edit_processor_import(processor_name):
             task.wait_and_get_job(loops=20)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_clean',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_import',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
@@ -1357,10 +1355,10 @@ def get_datasource_table():
     return jsonify({'data': table_data})
 
 
-@bp.route('/processor/<processor_name>/edit/clean/upload_file',
+@bp.route('/processor/<object_name>/edit/clean/upload_file',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_clean_upload_file(processor_name):
+def edit_processor_clean_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
         parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
@@ -1376,13 +1374,13 @@ def edit_processor_clean_upload_file(processor_name):
         running_user=current_user.id, new_data=mem,
         vk=ds.vendor_key, mem_file=True)
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(processor_name)})
+    return jsonify({'data': 'success: {}'.format(cur_proc.name)})
 
 
-@bp.route('/processor/<processor_name>/edit/clean', methods=['GET', 'POST'])
+@bp.route('/processor/<object_name>/edit/clean', methods=['GET', 'POST'])
 @login_required
-def edit_processor_clean(processor_name):
-    kwargs = get_current_processor(processor_name, 'edit_processor_clean',
+def edit_processor_clean(object_name):
+    kwargs = get_current_processor(object_name, 'edit_processor_clean',
                                    edit_progress=75, edit_name='Clean')
     cur_proc = kwargs['processor']
     form = ProcessorCleanForm()
@@ -1399,10 +1397,10 @@ def cancel_schedule(scheduled_task):
         db.session.commit()
 
 
-@bp.route('/processor/<processor_name>/edit/export', methods=['GET', 'POST'])
+@bp.route('/processor/<object_name>/edit/export', methods=['GET', 'POST'])
 @login_required
-def edit_processor_export(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_export(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_export',
                                    edit_progress=100, edit_name='Export')
     cur_proc = kwargs['processor']
@@ -1426,42 +1424,42 @@ def edit_processor_export(processor_name):
         cur_proc.tableau_datasource = form.tableau_datasource.data
         cancel_schedule(sched)
         if form.schedule.data:
-            msg_text = 'Scheduling processor: {}'.format(processor_name)
+            msg_text = 'Scheduling processor: {}'.format(cur_proc.name)
             cur_proc.schedule_job('.full_run_processor', msg_text,
                                   start_date=form.schedule_start.data,
                                   end_date=form.schedule_end.data,
                                   scheduled_time=form.run_time.data,
                                   interval=form.interval.data)
         if form.tableau_datasource.data:
-            msg_text = 'Adding tableau export file: {}'.format(processor_name)
+            msg_text = 'Adding tableau export file: {}'.format(cur_proc.name)
             cur_proc.launch_task('.write_tableau_config_file', msg_text,
                                  running_user=current_user.id)
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_page',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_export',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>')
+@bp.route('/processor/<object_name>')
 @login_required
-def processor_page(processor_name):
-    kwargs = get_current_processor(processor_name, 'processor_page',
+def processor_page(object_name):
+    kwargs = get_current_processor(object_name, 'processor_page',
                                    edit_progress=100, edit_name='Page')
     if not kwargs['object'].local_path:
         return redirect(url_for('main.edit_request_processor',
-                                processor_name=processor_name))
+                                object_name=object_name))
     return render_template('dashboard.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/popup')
+@bp.route('/processor/<object_name>/popup')
 @login_required
-def processor_popup(processor_name):
+def processor_popup(object_name):
     processor_for_page = Processor.query.filter_by(
-        name=processor_name).first_or_404()
+        name=object_name).first_or_404()
     return render_template('processor_popup.html', processor=processor_for_page)
 
 
@@ -1536,14 +1534,13 @@ def run_object():
     return jsonify({'data': 'success', 'message': msg, 'level': lvl})
 
 
-@bp.route('/processor/<processor_name>/edit', methods=['GET', 'POST'])
+@bp.route('/processor/<object_name>/edit', methods=['GET', 'POST'])
 @login_required
-def edit_processor(processor_name):
-    kwargs = get_current_processor(processor_name, 'edit_processor',
+def edit_processor(object_name):
+    kwargs = get_current_processor(object_name, 'edit_processor',
                                    edit_progress=25, edit_name='Basic')
-    processor_to_edit = Processor.query.filter_by(
-        name=processor_name).first_or_404()
-    form = EditProcessorForm(processor_name)
+    processor_to_edit = kwargs['processor']
+    form = EditProcessorForm(processor_to_edit.name)
     if request.method == 'POST':
         form.validate()
         form_client = Client(name=form.client_name).check_and_add()
@@ -1573,17 +1570,18 @@ def edit_processor(processor_name):
         db.session.add(post)
         db.session.commit()
         if form.tableau_datasource.data:
-            msg_text = 'Adding tableau export file: {}'.format(processor_name)
+            msg_text = 'Adding tableau export file: {}'.format(
+                processor_to_edit.name)
             processor_to_edit.launch_task('.write_tableau_config_file',
                                           msg_text,
                                           running_user=current_user.id)
             db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_import',
-                                    processor_name=processor_to_edit.name))
+                                    object_name=processor_to_edit.name))
         else:
             return redirect(url_for('main.processor_page',
-                                    processor_name=processor_to_edit.name))
+                                    object_name=processor_to_edit.name))
     elif request.method == 'GET':
         form.name.data = processor_to_edit.name
         form.description.data = processor_to_edit.description
@@ -1653,7 +1651,7 @@ def request_processor():
         check_and_add_media_plan(form.media_plan.data, new_processor)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_account',
-                                    processor_name=new_processor.name))
+                                    object_name=new_processor.name))
         else:
             return redirect(url_for('main.processor'))
     return render_template('create_processor.html', user=cur_user,
@@ -1662,16 +1660,15 @@ def request_processor():
                            buttons=get_navigation_buttons('ProcessorRequest'))
 
 
-@bp.route('/processor/<processor_name>/edit/request', methods=['GET', 'POST'])
+@bp.route('/processor/<object_name>/edit/request', methods=['GET', 'POST'])
 @login_required
-def edit_request_processor(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_request_processor(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_request_processor',
                                    edit_progress=25, edit_name='Basic',
                                    buttons='ProcessorRequest')
-    processor_to_edit = Processor.query.filter_by(
-        name=processor_name).first_or_404()
-    form = EditProcessorRequestForm(processor_name)
+    processor_to_edit = kwargs['processor']
+    form = EditProcessorRequestForm(processor_to_edit.name)
     if request.method == 'POST':
         form.validate()
         form_client = Client(name=form.client_name).check_and_add()
@@ -1696,10 +1693,10 @@ def edit_request_processor(processor_name):
         check_and_add_media_plan(form.media_plan.data, processor_to_edit)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_account',
-                                    processor_name=processor_to_edit.name))
+                                    object_name=processor_to_edit.name))
         else:
             return redirect(url_for('main.edit_request_processor',
-                                    processor_name=processor_to_edit.name))
+                                    object_name=processor_to_edit.name))
     elif request.method == 'GET':
         form.name.data = processor_to_edit.name
         form.description.data = processor_to_edit.description
@@ -1720,10 +1717,10 @@ def edit_request_processor(processor_name):
     return render_template('create_processor.html',  **kwargs)
 
 
-@bp.route('/processor/<processor_name>/edit/accounts', methods=['GET', 'POST'])
+@bp.route('/processor/<object_name>/edit/accounts', methods=['GET', 'POST'])
 @login_required
-def edit_processor_account(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_account(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_account',
                                    edit_progress=50, edit_name='Accounts',
                                    buttons='ProcessorRequest')
@@ -1745,9 +1742,9 @@ def edit_processor_account(processor_name):
                 db.session.delete(act)
                 db.session.commit()
             return redirect(url_for('main.edit_processor_account',
-                                    processor_name=processor_name))
+                                    object_name=cur_proc.name))
     if request.method == 'POST':
-        msg_text = 'Setting accounts for {}'.format(processor_name)
+        msg_text = 'Setting accounts for {}'.format(cur_proc.name)
         task = cur_proc.launch_task(
             '.set_processor_accounts', _(msg_text),
             running_user=current_user.id, form_sources=form.accounts.data)
@@ -1755,17 +1752,17 @@ def edit_processor_account(processor_name):
         task.wait_and_get_job()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_fees',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_account',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/edit/fees', methods=['GET', 'POST'])
+@bp.route('/processor/<object_name>/edit/fees', methods=['GET', 'POST'])
 @login_required
-def edit_processor_fees(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_fees(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_fees',
                                    edit_progress=75, edit_name='Fees',
                                    buttons='ProcessorRequest')
@@ -1787,10 +1784,10 @@ def edit_processor_fees(processor_name):
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_conversions',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_fees',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     elif request.method == 'GET':
         form.digital_agency_fees.data = cur_proc.digital_agency_fees
         form.trad_agency_fees.data = cur_proc.trad_agency_fees
@@ -1806,11 +1803,11 @@ def edit_processor_fees(processor_name):
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/edit/conversions',
+@bp.route('/processor/<object_name>/edit/conversions',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_conversions(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_conversions(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_conversions',
                                    edit_progress=75, edit_name='Conversions',
                                    buttons='ProcessorRequest')
@@ -1833,9 +1830,9 @@ def edit_processor_conversions(processor_name):
                 db.session.delete(conv)
                 db.session.commit()
             return redirect(url_for('main.edit_processor_conversions',
-                                    processor_name=processor_name))
+                                    object_name=cur_proc.name))
     if request.method == 'POST':
-        msg_text = 'Setting conversions for {}'.format(processor_name)
+        msg_text = 'Setting conversions for {}'.format(cur_proc.name)
         task = cur_proc.launch_task(
             '.set_processor_conversions', _(msg_text),
             running_user=current_user.id, form_sources=form.conversions.data)
@@ -1843,18 +1840,18 @@ def edit_processor_conversions(processor_name):
         task.wait_and_get_job()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_finish',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_conversions',
-                                    processor_name=cur_proc.name))
+                                    object_namev=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/edit/finish',
+@bp.route('/processor/<object_name>/edit/finish',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_finish(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_finish(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_finish',
                                    edit_progress=100, edit_name='Finish',
                                    buttons='ProcessorRequest')
@@ -1873,7 +1870,7 @@ def edit_processor_finish(processor_name):
                 delete_user.unfollow_processor(cur_proc)
                 db.session.commit()
             return redirect(url_for('main.edit_processor_finish',
-                                    processor_name=processor_name))
+                                    object_name=cur_proc.name))
     if request.method == 'POST':
         for usr in form.assigned_users:
             follow_user = usr.assigned_user.data
@@ -1882,24 +1879,24 @@ def edit_processor_finish(processor_name):
                 db.session.commit()
         if form.form_continue.data == 'continue':
             msg_text = 'Sending request and attempting to build processor: {}' \
-                       ''.format(processor_name)
+                       ''.format(cur_proc.name)
             cur_proc.launch_task(
                 '.build_processor_from_request', _(msg_text),
                 running_user=current_user.id)
             db.session.commit()
             return redirect(url_for('main.processor_page',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_finish',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/edit/fix',
+@bp.route('/processor/<object_name>/edit/fix',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_request_fix(processor_name):
-    kwargs = get_current_processor(processor_name=processor_name,
+def edit_processor_request_fix(object_name):
+    kwargs = get_current_processor(object_name=object_name,
                                    current_page='edit_processor_request_fix',
                                    edit_progress=33, edit_name='New Fix',
                                    buttons='ProcessorRequestFix')
@@ -1929,17 +1926,17 @@ def edit_processor_request_fix(processor_name):
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_submit_fix',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_request_fix',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/edit/fix/upload_file',
+@bp.route('/processor/<object_name>/edit/fix/upload_file',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_request_fix_upload_file(processor_name):
+def edit_processor_request_fix_upload_file(object_name):
     current_key, object_name, object_form, object_level =\
         parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
@@ -1969,14 +1966,14 @@ def edit_processor_request_fix_upload_file(processor_name):
             '.save_spend_cap_file', _(msg_text),
             running_user=current_user.id, new_data=mem)
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(processor_name)})
+    return jsonify({'data': 'success: {}'.format(cur_proc.name)})
 
 
-@bp.route('/processor/<processor_name>/edit/fix/submit',
+@bp.route('/processor/<object_name>/edit/fix/submit',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_submit_fix(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_submit_fix(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_submit_fix',
                                    edit_progress=66, edit_name='Submit Fixes',
                                    buttons='ProcessorRequestFix')
@@ -1994,25 +1991,25 @@ def edit_processor_submit_fix(processor_name):
         db.session.add(post)
         db.session.commit()
         msg_text = ('Attempting to fix requests and notifying followers '
-                    'for processor: {}').format(processor_name)
+                    'for processor: {}').format(cur_proc.name)
         cur_proc.launch_task(
             '.processor_fix_requests', _(msg_text),
             running_user=current_user.id)
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_all_fix',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_submit_fix',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/edit/fix/all',
+@bp.route('/processor/<object_name>/edit/fix/all',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_all_fix(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_all_fix(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_all_fix',
                                    edit_progress=100, edit_name='All Fixes',
                                    buttons='ProcessorRequestFix')
@@ -2024,10 +2021,10 @@ def edit_processor_all_fix(processor_name):
     if request.method == 'POST':
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_page',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_all_fix',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
@@ -2047,7 +2044,7 @@ def resolve_fix(fix_id):
     db.session.commit()
     flash(_(msg_txt.format(request_fix.id)))
     return redirect(url_for('main.edit_processor_view_fix',
-                            processor_name=request_fix.processor.name,
+                            object_name=request_fix.processor.name,
                             fix_id=request_fix.id))
 
 
@@ -2068,15 +2065,15 @@ def unresolve_fix(fix_id):
     db.session.commit()
     flash(_(msg_txt))
     return redirect(url_for('main.edit_processor_view_fix',
-                            processor_name=request_fix.processor.name,
+                            object_name=request_fix.processor.name,
                             fix_id=request_fix.id))
 
 
-@bp.route('/processor/<processor_name>/edit/fix/<fix_id>',
+@bp.route('/processor/<object_name>/edit/fix/<fix_id>',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_view_fix(processor_name, fix_id):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_view_fix(object_name, fix_id):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_view_fix',
                                    edit_progress=100, edit_name='View Fixes',
                                    buttons='ProcessorRequestFix',
@@ -2099,19 +2096,19 @@ def edit_processor_view_fix(processor_name, fix_id):
             flash(_('Your post is now live!'))
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_submit_fix',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_view_fix',
-                                    processor_name=cur_proc.name,
+                                    object_name=cur_proc.name,
                                     fix_id=fix_id))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/edit/note',
+@bp.route('/processor/<object_name>/edit/note',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_note(processor_name):
-    kwargs = get_current_processor(processor_name=processor_name,
+def edit_processor_note(object_name):
+    kwargs = get_current_processor(object_name=object_name,
                                    current_page='edit_processor_note',
                                    edit_progress=33, edit_name='New Note',
                                    buttons='ProcessorNote')
@@ -2136,18 +2133,18 @@ def edit_processor_note(processor_name):
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_all_notes',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_note',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/edit/note/all',
+@bp.route('/processor/<object_name>/edit/note/all',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_all_notes(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_all_notes(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_all_notes',
                                    edit_progress=100, edit_name='All Notes',
                                    buttons='ProcessorNote')
@@ -2159,18 +2156,18 @@ def edit_processor_all_notes(processor_name):
     if request.method == 'POST':
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_page',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_all_notes',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/edit/note/<note_id>',
+@bp.route('/processor/<object_name>/edit/note/<note_id>',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_view_note(processor_name, note_id):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_view_note(object_name, note_id):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_note_fix',
                                    edit_progress=100, edit_name='View Notes',
                                    buttons='ProcessorNote', note_id=note_id)
@@ -2192,10 +2189,10 @@ def edit_processor_view_note(processor_name, note_id):
             flash(_('Your post is now live!'))
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_all_notes',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_view_note',
-                                    processor_name=cur_proc.name,
+                                    object_name=cur_proc.name,
                                     note_id=note_id))
     return render_template('create_processor.html', **kwargs)
 
@@ -2215,7 +2212,7 @@ def close_note(note_id):
     db.session.commit()
     flash(_(msg_txt.format(cur_note.id)))
     return redirect(url_for('main.edit_processor_view_note',
-                            processor_name=cur_note.processor.name,
+                            object_name=cur_note.processor.name,
                             note_id=cur_note.id))
 
 
@@ -2234,16 +2231,16 @@ def open_note(note_id):
     db.session.commit()
     flash(_(msg_txt))
     return redirect(url_for('main.edit_processor_view_note',
-                            processor_name=cur_note.processor.name,
+                            object_name=cur_note.processor.name,
                             note_id=cur_note.id))
 
 
-@bp.route('/processor/<processor_name>/edit/note/auto',
+@bp.route('/processor/<object_name>/edit/note/auto',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_auto_notes(processor_name):
+def edit_processor_auto_notes(object_name):
     kwargs = get_current_processor(
-        processor_name,  current_page='edit_processor_auto_notes',
+        object_name,  current_page='edit_processor_auto_notes',
         edit_progress=100,  edit_name='Automatic Notes',
         buttons='ProcessorNote')
     cur_proc = kwargs['processor']
@@ -2252,10 +2249,10 @@ def edit_processor_auto_notes(processor_name):
     if request.method == 'POST':
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_page',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_all_notes',
-                                    processor_name=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
@@ -2587,10 +2584,10 @@ def create_uploader():
             db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_uploader_campaign',
-                                    uploader_name=new_uploader.name))
+                                    object_name=new_uploader.name))
         else:
             return redirect(url_for('main.edit_uploader',
-                                    uploader_name=new_uploader.name))
+                                    object_name=new_uploader.name))
     return render_template('create_processor.html', user=cur_user,
                            title=_('Uploader'), form=form, edit_progress="25",
                            edit_name='Basic')
@@ -2613,11 +2610,11 @@ def get_uploader_edit_links():
     return edit_links
 
 
-def get_uploader_request_links(uploader_name):
+def get_uploader_request_links(object_name):
     req_links = {
                  0: {'title': 'Request Duplication',
                      'href': url_for('main.edit_uploader_duplication',
-                                     uploader_name=uploader_name)}
+                                     object_name=object_name)}
                  }
     return req_links
 
@@ -2635,24 +2632,24 @@ def get_uploader_view_selector(uploader_type='Facebook'):
     return view_selector
 
 
-def get_current_uploader(uploader_name, current_page, edit_progress=0,
+def get_current_uploader(object_name, current_page, edit_progress=0,
                          edit_name='Page', buttons='Uploader', fix_id=None,
                          uploader_type='Facebook'):
-    cur_up = Uploader.query.filter_by(name=uploader_name).first_or_404()
+    cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     posts, next_url, prev_url = get_posts_for_objects(
         cur_obj=cur_up, fix_id=fix_id, current_page=current_page,
         object_name='uploader')
     run_links = get_uploader_run_links()
     edit_links = get_uploader_edit_links()
-    request_links = get_uploader_request_links(uploader_name)
+    request_links = get_uploader_request_links(cur_up.name)
     view_selector = get_uploader_view_selector(uploader_type)
     nav_buttons = get_navigation_buttons(buttons + uploader_type)
     args = {'object': cur_up, 'posts': posts.items, 'title': _('Uploader'),
             'object_name': cur_up.name, 'user': cur_user,
             'edit_progress': edit_progress, 'edit_name': edit_name,
             'buttons': nav_buttons,
-            'object_function_call': {'uploader_name': cur_up.name},
+            'object_function_call': {'object_name': cur_up.name},
             'run_links': run_links, 'edit_links': edit_links,
             'request_links': request_links,
             'next_url': next_url, 'prev_url': prev_url,
@@ -2661,19 +2658,19 @@ def get_current_uploader(uploader_name, current_page, edit_progress=0,
     return args
 
 
-@bp.route('/uploader/<uploader_name>')
+@bp.route('/uploader/<object_name>')
 @login_required
-def uploader_page(uploader_name):
-    kwargs = get_current_uploader(uploader_name, 'uploader_page',
+def uploader_page(object_name):
+    kwargs = get_current_uploader(object_name, 'uploader_page',
                                   edit_progress=100, edit_name='Page')
     kwargs['uploader_objects'] = kwargs['object'].uploader_objects
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/uploader/<uploader_name>/edit/upload_file',
+@bp.route('/uploader/<object_name>/edit/upload_file',
           methods=['GET', 'POST'])
 @login_required
-def edit_uploader_upload_file(uploader_name):
+def edit_uploader_upload_file(object_name):
     current_key, object_name, object_form, object_level =\
         parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
@@ -2681,16 +2678,16 @@ def edit_uploader_upload_file(uploader_name):
     check_and_add_media_plan(mem, cur_up, object_type=Uploader)
     cur_up.media_plan = True
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(uploader_name)})
+    return jsonify({'data': 'success: {}'.format(cur_up.name)})
 
 
-@bp.route('/uploader/<uploader_name>/edit', methods=['GET', 'POST'])
+@bp.route('/uploader/<object_name>/edit', methods=['GET', 'POST'])
 @login_required
-def edit_uploader(uploader_name):
-    kwargs = get_current_uploader(uploader_name, 'edit_uploader',
+def edit_uploader(object_name):
+    kwargs = get_current_uploader(object_name, 'edit_uploader',
                                   edit_progress=20, edit_name='Basic')
     uploader_to_edit = kwargs['object']
-    form = EditUploaderForm(uploader_name)
+    form = EditUploaderForm(object_name)
     if request.method == 'POST':
         form.validate()
         form_client = Client(name=form.client_name).check_and_add()
@@ -2719,10 +2716,10 @@ def edit_uploader(uploader_name):
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_uploader_campaign',
-                                    uploader_name=uploader_to_edit.name))
+                                    object_name=uploader_to_edit.name))
         else:
             return redirect(url_for('main.edit_uploader',
-                                    uploader_name=uploader_to_edit.name))
+                                    object_name=uploader_to_edit.name))
     elif request.method == 'GET':
         form.name.data = uploader_to_edit.name
         form.description.data = uploader_to_edit.description
@@ -2759,7 +2756,7 @@ def set_uploader_relations_in_db(uploader_id, form_relations,
     return True
 
 
-def uploader_name_file_upload(uploader_name):
+def uploader_name_file_upload(object_name):
     current_key, object_name, object_form, object_level =\
         parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
@@ -2776,33 +2773,33 @@ def uploader_name_file_upload(uploader_name):
         parameter=current_key, mem_file=True,
         object_level=object_level)
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(uploader_name)})
+    return jsonify({'data': 'success: {}'.format(cur_up.name)})
 
 
-@bp.route('/uploader/<uploader_name>/edit/campaign/upload_file',
+@bp.route('/uploader/<object_name>/edit/campaign/upload_file',
           methods=['GET', 'POST'])
 @login_required
-def uploader_campaign_name_file_upload(uploader_name):
-    return uploader_name_file_upload(uploader_name)
+def uploader_campaign_name_file_upload(object_name):
+    return uploader_name_file_upload(object_name)
 
 
-@bp.route('/uploader/<uploader_name>/edit/adset/upload_file',
+@bp.route('/uploader/<object_name>/edit/adset/upload_file',
           methods=['GET', 'POST'])
 @login_required
-def uploader_adset_name_file_upload(uploader_name):
-    return uploader_name_file_upload(uploader_name)
+def uploader_adset_name_file_upload(object_name):
+    return uploader_name_file_upload(object_name)
 
 
-@bp.route('/uploader/<uploader_name>/edit/ad/upload_file',
+@bp.route('/uploader/<object_name>/edit/ad/upload_file',
           methods=['GET', 'POST'])
 @login_required
-def uploader_ad_name_file_upload(uploader_name):
-    return uploader_name_file_upload(uploader_name)
+def uploader_ad_name_file_upload(object_name):
+    return uploader_name_file_upload(object_name)
 
 
-def edit_uploader_base_objects(uploader_name, object_level, next_level='Page',
+def edit_uploader_base_objects(object_name, object_level, next_level='Page',
                                uploader_type='Facebook'):
-    kwargs = get_current_uploader(uploader_name, 'edit_uploader',
+    kwargs = get_current_uploader(object_name, 'edit_uploader',
                                   edit_progress=40, edit_name=object_level,
                                   uploader_type=uploader_type)
     cur_up = kwargs['object']
@@ -2856,7 +2853,7 @@ def edit_uploader_base_objects(uploader_name, object_level, next_level='Page',
             return redirect(url_for(
                 'main.edit_uploader_{}{}'.format(
                     next_level.lower(), route_suffix),
-                uploader_name=cur_up.name))
+                object_name=cur_up.name))
         else:
             msg_text = 'Creating {} for uploader.'.format(object_level)
             task = cur_up.launch_task(
@@ -2868,49 +2865,49 @@ def edit_uploader_base_objects(uploader_name, object_level, next_level='Page',
             return redirect(url_for(
                 'main.edit_uploader_{}{}'.format(
                     object_level.lower(), route_suffix),
-                uploader_name=cur_up.name))
+                object_name=cur_up.name))
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
 
 
-@bp.route('/uploader/<uploader_name>/edit/campaign', methods=['GET', 'POST'])
+@bp.route('/uploader/<object_name>/edit/campaign', methods=['GET', 'POST'])
 @login_required
-def edit_uploader_campaign(uploader_name):
+def edit_uploader_campaign(object_name):
     object_level = 'Campaign'
     next_level = 'Adset'
-    return edit_uploader_base_objects(uploader_name, object_level, next_level)
+    return edit_uploader_base_objects(object_name, object_level, next_level)
 
 
-@bp.route('/uploader/<uploader_name>/edit/adset', methods=['GET', 'POST'])
+@bp.route('/uploader/<object_name>/edit/adset', methods=['GET', 'POST'])
 @login_required
-def edit_uploader_adset(uploader_name):
+def edit_uploader_adset(object_name):
     object_level = 'Adset'
     next_level = 'Creative'
-    return edit_uploader_base_objects(uploader_name, object_level, next_level)
+    return edit_uploader_base_objects(object_name, object_level, next_level)
 
 
-@bp.route('/uploader/<uploader_name>/edit/creative', methods=['GET', 'POST'])
+@bp.route('/uploader/<object_name>/edit/creative', methods=['GET', 'POST'])
 @login_required
-def edit_uploader_creative(uploader_name):
-    kwargs = get_current_uploader(uploader_name, 'edit_uploader_creative',
+def edit_uploader_creative(object_name):
+    kwargs = get_current_uploader(object_name, 'edit_uploader_creative',
                                   edit_progress=80, edit_name='Creative')
-    # uploader_to_edit = kwargs['object']
-    form = EditUploaderCreativeForm(uploader_name)
+    uploader_to_edit = kwargs['object']
+    form = EditUploaderCreativeForm(uploader_to_edit.name)
     kwargs['form'] = form
     if request.method == 'POST':
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_uploader_creative',
-                                    uploader_name=uploader_name))
+                                    object_name=uploader_to_edit.name))
         else:
             return redirect(url_for('main.edit_uploader_ad',
-                                    uploader_name=uploader_name))
+                                    object_name=uploader_to_edit.name))
     return render_template('create_processor.html',  **kwargs)
 
 
-@bp.route('/uploader/<uploader_name>/edit/creative/upload_file',
+@bp.route('/uploader/<object_name>/edit/creative/upload_file',
           methods=['GET', 'POST'])
 @login_required
-def uploader_file_upload(uploader_name):
+def uploader_file_upload(object_name):
     current_key, object_name, object_form, object_level =\
         parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
@@ -2920,101 +2917,101 @@ def uploader_file_upload(uploader_name):
         '.uploader_save_creative', _(msg_text),
         running_user=current_user.id, file=mem, file_name=file_name)
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(uploader_name)})
+    return jsonify({'data': 'success: {}'.format(cur_up.name)})
 
 
-@bp.route('/uploader/<uploader_name>/edit/ad', methods=['GET', 'POST'])
+@bp.route('/uploader/<object_name>/edit/ad', methods=['GET', 'POST'])
 @login_required
-def edit_uploader_ad(uploader_name):
+def edit_uploader_ad(object_name):
     object_level = 'Ad'
     next_level = 'Ad'
-    return edit_uploader_base_objects(uploader_name, object_level, next_level)
+    return edit_uploader_base_objects(object_name, object_level, next_level)
 
 
-@bp.route('/uploader/<uploader_name>/edit/duplicate',
+@bp.route('/uploader/<object_name>/edit/duplicate',
           methods=['GET', 'POST'])
 @login_required
-def edit_uploader_duplication(uploader_name):
-    kwargs = get_current_uploader(uploader_name, 'edit_uploader_duplication',
+def edit_uploader_duplication(object_name):
+    kwargs = get_current_uploader(object_name, 'edit_uploader_duplication',
                                   edit_progress=100, edit_name='Duplicate')
     cur_up = kwargs['object']
     form = UploaderDuplicateForm()
     kwargs['form'] = form
     if request.method == 'POST':
         msg_text = 'Sending request and attempting to duplicate uploader: {}' \
-                   ''.format(uploader_name)
+                   ''.format(cur_up.name)
         cur_up.launch_task(
             '.duplicate_uploader', _(msg_text),
             running_user=current_user.id, form_data=form.data)
         db.session.commit()
         return redirect(url_for('main.uploader_page',
-                                uploader_name=cur_up.name))
+                                object_name=cur_up.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/uploader/<uploader_name>/edit/campaign/dcm',
+@bp.route('/uploader/<object_name>/edit/campaign/dcm',
           methods=['GET', 'POST'])
 @login_required
-def edit_uploader_campaign_dcm(uploader_name):
+def edit_uploader_campaign_dcm(object_name):
     uploader_type = 'DCM'
     object_level = 'Campaign'
     next_level = 'Adset'
-    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+    return edit_uploader_base_objects(object_name, object_level, next_level,
                                       uploader_type)
 
 
-@bp.route('/uploader/<uploader_name>/edit/adset/dcm',
+@bp.route('/uploader/<object_name>/edit/adset/dcm',
           methods=['GET', 'POST'])
 @login_required
-def edit_uploader_adset_dcm(uploader_name):
+def edit_uploader_adset_dcm(object_name):
     uploader_type = 'DCM'
     object_level = 'Adset'
     next_level = 'Ad'
-    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+    return edit_uploader_base_objects(object_name, object_level, next_level,
                                       uploader_type)
 
 
-@bp.route('/uploader/<uploader_name>/edit/ad/dcm',
+@bp.route('/uploader/<object_name>/edit/ad/dcm',
           methods=['GET', 'POST'])
 @login_required
-def edit_uploader_ad_dcm(uploader_name):
+def edit_uploader_ad_dcm(object_name):
     uploader_type = 'DCM'
     object_level = 'Ad'
     next_level = 'Page'
-    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+    return edit_uploader_base_objects(object_name, object_level, next_level,
                                       uploader_type)
 
 
-@bp.route('/uploader/<uploader_name>/edit/campaign/aw',
+@bp.route('/uploader/<object_name>/edit/campaign/aw',
           methods=['GET', 'POST'])
 @login_required
-def edit_uploader_campaign_aw(uploader_name):
+def edit_uploader_campaign_aw(object_name):
     uploader_type = 'Adwords'
     object_level = 'Campaign'
     next_level = 'Adset'
-    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+    return edit_uploader_base_objects(object_name, object_level, next_level,
                                       uploader_type)
 
 
-@bp.route('/uploader/<uploader_name>/edit/adset/aw',
+@bp.route('/uploader/<object_name>/edit/adset/aw',
           methods=['GET', 'POST'])
 @login_required
-def edit_uploader_adset_aw(uploader_name):
+def edit_uploader_adset_aw(object_name):
     uploader_type = 'Adwords'
     object_level = 'Adset'
     next_level = 'Ad'
-    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+    return edit_uploader_base_objects(object_name, object_level, next_level,
                                       uploader_type)
 
 
-@bp.route('/uploader/<uploader_name>/edit/ad/aw',
+@bp.route('/uploader/<object_name>/edit/ad/aw',
           methods=['GET', 'POST'])
 @login_required
-def edit_uploader_ad_aw(uploader_name):
+def edit_uploader_ad_aw(object_name):
     uploader_type = 'Adwords'
     object_level = 'Ad'
     next_level = 'Ad'
-    return edit_uploader_base_objects(uploader_name, object_level, next_level,
+    return edit_uploader_base_objects(object_name, object_level, next_level,
                                       uploader_type)
 
 
@@ -3024,11 +3021,11 @@ def app_help():
     return render_template('help.html', title=_('Help'))
 
 
-@bp.route('/processor/<processor_name>/edit/duplicate',
+@bp.route('/processor/<object_name>/edit/duplicate',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_duplication(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_duplication(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_duplication',
                                    edit_progress=100, edit_name='Duplicate',
                                    buttons='ProcessorDuplicate')
@@ -3037,13 +3034,13 @@ def edit_processor_duplication(processor_name):
     kwargs['form'] = form
     if request.method == 'POST':
         msg_text = 'Sending request and attempting to duplicate processor: {}' \
-                   ''.format(processor_name)
+                   ''.format(cur_proc.name)
         cur_proc.launch_task(
             '.duplicate_processor', _(msg_text),
             running_user=current_user.id, form_data=form.data)
         db.session.commit()
         return redirect(url_for('main.processor_page',
-                                processor_name=cur_proc.name))
+                                object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
@@ -3088,10 +3085,10 @@ def get_metrics():
     return jsonify(data)
 
 
-@bp.route('/processor/<processor_name>/dashboard', methods=['GET', 'POST'])
+@bp.route('/processor/<object_name>/dashboard', methods=['GET', 'POST'])
 @login_required
-def edit_processor_dashboard(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_dashboard(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_dashboard',
                                    edit_progress=100, edit_name='Dashboard',
                                    buttons='ProcessorDashboard')
@@ -3124,11 +3121,11 @@ def set_dashboard_filters_in_db(object_id, form_dicts,
     return True
 
 
-@bp.route('/processor/<processor_name>/dashboard/create',
+@bp.route('/processor/<object_name>/dashboard/create',
           methods=['GET', 'POST'])
 @login_required
-def processor_dashboard_create(processor_name):
-    kwargs = get_current_processor(processor_name,
+def processor_dashboard_create(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='processor_dashboard_create',
                                    edit_progress=50, edit_name='Create',
                                    buttons='ProcessorDashboard')
@@ -3158,17 +3155,17 @@ def processor_dashboard_create(processor_name):
         db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_dashboard_all',
-                                    processor_name=processor_name))
+                                    object_name=cur_proc.name))
         else:
             return redirect(url_for('main.processor_dashboard_create',
-                                    processor_name=processor_name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/dashboard/all', methods=['GET', 'POST'])
+@bp.route('/processor/<object_name>/dashboard/all', methods=['GET', 'POST'])
 @login_required
-def processor_dashboard_all(processor_name):
-    kwargs = get_current_processor(processor_name,
+def processor_dashboard_all(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='processor_dashboard_all',
                                    edit_progress=100, edit_name='View All',
                                    buttons='ProcessorDashboard')
@@ -3190,11 +3187,11 @@ def processor_dashboard_all(processor_name):
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<processor_name>/dashboard/<dashboard_id>',
+@bp.route('/processor/<object_name>/dashboard/<dashboard_id>',
           methods=['GET', 'POST'])
 @login_required
-def processor_dashboard_view(processor_name, dashboard_id):
-    kwargs = get_current_processor(processor_name,
+def processor_dashboard_view(object_name, dashboard_id):
+    kwargs = get_current_processor(object_name,
                                    current_page='processor_dashboard_all',
                                    edit_progress=100, edit_name='View Dash',
                                    buttons='ProcessorDashboard')
@@ -3287,12 +3284,12 @@ def save_dashboard():
     return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
 
 
-@bp.route('/delete_processor/<processor_name>', methods=['GET', 'POST'])
+@bp.route('/delete_processor/<object_name>', methods=['GET', 'POST'])
 @login_required
-def delete_processor(processor_name):
+def delete_processor(object_name):
     form = ProcessorDeleteForm()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    del_processor = Processor.query.filter_by(name=processor_name).first()
+    del_processor = Processor.query.filter_by(name=object_name).first()
     form.processor_name.data = del_processor.name
     if request.method == 'POST':
         form.validate()
@@ -3301,7 +3298,7 @@ def delete_processor(processor_name):
             db.session.commit()
         db.session.delete(del_processor)
         db.session.commit()
-        delete_text = 'Processor {} has been deleted.'.format(processor_name)
+        delete_text = 'Processor {} has been deleted.'.format(object_name)
         flash(_(delete_text))
         post = Post(body=delete_text, author=current_user)
         db.session.add(post)
@@ -3315,9 +3312,9 @@ def delete_processor(processor_name):
 @bp.route('/processor_change_project_number', methods=['GET', 'POST'])
 @login_required
 def processor_change_project_number():
-    processor_name = request.form['processor_name']
+    processor_id = request.form['object_name']
     p_numbers = json.loads(request.form['project_numbers'])
-    cur_obj = Processor.query.filter_by(id=processor_name).first_or_404()
+    cur_obj = Processor.query.filter_by(id=processor_id).first_or_404()
     if p_numbers:
         for p_number in p_numbers:
             parse_number = p_number.split('_')[0]
@@ -3341,11 +3338,11 @@ def processor_change_project_number():
     return jsonify({'data': 'success', 'message': msg, 'level': lvl})
 
 
-@bp.route('/processor/<processor_name>/edit/duplicate_from_another',
+@bp.route('/processor/<object_name>/edit/duplicate_from_another',
           methods=['GET', 'POST'])
 @login_required
-def edit_processor_duplication_from_another(processor_name):
-    kwargs = get_current_processor(processor_name,
+def edit_processor_duplication_from_another(object_name):
+    kwargs = get_current_processor(object_name,
                                    current_page='edit_processor_duplication',
                                    edit_progress=100, edit_name='Duplicate',
                                    buttons='ProcessorDuplicate')
@@ -3358,12 +3355,12 @@ def edit_processor_duplication_from_another(processor_name):
     kwargs['form'] = form
     if request.method == 'POST':
         msg_text = 'Sending request and attempting to duplicate processor: {}' \
-                   ''.format(processor_name)
+                   ''.format(cur_proc.name)
         proc_dup = Processor.query.get(form.data['old_proc'].id)
         proc_dup.launch_task(
             '.duplicate_processor', _(msg_text),
             running_user=current_user.id, form_data=form.data)
         db.session.commit()
         return redirect(url_for('main.processor_page',
-                                processor_name=cur_proc.name))
+                                object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)

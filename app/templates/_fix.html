@@ -3,7 +3,7 @@
         <h3>
             <span class="nowrap">
             <a href="{{ url_for('main.edit_processor_view_fix',
-            processor_name=fix.processor.name, fix_id=fix.id) }}">
+            object_name=fix.processor.name, fix_id=fix.id) }}">
             {{ processor.name }} - Fix Request #{{ fix.id }}</a>
             {% if not fix.complete %}
                 <div class="dropdown" style="float: right;">

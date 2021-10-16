@@ -3,7 +3,7 @@
         <h3>
             <span class="nowrap">
             <a href="{{ url_for('main.processor_dashboard_view',
-            processor_name=dash.processor.name, dashboard_id=dash.id) }}">
+            object_name=dash.processor.name, dashboard_id=dash.id) }}">
             {{ processor.name }} - Dashboard: {{ dash.name }}</a>
             <h6 class="mt-0">{{ _('was created %(when)s',
             when=moment(dash.created_at).fromNow()) }}</h6>

@@ -31,19 +31,19 @@
         </div>
         {% if not processor.local_path %}
         <div class="col">
-            <a href="{{ url_for('main.edit_processor_duplication_from_another', processor_name=processor.name) }}">
+            <a href="{{ url_for('main.edit_processor_duplication_from_another', object_name=processor.name) }}">
                 <button class="btn btn-outline-success btn-block text-left"
                         type="button"
-                        href="{{ url_for('main.edit_processor_duplication_from_another', processor_name=processor.name) }}">
+                        href="{{ url_for('main.edit_processor_duplication_from_another', object_name=processor.name) }}">
                     <i class="fas fa-plus-circle"
                        role="button"></i>
                     {{ _('Create From Existing Processor') }}
                 </button>
             </a>
-            <a href="{{ url_for('main.delete_processor', processor_name=processor.name) }}">
+            <a href="{{ url_for('main.delete_processor', object_name=processor.name) }}">
                 <button class="btn btn-outline-danger btn-block text-left"
                         type="button"
-                        href="{{ url_for('main.delete_processor', processor_name=processor.name) }}">
+                        href="{{ url_for('main.delete_processor', object_name=processor.name) }}">
                     <i class="fas fa-times-circle"
                        role="button"></i>
                     {{ _('Delete Processor') }}

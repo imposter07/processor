@@ -3,7 +3,7 @@
         <h3>
             <span class="nowrap">
             <a href="{{ url_for('main.edit_processor_view_note',
-            processor_name=note.processor.name, note_id=note.id) }}">
+            object_name=note.processor.name, note_id=note.id) }}">
             {{ processor.name }} - Note #{{ note.id }}</a>
             {% if not note.complete %}
                 <div class="dropdown" style="float: right;">

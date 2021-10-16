@@ -571,7 +571,7 @@ class Processor(db.Model):
         return self.dashboard.order_by(Dashboard.created_at.desc()).all()
 
     def get_url(self):
-        return url_for('main.processor_page', processor_name=self.name)
+        return url_for('main.processor_page', object_name=self.name)
 
     def get_project_numbers(self):
         return [x.project_number for x in self.projects]
@@ -947,7 +947,15 @@ class Uploader(db.Model):
                      if not k.startswith("_") and k != 'id'])
 
     def get_url(self):
-        return url_for('main.uploader_page', uploader_name=self.name)
+        return url_for('main.uploader_page', object_name=self.name)
+
+    def get_current_buttons(self):
+        buttons = [{'Basic': 'main.edit_uploader'},
+                   {'Campaign': 'main.edit_uploader_campaign'},
+                   {'Adset': 'main.edit_uploader_adset'},
+                   {'Creative': 'main.edit_uploader_creative'},
+                   {'Ad': 'main.edit_uploader_ad'}]
+        return buttons
 
 
 class UploaderObjects(db.Model):

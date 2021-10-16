@@ -23,7 +23,7 @@
             {% if post.processor_id %}
                 <span class="processor_popup">
                     <a href="{{ url_for('main.processor_page',
-                     processor_name=post.processor.name) }}"
+                     object_name=post.processor.name) }}"
                      style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
                         {{ post.processor.name }}
                     </a>
@@ -32,7 +32,7 @@
             {% if post.uploader_id %}
                 <span class="uploader_popup">
                     <a href="{{ url_for('main.uploader_page',
-                     uploader_name=post.uploader.name) }}">
+                     object_name=post.uploader.name) }}">
                         {{ post.uploader.name }}
                     </a>
                 </span>
@@ -40,7 +40,7 @@
             {% if post.request_id %}
                 <span class="uploader_popup">
                     <a href="{{ url_for('main.edit_processor_view_fix',
-                     processor_name=post.processor.name,
+                     object_name=post.processor.name,
                      fix_id=post.request_id) }}">
                         #{{ post.request_id }}
                     </a>

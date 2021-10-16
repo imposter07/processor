@@ -197,7 +197,7 @@
             $.post('/processor_change_owner',
                 {
                     title: '{{ title }}',
-                    processor_name: processorName,
+                    object_name: processorName,
                     new_owner: newOwner
                 }).done(function (data) {
                     displayAlert(data['message'], data['level'])
@@ -239,7 +239,7 @@
             $.post('/processor_change_project_number',
                 {
                     title: '{{ title }}',
-                    processor_name: processorName,
+                    object_name: processorName,
                     project_numbers: JSON.stringify(projectNumbers)
                 }).done(function (data) {
                     displayAlert(data['message'], data['level'])

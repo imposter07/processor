@@ -3,7 +3,7 @@
         {% set req = processor.get_open_requests() %}
         {% if req|length > 0 %}
             <a href="{{ url_for('main.edit_processor_submit_fix',
-                           processor_name=processor.name) }}"
+                           object_name=processor.name) }}"
                type="button" class="btn btn-outline-danger btn-large">
                 Open Requests <span class="badge badge-light">
                         {{ req|length }}</span>
@@ -11,7 +11,7 @@
             </a>
         {% else %}
             <a href="{{ url_for('main.edit_processor_request_fix',
-                           processor_name=processor.name) }}"
+                           object_name=processor.name) }}"
                type="button" class="btn btn-outline-success btn-large">
                 No Open Requests <span class="badge badge-light">
                         {{ req|length }}</span>
@@ -19,7 +19,7 @@
             </a>
         {% endif %}
     {% else %}
-        <a href="{{ url_for('main.edit_request_processor', processor_name=processor.name) }}"
+        <a href="{{ url_for('main.edit_request_processor', object_name=processor.name) }}"
            type="button" class="btn btn-outline-warning btn-large">
             Processor not built.  Finish creating.
             <span class="sr-only">Processor not built.  Finish creating.</span>
@@ -27,7 +27,7 @@
     {% endif %}
     {% set notes = processor.get_notes() %}
     <a href="{{ url_for('main.edit_processor_note',
-                       processor_name=processor.name) }}"
+                       object_name=processor.name) }}"
        type="button" class="btn btn-outline-info btn-large">
         Notes <span class="badge badge-light">
                     {{ notes|length }}</span>

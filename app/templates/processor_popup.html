@@ -7,12 +7,12 @@
             {% if not current_user.is_following_processor(processor) %}
                 <a class="btn btn-outline-primary btn-sm rounded-pill"
                    href="{{ url_for('main.follow_processor',
-                   processor_name=processor.name) }}"
+                   object_name=processor.name) }}"
                 style="float: right;">Follow</a>
              {% else %}
                 <a class="btn btn-primary btn-sm rounded-pill"
                    href="{{ url_for('main.unfollow_processor',
-                   processor_name=processor.name) }}"
+                   object_name=processor.name) }}"
                 style="float: right;">Following</a>
             {% endif %}
         </h5>
@@ -26,7 +26,7 @@
                 {% for button_name, button_link in button.items() %}
                     <li class="page-item">
                         <a class="page-link"
-                           href="{{ url_for(button_link, processor_name=processor.name) }}">
+                           href="{{ url_for(button_link, object_name=processor.name) }}">
                             {{ button_name }}
                         </a>
                     </li>
@@ -68,7 +68,9 @@
     </div>
     {% endif %}
     <div class="card-footer">
-        {% include 'processor_requests_button.html' %}
+        {% if title != "Uploader" %}
+            {% include 'processor_requests_button.html' %}
+        {% endif %}
         {% with post = processor.get_last_post() %}
             {% if post %}
                 {% include '_post.html' %}

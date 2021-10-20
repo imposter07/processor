@@ -270,6 +270,9 @@ class PlacementForm(FlaskForm):
         full_choices.extend([('::' + x, '::' + x) for x in fp_cols + raw_cols
                              if x[:2] != '::' and ('::' + x, '::' + x) not in
                              full_choices])
+        for col in reversed(ds_dict['full_placement_columns']):
+            full_choices.insert(0, full_choices.pop(
+                full_choices.index((col, col))))
         self.full_placement_columns.choices = full_choices
         auto_choices = ds_dict['auto_dictionary_order']
         dict_choices = [x for x in dctc.COLS if x not in auto_choices]

@@ -17,7 +17,7 @@ app.app_context().push()
 file_name_start = 'szkconfig'
 vendor_key = 'Sizmek'
 change_param = 'password'
-new_param_val = '3lZkmr9Y#5W$'
+new_param_val = ''
 
 processor_ds = ProcessorDatasources.query.filter(
     ProcessorDatasources.key == vendor_key)

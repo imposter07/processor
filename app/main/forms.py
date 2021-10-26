@@ -66,21 +66,9 @@ class ProcessorForm(FlaskForm):
     tableau_datasource = StringField(_l('Tableau Datasource'))
     start_date = DateField(_l('Start Date'))
     end_date = DateField(_l('End Date'))
-    cur_client = QuerySelectField(_l('Client'), allow_blank=True,
-                                  query_factory=lambda: Client.query.all(),
-                                  get_label='name')
-    new_client = StringField(_l('Add New Client'))
-    cur_product = QuerySelectField(_l('Product'), allow_blank=True,
-                                   query_factory=lambda: Product.query.all(),
-                                   get_label='name')
-    new_product = StringField(_l('Add New Product'))
-    cur_campaign = QuerySelectField(_l('Campaign'), allow_blank=True,
-                                    query_factory=lambda: Campaign.query.all(),
-                                    get_label='name')
-    new_campaign = StringField(_l('Add New Campaign'))
-    client_name = None
-    product_name = None
-    campaign_name = None
+    cur_client = SelectField(_l('Client'))
+    cur_product = SelectField(_l('Product'))
+    cur_campaign = SelectField(_l('Campaign'))
     form_continue = HiddenField('form_continue')
 
     def validate_name(self, name):
@@ -88,37 +76,12 @@ class ProcessorForm(FlaskForm):
         if processor is not None:
             raise ValidationError(_l('Please use a different name.'))
 
-    def validate_new_client(self, new_client):
-        if new_client.data:
-            self.client_name = new_client.data
-            new_client = Client.query.filter_by(name=new_client.data).first()
-            if new_client is not None:
-                raise ValidationError(_l('Client already exists, '
-                                         'select from dropdown.'))
-        else:
-            self.client_name = self.cur_client.data.name
-
-    def validate_new_product(self, new_product):
-        if new_product.data:
-            self.product_name = new_product.data
-            new_product = Product.query.filter_by(
-                name=self.product_name).first()
-            if new_product is not None:
-                raise ValidationError(_l('Product already exists, '
-                                         'select from dropdown.'))
-        else:
-            self.product_name = self.cur_product.data.name
-
-    def validate_new_campaign(self, new_campaign):
-        if new_campaign.data:
-            self.campaign_name = new_campaign.data
-            new_campaign = Campaign.query.filter_by(
-                name=self.campaign_name).first()
-            if new_campaign is not None:
-                raise ValidationError(_l('Campaign already exists,'
-                                         ' select from dropdown.'))
-        else:
-            self.campaign_name = self.cur_campaign.data.name
+    def set_choices(self):
+        for obj in [(Client, self.cur_client),
+                    (Product, self.cur_product), (Campaign, self.cur_campaign)]:
+            choices = [('', '')]
+            choices.extend([(x.name, x.name) for x in obj[0].query.all()])
+            obj[1].choices = choices
 
 
 class APIForm(FlaskForm):
@@ -302,19 +265,9 @@ class ProcessorRequestForm(FlaskForm):
     start_date = DateField(_l('Start Date'))
     end_date = DateField(_l('End Date'))
     first_report = DateField(_l('First Report Date'))
-    cur_client = QuerySelectField(_l('Client'), allow_blank=True,
-                                  query_factory=lambda: Client.query.all(),
-                                  get_label='name')
-    new_client = StringField(_l('Add New Client'))
-    cur_product = QuerySelectField(_l('Product'), allow_blank=True,
-                                   query_factory=lambda: Product.query.all(),
-                                   get_label='name')
-    new_product = StringField(_l('Add New Product'))
-    cur_campaign = QuerySelectField(_l('Campaign'), allow_blank=True,
-                                    query_factory=lambda: Campaign.query.all(),
-                                    get_label='name')
-    new_campaign = StringField(_l('Add New Campaign'))
-    media_plan = FileField('Media Plan')
+    cur_client = SelectField(_l('Client'))
+    cur_product = SelectField(_l('Product'))
+    cur_campaign = SelectField(_l('Campaign'))
     client_name = None
     product_name = None
     campaign_name = None
@@ -325,37 +278,12 @@ class ProcessorRequestForm(FlaskForm):
         if processor is not None:
             raise ValidationError(_l('Please use a different name.'))
 
-    def validate_new_client(self, new_client):
-        if new_client.data:
-            self.client_name = new_client.data
-            new_client = Client.query.filter_by(name=new_client.data).first()
-            if new_client is not None:
-                raise ValidationError(_l('Client already exists, '
-                                         'select from dropdown.'))
-        else:
-            self.client_name = self.cur_client.data.name
-
-    def validate_new_product(self, new_product):
-        if new_product.data:
-            self.product_name = new_product.data
-            new_product = Product.query.filter_by(
-                name=self.product_name).first()
-            if new_product is not None:
-                raise ValidationError(_l('Product already exists, '
-                                         'select from dropdown.'))
-        else:
-            self.product_name = self.cur_product.data.name
-
-    def validate_new_campaign(self, new_campaign):
-        if new_campaign.data:
-            self.campaign_name = new_campaign.data
-            new_campaign = Campaign.query.filter_by(
-                name=self.campaign_name).first()
-            if new_campaign is not None:
-                raise ValidationError(_l('Campaign already exists,'
-                                         ' select from dropdown.'))
-        else:
-            self.campaign_name = self.cur_campaign.data.name
+    def set_choices(self):
+        for obj in [(Client, self.cur_client),
+                    (Product, self.cur_product), (Campaign, self.cur_campaign)]:
+            choices = [('', '')]
+            choices.extend([(x.name, x.name) for x in obj[0].query.all()])
+            obj[1].choices = choices
 
 
 class EditProcessorRequestForm(ProcessorRequestForm):

@@ -1541,12 +1541,14 @@ def edit_processor(object_name):
                                    edit_progress=25, edit_name='Basic')
     processor_to_edit = kwargs['processor']
     form = EditProcessorForm(processor_to_edit.name)
+    form.set_choices()
+    kwargs['form'] = form
     if request.method == 'POST':
         form.validate()
-        form_client = Client(name=form.client_name).check_and_add()
-        form_product = Product(name=form.product_name,
+        form_client = Client(name=form.cur_client.data).check_and_add()
+        form_product = Product(name=form.cur_product.data,
                                client_id=form_client.id).check_and_add()
-        form_campaign = Campaign(name=form.campaign_name,
+        form_campaign = Campaign(name=form.cur_campaign.data,
                                  product_id=form_product.id).check_and_add()
         processor_to_edit.name = form.name.data
         processor_to_edit.description = form.description.data
@@ -1597,10 +1599,9 @@ def edit_processor(object_name):
             id=form_campaign.product_id).first_or_404()
         form_client = Client.query.filter_by(
             id=form_product.client_id).first_or_404()
-        form.cur_campaign.data = form_campaign
-        form.cur_product.data = form_product
-        form.cur_client.data = form_client
-    kwargs['form'] = form
+        form.cur_campaign.data = form_campaign.name
+        form.cur_product.data = form_product.name
+        form.cur_client.data = form_client.name
     return render_template('create_processor.html',  **kwargs)
 
 
@@ -1626,14 +1627,17 @@ def check_and_add_media_plan(media_plan_data, processor_to_edit,
 @login_required
 def request_processor():
     form = ProcessorRequestForm()
+    form.set_choices()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     if request.method == 'POST':
         form.validate()
-        form_client = Client(name=form.client_name).check_and_add()
+        form_client = Client(name=form.cur_client.data).check_and_add()
         form_product = Product(
-            name=form.product_name, client_id=form_client.id).check_and_add()
+            name=form.cur_product.data,
+            client_id=form_client.id).check_and_add()
         form_campaign = Campaign(
-            name=form.campaign_name, product_id=form_product.id).check_and_add()
+            name=form.cur_campaign.data,
+            product_id=form_product.id).check_and_add()
         new_processor = Processor(
             name=form.name.data, description=form.description.data,
             requesting_user_id=current_user.id, plan_path=form.plan_path.data,
@@ -1648,7 +1652,6 @@ def request_processor():
                     processor_id=new_processor.id)
         db.session.add(post)
         db.session.commit()
-        check_and_add_media_plan(form.media_plan.data, new_processor)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_account',
                                     object_name=new_processor.name))
@@ -1669,12 +1672,13 @@ def edit_request_processor(object_name):
                                    buttons='ProcessorRequest')
     processor_to_edit = kwargs['processor']
     form = EditProcessorRequestForm(processor_to_edit.name)
+    form.set_choices()
     if request.method == 'POST':
         form.validate()
-        form_client = Client(name=form.client_name).check_and_add()
-        form_product = Product(name=form.product_name,
+        form_client = Client(name=form.cur_client.data).check_and_add()
+        form_product = Product(name=form.cur_product.data,
                                client_id=form_client.id).check_and_add()
-        form_campaign = Campaign(name=form.campaign_name,
+        form_campaign = Campaign(name=form.cur_campaign.data,
                                  product_id=form_product.id).check_and_add()
         processor_to_edit.name = form.name.data
         processor_to_edit.description = form.description.data
@@ -1690,7 +1694,6 @@ def edit_request_processor(object_name):
                     processor_id=processor_to_edit.id)
         db.session.add(post)
         db.session.commit()
-        check_and_add_media_plan(form.media_plan.data, processor_to_edit)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_processor_account',
                                     object_name=processor_to_edit.name))
@@ -1710,9 +1713,9 @@ def edit_request_processor(object_name):
             id=form_campaign.product_id).first_or_404()
         form_client = Client.query.filter_by(
             id=form_product.client_id).first_or_404()
-        form.cur_campaign.data = form_campaign
-        form.cur_product.data = form_product
-        form.cur_client.data = form_client
+        form.cur_campaign.data = form_campaign.name
+        form.cur_product.data = form_product.name
+        form.cur_client.data = form_client.name
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
 

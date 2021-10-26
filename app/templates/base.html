@@ -112,10 +112,10 @@
 
 <div class="container-fluid"></div>
 <div class="row vh-100 flex-nowrap" style="">
-    <div class="sidebar bd-sidebar col-md-3 collapse show" style="overflow-y: auto; max-height: calc(100vh);">
+    <div class="bd-sidebar col-md-3 collapse show" style="overflow-y: auto; max-height: calc(100vh);">
         {% block vertical_navbar %}{% endblock %}
     </div>
-    <main class="col" role="main">
+    <main class="col" role="main" style="overflow-y: auto; max-height: calc(100vh);">
         <div class="jumbotron text-center shadow outer"
              style="padding-top: 5px; padding-bottom: 5px;">
             <div class="container-fluid">
@@ -189,7 +189,6 @@
         transition: .18s linear;
         z-index: 1050;
         left: -25%;
-        height: auto !important;
     }
 
 </style>

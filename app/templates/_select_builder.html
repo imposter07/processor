@@ -4,6 +4,8 @@
 <script>
     function addSelectize() {
         $('select').selectize({
+            dropdownParent:'body',
+            shouldSort: false,
             duplicates: true,
             persist: false,
             plugins: ['drag_drop', 'remove_button', 'restore_on_backspace'],

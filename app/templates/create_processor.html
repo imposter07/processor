@@ -162,7 +162,7 @@
             {% include 'processor_popup.html' %}
         {% endwith %}
     {% endif %}
-    {% if processor and processor.local_path %}
+    {% if object and object.local_path %}
     <div class="accordion" id="accordionExample">
         <div class="card">
             <button class="btn btn-outline-success btn-block
@@ -1231,21 +1231,6 @@
                 window.location = this.selectize.getValue()
             });
         });
-
-        function addSelectize() {
-            $('select').selectize({
-                shouldSort: false,
-                duplicates: true,
-                persist: false,
-                plugins: ['drag_drop', 'remove_button', 'restore_on_backspace'],
-                create: function (input) {
-                    return {
-                        value: input,
-                        text: input
-                    }
-                }
-            });
-        }
 
         function addPopovers() {
             $('[data-toggle="hover"]').popover({trigger: "hover"})

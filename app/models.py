@@ -1193,3 +1193,19 @@ class TutorialStage(db.Model):
 
     def get_message_split_on_newline(self):
         return self.message.split('\n')
+
+
+class Walkthrough(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    edit_name = db.Column(db.Text)
+    title = db.Column(db.Text)
+    walkthrough_slides = db.relationship(
+        'WalkthroughSlide', backref='walkthrough', lazy='dynamic')
+
+
+class WalkthroughSlide(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    walkthrough_id = db.Column(db.Integer, db.ForeignKey('walkthrough.id'))
+    slide_number = db.Column(db.Integer)
+    slide_text = db.Column(db.Text)
+    show_me_element = db.Column(db.Text)

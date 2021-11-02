@@ -1,0 +1,68 @@
+<style>
+.carousel-control-prev,
+.carousel-control-next{
+      bottom: 0%;
+}
+</style>
+<div class="tab-pane fade" id="nav-profile" role="tabpanel"
+     aria-labelledby="nav-profile-tab">
+    <h4>Walkthrough</h4>
+    <h6 class="card-subtitle mb-2 text-muted">Toggle below to be guided
+        through common use cases of this page.</h6>
+    <table class="table table-hover">
+        {% if walkthrough %}
+            <select class="form-control form-control-sm" id="walkQuestion">
+                <option value="">Select Users...</option>
+                {% for walk in walkthrough %}
+                    <option value="{{ loop.index }}">{{ walk['title'] }}</option>
+                {% endfor %}
+            </select>
+            {% for walk in walkthrough %}
+                <div id="carouselExampleControls" class="carousel slide"
+                 data-ride="carousel" data-interval="false" style="display: none">
+                <ol class="carousel-indicators">
+                    <li data-target="#carouselExampleIndicators"
+                        data-slide-to="0" class="active"></li>
+                </ol>
+                <div class="carousel-inner">
+                    {% for slide in walk['slides'] %}
+                    <div class="carousel-item active">
+                        <div class="cards-wrapper">
+                            <div class="card">
+                                <img src="..." class="card-img-top" alt="...">
+                                <div class="card-body">
+                                    <h5 class="card-title">Card title</h5>
+                                    <p class="card-text">Some quick example text
+                                        to build on the card title and make up
+                                        the bulk of the card's content.</p>
+                                    <a href="#" class="btn btn-primary">Go
+                                        somewhere</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <a class="carousel-control-prev" href="#carouselExampleControls"
+                   role="button" data-slide="prev">
+                    <span class="carousel-control-prev-icon"
+                          aria-hidden="true"></span>
+                    <span class="sr-only">Previous</span>
+                </a>
+                <a class="carousel-control-next" href="#carouselExampleControls"
+                   role="button" data-slide="next">
+                    <span class="carousel-control-next-icon"
+                          aria-hidden="true"></span>
+                    <span class="sr-only">Next</span>
+                </a>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>
+                Unfortunately this page has not been given a walkthrough,
+                check the <a href="https://lqadata.com/help">help page</a> for
+                more info.
+            </p>
+        {% endif %}
+    </table>
+</div>

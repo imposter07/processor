@@ -25,7 +25,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project,\
-    Notes, Tutorial
+    Notes, Tutorial, Walkthrough
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -833,6 +833,25 @@ def get_posts_for_objects(cur_obj, fix_id, current_page, object_name,
     return posts, next_url, prev_url
 
 
+def generate_slide_dict(text, show_me=''):
+    slide = {'text': text}
+    if show_me:
+        slide['show_me'] = show_me
+    return slide
+
+
+def get_walk_questions(edit_name):
+    w = []
+    all_walk = Walkthrough.query.filter_by(edit_name=edit_name).all()
+    if all_walk:
+        for walk in all_walk:
+            w = [{'title': walk.title,
+                  'slides': [
+                      generate_slide_dict(x.slide_text, x.show_me_element)
+                      for x in walk.walkthrough_slides]}]
+    return w
+
+
 def get_current_processor(object_name, current_page, edit_progress=0,
                           edit_name='Page', buttons=None, fix_id=None,
                           note_id=None):
@@ -848,6 +867,7 @@ def get_current_processor(object_name, current_page, edit_progress=0,
     edit_links = get_processor_edit_links()
     output_links = get_processor_output_links()
     request_links = get_processor_request_links(cur_proc.name)
+    walk = get_walk_questions(edit_name)
     args = dict(object=cur_proc, processor=cur_proc,
                 posts=posts.items, title=_('Processor'),
                 object_name=cur_proc.name, user=cur_user,
@@ -856,7 +876,8 @@ def get_current_processor(object_name, current_page, edit_progress=0,
                 object_function_call={'object_name': cur_proc.name},
                 run_links=run_links, edit_links=edit_links,
                 output_links=output_links, request_links=request_links,
-                next_url=next_url, prev_url=prev_url)
+                next_url=next_url, prev_url=prev_url,
+                walkthrough=walk)
     args['buttons'] = get_navigation_buttons(buttons)
     return args
 

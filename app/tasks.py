@@ -16,7 +16,7 @@ from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
-    Tutorial, TutorialStage
+    Tutorial, TutorialStage, Walkthrough, WalkthroughSlide
 
 app = create_app()
 app.app_context().push()
@@ -3566,6 +3566,56 @@ def update_tutorial(user_id, running_user, tutorial_name, new_data):
                 db_stage.question_answers = tut_stage['question_answers']
                 db_stage.correct_answer = tut_stage['correct_answer']
                 db.session.commit()
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - User {}'.format(user_id),
+            exc_info=sys.exc_info())
+        return False
+
+
+def update_walkthrough(user_id, running_user, new_data):
+    try:
+        _set_task_progress(0)
+        new_data.seek(0)
+        df = pd.read_csv(new_data)
+        df = df.fillna('')
+        walk_dict = df.to_dict(orient='index')
+        for k, walk in walk_dict.items():
+            db_id = k + 1
+            cur_walk = Walkthrough.query.get(db_id)
+            if cur_walk:
+                cur_walk.edit_name = walk['edit_name']
+                cur_walk.title = walk['title']
+                db.session.commit()
+            else:
+                cur_walk = Walkthrough(
+                    edit_name=walk['edit_name'], title=walk['title'])
+                db.session.add(cur_walk)
+                db.session.commit()
+            max_slides = max([x.split('-')[0].split('slide')[1]
+                              for x in walk.keys() if 'slide' in x])
+            for slide_num in range(int(max_slides) + 1):
+                slide_text_name = 'slide{}-text'.format(slide_num)
+                slide_show_name = 'slide{}-show_me'.format(slide_num)
+                walk_slide = WalkthroughSlide.query.filter_by(
+                    walkthrough_id=cur_walk.id, slide_number=slide_num).first()
+                if walk_slide and not walk[slide_text_name]:
+                    db.session.delete(walk_slide)
+                    db.session.commit()
+                elif walk_slide:
+                    walk_slide.slide_text = walk[slide_text_name]
+                    walk_slide.show_me_element = walk[slide_show_name]
+                else:
+                    new_slide = WalkthroughSlide(
+                        walkthrough_id=cur_walk.id,
+                        slide_number=slide_num,
+                        slide_text=walk[slide_text_name],
+                        show_me_element=walk[slide_show_name])
+                    db.session.add(new_slide)
+                    db.session.commit()
         _set_task_progress(100)
         return True
     except:

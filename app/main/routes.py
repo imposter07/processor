@@ -3,6 +3,7 @@ import html
 import json
 import zipfile
 import pandas as pd
+import app.utils as utl
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
     jsonify, current_app, send_file
@@ -20,7 +21,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     EditUploaderNameCreateForm, EditUploaderCreativeForm,\
     UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
     PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm,\
-    ProcessorNoteForm, ProcessorAutoAnalysisForm
+    ProcessorNoteForm, ProcessorAutoAnalysisForm, WalkthroughUploadForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -845,10 +846,10 @@ def get_walk_questions(edit_name):
     all_walk = Walkthrough.query.filter_by(edit_name=edit_name).all()
     if all_walk:
         for walk in all_walk:
-            w = [{'title': walk.title,
-                  'slides': [
-                      generate_slide_dict(x.slide_text, x.show_me_element)
-                      for x in walk.walkthrough_slides]}]
+            w.append({'title': walk.title,
+                      'slides': [
+                          generate_slide_dict(x.slide_text, x.show_me_element)
+                          for x in walk.walkthrough_slides]})
     return w
 
 
@@ -926,33 +927,14 @@ def convert_file_to_df(current_file):
     return df
 
 
-def get_file_in_memory_from_request(current_request, current_key):
-    file = current_request.files[current_key]
-    file_name = file.filename
-    mem = io.BytesIO()
-    mem.write(file.read())
-    mem.seek(0)
-    return mem, file_name
-
-
-def parse_upload_file_request(current_request):
-    current_form = current_request.form.to_dict()
-    current_key = list(current_form.keys())[0]
-    current_form = json.loads(current_form[current_key])
-    object_name = current_form['object_name']
-    object_form = current_form['object_form']
-    object_level = current_form['object_level']
-    return current_key, object_name, object_form, object_level
-
-
 @bp.route('/processor/<object_name>/edit/import/upload_file',
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_import_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
-        parse_upload_file_request(request)
+        utl.parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
-    mem, file_name = get_file_in_memory_from_request(request, current_key)
+    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
     search_dict = {}
     for col in ['account_id', 'start_date', 'api_fields', 'key',
                 'account_filter', 'name']:
@@ -1381,9 +1363,9 @@ def get_datasource_table():
 @login_required
 def edit_processor_clean_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
-        parse_upload_file_request(request)
+        utl.parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
-    mem, file_name = get_file_in_memory_from_request(request, current_key)
+    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
     ds = [x for x in object_form if x['name'] == 'data_source_clean']
     if ds:
         ds = ds[0]['value']
@@ -1962,10 +1944,10 @@ def edit_processor_request_fix(object_name):
 @login_required
 def edit_processor_request_fix_upload_file(object_name):
     current_key, object_name, object_form, object_level =\
-        parse_upload_file_request(request)
+        utl.parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     fix_type = [x['value'] for x in object_form if x['name'] == 'fix_type'][0]
-    mem, file_name = get_file_in_memory_from_request(request, current_key)
+    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
     if fix_type == 'New File':
         new_name = file_name
         new_name = new_name.replace('.csv', '')
@@ -2696,9 +2678,9 @@ def uploader_page(object_name):
 @login_required
 def edit_uploader_upload_file(object_name):
     current_key, object_name, object_form, object_level =\
-        parse_upload_file_request(request)
+        utl.parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
-    mem, file_name = get_file_in_memory_from_request(request, current_key)
+    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
     check_and_add_media_plan(mem, cur_up, object_type=Uploader)
     cur_up.media_plan = True
     db.session.commit()
@@ -2782,11 +2764,11 @@ def set_uploader_relations_in_db(uploader_id, form_relations,
 
 def uploader_name_file_upload(object_name):
     current_key, object_name, object_form, object_level =\
-        parse_upload_file_request(request)
+        utl.parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     up_obj = UploaderObjects.query.filter_by(
         uploader_id=cur_up.id, object_level=object_level).first()
-    mem, file_name = get_file_in_memory_from_request(request, current_key)
+    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
     if current_key == 'name_creator':
         if up_obj.name_create_type == 'Match Table':
             current_key = 'match_table'
@@ -2933,9 +2915,9 @@ def edit_uploader_creative(object_name):
 @login_required
 def uploader_file_upload(object_name):
     current_key, object_name, object_form, object_level =\
-        parse_upload_file_request(request)
+        utl.parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
-    mem, file_name = get_file_in_memory_from_request(request, 'creative_file')
+    mem, file_name = utl.get_file_in_memory_from_request(request, 'creative_file')
     msg_text = 'Saving file {} for {}'.format(file_name, cur_up.name)
     cur_up.launch_task(
         '.uploader_save_creative', _(msg_text),
@@ -3388,3 +3370,25 @@ def edit_processor_duplication_from_another(object_name):
         return redirect(url_for('main.processor_page',
                                 object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/walkthrough/edit', methods=['GET', 'POST'])
+@login_required
+def edit_walkthrough():
+    form = WalkthroughUploadForm()
+    kwargs = {'form': form}
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/walkthrough/edit/upload_file', methods=['GET', 'POST'])
+@login_required
+def edit_walkthrough_upload_file():
+    current_key, object_name, object_form, object_level =\
+        utl.parse_upload_file_request(request)
+    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
+    msg_text = 'Updating walkthroughs'
+    current_user.launch_task(
+        '.update_walkthrough', _(msg_text),
+        running_user=current_user.id, new_data=mem)
+    db.session.commit()
+    return jsonify({'data': 'success'})

@@ -696,7 +696,5 @@ class ProcessorAutoAnalysisForm(FlaskForm):
     form_continue = HiddenField('form_continue')
 
 
-class TutorialUploadForm(FlaskForm):
-    tutorial_select = SelectField(
-        _l('Tutorial Select'), choices=[(x, x) for x in ['Processor Basic']])
+class WalkthroughUploadForm(FlaskForm):
     new_file = FileField(_l('New File'))

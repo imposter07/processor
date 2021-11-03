@@ -1,7 +1,11 @@
 <style>
+.carousel-control-next,
 .carousel-control-prev,
-.carousel-control-next{
-      bottom: 0%;
+.carousel-indicators {
+    filter: invert(100%);
+}
+.carousel-inner{
+    padding: 15px;
 }
 </style>
 <div class="tab-pane fade" id="nav-profile" role="tabpanel"
@@ -12,50 +16,59 @@
     <table class="table table-hover">
         {% if walkthrough %}
             <select class="form-control form-control-sm" id="walkQuestion">
-                <option value="">Select Users...</option>
+                <option value="">Select Question...</option>
                 {% for walk in walkthrough %}
                     <option value="{{ loop.index }}">{{ walk['title'] }}</option>
                 {% endfor %}
             </select>
             {% for walk in walkthrough %}
-                <div id="carouselExampleControls" class="carousel slide"
+                <div id="carousel{{ loop.index }}" class="carousel slide"
                  data-ride="carousel" data-interval="false" style="display: none">
-                <ol class="carousel-indicators">
-                    <li data-target="#carouselExampleIndicators"
-                        data-slide-to="0" class="active"></li>
-                </ol>
-                <div class="carousel-inner">
-                    {% for slide in walk['slides'] %}
-                    <div class="carousel-item active">
+                    <div class="carousel-inner">
+                        <ol class="carousel-indicators">
+                            {% for slide in walk['slides'] %}
+                                <li data-target="#carouselExampleIndicators"
+                                    data-slide-to="{{ loop.index }}"
+                                    class="{% if loop.index == 1 %}active{% endif %}"></li>
+                            {% endfor %}
+                        </ol>
+                   {% for slide in walk['slides'] %}
+                    <div class="carousel-item {% if loop.index == 1 %}active{% endif %}">
                         <div class="cards-wrapper">
                             <div class="card">
-                                <img src="..." class="card-img-top" alt="...">
-                                <div class="card-body">
-                                    <h5 class="card-title">Card title</h5>
-                                    <p class="card-text">Some quick example text
-                                        to build on the card title and make up
-                                        the bulk of the card's content.</p>
-                                    <a href="#" class="btn btn-primary">Go
-                                        somewhere</a>
+                                <div class="card-header">
+                                    <h5 class="card-title">Step #{{ loop.index }}</h5>
                                 </div>
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2 text-muted">{{ slide['text'] }}</h6>
+                                </div>
+                                {% if 'show_me' in slide %}
+                                    <div class="card-footer">
+                                        <a id="showMe{{ slide['show_me'] }}"
+                                           class="btn btn-outline-primary btn-block">Show Me</a>
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                     {% endfor %}
+                    </div>
+                    <a class="carousel-control-prev"
+                       href="#carousel{{ loop.index }}"
+                       role="button" data-slide="prev">
+                <span class="carousel-control-prev-icon"
+                      aria-hidden="true"></span>
+                        <span class="sr-only">Previous</span>
+                    </a>
+                    <a class="carousel-control-next"
+                       href="#carousel{{ loop.index }}"
+                       role="button" data-slide="next">
+                <span class="carousel-control-next-icon"
+                      aria-hidden="true"></span>
+                        <span class="sr-only">Next</span>
+                    </a>
+
                 </div>
-                <a class="carousel-control-prev" href="#carouselExampleControls"
-                   role="button" data-slide="prev">
-                    <span class="carousel-control-prev-icon"
-                          aria-hidden="true"></span>
-                    <span class="sr-only">Previous</span>
-                </a>
-                <a class="carousel-control-next" href="#carouselExampleControls"
-                   role="button" data-slide="next">
-                    <span class="carousel-control-next-icon"
-                          aria-hidden="true"></span>
-                    <span class="sr-only">Next</span>
-                </a>
-            </div>
             {% endfor %}
         {% else %}
             <p>
@@ -66,3 +79,27 @@
         {% endif %}
     </table>
 </div>
+<script>
+    function addWalkthrough() {
+        $(document).ready(function () {
+            $('#walkQuestion').on('change', function () {
+                $('div[id^="carousel"]').hide()
+                let selectedValue = $('#walkQuestion').val()
+                $('#carousel' + selectedValue).show()
+            });
+            $('a[id^="showMe"]').unbind('click').click(function () {
+                console.log(this.id)
+                let divId = this.id.replace('showMe', '')
+                let scrollIntoViewOptions = {'behavior': 'smooth'}
+                console.log(divId)
+                document.getElementById(divId).scrollIntoView(scrollIntoViewOptions);
+                let element = $('#' + divId)[0];
+                let originalColor = element.style.backgroundColor;
+                element.style.backgroundColor = "#b3ecff";
+                let t = setTimeout(function () {
+                    element.style.backgroundColor = originalColor;
+                }, (2 * 1000));
+            });
+        });
+    }
+</script>

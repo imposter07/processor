@@ -626,7 +626,7 @@ def get_raw_data(processor_id, current_user_id, vk, parameter=None):
 
 
 def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
-                   new_name=False):
+                   new_name=False, file_type='.csv'):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
@@ -650,10 +650,20 @@ def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
             vk = ic.add_imports_to_vm(proc_dict)[0]
             matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
+        current_file_type = os.path.splitext(
+            data_source.p[vmc.filename_true])[1]
+        if file_type != current_file_type:
+            idx = matrix.vm_df[matrix.vm_df[vmc.vendorkey] == vk].index
+            new_name = data_source.p[vmc.filename].replace(
+                current_file_type, file_type)
+            matrix.vm_change(index=idx, col=vmc.filename, new_value=new_name)
+            matrix.write()
+            matrix = vm.VendorMatrix()
+            data_source = matrix.get_data_source(vk)
         utl.dir_check(utl.raw_path)
         if mem_file:
             new_data.seek(0)
-            file_name = data_source.p[vmc.filename]
+            file_name = data_source.p[vmc.filename_true]
             with open(file_name, 'wb') as f:
                 shutil.copyfileobj(new_data, f, length=131072)
         else:

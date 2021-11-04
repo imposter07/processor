@@ -1,4 +1,5 @@
 import io
+import os
 import json
 from app import db
 from app.models import Task
@@ -19,10 +20,11 @@ def launch_task(cur_class, name, description, running_user, task_class_args,
 def get_file_in_memory_from_request(current_request, current_key):
     file = current_request.files[current_key]
     file_name = file.filename
+    file_type = os.path.splitext(file_name)[1]
     mem = io.BytesIO()
     mem.write(file.read())
     mem.seek(0)
-    return mem, file_name
+    return mem, file_name, file_type
 
 
 def parse_upload_file_request(current_request):

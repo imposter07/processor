@@ -934,7 +934,8 @@ def edit_processor_import_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
-    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
     search_dict = {}
     for col in ['account_id', 'start_date', 'api_fields', 'key',
                 'account_filter', 'name']:
@@ -953,13 +954,13 @@ def edit_processor_import_upload_file(object_name):
         cur_proc.launch_task(
             '.write_raw_data', _(msg_text),
             running_user=current_user.id, new_data=mem,
-            vk=None, mem_file=True, new_name=new_name)
+            vk=None, mem_file=True, new_name=new_name, file_type=file_type)
     else:
         msg_text = 'Adding raw data for {}'.format(ds.vendor_key)
         cur_proc.launch_task(
             '.write_raw_data', _(msg_text),
             running_user=current_user.id, new_data=mem,
-            vk=ds.vendor_key, mem_file=True)
+            vk=ds.vendor_key, mem_file=True, file_type=file_type)
     db.session.commit()
     return jsonify({'data': 'success: {}'.format(cur_proc.name)})
 
@@ -1365,7 +1366,8 @@ def edit_processor_clean_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
-    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
     ds = [x for x in object_form if x['name'] == 'data_source_clean']
     if ds:
         ds = ds[0]['value']
@@ -1375,7 +1377,7 @@ def edit_processor_clean_upload_file(object_name):
     cur_proc.launch_task(
         '.write_raw_data', _(msg_text),
         running_user=current_user.id, new_data=mem,
-        vk=ds.vendor_key, mem_file=True)
+        vk=ds.vendor_key, mem_file=True, file_type=file_type)
     db.session.commit()
     return jsonify({'data': 'success: {}'.format(cur_proc.name)})
 
@@ -1947,7 +1949,8 @@ def edit_processor_request_fix_upload_file(object_name):
         utl.parse_upload_file_request(request)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     fix_type = [x['value'] for x in object_form if x['name'] == 'fix_type'][0]
-    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
     if fix_type == 'New File':
         new_name = file_name
         new_name = new_name.replace('.csv', '')
@@ -1955,7 +1958,7 @@ def edit_processor_request_fix_upload_file(object_name):
         cur_proc.launch_task(
             '.write_raw_data', _(msg_text),
             running_user=current_user.id, new_data=mem,
-            vk=None, mem_file=True, new_name=new_name)
+            vk=None, mem_file=True, new_name=new_name, file_type=file_type)
     elif fix_type == 'Upload File':
         vk = [x['value'] for x in object_form if x['name'] == 'data_source'][0]
         ds = ProcessorDatasources.query.filter_by(vendor_key=vk).first()
@@ -1963,7 +1966,7 @@ def edit_processor_request_fix_upload_file(object_name):
         cur_proc.launch_task(
             '.write_raw_data', _(msg_text),
             running_user=current_user.id, new_data=mem,
-            vk=ds.vendor_key, mem_file=True)
+            vk=ds.vendor_key, mem_file=True, file_type=file_type)
     elif fix_type == 'Update Plan':
         check_and_add_media_plan(mem, cur_proc)
     elif fix_type == 'Spend Cap':

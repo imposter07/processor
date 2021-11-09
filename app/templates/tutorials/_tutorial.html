@@ -9,13 +9,25 @@
                 <div class="col">
                     {% set message = tutorial_stage.get_message_split_on_newline() %}
                     {% for m in message %}
-                        <p class="card-text">{{ m }}</p>
+                        <p class="card-text">
+                            {% if m['bold'] %}
+                                <b>{{ m['msg'] }}</b>
+                            {% else %}
+                                {{ m['msg'] }}
+                            {% endif %}
+                        </p>
                     {% endfor %}
                 </div>
             {% endif %}
             {% if tutorial_stage.question %}
                 <div class="col">
                     <p class="card-text">{{ tutorial_stage.question }}</p>
+                </div>
+            {% endif %}
+            {% if tutorial_stage.image %}
+                <div class="col-8">
+                    <img alt="tutorial image" class="img-fluid card-img-bottom"
+                         src={{ tutorial_stage.image }}>
                 </div>
             {% endif %}
         </div>
@@ -30,9 +42,6 @@
                 {% endfor %}
             </div>
         </div>
-    {% endif %}
-    {% if tutorial_stage.image %}
-        <img alt="tutorial image" class="img-fluid card-img-bottom" src={{ tutorial_stage.image }}>
     {% endif %}
 </div>
 <script>
@@ -65,9 +74,13 @@
             toggleContinue(true);
         }
     }
+    function collapseSide() {
+        $('#collapseSide').click()
+    }
      $(document).ready(function () {
          displayInitialMessage();
          answerButtonClicked();
          checkDisableContinue();
+         collapseSide();
      });
 </script>

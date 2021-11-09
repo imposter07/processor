@@ -1192,7 +1192,10 @@ class TutorialStage(db.Model):
         return self.question_answers.split('|')
 
     def get_message_split_on_newline(self):
-        return self.message.split('\n')
+        message_split = [
+            {'msg': x, 'bold': True if x and x[0].isdigit() else False}
+            for x in self.message.split('\n')]
+        return message_split
 
 
 class Walkthrough(db.Model):

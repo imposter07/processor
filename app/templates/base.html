@@ -33,8 +33,9 @@
   </button>
     <div class="collapse navbar-collapse" id="navbarToggler">
       <ul class="navbar-nav mr-auto">
-          <li class="nav-item"><a class="nav-link" data-toggle="collapse"
-                                  href="#" data-target=".collapse" role="button">
+          <li class="nav-item">
+              <a id="collapseSide" class="nav-link" data-toggle="collapse"
+                 href="#" data-target=".collapse" role="button">
               <i class="fas fa-bars btn btn-secondary" style="color:black"></i></a>
           <li class="nav-item"><a class="nav-link" title={{ _('Explore') }}
                   href="{{ url_for('main.explore') }}">

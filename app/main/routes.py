@@ -26,7 +26,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project,\
-    Notes, Tutorial, Walkthrough
+    Notes, Tutorial, Walkthrough, TutorialStage
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -210,11 +210,8 @@ def parse_filter_dict_from_clients(processors, seven_days_ago):
 
 def get_processor_user_map(processors):
     import datetime as dt
-    from collections import defaultdict
-    groups = defaultdict(list)
-    for obj in processors:
-        groups[obj.user_id].append(obj)
-    new_list = list(groups.values())
+    new_list = utl.group_sql_to_dict(processors, group_by='user_id')
+    new_list = list(new_list.values())
     new_list.sort(key=len, reverse=True)
     for u in new_list:
         cu = u[0].user
@@ -3027,7 +3024,14 @@ def edit_uploader_ad_aw(object_name):
 @bp.route('/help')
 @login_required
 def app_help():
-    return render_template('help.html', title=_('Help'))
+    ts = TutorialStage.query.filter(
+        TutorialStage.sub_header != 'Question', TutorialStage.tutorial_id == 1,
+        TutorialStage.header.notin_(['Data Processor Basic Tutorial',
+                                     'Tutorial Complete!'])).order_by(
+        TutorialStage.tutorial_level)
+    ts = utl.group_sql_to_dict(ts, group_by='header')
+
+    return render_template('help.html', title=_('Help'), tutorial_stages=ts)
 
 
 @bp.route('/processor/<object_name>/edit/duplicate',

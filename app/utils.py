@@ -35,3 +35,11 @@ def parse_upload_file_request(current_request):
     object_form = current_form['object_form']
     object_level = current_form['object_level']
     return current_key, object_name, object_form, object_level
+
+
+def group_sql_to_dict(original_query_list, group_by='user_id'):
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for obj in original_query_list:
+        groups[obj.__dict__[group_by]].append(obj)
+    return groups

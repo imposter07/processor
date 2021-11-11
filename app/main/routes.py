@@ -26,7 +26,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project,\
-    Notes, Tutorial, Walkthrough, TutorialStage
+    Notes, Tutorial, Walkthrough, TutorialStage, WalkthroughSlide
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -831,10 +831,12 @@ def get_posts_for_objects(cur_obj, fix_id, current_page, object_name,
     return posts, next_url, prev_url
 
 
-def generate_slide_dict(text, show_me=''):
+def generate_slide_dict(text, show_me='', data=''):
     slide = {'text': text}
     if show_me:
         slide['show_me'] = show_me
+    if data:
+        slide['data'] = data
     return slide
 
 
@@ -843,10 +845,13 @@ def get_walk_questions(edit_name):
     all_walk = Walkthrough.query.filter_by(edit_name=edit_name).all()
     if all_walk:
         for walk in all_walk:
+            walk_slides = walk.walkthrough_slides.order_by(
+                WalkthroughSlide.slide_number)
             w.append({'title': walk.title,
                       'slides': [
-                          generate_slide_dict(x.slide_text, x.show_me_element)
-                          for x in walk.walkthrough_slides]})
+                          generate_slide_dict(x.slide_text, x.show_me_element,
+                                              x.get_data())
+                          for x in walk_slides]})
     return w
 
 
@@ -2680,7 +2685,8 @@ def edit_uploader_upload_file(object_name):
     current_key, object_name, object_form, object_level =\
         utl.parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
-    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
     check_and_add_media_plan(mem, cur_up, object_type=Uploader)
     cur_up.media_plan = True
     db.session.commit()
@@ -2768,7 +2774,8 @@ def uploader_name_file_upload(object_name):
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     up_obj = UploaderObjects.query.filter_by(
         uploader_id=cur_up.id, object_level=object_level).first()
-    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
     if current_key == 'name_creator':
         if up_obj.name_create_type == 'Match Table':
             current_key = 'match_table'
@@ -2917,7 +2924,8 @@ def uploader_file_upload(object_name):
     current_key, object_name, object_form, object_level =\
         utl.parse_upload_file_request(request)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
-    mem, file_name = utl.get_file_in_memory_from_request(request, 'creative_file')
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, 'creative_file')
     msg_text = 'Saving file {} for {}'.format(file_name, cur_up.name)
     cur_up.launch_task(
         '.uploader_save_creative', _(msg_text),
@@ -3030,7 +3038,6 @@ def app_help():
                                      'Tutorial Complete!'])).order_by(
         TutorialStage.tutorial_level)
     ts = utl.group_sql_to_dict(ts, group_by='header')
-
     return render_template('help.html', title=_('Help'), tutorial_stages=ts)
 
 
@@ -3392,7 +3399,8 @@ def edit_walkthrough():
 def edit_walkthrough_upload_file():
     current_key, object_name, object_form, object_level =\
         utl.parse_upload_file_request(request)
-    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
     msg_text = 'Updating walkthroughs'
     current_user.launch_task(
         '.update_walkthrough', _(msg_text),

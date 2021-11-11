@@ -23,7 +23,8 @@ def edit_tutorial_upload_file():
         utl.parse_upload_file_request(request)
     tutorial_name = [x['value'] for x in object_form if x['name'] ==
                      'tutorial_select'][0]
-    mem, file_name = utl.get_file_in_memory_from_request(request, current_key)
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
     msg_text = 'Updating tutorial for {}'.format(tutorial_name)
     current_user.launch_task(
         '.update_tutorial', _(msg_text),

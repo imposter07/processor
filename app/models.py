@@ -1212,3 +1212,10 @@ class WalkthroughSlide(db.Model):
     slide_number = db.Column(db.Integer)
     slide_text = db.Column(db.Text)
     show_me_element = db.Column(db.Text)
+    data = db.Column(db.Text)
+
+    def get_data(self):
+        string_value = ''
+        if self.data:
+            string_value = ast.literal_eval(self.data)
+        return string_value

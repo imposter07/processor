@@ -3610,6 +3610,7 @@ def update_walkthrough(user_id, running_user, new_data):
             for slide_num in range(int(max_slides) + 1):
                 slide_text_name = 'slide{}-text'.format(slide_num)
                 slide_show_name = 'slide{}-show_me'.format(slide_num)
+                slide_data_name = 'slide{}-data'.format(slide_num)
                 walk_slide = WalkthroughSlide.query.filter_by(
                     walkthrough_id=cur_walk.id, slide_number=slide_num).first()
                 if walk_slide and not walk[slide_text_name]:
@@ -3618,12 +3619,16 @@ def update_walkthrough(user_id, running_user, new_data):
                 elif walk_slide:
                     walk_slide.slide_text = walk[slide_text_name]
                     walk_slide.show_me_element = walk[slide_show_name]
+                    if slide_data_name in walk:
+                        walk_slide.data = walk[slide_data_name]
                 else:
                     new_slide = WalkthroughSlide(
                         walkthrough_id=cur_walk.id,
                         slide_number=slide_num,
                         slide_text=walk[slide_text_name],
                         show_me_element=walk[slide_show_name])
+                    if slide_data_name in walk:
+                        new_slide.data = walk[slide_data_name]
                     db.session.add(new_slide)
                     db.session.commit()
         _set_task_progress(100)

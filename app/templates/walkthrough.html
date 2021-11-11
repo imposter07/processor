@@ -48,8 +48,31 @@
                                            class="btn btn-outline-primary btn-block">Show Me</a>
                                     </div>
                                 {% endif %}
+                                {% if 'data' in slide %}
+                                    <div class="card-footer">
+                                        <select id="walkDataSelect{{ loop.index }}"
+                                                class="form-control form-control-sm">
+                                            <option value="">Select API Type...
+                                            </option>
+                                            {% for p in slide['data'] %}
+                                                <option value="{{ loop.index }}">{{ p }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        {% for p in slide['data'] %}
+                                            <div id="walkDataTable{{ loop.index }}"
+                                                 style="display: none">
+                                                {% for ck, cv in slide['data'][p].items() %}
+                                                    <h5>{{ ck }}</h5>
+                                                    <h6 class="card-subtitle mb-2 text-muted">
+                                                        {{ cv }}</h6>
+                                                {% endfor %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
+                        <br>
                     </div>
                     {% endfor %}
                     </div>
@@ -67,7 +90,6 @@
                       aria-hidden="true"></span>
                         <span class="sr-only">Next</span>
                     </a>
-
                 </div>
             {% endfor %}
         {% else %}
@@ -87,8 +109,14 @@
                 let selectedValue = $('#walkQuestion').val()
                 $('#carousel' + selectedValue).show()
             });
+            $('[id^="walkDataSelect"]').on('change', function () {
+                $('div[id^="walkDataTable"]').hide()
+                let curSelectElem = this.id
+                console.log(curSelectElem)
+                let selectedValue = $('#' + curSelectElem).val()
+                $('#walkDataTable' + selectedValue).show()
+            });
             $('a[id^="showMe"]').unbind('click').click(function () {
-                console.log(this.id)
                 let divId = this.id.replace('showMe', '')
                 let scrollIntoViewOptions = {'behavior': 'smooth'}
                 console.log(divId)

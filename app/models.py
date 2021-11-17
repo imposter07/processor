@@ -94,6 +94,20 @@ user_tutorial = db.Table(
 )
 
 
+project_number_plan = db.Table(
+    'project_number_plan',
+    db.Column('project_id', db.Integer, db.ForeignKey('project.id')),
+    db.Column('plan_id', db.Integer, db.ForeignKey('plan.id'))
+)
+
+
+processor_plan = db.Table(
+    'processor_plan',
+    db.Column('processor_id', db.Integer, db.ForeignKey('processor.id')),
+    db.Column('plan_id', db.Integer, db.ForeignKey('plan.id'))
+)
+
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
@@ -1219,3 +1233,60 @@ class WalkthroughSlide(db.Model):
         if self.data:
             string_value = ast.literal_eval(self.data)
         return string_value
+
+
+class Plan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    description = db.Column(db.String(128))
+    client_requests = db.Column(db.Text)
+    restrictions = db.Column(db.Text)
+    objective = db.Column(db.Text)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    total_budget = db.Column(db.Numeric)
+    tasks = db.relationship('Task', backref='plan', lazy='dynamic')
+    posts = db.relationship('Post', backref='plan', lazy='dynamic')
+    rate_card_id = db.Column(db.Integer, db.ForeignKey('ratecard.id'))
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
+    processor_associated = db.relationship(
+        'Processor', secondary=processor_plan,
+        primaryjoin=(processor_plan.c.plna_id == id),
+        secondaryjoin="processor_plan.c.processor_id == Processor.id",
+        backref=db.backref('processor_plan', lazy='dynamic'),
+        lazy='dynamic')
+    projects = db.relationship(
+        'Project', secondary=project_number_plan,
+        primaryjoin=(project_number_plan.c.plan_id == id),
+        secondaryjoin="project_number_plan.c.project_id == Project.id",
+        backref=db.backref('project_number_plan', lazy='dynamic'),
+        lazy='dynamic')
+
+
+class Partner(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    total_budget = db.Column(db.Numeric)
+    estimated_cpm = db.Column(db.Numeric)
+    estimated_cpc = db.Column(db.Numeric)
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    placements = db.relationship('PartnerPlacements',
+                                 backref='partner', lazy='dynamic')
+
+
+class PartnerPlacements(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, index=True)
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+
+
+class PlanRule(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, index=True)
+    order = db.Column(db.Integer)
+    type = db.Column(db.String(128))
+    rule_info = db.Column(db.JSON)

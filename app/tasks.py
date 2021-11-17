@@ -3544,7 +3544,7 @@ def update_tutorial(user_id, running_user, tutorial_name, new_data):
             db.session.add(cur_tutorial)
             db.session.commit()
         new_data.seek(0)
-        df = pd.read_csv(new_data)
+        df = pd.read_excel(new_data)
         df = df.fillna('')
         tut_dict = df.to_dict(orient='index')
         for tut_stage_id in tut_dict:
@@ -3590,7 +3590,7 @@ def update_walkthrough(user_id, running_user, new_data):
     try:
         _set_task_progress(0)
         new_data.seek(0)
-        df = pd.read_csv(new_data)
+        df = pd.read_excel(new_data)
         df = df.fillna('')
         walk_dict = df.to_dict(orient='index')
         for k, walk in walk_dict.items():

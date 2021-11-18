@@ -1253,7 +1253,7 @@ class Plan(db.Model):
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
     processor_associated = db.relationship(
         'Processor', secondary=processor_plan,
-        primaryjoin=(processor_plan.c.plna_id == id),
+        primaryjoin=(processor_plan.c.plan_id == id),
         secondaryjoin="processor_plan.c.processor_id == Processor.id",
         backref=db.backref('processor_plan', lazy='dynamic'),
         lazy='dynamic')

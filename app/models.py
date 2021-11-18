@@ -267,6 +267,7 @@ class Post(SearchableMixin, db.Model):
     uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
     request_id = db.Column(db.Integer, db.ForeignKey('requests.id'))
     note_id = db.Column(db.Integer, db.ForeignKey('notes.id'))
+    plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
@@ -314,6 +315,7 @@ class Task(db.Model):
     complete = db.Column(db.Boolean, default=False)
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
     uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
+    plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
 
     def get_rq_job(self):
         try:
@@ -1249,7 +1251,7 @@ class Plan(db.Model):
     total_budget = db.Column(db.Numeric)
     tasks = db.relationship('Task', backref='plan', lazy='dynamic')
     posts = db.relationship('Post', backref='plan', lazy='dynamic')
-    rate_card_id = db.Column(db.Integer, db.ForeignKey('ratecard.id'))
+    rate_card_id = db.Column(db.Integer, db.ForeignKey('rate_card.id'))
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
     processor_associated = db.relationship(
         'Processor', secondary=processor_plan,
@@ -1263,11 +1265,13 @@ class Plan(db.Model):
         secondaryjoin="project_number_plan.c.project_id == Project.id",
         backref=db.backref('project_number_plan', lazy='dynamic'),
         lazy='dynamic')
+    partners = db.relationship('Partner', backref='plan', lazy='dynamic')
 
 
 class Partner(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), index=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
     total_budget = db.Column(db.Numeric)
     estimated_cpm = db.Column(db.Numeric)
     estimated_cpc = db.Column(db.Numeric)
@@ -1282,6 +1286,7 @@ class PartnerPlacements(db.Model):
     name = db.Column(db.Text, index=True)
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
+    partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
 
 
 class PlanRule(db.Model):

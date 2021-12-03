@@ -150,6 +150,7 @@
         </div>
       </div>
     </div>
+    {% include '_rawfile_check.html' %}
     <script>
         function show_modal_table(destElem) {
             document.getElementById(destElem).click();
@@ -678,7 +679,7 @@
             });
         });
         function getTable(tableName, clickElem, oldHtml, vendorKey='None',
-                          pond='None'){
+                          pond='None', progress=true){
             let uploaderType = ("{{ title }}" === "Uploader") ? "{{uploader_type}}" : "None";
             $.ajax({
                 type: "POST",
@@ -699,6 +700,9 @@
                   link.href = window.URL.createObjectURL(blob);
                   link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey +'.csv';
                   link.click();
+                }
+                else if (tableName === 'raw_file_comparison'){
+                    parseRawComp(data);
                 }
                 else {
                     show_modal_table('tableModalButton');
@@ -722,8 +726,11 @@
                 unanimateBar("downloadProgress");
                 refreshButtons()
             });
-            var downloadingProgress = setInterval(function() {
-                getTaskProgress(tableName); }, 2500)
+            if (progress) {
+                var downloadingProgress = setInterval(function () {
+                    getTaskProgress(tableName);
+                }, 2500)
+            }
         }
         $(document).ready(function() {
             $('button[id^="getLog"]').click(function () {

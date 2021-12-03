@@ -1,0 +1,97 @@
+<style>
+    .grow {
+        transition: all .2s ease-in-out;
+    }
+
+    .grow:hover {
+        transform: scale(1.1);
+    }
+</style>
+<button id="rawFileModalButton" type="button" class="btn btn-primary"
+        data-toggle="modal" data-target="#rawFileModal" style="display: none;">
+    Launch demo modal
+</button>
+<div class="modal fade bd-example-modal-xl" id="rawFileModal" tabindex="-1"
+     role="dialog" aria-labelledby="exampleModalLabel">
+    <div class="modal-dialog modal-xl mw-100 w-90" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">
+                    Raw File Check</h5>
+                <button type="button" class="close" data-dismiss="modal"
+                        aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="rawFileBody">
+                    <table id="rawFileTable" class="table table-striped table-responsive-sm small">
+                        <thead class="fs-7 text-gray-400 text-uppercase">
+                        <tr>
+                            <th>CHECK TYPE</th>
+                            <th>NEW FILE</th>
+                            <th>OLD FILE</th>
+                        </tr>
+                        </thead>
+                        <tbody class="fs-5" id="rawFileTableBody">
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="btn-group btn-group-lg btn-block" role="group"
+                     aria-label="Basic example">
+                    <button type="button" class="btn btn-success"
+                            id="tableModalSaveButton"
+                            onclick="SendDataTable()">Save
+                    </button>
+                    <button type="button" class="btn btn-secondary"
+                            data-dismiss="modal">Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('FilePond:processfile', (e) => {
+        show_modal_table('rawFileModalButton');
+        if ("{{ edit_name }}" === 'Clean') {
+            var vendorKey = $('#data_source_clean').val();
+        } else {
+            try {
+                vendorKey = e.target.parentElement.parentElement.parentElement.querySelectorAll("[id*='vendor_key']")[0].value
+            } catch (err) {
+                vendorKey = 'None';
+            }
+        }
+        getTable('raw_file_comparison', '', '', vendorKey, 'None', false)
+    });
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function parseRawComp(data){
+        console.log(data)
+        let elem = $('#rawFileTableBody');
+        Object.keys(data).forEach(function (key, index) {
+            setTimeout(function () {
+                console.log(key, data[key]);
+                let idName = key.replace(/\s/g, '');
+                elem.append('<tr id="' + idName + '"><td>' + key + '</td></tr>');
+                let newElem = $('#' + idName);
+                Object.keys(data[key]).forEach(function (newKey) {
+                    let cellName = idName + newKey;
+                    newElem.append('<td id=' + cellName + '>' +
+                        data[key][newKey][1] + '</td>');
+                    let color = (data[key][newKey][0] === true) ? "#90EE90" : "#FF7F7F";
+                    $('#' + cellName).animate({
+                        backgroundColor: color
+                    }, 1000);
+                });
+            }, 1000 * index);
+        });
+    }
+</script>

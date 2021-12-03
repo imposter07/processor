@@ -1110,7 +1110,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'data_sources': '.get_processor_sources',
                  'imports': '.get_processor_sources',
                  'import_config': '.get_import_config_file',
-                 'all_processors': '.get_all_processors'}
+                 'all_processors': '.get_all_processors',
+                 'raw_file_comparison': '.get_raw_file_comparison'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -1173,6 +1174,8 @@ def get_table():
         mem.seek(0)
         return send_file(mem, as_attachment=True,
                          attachment_filename='test.csv', mimetype='text/csv')
+    if job_name in ['.get_raw_file_comparison']:
+        return jsonify(df)
     for base_name in ['Relation', 'Uploader']:
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])
@@ -3407,3 +3410,19 @@ def edit_walkthrough_upload_file():
         running_user=current_user.id, new_data=mem)
     db.session.commit()
     return jsonify({'data': 'success'})
+
+"""
+@bp.route('/walkthrough/edit/upload_file', methods=['GET', 'POST'])
+@login_required
+def edit_walkthrough_upload_file():
+    current_key, object_name, object_form, object_level =\
+        utl.parse_upload_file_request(request)
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
+    msg_text = 'Updating walkthroughs'
+    current_user.launch_task(
+        '.update_walkthrough', _(msg_text),
+        running_user=current_user.id, new_data=mem)
+    db.session.commit()
+    return jsonify({'data': 'success'})
+"""

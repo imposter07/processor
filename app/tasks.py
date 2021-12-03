@@ -663,7 +663,8 @@ def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
         utl.dir_check(utl.raw_path)
         if mem_file:
             new_data.seek(0)
-            file_name = data_source.p[vmc.filename_true]
+            file_name = data_source.p[vmc.filename_true].replace(
+                file_type, 'TMP{}'.format(file_type))
             with open(file_name, 'wb') as f:
                 shutil.copyfileobj(new_data, f, length=131072)
         else:
@@ -3639,3 +3640,28 @@ def update_walkthrough(user_id, running_user, new_data):
             'Unhandled exception - User {}'.format(user_id),
             exc_info=sys.exc_info())
         return False
+
+
+def get_raw_file_comparison(processor_id, current_user_id, vk):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import reporting.analyze as az
+        import reporting.vendormatrix as vm
+        import processor.reporting.utils as utl
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        aly = az.Analyze(file_name='Raw Data Output.csv', matrix=matrix)
+        aly.compare_raw_files(vk)
+        file_name = "{}.json".format(vk)
+        with open(file_name, 'r') as f:
+            config_file = json.load(f)
+        # df = pd.DataFrame(config_file)
+        tables = [config_file]
+        _set_task_progress(100)
+        return tables
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

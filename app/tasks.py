@@ -3655,7 +3655,6 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
         file_name = "{}.json".format(vk)
         with open(file_name, 'r') as f:
             config_file = json.load(f)
-        # df = pd.DataFrame(config_file)
         tables = [config_file]
         _set_task_progress(100)
         return tables
@@ -3665,3 +3664,27 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
             'Unhandled exception - Processor {} User {} VK {}'.format(
                 processor_id, current_user_id, vk), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import reporting.vmcolumns as vmc
+        import reporting.vendormatrix as vm
+        import processor.reporting.utils as utl
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk=vk)
+        file_name = data_source.p[vmc.filename_true]
+        file_type = os.path.splitext(file_name)[1]
+        tmp_file_name = data_source.p[vmc.filename_true].replace(
+            file_type, 'TMP{}'.format(file_type))
+        copy_file(tmp_file_name, file_name)
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        return False

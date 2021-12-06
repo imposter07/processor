@@ -500,10 +500,14 @@
                  window.location.reload(true)
              }
         }
-        function SendDataTable() {
-            let sourceElem = $('table[id^="modalTable"]')[0].id;
-            let sendTable = $('#' + sourceElem).DataTable();
-            let sendTableName = sourceElem.replace('modalTable', '');
+        function SendDataTable(modalTableName="modalTable") {
+            let sourceElem = $('table[id^=' + modalTableName + ']')[0].id;
+            try {
+                var sendTable = $('#' + sourceElem).DataTable();
+            } catch (err) {
+                sendTable = $('#' + sourceElem).DataTable();
+            }
+            let sendTableName = sourceElem.replace(modalTableName, '');
             let data = sendTable
                 .data().toArray();
             let json = JSON.stringify(data);

@@ -73,12 +73,13 @@
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    function parseRawComp(data){
-        console.log(data)
+    function parseRawComp(fullData){
         let elem = $('#rawFileTableBody');
+        let data = fullData['data']['data'];
+        let curEl = document.getElementById('rawFileTable');
+        curEl.id = fullData['data']['name'];
         Object.keys(data).forEach(function (key, index) {
             setTimeout(function () {
-                console.log(key, data[key]);
                 let idName = key.replace(/\s/g, '');
                 elem.append('<tr id="' + idName + '"><td>' + key + '</td></tr>');
                 let newElem = $('#' + idName);

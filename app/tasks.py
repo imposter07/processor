@@ -3028,11 +3028,13 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
 
 
 def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
-                            dimensions=None, metrics=None, filter_dict=None):
+                            dimensions=None, metrics=None, filter_dict=None,
+                            temp=False):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.vendormatrix as vm
+        import processor.reporting.vmcolumns as vmc
         import processor.reporting.utils as utl
         import processor.reporting.export as export
         import processor.reporting.analyze as az
@@ -3052,6 +3054,11 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
             metrics = ['Impressions', 'Clicks', 'Net Cost']
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
+        if temp:
+            new_name = matrix.vm[vmc.filename_true][parameter]
+            file_type = os.path.splitext(new_name)[1]
+            new_name = new_name.replace(file_type, 'TMP{}'.format(file_type))
+            matrix.vm[vmc.filename_true][parameter] = new_name
         _set_task_progress(60)
         df = matrix.vendor_get(parameter)
         _set_task_progress(90)
@@ -3072,6 +3079,7 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
             df = df.replace([np.inf, -np.inf], np.nan)
             df = df.fillna(0)
         _set_task_progress(100)
+        print(df)
         return [df]
     except:
         _set_task_progress(100)

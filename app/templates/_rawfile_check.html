@@ -1,12 +1,3 @@
-<style>
-    .grow {
-        transition: all .2s ease-in-out;
-    }
-
-    .grow:hover {
-        transform: scale(1.1);
-    }
-</style>
 <button id="rawFileModalButton" type="button" class="btn btn-primary"
         data-toggle="modal" data-target="#rawFileModal" style="display: none;">
     Launch demo modal
@@ -24,19 +15,56 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div id="rawFileBody">
-                    <table id="rawFileTable" class="table table-striped table-responsive-sm small">
-                        <thead class="fs-7 text-gray-400 text-uppercase">
-                        <tr>
-                            <th>CHECK TYPE</th>
-                            <th>NEW FILE</th>
-                            <th>OLD FILE</th>
-                        </tr>
-                        </thead>
-                        <tbody class="fs-5" id="rawFileTableBody">
+                <div class="row">
+                    <div id="rawFileBody" class="col">
+                        <table id="rawFileTable"
+                               class="table table-striped table-responsive-sm small">
+                            <thead class="fs-7 text-gray-400 text-uppercase">
+                            <tr>
+                                <th>CHECK TYPE</th>
+                                <th>NEW FILE</th>
+                                <th>OLD FILE</th>
+                            </tr>
+                            </thead>
+                            <tbody class="fs-5" id="rawFileTableBody">
 
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="rawFileGraphBody" class="col">
+                        <div class="row">
+                            <div class="col-md-9 h-50">
+                            <div class="card-header">
+                                <h7 class="mb-3">New File</h7>
+                                <select id="newFilePlotSelect"
+                                        class="form-control form-control-sm">
+                                    <option>Select Metric</option>
+                                </select>
+                            </div>
+                            <div class="card container-fluid shadow outer">
+                                <div id="newFilePlotProgress"
+                                     class='widget'></div>
+                                <div id="newFilePlot"></div>
+                            </div>
+                        </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-9 h-50">
+                                <div class="card-header">
+                                    <h7 class="mb-3">Old File</h7>
+                                    <select id="oldFilePlotSelect"
+                                            class="form-control form-control-sm">
+                                        <option>Select Metric</option>
+                                    </select>
+                                </div>
+                                <div class="card container-fluid shadow outer">
+                                    <div id="oldFilePlotProgress"
+                                         class='widget'></div>
+                                    <div id="oldFilePlot"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -66,7 +94,8 @@
                 vendorKey = 'None';
             }
         }
-        getTable('raw_file_comparison', '', '', vendorKey, 'None', false)
+        getTable('raw_file_comparison', '', '', vendorKey, 'None', false);
+        getRawFilePlots(vendorKey);
     });
 
     function sleep(ms) {
@@ -94,5 +123,16 @@
                 });
             }, 1000 * index);
         });
+    }
+
+    function getRawFilePlots(vendorKey) {
+        let metrics = ['kpi']
+        let filterDict = {}
+        getMetrics('#oldFilePlot', generateBarChart,
+            'Date', metrics,
+            filterDict, "", 250, null, null, null, null, vendorKey);
+        getMetrics('#newFilePlot', generateBarChart,
+            'Date', metrics,
+            filterDict, "", 250, null, null, null, null, vendorKey);
     }
 </script>

@@ -3097,9 +3097,12 @@ def get_metrics():
         job_name = '.get_processor_total_metrics'
         proc_arg = {x: proc_arg[x] for x in proc_arg
                     if x in ['running_user', 'filter_dict']}
-    elif request.form['elem'] == '#dash_placeholderMetrics':
+    elif request.form['elem'] in ['#dash_placeholderMetrics',
+                                  '#oldFilePlot', '#newFilePlot']:
         job_name = '.get_raw_file_data_table'
         proc_arg['parameter'] = request.form['vendor_key']
+        if request.form['elem'] == '#newFilePlot':
+            proc_arg['temp'] = True
     else:
         job_name = '.get_data_tables_from_db'
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
@@ -3412,19 +3415,3 @@ def edit_walkthrough_upload_file():
         running_user=current_user.id, new_data=mem)
     db.session.commit()
     return jsonify({'data': 'success'})
-
-"""
-@bp.route('/walkthrough/edit/upload_file', methods=['GET', 'POST'])
-@login_required
-def edit_walkthrough_upload_file():
-    current_key, object_name, object_form, object_level =\
-        utl.parse_upload_file_request(request)
-    mem, file_name, file_type = \
-        utl.get_file_in_memory_from_request(request, current_key)
-    msg_text = 'Updating walkthroughs'
-    current_user.launch_task(
-        '.update_walkthrough', _(msg_text),
-        running_user=current_user.id, new_data=mem)
-    db.session.commit()
-    return jsonify({'data': 'success'})
-"""

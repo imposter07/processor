@@ -234,7 +234,8 @@
     top: 100%;
     left: 0;
     width: 100%;
-    z-index: 10;
+    z-index: 1000100000000 !important;
+    position: absolute !important;
     border: 1px solid #d0d0d0;
     background: #fff;
     margin: -1px 0 0 0;
@@ -376,7 +377,8 @@
     height: auto;
     padding: 0;
     margin: 2px 0 0 0;
-    z-index: 1000;
+    z-index: 1000100000000 !important;
+    position:absolute !important;
     background: #888;
     border: 1px solid rgba(0, 0, 0, .15);
     border-radius: .25rem;

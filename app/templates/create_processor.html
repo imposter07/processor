@@ -119,11 +119,11 @@
         </div>
       </div>
     </div>
-    <button id="tableModalButton" type="button" class="btn btn-primary"
-            data-toggle="modal" data-target="#tableModal" style="display: none;">
+    <button id="modalTableButton" type="button" class="btn btn-primary"
+            data-toggle="modal" data-target="#modalTable" style="display: none;">
       Launch demo modal
     </button>
-    <div class="modal fade bd-example-modal-xl" id="tableModal" tabindex="-1"
+    <div class="modal fade bd-example-modal-xl" id="modalTable" tabindex="-1"
          role="dialog" aria-labelledby="exampleModalLabel">
       <div class="modal-dialog modal-xl mw-100 w-90" role="document">
         <div class="modal-content">
@@ -141,7 +141,7 @@
           <div class="modal-footer">
             <div class="btn-group btn-group-lg btn-block" role="group" aria-label="Basic example">
                 <button type="button" class="btn btn-success"
-                        id="tableModalSaveButton"
+                        id="modalTableSaveButton"
                         onclick="SendDataTable()">Save</button>
                 <button type="button" class="btn btn-secondary"
                         data-dismiss="modal">Close</button>
@@ -150,7 +150,6 @@
         </div>
       </div>
     </div>
-    {% include '_rawfile_check.html' %}
     <script>
         function show_modal_table(destElem) {
             document.getElementById(destElem).click();
@@ -406,7 +405,7 @@
     {% if tables %}
         <script type="text/javascript">
             $(document).ready(function() {
-                show_modal_table('tableModalButton');
+                show_modal_table('modalTableButton');
             });</script>
     {% endif %}
     {% if tableau_workbook %}
@@ -501,13 +500,13 @@
              }
         }
         function SendDataTable(modalTableName="modalTable") {
-            let sourceElem = $('table[id^=' + modalTableName + ']')[0].id;
+            let sourceElem = $('table[id^=modalTable]')[0].id;
             try {
                 var sendTable = $('#' + sourceElem).DataTable();
             } catch (err) {
                 sendTable = $('#' + sourceElem).DataTable();
             }
-            let sendTableName = sourceElem.replace(modalTableName, '');
+            let sendTableName = sourceElem.replace('modalTable', '');
             let data = sendTable
                 .data().toArray();
             let json = JSON.stringify(data);
@@ -523,8 +522,9 @@
                       'Loading...' +
                     '</button>');
             }
-            let oldHtml = $('#tableModalSaveButton').parent().parent().html();
-            $('#tableModalSaveButton').parent().html('' +
+            let saveBtnElem = $('#' + modalTableName + 'SaveButton')
+            let oldHtml = saveBtnElem.parent().parent().html();
+            saveBtnElem.parent().html('' +
                     '<button id="loadingBtnModal" class="btn btn-success btn-lg btn-block" type="button" disabled>' +
                       '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
                       'Loading...' +
@@ -543,7 +543,7 @@
                         reloadPage();
                     }
                     else {
-                        $('#tableModal').modal('hide');
+                        $('#' + modalTableName).modal('hide');
                         displayAlert(data['message'], data['level']);
                         $('#loadingBtnModal').replaceWith(oldHtml);
                     }
@@ -709,7 +709,7 @@
                     parseRawComp(data);
                 }
                 else {
-                    show_modal_table('tableModalButton');
+                    show_modal_table('modalTableButton');
                     let newTableName = data['data']['name'];
                     createTable(data['data']['cols'], data['data']['data'],
                         newTableName);}
@@ -860,7 +860,7 @@
             });
         }
         $(document).ready(function () {
-            $('#tableModal').on('hidden.bs.modal', function () {
+            $('#modalTable').on('hidden.bs.modal', function () {
                 if (['Import', 'Campaign', 'Adset', 'Ad'].includes(
                     "{{ edit_name }}")) {
                     let sourceElem = $('table[id^="modalTable"]')[0].id;
@@ -876,7 +876,7 @@
             })
         });
         $(document).ready(function() {
-            $('#tableModal').on('shown.bs.modal', function () {
+            $('#modalTable').on('shown.bs.modal', function () {
                 $($.fn.dataTable.tables(true)).DataTable()
                     .columns.adjust()
                     .fixedColumns().relayout();
@@ -909,6 +909,25 @@
             createTable(dashForm['data']['cols'], dashForm['data']['data'],
                         tableName, tableName + 'Elem')
         }
+
+        function makePlotElements(appendElem, baseId, title) {
+            $('#' + appendElem).append('' +
+                '<div class="col h-50">' +
+                '<div class="card-header">' +
+                '<h7 class="mb-3">' + title + '</h7>' +
+                '<select id="' + baseId + 'Select"' +
+                'class="form-control form-control-sm">' +
+                '<option>Select Metric</option>' +
+                '</select>' +
+                '</div>' +
+                '<div class="card container-fluid shadow outer">' +
+                '<div id="' + baseId + 'Progress"' +
+                'class="widget"></div>' +
+                '<div id="' + baseId + '"></div>' +
+                '</div>' +
+                '</div>')
+        }
+
         function appendCleanDashboard(dashForm){
             $('#rowTwo').append('' +
                 '<div id="dashCardCol" class="card col">' +
@@ -1298,4 +1317,5 @@
     {% include "_dash_builder.html" %}
     {% include "_table_builder.html" %}
     {% include "_select_builder.html" %}
+    {% include "_rawfile_check.html" %}
 {% endblock %}

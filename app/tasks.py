@@ -3055,10 +3055,12 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         if temp:
-            new_name = matrix.vm[vmc.filename_true][parameter]
-            file_type = os.path.splitext(new_name)[1]
-            new_name = new_name.replace(file_type, 'TMP{}'.format(file_type))
-            matrix.vm[vmc.filename_true][parameter] = new_name
+            for col in [vmc.filename, vmc.filename_true]:
+                new_name = matrix.vm[col][parameter]
+                file_type = os.path.splitext(new_name)[1]
+                new_name = new_name.replace(
+                    file_type, 'TMP{}'.format(file_type))
+                matrix.vm[col][parameter] = new_name
         _set_task_progress(60)
         df = matrix.vendor_get(parameter)
         _set_task_progress(90)
@@ -3079,7 +3081,6 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
             df = df.replace([np.inf, -np.inf], np.nan)
             df = df.fillna(0)
         _set_task_progress(100)
-        print(df)
         return [df]
     except:
         _set_task_progress(100)
@@ -3663,6 +3664,8 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
         file_name = "{}.json".format(vk)
         with open(file_name, 'r') as f:
             config_file = json.load(f)
+        config_file = {'{:02}|{}'.format(idx, k): v for idx, (k, v) in
+                       enumerate(config_file.items())}
         tables = [config_file]
         _set_task_progress(100)
         return tables

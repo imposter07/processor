@@ -1,8 +1,8 @@
-<button id="rawFileModalButton" type="button" class="btn btn-primary"
-        data-toggle="modal" data-target="#rawFileModal" style="display: none;">
+<button id="modalRawFileButton" type="button" class="btn btn-primary"
+        data-toggle="modal" data-target="#modalRawFile" style="display: none;">
     Launch demo modal
 </button>
-<div class="modal fade bd-example-modal-xl" id="rawFileModal" tabindex="-1"
+<div class="modal fade bd-example-modal-xl" id="modalRawFile" tabindex="-1"
      role="dialog" aria-labelledby="exampleModalLabel">
     <div class="modal-dialog modal-xl mw-100 w-90" role="document">
         <div class="modal-content">
@@ -33,46 +33,47 @@
                     </div>
                     <div id="rawFileGraphBody" class="col">
                         <div class="row">
-                            <div class="col-md-9 h-50">
-                            <div class="card-header">
-                                <h7 class="mb-3">New File</h7>
-                                <select id="newFilePlotSelect"
-                                        class="form-control form-control-sm">
-                                    <option>Select Metric</option>
+                            <div class="col mb-3">
+                                <select id="dashSelect" class="form-control form-control-sm">
+                                    <option value="">Select Dashboard...
+                                    </option>
+                                    {% for dash in ['Date', 'mpCampaign', 'mpVendor', 'mpKpi', 'mpEnvironment'] %}
+                                        <option value="{{ dash }}">{{ dash }}</option>
+                                    {% endfor %}
                                 </select>
                             </div>
-                            <div class="card container-fluid shadow outer">
-                                <div id="newFilePlotProgress"
-                                     class='widget'></div>
-                                <div id="newFilePlot"></div>
-                            </div>
                         </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-9 h-50">
-                                <div class="card-header">
-                                    <h7 class="mb-3">Old File</h7>
-                                    <select id="oldFilePlotSelect"
-                                            class="form-control form-control-sm">
-                                        <option>Select Metric</option>
-                                    </select>
-                                </div>
-                                <div class="card container-fluid shadow outer">
-                                    <div id="oldFilePlotProgress"
-                                         class='widget'></div>
-                                    <div id="oldFilePlot"></div>
+                        <div id="dashFooter" style="display: none;">
+                            <div id="" class="row">
+                                <div class="col">
+                                    {% for dash in ['newFilePlot', 'oldFilePlot'] %}
+                                        <div class="card-header">
+                                            <h7 class="mb-3">{{ dash }}</h7>
+                                            <select id="{{ dash }}MetricsSelect"
+                                                    class="form-control form-control-sm">
+                                                <option>Select Metric</option>
+                                            </select>
+                                        </div>
+                                        <div class="shadow outer">
+                                            <div id="{{ dash }}MetricsProgress"
+                                                 class="widget">
+                                            </div>
+                                            <div id="{{ dash }}Metrics"></div>
+                                        </div>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
             <div class="modal-footer">
                 <div class="btn-group btn-group-lg btn-block" role="group"
                      aria-label="Basic example">
                     <button type="button" class="btn btn-success"
-                            id="tableModalSaveButton"
-                            onclick="SendDataTable()">Save
+                            id="modalRawFileSaveButton"
+                            onclick="SendDataTable('modalRawFile')">Save
                     </button>
                     <button type="button" class="btn btn-secondary"
                             data-dismiss="modal">Close
@@ -84,7 +85,7 @@
 </div>
 <script>
     document.addEventListener('FilePond:processfile', (e) => {
-        show_modal_table('rawFileModalButton');
+        show_modal_table('modalRawFileButton');
         if ("{{ edit_name }}" === 'Clean') {
             var vendorKey = $('#data_source_clean').val();
         } else {
@@ -95,7 +96,7 @@
             }
         }
         getTable('raw_file_comparison', '', '', vendorKey, 'None', false);
-        getRawFilePlots(vendorKey);
+        $('#dashSelect').val(0)
     });
 
     function sleep(ms) {
@@ -109,8 +110,9 @@
         curEl.id = fullData['data']['name'];
         Object.keys(data).forEach(function (key, index) {
             setTimeout(function () {
-                let idName = key.replace(/\s/g, '');
-                elem.append('<tr id="' + idName + '"><td>' + key + '</td></tr>');
+                let idName = key.split('|')[0]
+                let checkType = key.split('|')[1].replace(/\s/g, '');
+                elem.append('<tr id="' + idName + '"><td>' + checkType + '</td></tr>');
                 let newElem = $('#' + idName);
                 Object.keys(data[key]).forEach(function (newKey) {
                     let cellName = idName + newKey;
@@ -125,13 +127,40 @@
         });
     }
 
+    function getSelectedDashboard() {
+        $('[id^=dashSelect]').unbind().on('change', function (e) {
+            let selectedText = this.options[e.target.selectedIndex].text;
+            let procName = this.id.replace('dashSelect', '');
+            $('#dashFooter' + procName).removeAttr('style');
+            let metrics = ['kpi'];
+            let filterDict = {};
+            let chartFunction = (function () {
+                if (selectedText === 'Date') {
+                    return generateAreaChart;
+                } else {
+                    return generateBarChart;
+                }
+            })
+            let vendorKey = $('[id*=vendorkey]')[0].id.split('vendorkey')[1];
+            getMetrics('#newFilePlotMetrics', chartFunction(),
+                selectedText, metrics,
+                filterDict, "", 250, null, null, null, null, vendorKey);
+            getMetrics('#oldFilePlotMetrics', chartFunction(),
+                selectedText, metrics,
+                filterDict, "", 250, null, null, null, null, vendorKey);
+        });
+    }
+
     function getRawFilePlots(vendorKey) {
         let metrics = ['kpi']
         let filterDict = {}
-        getMetrics('#oldFilePlot', generateBarChart,
+        makePlotElements('newFileGraphRow', 'newFilePlotMetrics', 'New File')
+        makePlotElements('oldFileGraphRow', 'oldFilePlotMetrics', 'Old File')
+        addSelectize()
+        getMetrics('#oldFilePlotMetrics', generateBarChart,
             'Date', metrics,
             filterDict, "", 250, null, null, null, null, vendorKey);
-        getMetrics('#newFilePlot', generateBarChart,
+        getMetrics('#newFilePlotMetrics', generateBarChart,
             'Date', metrics,
             filterDict, "", 250, null, null, null, null, vendorKey);
     }

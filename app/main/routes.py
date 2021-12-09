@@ -3098,10 +3098,10 @@ def get_metrics():
         proc_arg = {x: proc_arg[x] for x in proc_arg
                     if x in ['running_user', 'filter_dict']}
     elif request.form['elem'] in ['#dash_placeholderMetrics',
-                                  '#oldFilePlot', '#newFilePlot']:
+                                  '#oldFilePlotMetrics', '#newFilePlotMetrics']:
         job_name = '.get_raw_file_data_table'
         proc_arg['parameter'] = request.form['vendor_key']
-        if request.form['elem'] == '#newFilePlot':
+        if request.form['elem'] == '#newFilePlotMetrics':
             proc_arg['temp'] = True
     else:
         job_name = '.get_data_tables_from_db'

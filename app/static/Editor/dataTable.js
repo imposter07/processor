@@ -26,7 +26,7 @@ function selectColumns(editor, csv, header) {
             message: 'Click the <i>Submit</i> button to confirm the import of ' + csv.length + ' rows of data. Optionally, override the value for a field to set a common value by clicking on the field below.'
         });
         editor.on('close', function () {
-            $('#tableModal').modal('show');
+            $('#modalTable').modal('show');
         });
 
         for (let i = 0; i < fields.length; i++) {
@@ -64,12 +64,12 @@ function createTable(colData, rawData, tableName,
         });
         editor.on('open', function (e, type, mode, action) {
             if ((type === 'main') && (elem === 'modal-body-table')) {
-                $('#tableModal').modal('hide');
+                $('#modalTable').modal('hide');
             }
         });
         editor.on('close', function () {
             if (elem === 'modal-body-table') {
-                $('#tableModal').modal('show');
+                $('#modalTable').modal('show');
             }
         });
         let uploadEditor = new $.fn.dataTable.Editor({
@@ -153,7 +153,7 @@ function createTable(colData, rawData, tableName,
                         uploadEditor.create({
                             title: 'CSV file import'
                         });
-                        $('#tableModal').modal('hide');
+                        $('#modalTable').modal('hide');
                     }
                 },
                 {

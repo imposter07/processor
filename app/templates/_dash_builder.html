@@ -988,7 +988,9 @@
     }
 
     function radialProgress(selector) {
+        console.log(selector)
         const parent = d3.select(selector)
+        console.log(parent)
         const size = parent.node().getBoundingClientRect()
         const svg = parent.append('svg')
             .attr('width', size.width)
@@ -1074,6 +1076,7 @@
             return obj;
         });
         let elem = selectDiv ? selectDiv : "#" + xCol + "Select"
+        console.log(elem)
         let selectizeElem = $(elem)[0].selectize
         selectizeElem.load(function(callback) {
             callback(newData);

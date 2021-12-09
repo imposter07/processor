@@ -89,7 +89,7 @@
                     table: tableName,
                     processor:  "{{ processor_name }}"
             }).done(function(data, status) {
-                show_modal_table('tableModalButton');
+                show_modal_table('modalTableButton');
                 var newTableName = data['data']['name'];
                 createTable(data['data']['cols'], data['data']['data'],
                     newTableName);

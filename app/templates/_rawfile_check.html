@@ -7,12 +7,19 @@
     <div class="modal-dialog modal-xl mw-100 w-90" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">
-                    Raw File Check</h5>
-                <button type="button" class="close" data-dismiss="modal"
-                        aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <div class="col card-header">
+                    <h3>Raw File Check<i class="fas fa-file-export btn btn-secondary"
+                                       style="float:right;"></i></h3>
+                    <h6 class="card-subtitle mb-2 text-muted">
+                        Automated checks between the file you just supplied and the
+                        one currently in the processor are below.  Your new file will
+                        not be saved unless you click save at the bottom of this modal.
+                    </h6>
+                    <button type="button" class="close" data-dismiss="modal"
+                            aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
             </div>
             <div class="modal-body">
                 <div class="row">
@@ -41,12 +48,18 @@
                                         <option value="{{ dash }}">{{ dash }}</option>
                                     {% endfor %}
                                 </select>
+                                <select id="metricSelect" class="form-control form-control-sm">
+                                    <option value="">Select Metric...
+                                    {% for dash in ['Impressions', 'Clicks', 'Net Cost'] %}
+                                        <option value="{{ dash }}">{{ dash }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                         </div>
                         <div id="dashFooter" style="display: none;">
                             <div id="" class="row">
                                 <div class="col">
-                                    {% for dash in ['newFilePlot', 'oldFilePlot'] %}
+                                    {% for dash in ['newFilePlot', 'oldFilePlot', 'deltaFilePlot'] %}
                                         <div class="card-header">
                                             <h7 class="mb-3">{{ dash }}</h7>
                                             <select id="{{ dash }}MetricsSelect"
@@ -65,7 +78,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
             <div class="modal-footer">
@@ -84,20 +96,29 @@
     </div>
 </div>
 <script>
-    document.addEventListener('FilePond:processfile', (e) => {
-        show_modal_table('modalRawFileButton');
-        if ("{{ edit_name }}" === 'Clean') {
-            var vendorKey = $('#data_source_clean').val();
-        } else {
-            try {
-                vendorKey = e.target.parentElement.parentElement.parentElement.querySelectorAll("[id*='vendor_key']")[0].value
-            } catch (err) {
-                vendorKey = 'None';
+    if (("{{ edit_name }}" === 'Clean') || ("{{ edit_name }}" === 'Import')) {
+        document.addEventListener('FilePond:processfile', (e) => {
+            show_modal_table('modalRawFileButton');
+            let rawFileTableBody = '#rawFileTableBody'
+            let oldHtml = $(rawFileTableBody).html();
+            $(rawFileTableBody).html(
+                `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
+                            role="status" aria-hidden="true"></span> Loading...`
+            );
+            if ("{{ edit_name }}" === 'Clean') {
+                var vendorKey = $('#data_source_clean').val();
+            } else {
+                try {
+                    vendorKey = e.target.parentElement.parentElement.parentElement.querySelectorAll("[id*='vendor_key']")[0].value
+                } catch (err) {
+                    vendorKey = 'None';
+                }
             }
-        }
-        getTable('raw_file_comparison', '', '', vendorKey, 'None', false);
-        $('#dashSelect').val(0)
-    });
+            getTable('raw_file_comparison', rawFileTableBody, oldHtml, vendorKey, 'None', false);
+            changeMetrics()
+            $('#dashSelect')[0].selectize.setValue('Date')
+        });
+    }
 
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
@@ -121,9 +142,18 @@
                     let color = (data[key][newKey][0] === true) ? "#90EE90" : "#FF7F7F";
                     $('#' + cellName).animate({
                         backgroundColor: color
-                    }, 1000);
+                    }, 500);
                 });
-            }, 1000 * index);
+            }, 500 * index);
+        });
+    }
+
+    function changeMetrics(){
+        $('#metricSelect').unbind().on('change', function (e) {
+            let selectedText = this.options[e.target.selectedIndex].text;
+            $('#newFilePlotMetricsSelect')[0].selectize.setValue(selectedText);
+            $('#oldFilePlotMetricsSelect')[0].selectize.setValue(selectedText);
+            $('#deltaFilePlotMetricsSelect')[0].selectize.setValue(selectedText);
         });
     }
 
@@ -136,7 +166,7 @@
             let filterDict = {};
             let chartFunction = (function () {
                 if (selectedText === 'Date') {
-                    return generateAreaChart;
+                    return generateBarChart;
                 } else {
                     return generateBarChart;
                 }
@@ -148,20 +178,9 @@
             getMetrics('#oldFilePlotMetrics', chartFunction(),
                 selectedText, metrics,
                 filterDict, "", 250, null, null, null, null, vendorKey);
+            getMetrics('#deltaFilePlotMetrics', chartFunction(),
+                selectedText, metrics,
+                filterDict, "", 250, null, null, null, null, vendorKey);
         });
-    }
-
-    function getRawFilePlots(vendorKey) {
-        let metrics = ['kpi']
-        let filterDict = {}
-        makePlotElements('newFileGraphRow', 'newFilePlotMetrics', 'New File')
-        makePlotElements('oldFileGraphRow', 'oldFilePlotMetrics', 'Old File')
-        addSelectize()
-        getMetrics('#oldFilePlotMetrics', generateBarChart,
-            'Date', metrics,
-            filterDict, "", 250, null, null, null, null, vendorKey);
-        getMetrics('#newFilePlotMetrics', generateBarChart,
-            'Date', metrics,
-            filterDict, "", 250, null, null, null, null, vendorKey);
     }
 </script>

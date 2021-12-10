@@ -112,14 +112,12 @@
             $('[id^="walkDataSelect"]').on('change', function () {
                 $('div[id^="walkDataTable"]').hide()
                 let curSelectElem = this.id
-                console.log(curSelectElem)
                 let selectedValue = $('#' + curSelectElem).val()
                 $('#walkDataTable' + selectedValue).show()
             });
             $('a[id^="showMe"]').unbind('click').click(function () {
                 let divId = this.id.replace('showMe', '')
                 let scrollIntoViewOptions = {'behavior': 'smooth'}
-                console.log(divId)
                 document.getElementById(divId).scrollIntoView(scrollIntoViewOptions);
                 let element = $('#' + divId)[0];
                 let originalColor = element.style.backgroundColor;

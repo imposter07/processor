@@ -74,6 +74,9 @@ def adjust_path(path):
     for x in [['S:', '/mnt/s'], ['C:', '/mnt/c'], ['c:', '/mnt/c'],
               ['\\', '/']]:
         path = path.replace(x[0], x[1])
+    if os.name == 'nt':
+        for x in [['/mnt/c', 'C:'], ['/mnt/c', 'c:']]:
+            path = path.replace(x[0], x[1])
     return path
 
 
@@ -3027,6 +3030,29 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+def get_raw_file_delta_table(processor_id, current_user_id, parameter=None,
+                             dimensions=None, metrics=None, filter_dict=None):
+    try:
+        _set_task_progress(0)
+        odf = get_raw_file_data_table(
+            processor_id, current_user_id, parameter, dimensions, metrics,
+            filter_dict, temp=False)[0]
+        ndf = get_raw_file_data_table(
+            processor_id, current_user_id, parameter,
+            dimensions, metrics, filter_dict, temp=True)[0]
+        df = ndf.set_index(dimensions).subtract(odf.set_index(dimensions),
+                                                fill_value=0).reset_index()
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Parameter {}'.format(
+                processor_id, current_user_id, parameter),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
 def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
                             dimensions=None, metrics=None, filter_dict=None,
                             temp=False):
@@ -3662,6 +3688,7 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
         aly = az.Analyze(file_name='Raw Data Output.csv', matrix=matrix)
         aly.compare_raw_files(vk)
         file_name = "{}.json".format(vk)
+        file_name = os.path.join(utl.tmp_file_suffix, file_name)
         with open(file_name, 'r') as f:
             config_file = json.load(f)
         config_file = {'{:02}|{}'.format(idx, k): v for idx, (k, v) in

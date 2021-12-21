@@ -2358,7 +2358,8 @@ def build_processor_from_request(processor_id, current_user_id):
         _set_task_progress(25)
         import_names = (cur_processor.campaign.name.
                         replace(' ', '').replace('_', '').replace('|', '').
-                        replace(':', '').replace('.', '').replace("'", ''))
+                        replace(':', '').replace('.', '').replace("'", '').
+                        replace('&', ''))
         proc_dict = [
             x.get_dict_for_processor(import_names, cur_processor.start_date)
             for x in cur_processor.accounts]
@@ -3685,7 +3686,7 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
         import processor.reporting.utils as utl
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
-        aly = az.Analyze(file_name='Raw Data Output.csv', matrix=matrix)
+        aly = az.Analyze(matrix=matrix)
         aly.compare_raw_files(vk)
         file_name = "{}.json".format(vk)
         file_name = os.path.join(utl.tmp_file_suffix, file_name)

@@ -3680,18 +3680,23 @@ def update_walkthrough(user_id, running_user, new_data):
 
 def get_raw_file_comparison(processor_id, current_user_id, vk):
     try:
-        cur_processor = Processor.query.get(processor_id)
-        import reporting.analyze as az
-        import reporting.vendormatrix as vm
-        import processor.reporting.utils as utl
-        os.chdir(adjust_path(cur_processor.local_path))
-        matrix = vm.VendorMatrix()
-        aly = az.Analyze(matrix=matrix)
-        aly.compare_raw_files(vk)
-        file_name = "{}.json".format(vk)
-        file_name = os.path.join(utl.tmp_file_suffix, file_name)
-        with open(file_name, 'r') as f:
-            config_file = json.load(f)
+        if vk == '':
+            msg = 'No vendor key save the new card first then retry.'
+            config_file = {
+                'No Vendor Key': {'Old': (False, msg), 'New': (False, msg)}}
+        else:
+            cur_processor = Processor.query.get(processor_id)
+            import reporting.analyze as az
+            import reporting.vendormatrix as vm
+            import processor.reporting.utils as utl
+            os.chdir(adjust_path(cur_processor.local_path))
+            matrix = vm.VendorMatrix()
+            aly = az.Analyze(matrix=matrix)
+            aly.compare_raw_files(vk)
+            file_name = "{}.json".format(vk)
+            file_name = os.path.join(utl.tmp_file_suffix, file_name)
+            with open(file_name, 'r') as f:
+                config_file = json.load(f)
         config_file = {'{:02}|{}'.format(idx, k): v for idx, (k, v) in
                        enumerate(config_file.items())}
         tables = [config_file]

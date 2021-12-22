@@ -114,9 +114,9 @@
                     vendorKey = 'None';
                 }
             }
+            $('#rawFileBody').attr('data-vk', vendorKey);
             getTable('raw_file_comparison', rawFileTableBody, oldHtml, vendorKey, 'None', false);
-            changeMetrics()
-            $('#dashSelect')[0].selectize.setValue('Date')
+            changeMetrics();
         });
     }
 
@@ -125,6 +125,7 @@
     }
 
     function parseRawComp(fullData){
+        $('#dashSelect')[0].selectize.setValue('Date');
         let elem = $('#rawFileTableBody');
         let data = fullData['data']['data'];
         let curEl = document.getElementById('rawFileTable');
@@ -166,12 +167,12 @@
             let filterDict = {};
             let chartFunction = (function () {
                 if (selectedText === 'Date') {
-                    return generateBarChart;
+                    return generateAreaChart;
                 } else {
                     return generateBarChart;
                 }
             })
-            let vendorKey = $('[id*=vendorkey]')[0].id.split('vendorkey')[1];
+            let vendorKey = $('#rawFileBody').data('vk');
             getMetrics('#newFilePlotMetrics', chartFunction(),
                 selectedText, metrics,
                 filterDict, "", 250, null, null, null, null, vendorKey);

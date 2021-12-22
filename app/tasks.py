@@ -3041,8 +3041,12 @@ def get_raw_file_delta_table(processor_id, current_user_id, parameter=None,
         ndf = get_raw_file_data_table(
             processor_id, current_user_id, parameter,
             dimensions, metrics, filter_dict, temp=True)[0]
-        df = ndf.set_index(dimensions).subtract(odf.set_index(dimensions),
-                                                fill_value=0).reset_index()
+        if ([x for x in dimensions
+             if x not in ndf.columns or x not in odf.columns]):
+            df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
+        else:
+            df = ndf.set_index(dimensions).subtract(odf.set_index(dimensions),
+                                                    fill_value=0).reset_index()
         _set_task_progress(100)
         return [df]
     except:
@@ -3083,16 +3087,25 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
         matrix = vm.VendorMatrix()
         if temp:
             for col in [vmc.filename, vmc.filename_true]:
+                if parameter not in matrix.vm[col]:
+                    continue
                 new_name = matrix.vm[col][parameter]
                 file_type = os.path.splitext(new_name)[1]
                 new_name = new_name.replace(
                     file_type, 'TMP{}'.format(file_type))
                 matrix.vm[col][parameter] = new_name
         _set_task_progress(60)
-        df = matrix.vendor_get(parameter)
+        try:
+            df = matrix.vendor_get(parameter)
+        except:
+            _set_task_progress(100)
+            return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
         _set_task_progress(90)
         df = utl.data_to_type(df, float_col=metrics)
         metrics = [x for x in metrics if x in df.columns]
+        if [x for x in dimensions if x not in df.columns]:
+            _set_task_progress(100)
+            return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
         df = df.groupby(dimensions)[metrics].sum()
         df = df.reset_index()
         if 'Date' in df.columns:

@@ -3074,15 +3074,15 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
             _set_task_progress(100)
             return [pd.DataFrame({x: [] for x in dimensions + metrics})]
         _set_task_progress(15)
+        def_metrics = [vmc.impressions, vmc.clicks, vmc.cost]
         if metrics == ['kpi']:
             kpis, kpi_cols = get_kpis_for_processor(
                 processor_id, current_user_id)
-            metrics = [x for x in ['Impressions', 'Clicks', 'Net Cost']
-                       if x not in kpi_cols] + kpi_cols
+            metrics = [x for x in def_metrics if x not in kpi_cols] + kpi_cols
         else:
             kpis = None
         if not metrics:
-            metrics = ['Impressions', 'Clicks', 'Net Cost']
+            metrics = def_metrics
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         if temp:
@@ -3108,12 +3108,12 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
             return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
         df = df.groupby(dimensions)[metrics].sum()
         df = df.reset_index()
-        if 'Date' in df.columns:
-            df = utl.data_to_type(df, str_col=['Date'])
-            df = df[df['Date'] != 'None']
+        if vmc.date in df.columns:
+            df = utl.data_to_type(df, str_col=[vmc.date])
+            df = df[df[vmc.date] != 'None']
         df = df.fillna(0)
-        if kpis:
-            df['Net Cost Final'] = df['Net Cost']
+        if kpis and vmc.cost in df.columns:
+            df['Net Cost Final'] = df[vmc.cost]
             calculated_metrics = az.ValueCalc().metric_names
             metric_names = [x for x in kpis if x in calculated_metrics]
             df = az.ValueCalc().calculate_all_metrics(

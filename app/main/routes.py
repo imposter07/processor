@@ -1112,7 +1112,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'imports': '.get_processor_sources',
                  'import_config': '.get_import_config_file',
                  'all_processors': '.get_all_processors',
-                 'raw_file_comparison': '.get_raw_file_comparison'}
+                 'raw_file_comparison': '.get_raw_file_comparison',
+                 'quick_fix': '.apply_quick_fix'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -1149,6 +1150,16 @@ def get_table():
     if cur_proc.get_task_in_progress(job_name):
         flash(_('This job: {} is already running!').format(table_name))
         return jsonify({'data': {'data': [], 'cols': [], 'name': table_name}})
+    if request.form['fix_id'] != 'None':
+        proc_arg['fix_id'] = request.form['fix_id']
+        cur_fix = Requests.query.get(request.form['fix_id'])
+        if cur_fix.fix_type in ['missing_metrics', 'unknown']:
+            table_name = 'dictionary'
+            proc_arg['vk'] = 'Plan Net'
+            table_name = '{}vendorkey{}'.format(
+                table_name, request.form['vendorkey'].replace(' ', '___'))
+        elif cur_fix.fix_type == 'raw_file_update':
+            table_name = 'Vendormatrix'
     if request.form['vendorkey'] != 'None':
         proc_arg['vk'] = request.form['vendorkey']
         table_name = '{}vendorkey{}'.format(

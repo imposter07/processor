@@ -3192,6 +3192,26 @@ def update_single_auto_request(processor_id, current_user_id, fix_type,
         return False
 
 
+def get_vendor_keys_of_update_files(df):
+    tdf = df[df['source'].str[:3] == 'API']
+    tdf = tdf[tdf['source'].str[:len('API_Rawfile')] == 'API_Rawfile']
+    tdf = tdf[tdf['update_tier'] == 'Greater Than One Week']
+    undefined = tdf['source'].tolist()
+    msg = ''
+    if len(tdf) > 0:
+        msg += ('The following raw files have not been updated for '
+                'over a week: {}\n\n'.format(','.join(undefined)))
+    tdf = df[df['source'].str[:3] == 'API']
+    tdf = tdf[tdf['source'].str[:len('API_Rawfile')] != 'API_Rawfile']
+    tdf = tdf[tdf['update_tier'] != 'Today']
+    if len(tdf) > 0:
+        api_undefined = tdf['source'].tolist()
+        msg += ('The following API files did not update today: '
+                ' {}\n'.format(','.join(api_undefined)))
+        undefined.extend(api_undefined)
+    return undefined, msg
+
+
 def update_automatic_requests(processor_id, current_user_id):
     try:
         _set_task_progress(0)
@@ -3222,22 +3242,7 @@ def update_automatic_requests(processor_id, current_user_id):
             processor_id=cur_processor.id, key=fix_type).first()
         if analysis.data:
             df = pd.DataFrame(analysis.data)
-            tdf = df[df['source'].str[:3] == 'API']
-            tdf = tdf[tdf['source'].str[:len('API_Rawfile')] == 'API_Rawfile']
-            tdf = tdf[tdf['update_tier'] == 'Greater Than One Week']
-            undefined = tdf['source'].tolist()
-            msg = ''
-            if len(tdf) > 0:
-                msg += ('The following raw files have not been updated for '
-                        'over a week: {}\n\n'.format(','.join(undefined)))
-            tdf = df[df['source'].str[:3] == 'API']
-            tdf = tdf[tdf['source'].str[:len('API_Rawfile')] != 'API_Rawfile']
-            tdf = tdf[tdf['update_tier'] != 'Today']
-            if len(tdf) > 0:
-                api_undefined = tdf['source'].tolist()
-                msg += ('The following API files did not update today: '
-                        ' {}\n'.format(','.join(api_undefined)))
-                undefined.extend(api_undefined)
+            undefined, msg = get_vendor_keys_of_update_files(df)
             update_single_auto_request(processor_id, current_user_id,
                                        fix_type=fix_type,
                                        fix_description=msg,
@@ -3699,8 +3704,8 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
                 'No Vendor Key': {'Old': (False, msg), 'New': (False, msg)}}
         else:
             cur_processor = Processor.query.get(processor_id)
-            import reporting.analyze as az
-            import reporting.vendormatrix as vm
+            import processor.reporting.analyze as az
+            import processor.reporting.vendormatrix as vm
             import processor.reporting.utils as utl
             os.chdir(adjust_path(cur_processor.local_path))
             matrix = vm.VendorMatrix()
@@ -3726,8 +3731,8 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
 def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import reporting.vmcolumns as vmc
-        import reporting.vendormatrix as vm
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.vendormatrix as vm
         import processor.reporting.utils as utl
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
@@ -3745,3 +3750,46 @@ def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):
             'Unhandled exception - Processor {} User {} VK {}'.format(
                 processor_id, current_user_id, vk), exc_info=sys.exc_info())
         return False
+
+
+def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        cur_fix = Requests.query.get(fix_id)
+        import processor.reporting.analyze as az
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.vmcolumns as vmc
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=cur_fix.fix_type).first()
+        if cur_fix.fix_type in [az.Analyze.unknown_col]:
+            df = get_dictionary(processor_id, current_user_id, vk)[0]
+            tdf = pd.DataFrame(analysis.data)
+            ds = matrix.get_data_source(vk=vk)
+            fpn = ds.p[vmc.fullplacename]
+            for col in fpn:
+                tdf = tdf[col].str.strip("'")
+            tdf = vm.full_placement_creation(
+                tdf, vk, vmc.fullplacename, ds.p[vmc.fullplacename])
+            fpn += [vmc.fullplacename]
+            tdf = tdf[fpn].drop_duplicates(subset=[vmc.fullplacename])
+            df = df.append(tdf, ignore_index=True, sort=False)
+        elif cur_fix.fix_type == az.Analyze.raw_file_update_col:
+            df = get_vendormatrix(processor_id, current_user_id)[0]
+            tdf = pd.DataFrame(analysis.data)
+            undefined, msg = get_vendor_keys_of_update_files(tdf)
+            for old_vk in undefined:
+                new_vk = old_vk.replace('API_', '')
+                df[vmc.vendorkey] = df[vmc.vendorkey].replace(old_vk, new_vk)
+        else:
+            df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Fix ID {}'.format(
+                processor_id, current_user_id, fix_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

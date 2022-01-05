@@ -683,7 +683,7 @@
             });
         });
         function getTable(tableName, clickElem, oldHtml, vendorKey='None',
-                          pond='None', progress=true){
+                          pond='None', progress=true, fixId='None'){
             let uploaderType = ("{{ title }}" === "Uploader") ? "{{uploader_type}}" : "None";
             $.ajax({
                 type: "POST",
@@ -694,7 +694,8 @@
                     object_type:  "{{ title }}",
                     object_level: "{{ edit_name }}",
                     uploader_type: uploaderType,
-                    vendorkey: vendorKey
+                    vendorkey: vendorKey,
+                    fix_id: fixId
                 },
             }).done(function(data, status) {
                 if ((tableName === 'OutputDataFullOutput') || (tableName ==='download_raw_data')) {

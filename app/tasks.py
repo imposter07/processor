@@ -3217,14 +3217,15 @@ def update_automatic_requests(processor_id, current_user_id):
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.analyze as az
-        analysis = ProcessorAnalysis.query.filter_by(
-            processor_id=cur_processor.id, key=az.Analyze.unknown_col).first()
+        import processor.reporting.vmcolumns as vmc
         fix_type = az.Analyze.unknown_col
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
         if analysis.data:
             tdf = pd.DataFrame(analysis.data)
             for col in tdf.columns:
                 tdf[col] = tdf[col].str.strip("'")
-            cols = [x for x in tdf.columns if x != 'Vendor Key']
+            cols = [x for x in tdf.columns if x != vmc.vendorkey]
             col = 'Undefined Plan Net'
             tdf[col] = tdf[cols].values.tolist()
             tdf[col] = tdf[col].str.join('_')
@@ -3252,7 +3253,26 @@ def update_automatic_requests(processor_id, current_user_id):
             processor_id=cur_processor.id, key=fix_type).first()
         if analysis.data:
             df = pd.DataFrame(analysis.data)
-            undefined = (df['mpVendor'] + ' - ' + df['missing_metrics']).to_list()
+            undefined = (df['mpVendor'] +
+                         ' - ' + df['missing_metrics']).to_list()
+            msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
+        else:
+            undefined = []
+            msg = '{}'.format(analysis.message)
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
+        fix_type = az.Analyze.max_api_length
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis.data:
+            df = pd.DataFrame(analysis.data)
+            undefined = (df[vmc.vendorkey]).to_list()
             msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
             update_single_auto_request(processor_id, current_user_id,
                                        fix_type=fix_type,
@@ -3757,6 +3777,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
         cur_fix = Requests.query.get(fix_id)
+        import datetime as dt
         import processor.reporting.analyze as az
         import processor.reporting.vendormatrix as vm
         import processor.reporting.vmcolumns as vmc
@@ -3783,6 +3804,33 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
             for old_vk in undefined:
                 new_vk = old_vk.replace('API_', '')
                 df[vmc.vendorkey] = df[vmc.vendorkey].replace(old_vk, new_vk)
+        elif cur_fix.fix_type == az.Analyze.max_api_length:
+            df = get_vendormatrix(processor_id, current_user_id)[0]
+            tdf = pd.DataFrame(analysis.data).to_dict(orient='records')
+            for x in tdf:
+                vk = x[vmc.vendorkey]
+                max_date_length = x[az.Analyze.max_api_length]
+                ndf = df[df[vmc.vendorkey] == vk].reset_index(drop=True)
+                new_sd = datetime.strptime(
+                    ndf[vmc.startdate][0], '%Y-%m-%d') + dt.timedelta(
+                    days=max_date_length - 3)
+                if new_sd.date() >= dt.datetime.today().date():
+                    new_sd = dt.datetime.today() - dt.timedelta(days=3)
+                new_str_sd = new_sd.strftime('%Y-%m-%d')
+                ndf.loc[0, vmc.startdate] = new_str_sd
+                ndf.loc[0, vmc.enddate] = ''
+                new_vk = '{}_{}'.format('_'.join(vk.split('_')[:2]), new_str_sd)
+                ndf.loc[0, vmc.vendorkey] = new_vk
+                file_type = os.path.splitext(ndf[vmc.filename][0])[1].lower()
+                new_fn = '{}{}'.format(new_vk.replace('API_', '').lower(),
+                                       file_type)
+                ndf.loc[0, vmc.filename] = new_fn
+                idx = df[df[vmc.vendorkey] == vk].index
+                df.loc[idx, vmc.vendorkey] = df.loc[
+                    idx, vmc.vendorkey][idx[0]].replace('API_', '')
+                old_ed = new_sd - dt.timedelta(days=1)
+                df.loc[idx, vmc.enddate] = old_ed.strftime('%Y-%m-%d')
+                df = df.append(ndf).reset_index(drop=True)
         else:
             df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
         _set_task_progress(100)

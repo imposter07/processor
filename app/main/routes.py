@@ -1158,7 +1158,7 @@ def get_table():
             proc_arg['vk'] = 'Plan Net'
             table_name = '{}vendorkey{}'.format(
                 table_name, request.form['vendorkey'].replace(' ', '___'))
-        elif cur_fix.fix_type == 'raw_file_update':
+        elif cur_fix.fix_type in ['raw_file_update', 'max_api_length']:
             table_name = 'Vendormatrix'
     if request.form['vendorkey'] != 'None':
         proc_arg['vk'] = request.form['vendorkey']

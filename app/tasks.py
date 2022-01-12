@@ -3796,7 +3796,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
             ds = matrix.get_data_source(vk=vk)
             fpn = ds.p[vmc.fullplacename]
             for col in fpn:
-                tdf = tdf[col].str.strip("'")
+                tdf[col] = tdf[col].str.strip("'")
             tdf = vm.full_placement_creation(
                 tdf, vk, vmc.fullplacename, ds.p[vmc.fullplacename])
             fpn += [vmc.fullplacename]

@@ -3496,6 +3496,8 @@ def parse_date_from_project_number(cur_string, date_opened):
         sd = cur_string.strip().split('/')
         if len(sd) > 2:
             cur_year = int(sd[2])
+            if len(sd[2]) <= 2:
+                cur_year += 2000
         else:
             cur_year = date_opened.year
         sd = datetime(cur_year, int(sd[0]), int(sd[1]))
@@ -3777,6 +3779,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
         cur_fix = Requests.query.get(fix_id)
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
         import datetime as dt
         import processor.reporting.analyze as az
         import processor.reporting.vendormatrix as vm
@@ -3785,8 +3788,10 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
         matrix = vm.VendorMatrix()
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_processor.id, key=cur_fix.fix_type).first()
+        os.chdir(cur_path)
         if cur_fix.fix_type in [az.Analyze.unknown_col]:
             df = get_dictionary(processor_id, current_user_id, vk)[0]
+            os.chdir(adjust_path(cur_processor.local_path))
             tdf = pd.DataFrame(analysis.data)
             ds = matrix.get_data_source(vk=vk)
             fpn = ds.p[vmc.fullplacename]
@@ -3799,6 +3804,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
             df = df.append(tdf, ignore_index=True, sort=False)
         elif cur_fix.fix_type == az.Analyze.raw_file_update_col:
             df = get_vendormatrix(processor_id, current_user_id)[0]
+            os.chdir(adjust_path(cur_processor.local_path))
             tdf = pd.DataFrame(analysis.data)
             undefined, msg = get_vendor_keys_of_update_files(tdf)
             for old_vk in undefined:
@@ -3806,6 +3812,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 df[vmc.vendorkey] = df[vmc.vendorkey].replace(old_vk, new_vk)
         elif cur_fix.fix_type == az.Analyze.max_api_length:
             df = get_vendormatrix(processor_id, current_user_id)[0]
+            os.chdir(adjust_path(cur_processor.local_path))
             tdf = pd.DataFrame(analysis.data).to_dict(orient='records')
             for x in tdf:
                 vk = x[vmc.vendorkey]

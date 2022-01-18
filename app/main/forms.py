@@ -404,13 +404,13 @@ class ProcessorFixForm(FlaskForm):
         ('Change Tableau', 'Change Tableau'),
         ('Spend Cap', 'Spend Cap'),
         ('Custom', 'Custom')])
-    column_name = SelectField(
-        'Column Name',  choices=[('', '')] + [(x, x) for x in dctc.COLS] +
-                                [(x, x) for x in vmc.datacol])
+    cname = SelectField(
+        'Column Name', choices=[('', '')] + [(x, x) for x in dctc.COLS] +
+                               [(x, x) for x in vmc.datacol])
     wrong_value = StringField(_l('Wrong Value'))
     correct_value = StringField(_l('Correct Value'))
     filter_column_name = SelectField(
-        'Filter Column Name', choices=[('', '')] + [(x, x) for x in dctc.COLS])
+        label='Filter Column Name', choices=[''] + [x for x in dctc.COLS])
     filter_column_value = StringField('Filter Column Value')
     fix_description = TextAreaField(_l('Describe Fix'))
     data_source = SelectField(_l('Processor Data Source'))

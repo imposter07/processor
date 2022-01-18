@@ -1933,7 +1933,7 @@ def edit_processor_request_fix(object_name):
     if request.method == 'POST':
         new_processor_request = Requests(
             processor_id=cur_proc.id, fix_type=form.fix_type.data,
-            column_name=form.column_name.data,
+            column_name=form.cname.data,
             wrong_value=form.wrong_value.data,
             correct_value=form.correct_value.data,
             filter_column_name=form.filter_column_name.data,

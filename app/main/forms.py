@@ -4,7 +4,7 @@ from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
     FormField, FieldList, HiddenField, DateTimeField, FileField, BooleanField, \
     DecimalField, SelectMultipleField, MultipleFileField, DateField, TimeField
 
-from wtforms.ext.sqlalchemy.fields import QuerySelectField
+from wtforms_sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length, Regexp
 from flask_babel import _, lazy_gettext as _l
 from app.models import User, Processor, Client, Product, Campaign, Uploader,\

@@ -115,7 +115,7 @@ def create_app(config_class=Config()):
             '[in %(pathname)s:%(lineno)d]'))
         app.logger.addHandler(console)
         app.logger.setLevel(logging.INFO)
-        app.logger.info('JI App startup')
+        app.logger.info('LQA App startup')
     return app
 
 

@@ -1079,8 +1079,11 @@ def post_table():
                  'import_config': '.write_import_config_file',
                  'raw_file_comparison': '.write_raw_file_from_tmp'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
-    if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData']:
-        return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
+    if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',
+                      'dictionary_order']:
+        msg_text = 'Saving table {} does not do anything.'.format(table_name)
+        msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
+        return jsonify({'data': 'success', 'message': msg, 'level': 'warning'})
     job_name = arg_trans[table_name]
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()

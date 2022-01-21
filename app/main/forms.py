@@ -80,7 +80,7 @@ class ProcessorForm(FlaskForm):
         for obj in [(Client, self.cur_client),
                     (Product, self.cur_product), (Campaign, self.cur_campaign)]:
             choices = [('', '')]
-            choices.extend([(x.name, x.name) for x in obj[0].query.all()])
+            choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
             obj[1].choices = choices
 
 
@@ -282,7 +282,7 @@ class ProcessorRequestForm(FlaskForm):
         for obj in [(Client, self.cur_client),
                     (Product, self.cur_product), (Campaign, self.cur_campaign)]:
             choices = [('', '')]
-            choices.extend([(x.name, x.name) for x in obj[0].query.all()])
+            choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
             obj[1].choices = choices
 
 

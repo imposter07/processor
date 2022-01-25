@@ -365,32 +365,29 @@ class GeneralConversionForm(FlaskForm):
         return conv_dict
 
 
-class AssignUserForm(FlaskForm):
-    assigned_user = QuerySelectField(_l('User'), allow_blank=True,
-                                     query_factory=lambda: User.query.all(),
-                                     get_label='username')
-    user_level = SelectField(
-        'User Level', choices=[(x, x) for x in ['Follower', 'Owner']])
-    delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
-
-
 class ProcessorRequestFinishForm(FlaskForm):
-    add_child = SubmitField(label='Add User')
+    owner = QuerySelectField(_l('User'), allow_blank=True,
+                             query_factory=lambda: User.query.all(),
+                             get_label='username')
+    followers = SelectMultipleField(_l('Followers'))
     form_continue = HiddenField('form_continue')
-    assigned_users = FieldList(FormField(AssignUserForm, label=''))
 
-    def set_users(self, data_source, cur_proc):
+    def set_user_choices(self):
+        choices = [('', '')]
+        choices.extend([(x.username, x.username) for x in
+                        User.query.all()])
+        self.followers.choices = choices
+        return True
+
+    def add_current_users(self, db_model, cur_proc):
         usr_dict = []
-        proc_users = data_source.query.get(cur_proc.id).processor_followers
+        proc_users = db_model.query.get(cur_proc.id).processor_followers
         for usr in proc_users:
             if usr.username is not None:
-                form_dict = {'assigned_user': usr,
-                             'user_level': 'Follower'}
+                usr_dict.append(usr.username)
                 if cur_proc.user_id == usr.id:
-                    form_dict['user_level'] = 'Owner'
-                usr_dict.append(form_dict)
-        self.assigned_users = usr_dict
-        return usr_dict
+                    self.owner.data = usr
+        self.followers.data = usr_dict
 
 
 class ProcessorFixForm(FlaskForm):

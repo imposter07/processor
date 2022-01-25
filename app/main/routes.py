@@ -1885,27 +1885,20 @@ def edit_processor_finish(object_name):
                                    edit_progress=100, edit_name='Finish',
                                    buttons='ProcessorRequest')
     cur_proc = kwargs['processor']
-    cur_users = ProcessorRequestFinishForm().set_users(Processor, cur_proc)
-    form = ProcessorRequestFinishForm(assigned_users=cur_users)
-    kwargs['form'] = form
-    if form.add_child.data:
-        form.assigned_users.append_entry()
+    form = ProcessorRequestFinishForm()
+    form.set_user_choices()
+    if request.method == 'GET':
+        form.add_current_users(Processor, cur_proc)
         kwargs['form'] = form
-        return render_template('create_processor.html', **kwargs)
-    for usr in form.assigned_users:
-        if usr.delete.data:
-            delete_user = usr.assigned_user.data
-            if delete_user:
-                delete_user.unfollow_processor(cur_proc)
+    elif request.method == 'POST':
+        form.validate()
+        for usr in form.followers.data:
+            u = User.query.filter_by(username=usr).first()
+            if u:
+                u.follow_processor(cur_proc)
                 db.session.commit()
-            return redirect(url_for('main.edit_processor_finish',
-                                    object_name=cur_proc.name))
-    if request.method == 'POST':
-        for usr in form.assigned_users:
-            follow_user = usr.assigned_user.data
-            if follow_user:
-                follow_user.follow_processor(cur_proc)
-                db.session.commit()
+        cur_proc.user_id = form.owner.data.id
+        db.session.commit()
         if form.form_continue.data == 'continue':
             msg_text = 'Sending request and attempting to build processor: {}' \
                        ''.format(cur_proc.name)

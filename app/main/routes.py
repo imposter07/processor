@@ -1530,7 +1530,8 @@ def run_object():
             'pm': '--api pm --analyze',
             'sam': '--api sam --analyze',
             'gs': '--api gs --analyze',
-            'qt': '--api qt --analyze'}
+            'qt': '--api qt --analyze',
+            'yv': '--api yv --analyze'}
     else:
         cur_obj = Uploader
         task_name = '.run_uploader'

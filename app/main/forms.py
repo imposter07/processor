@@ -366,7 +366,7 @@ class GeneralConversionForm(FlaskForm):
 
 
 class ProcessorRequestFinishForm(FlaskForm):
-    owner = QuerySelectField(_l('User'), allow_blank=True,
+    owner = QuerySelectField(_l('Owner'), allow_blank=True,
                              query_factory=lambda: User.query.all(),
                              get_label='username')
     followers = SelectMultipleField(_l('Followers'))

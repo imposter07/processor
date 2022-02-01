@@ -3521,8 +3521,10 @@ def get_project_numbers(processor_id, current_user_id):
         df = df.sort_index(ascending=False)
         pn_max = ProjectNumberMax.query.get(1)
         ndf = df[(df.index >= pn_max.max_number) & (~df['Client'].isna())]
+        pn_col = """# (It's a formula)"""
         for pn in ndf.to_dict(orient='records'):
-            c_project = Project.query.filter_by(project_number=pn['#']).first()
+            c_project = Project.query.filter_by(
+                project_number=pn[pn_col]).first()
             if not c_project:
                 cur_client = Client.query.filter_by(name=pn['Client']).first()
                 if not cur_client:
@@ -3549,7 +3551,7 @@ def get_project_numbers(processor_id, current_user_id):
                 else:
                     sd = ed = None
                 new_project = Project(
-                    project_number=pn['#'],
+                    project_number=pn[pn_col],
                     initial_project_number=pn['initial PN'],
                     client_id=cur_client.id, project_name=pn['Project'],
                     media=True if pn['Media'] else False,
@@ -3567,7 +3569,7 @@ def get_project_numbers(processor_id, current_user_id):
                     name=pn['Project'],
                     product_id=form_product.id).check_and_add()
                 description = ('Automatically generated from '
-                               'project number: {}').format(pn['#'])
+                               'project number: {}').format(pn[pn_col])
                 name = (pn['Project'].
                         replace('_', ' ').replace('|', ' ').
                         replace(':', ' ').replace('.', ' ').replace("'", ' ').

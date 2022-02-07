@@ -416,6 +416,9 @@ def user(username):
     page = request.args.get('page', 1, type=int)
     posts = user_page.posts.order_by(Post.timestamp.desc()).paginate(
         page, current_app.config['POSTS_PER_PAGE'], False)
+    processors = user_page.processor_followed.filter(
+        Processor.end_date > datetime.today().date()).order_by(
+        Processor.created_at.desc()).all()
     tutorials = Tutorial.query.all()
     next_url = url_for('main.user', username=user_page.username,
                        page=posts.next_num) if posts.has_next else None
@@ -424,7 +427,7 @@ def user(username):
     return render_template('user.html', user=user_page, posts=posts.items,
                            next_url=next_url, prev_url=prev_url,
                            title=_('User | {}'.format(username)),
-                           tutorials=tutorials)
+                           tutorials=tutorials, processors=processors)
 
 
 @bp.route('/edit_profile', methods=['GET', 'POST'])

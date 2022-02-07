@@ -18,33 +18,112 @@
         </h5>
         <h6 class="card-subtitle mb-2 text-muted">{{ processor.campaign.product.client.name}} - {{ processor.campaign.product.name}}</h6>
         <h6 class="card-subtitle mb-2 text-muted">{{ processor.description }}</h6>
+        {% if processor.local_path %}
+            <div style="display: flex;" class="justify-content-center">
+                <nav>
+                    <div class="nav nav-tabs"
+                         id="nav-tab-processor{{ processor.id }}"
+                         role="tablist">
+                        <a class="nav-link active"
+                           id="nav-plinks-tab{{ processor.id }}"
+                           data-toggle="tab"
+                           href="#nav-plinks{{ processor.id }}"
+                           role="tab"
+                           aria-controls="nav-plinks{{ processor.id }}"
+                           aria-selected="true">
+                            <h4><i class="fas fa-bars btn btn-info"
+                                   style="float:right;"></i></h4>
+                        </a>
+                        <a class="nav-link"
+                           id="nav-appgraph-tab{{ processor.id }}"
+                           data-toggle="tab"
+                           href="#nav-appgraph{{ processor.id }}"
+                           role="tab"
+                           aria-controls="nav-appgraph{{ processor.id }}"
+                           aria-selected="false">
+                            <h4><i class="fas fa-chart-bar btn btn-info"
+                                   style="float:right;"></i></h4>
+                        </a>
+                        <a class="nav-link"
+                           id="nav-tableau-tab{{ processor.id }}"
+                           data-toggle="tab"
+                           href="#nav-tableau{{ processor.id }}" role="tab"
+                           aria-controls="nav-tableau{{ processor.id }}"
+                           aria-selected="false">
+                            <h4><i class="fas fa-table btn btn-info"
+                                   style="float:right;"></i></h4>
+                        </a>
+                    </div>
+                </nav>
+            </div>
+        {% endif %}
     </div>
     {% if processor.local_path %}
     <div class="card-body">
-        <ul id="listTabs" class="pagination pagination justify-content-center">
-            {% for button in processor.get_current_buttons() %}
-                {% for button_name, button_link in button.items() %}
-                    <li class="page-item">
-                        <a class="page-link"
-                           href="{{ url_for(button_link, object_name=processor.name) }}">
-                            {{ button_name }}
-                        </a>
-                    </li>
-                {% endfor %}
-            {% endfor %}
-        </ul>
-    <div class="row">
-        <div class="col mb-3">
-            <select id="dashSelect{{ processor.id }}"
-                    class="form-control form-control-sm">
-                <option value="">Select Dashboard...
-                </option>
-                {% for dash in ['eventdate', 'campaignname', 'vendorname', 'countryname', 'kpiname', 'environmentname'] %}
-                    <option value="{{ dash }}">{{ dash }}</option>
-                {% endfor %}
-            </select>
+    <div class="row justify-content-center" style="display: flex;" >
+        <div class="tab-content" id="nav-tabContent-processor{{ processor.id }}">
+            <div class="tab-pane fade show active" id="nav-plinks{{ processor.id }}"
+                 role="tabpanel" aria-labelledby="nav-plinks-tab{{ processor.id }}">
+                <ul id="listTabs"
+                    class="pagination pagination justify-content-center">
+                    {% for button in processor.get_current_buttons() %}
+                        {% for button_name, button_link in button.items() %}
+                            <li class="page-item">
+                                <a class="page-link"
+                                   href="{{ url_for(button_link, object_name=processor.name) }}">
+                                    {{ button_name }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="tab-pane fade show" id="nav-appgraph{{ processor.id }}"
+                 role="tabpanel" aria-labelledby="nav-appgraph-tab{{ processor.id }}">
+                <div class="col mb-3">
+                    <select id="dashSelect{{ processor.id }}"
+                            class="form-control form-control-sm">
+                        <option value="">Select Dashboard...
+                        </option>
+                        {% for dash in ['eventdate', 'campaignname', 'vendorname', 'countryname', 'kpiname', 'environmentname'] %}
+                            <option value="{{ dash }}">{{ dash }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="tab-pane fade show" id="nav-tableau{{ processor.id }}"
+                 role="tabpanel" aria-labelledby="nav-tableau-tab{{ processor.id }}">
+                {% if processor.tableau_workbook %}
+                    <center>
+                        <script type='text/javascript'
+                                src='https://us-east-1.online.tableau.com/javascripts/api/viz_v1.js'></script>
+                        <div class='tableauPlaceholder'
+                             style='width: 1350px; height: 897px;'>
+                            <object class='tableauViz' width='1350'
+                                    height='897' style='display:none;'>
+                                <param name='host_url'
+                                       value='https%3A%2F%2Fus-east-1.online.tableau.com%2F'/>
+                                <param name='embed_code_version' value='3'/>
+                                <param name='site_root'
+                                       value='&#47;t&#47;liquidadvertising'/>
+                                <param name='name'
+                                       value='{{ processor.tableau_workbook }}&#47;{{ processor.tableau_view }}'/>
+                                <param name='tabs' value='no'/>
+                                <param name='toolbar' value='yes'/>
+                                <param name='showAppBanner' value='false'/>
+                                <param name='filter'
+                                       value='iframeSizedToWindow=true'/>
+                            </object>
+                        </div>
+                    </center>
+                {% else %}
+                    <h4>No Tableau</h4>
+                    <h6 class="card-subtitle mb-2 text-muted">
+                        This processor instance does not have a tableau specified.  Please add to the Basic Tab.
+                    </h6>
+                {% endif %}
+            </div>
         </div>
-    </div>
         <div id="dashFooter{{ processor.id }}" style="display: none;">
             <div id="" class="row">
                 <div class="col">
@@ -67,6 +146,7 @@
         </div>
     </div>
     {% endif %}
+    </div>
     <div class="card-footer">
         {% if title != "Uploader" %}
             {% include 'processor_requests_button.html' %}

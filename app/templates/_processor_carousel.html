@@ -1,0 +1,48 @@
+<div class="custom-control custom-switch" id="customSwitchDiv">
+    <input type="checkbox" class="custom-control-input" id="customSwitch1"
+           checked>
+    <label class="custom-control-label" for="customSwitch1">
+        {{ _("Processors I'm Following") }}</label>
+</div>
+<table class="table table-hover">
+    <tr>
+        <td>
+            <div class="input-group">
+                <select class="custom-select" id="inputGroupSelect04">
+                    <option selected>{{ _("Choose...") }}</option>
+                    {% for processor in processors %}
+                        <option value="{{ processor.name }}" index="">
+                            {{ processor.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </td>
+    </tr>
+</table>
+<div id="carousel" class="carousel slide" data-ride="carousel"
+     data-interval="false">
+    <div class="carousel-inner text-center">
+        {% for processor in processors %}
+            {% with loop_num = loop.index %}
+                {% include '_processor.html' %}
+            {% endwith %}
+        {% endfor %}
+        <a class="carousel-control-prev" href="#carousel"
+           role="button" data-slide="prev">
+            <i class="fas fa-arrow-alt-circle-left btn btn-dark btn-lg"></i>
+            <span class="sr-only">Previous</span>
+        </a>
+        <a class="carousel-control-next" href="#carousel"
+           role="button" data-slide="next">
+            <i class="fas fa-arrow-alt-circle-right btn btn-dark btn-lg"></i>
+            <span class="sr-only">Next</span>
+        </a>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        $('select').on('change', function (e) {
+            $('#carousel').carousel($(this)[0].selectedIndex - 1);
+        });
+    });
+</script>

@@ -505,7 +505,7 @@ class Processor(db.Model):
         primaryjoin=(project_number_processor.c.processor_id == id),
         secondaryjoin="project_number_processor.c.project_id == Project.id",
         backref=db.backref('project_number_processor', lazy='dynamic'),
-        lazy='dynamic')
+        lazy='dynamic', viewonly=True)
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -1159,7 +1159,7 @@ class Project(db.Model):
         primaryjoin=(project_number_processor.c.project_id == id),
         secondaryjoin="project_number_processor.c.processor_id == Processor.id",
         backref=db.backref('project_number_processor', lazy='dynamic'),
-        lazy='dynamic')
+        lazy='dynamic', viewonly=True)
 
 
 class ProjectNumberMax(db.Model):

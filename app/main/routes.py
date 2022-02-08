@@ -626,24 +626,8 @@ def export_posts():
 @bp.route('/processor')
 @login_required
 def processor():
-    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    page = request.args.get('page', 1, type=int)
-    current_clients = Client.query.order_by(Client.name)
-    processors = cur_user.processor_followed.paginate(
-        page, current_app.config['POSTS_PER_PAGE'], False)
-    if len(processors.items) == 0:
-        processors = Processor.query.paginate(
-            page, current_app.config['POSTS_PER_PAGE'], False)
-    next_url = (url_for('main.processor', username=cur_user.username,
-                        page=processors.next_num)
-                if processors.has_next else None)
-    prev_url = (url_for('main.processor', username=cur_user.username,
-                        page=processors.prev_num)
-                if processors.has_prev else None)
-    return render_template('processor.html', title=_('Processor'),
-                           user=cur_user, processors=processors.items,
-                           next_url=next_url, prev_url=prev_url,
-                           clients=current_clients)
+    kwargs = get_current_processor('Base Processor', 'processor')
+    return render_template('processor.html', **kwargs)
 
 
 def get_navigation_buttons(buttons=None):
@@ -3103,7 +3087,10 @@ def get_metrics():
     if request.form['object_id']:
         cur_proc = Processor.query.get(request.form['object_id'])
     else:
-        cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
+        if 'object_name' in request.form and request.form['object_name'] == '':
+            cur_proc = Processor.query.get(23)
+        else:
+            cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
     msg_text = 'Getting metric table for {}'.format(cur_proc.name)
     if request.form['elem'] == '#totalMetrics':
         job_name = '.get_processor_total_metrics'
@@ -3120,6 +3107,7 @@ def get_metrics():
             job_name = '.get_raw_file_delta_table'
     else:
         job_name = '.get_data_tables_from_db'
+    print('job')
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
     job = task.wait_and_get_job(force_return=True)

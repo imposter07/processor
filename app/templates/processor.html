@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "create_processor.html" %}
 
 {% block vertical_navbar %}
     <h4 class="sidebar-heading d-flex justify-content-between align-items-center">
@@ -11,34 +11,19 @@
                    role="button"></i>
                 {{ _('Request Processor') }}
     </button><br>
-    <div class="custom-control custom-switch" id="customSwitchDiv">
-      <input type="checkbox" class="custom-control-input" id="customSwitch1" checked>
-      <label class="custom-control-label" for="customSwitch1">
-          {{ _("Processors I'm Following") }}</label>
-    </div>
-    <table class="table table-hover">
-        <tr>
-            <td>
-                <div class="input-group">
-                  <select class="custom-select" id="inputGroupSelect04">
-                    <option selected>{{ _("Choose...") }}</option>
-                      {% for processor in processors %}
-                          <option value="{{ processor.name }}" index="">
-                              {{ processor.name }}</option>
-                      {% endfor %}
-                  </select>
-                </div>
-            </td>
-        </tr>
-    </table>
-    <br>
-    {% include '_client_directory.html' %}
 {% endblock %}
 
 {% block app_header %}
-
+    <div class="progress mx-auto" style="height: 20px; width: 50%;">
+        <div id="progressBar"
+             class="progress-bar progress-bar-striped bg-info"
+             role="progressbar" style="width:{{ edit_progress }}%;"
+             aria-valuenow={{ edit_progress }} aria-valuemin="0"
+             aria-valuemax="100">{{ edit_name }}</div>
+    </div><br>
 {% endblock %}
 {% block app_content %}
+
     <button id="modalTableButton" type="button" class="btn btn-primary"
             data-toggle="modal" data-target="#modalTable"
             style="display: none;">
@@ -84,68 +69,181 @@
             </div>
         </div>
     </div>
-    <div id="carousel" class="carousel slide" data-ride="carousel"
-         data-interval="false">
-        <div class="carousel-inner text-center">
-            {% for processor in processors %}
-                {% with loop_num = loop.index %}
-                    {% include '_processor.html' %}
-                {% endwith %}
-            {% endfor %}
-          <a class="carousel-control-prev" href="#carousel"
-             role="button" data-slide="prev">
-            <i class="fas fa-arrow-alt-circle-left btn btn-dark btn-lg"></i>
-            <span class="sr-only">Previous</span>
-          </a>
-          <a class="carousel-control-next" href="#carousel"
-             role="button" data-slide="next">
-            <i class="fas fa-arrow-alt-circle-right btn btn-dark btn-lg"></i>
-            <span class="sr-only">Next</span>
-          </a>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card-header">
+                <div class="row" id="navRow">
+                    <div class="btn-group btn-group-sm btn-block" role="group">
+                        <button id="getAllCharts"
+                                class="btn btn-outline-primary"><i
+                                class="fas fa-chart-bar" href="#" role="button"
+                                aria-hidden="true"></i>Get All Charts
+                        </button>
+                    </div>
+                </div>
+                <div class="row" id="filterRow" hidden="">
+                    <div class="col mb-3">
+                        <select id="campaignnameSelect" multiple=""
+                                class="form-control form-control-sm">
+                            <option value="">Campaign</option>
+                        </select>
+                    </div>
+                    <div class="col mb-3">
+                        <select id="vendornameSelect" multiple=""
+                                class="form-control form-control-sm">
+                            <option value="">Vendor</option>
+                        </select>
+                    </div>
+                    <div class="col mb-3">
+                        <select id="countrynameSelect" multiple=""
+                                class="form-control form-control-sm">
+                            <option value="">Country</option>
+                        </select>
+                    </div>
+                    <div class="col mb-3">
+                        <select id="environmentnameSelect" multiple=""
+                                class="form-control form-control-sm">
+                            <option value="">Environment</option>
+                        </select>
+                    </div>
+                    <div class="col mb-3">
+                        <select id="kpinameSelect" multiple=""
+                                class="form-control form-control-sm">
+                            <option value="">KPI</option>
+                        </select>
+                    </div>
+                    <div class="col mb-3">
+                        <div class="row">
+                            <input id="datePicker"
+                                   class="custom-select custom-select-sm
+                                          flatpickr flatpickr-input active"
+                                   type="text" placeholder="Date"
+                                   data-id="range"
+                                   readonly="readonly" data-input>
+                        </div>
+                    </div>
+                    <div class="col mb-3">
+                        <button id="applyFilter" type="button"
+                                class="btn btn-block btn-outline-primary btn-sm">
+                            Apply Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    {% for post in posts %}
-        {% include '_post.html' %}
-    {% endfor %}
-    <script>
-        $(document).ready(function() {
-            $('select').on('change', function(e){
-                $('#carousel').carousel($(this)[0].selectedIndex - 1);
-            });
-        });
-        $(document).ready(function() {
-            $('a[id^="editTable"]').click(function () {
-                var tableName = this.id.replace('editTable', '');
-                var dropdownButton = "#" + $(this).parents()[2].children[0].id;
-                $(dropdownButton).prop("disabled", true);
-                var oldHtml = $(dropdownButton).html();
-                $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-                  );
-                animateBar();
-                getTable(tableName, dropdownButton, oldHtml);
-            });
-        });
-        function getTable(tableName, clickElem, oldHtml){
-            $.post('/get_table',
-                {
-                    table: tableName,
-                    processor:  "{{ processor_name }}"
-            }).done(function(data, status) {
-                show_modal_table('modalTableButton');
-                var newTableName = data['data']['name'];
-                createTable(data['data']['cols'], data['data']['data'],
-                    newTableName);
-            }).fail(function() {
-                console.log('fail')
-            }).always(function(){
-                $(clickElem).prop("disabled", false);
-                $(clickElem).html(oldHtml);
-                unanimateBar();
-            });
-        }
 
+    <br>
+    <div class="row">
+        <div class="col-md-12 h-50">
+            <div class="card-deck container-fluid text-center">
+                <div id="totalMetricsProgress" class='widget'></div>
+                <div id="totalMetrics" class="row w-100"></div>
+            </div>
+        </div>
+    </div>
+
+    <br>
+    <div class="row">
+        <div class="col-md-3 h-50">
+            <div class="card-header">
+                <h7 class="mb-3">Delivery</h7>
+                <select id="deliveryMetricsSelect"
+                        class="form-control form-control-sm">
+                    <option>Select Campaign</option>
+                </select>
+            </div>
+            <div class="card container-fluid shadow outer">
+                <div id="deliveryMetricsProgress" class='widget'></div>
+                <div id="deliveryMetrics" style="height:250px;"></div>
+            </div>
+        </div>
+        <div class="col-md-9 h-50">
+            <div class="card-header">
+                <h7 class="mb-3">Daily</h7>
+                <select id="dailyMetricsSelect" class="form-control form-control-sm">
+                    <option>Select Metric</option>
+                </select>
+            </div>
+            <div class="card container-fluid shadow outer">
+                <div id="dailyMetricsProgress" class='widget'></div>
+                <div id="dailyMetrics"></div>
+            </div>
+        </div>
+    </div>
+    <br>
+    <div class="row" id="thirdRow" hidden="">
+        <div class="col-md-6 h-50">
+            <div class="card-header">
+                <h7 class="mb-3">Partner</h7>
+                <select id="partnerMetricsSelect"
+                        class="form-control form-control-sm">
+                    <option>Select Metric</option>
+                </select>
+            </div>
+            <div class="card container-fluid shadow outer">
+                <div id="partnerMetricsProgress" class='widget'></div>
+                <div id="partnerMetrics"></div>
+            </div>
+        </div>
+        <div class="col-md-6 h-50">
+            <div class="card-header">
+                <h7 class="mb-3">Country</h7>
+                <select id="countryMetricsSelect"
+                        class="form-control form-control-sm">
+                    <option>Select Metric</option>
+                </select>
+            </div>
+            <div class="card container-fluid shadow outer">
+                <div id="countryMetricsProgress" class='widget'></div>
+                <div id="countryMetrics"></div>
+            </div>
+        </div>
+    </div><br>
+    <div class="row" id="fourthRow" hidden="">
+        <div class="col-md-4 h-50">
+            <div class="card-header">
+                <h7 class="mb-3">Campaign</h7>
+                <select id="campaignMetricsSelect"
+                        class="form-control form-control-sm">
+                    <option>Select Metric</option>
+                </select>
+            </div>
+            <div class="card container-fluid shadow outer">
+                <div id="campaignMetricsProgress" class='widget'></div>
+                <div id="campaignMetrics"></div>
+            </div>
+        </div>
+        <div class="col-md-4 h-50">
+            <div class="card-header">
+                <h7 class="mb-3">Device</h7>
+                <select id="environmentMetricsSelect"
+                        class="form-control form-control-sm">
+                    <option>Select Metric</option>
+                </select>
+            </div>
+            <div class="card container-fluid shadow outer">
+                <div id="environmentMetricsProgress" class='widget'></div>
+                <div id="environmentMetrics"></div>
+            </div>
+        </div>
+        <div class="col-md-4 h-50">
+            <div class="card-header">
+                <h7 class="mb-3">KPI</h7>
+                <select id="kpiMetricsSelect"
+                        class="form-control form-control-sm">
+                    <option>Select Metric</option>
+                </select>
+            </div>
+            <div class="card container-fluid shadow outer">
+                <div id="kpiMetricsProgress" class='widget'></div>
+                <div id="kpiMetrics"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
         function requestProcessor() {
             $('[id^=requestProcessor]').click(function () {
                 let dropdownButton = "#" + $(this)[0].id;
@@ -189,6 +287,117 @@
         $(document).ready(function() {
             requestProcessor()
         });
+
+        function getAllCharts(filterDict, clickElem=null, oldHtml=null,
+                              allCharts=false) {
+            let metrics = ['kpi']
+            getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name',
+                 metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
+            getMetrics('#dailyMetrics', generateAreaChart, 'eventdate',
+                metrics, filterDict);
+            getMetrics('#deliveryMetrics', generateProgressBars, 'vendorname',
+                ['netcost', 'plannednetcost'], filterDict);
+            if (allCharts) {
+                getSecondaryCharts(filterDict, clickElem)
+            }
+        }
+
+        function getSecondaryCharts(filterDict, clickElem=null) {
+            let addSelect = !(clickElem)
+            let metrics = ['kpi']
+            $('#thirdRow').removeAttr('hidden')
+            $('#fourthRow').removeAttr('hidden')
+            $('#filterRow').removeAttr('hidden')
+            getMetrics('#partnerMetrics', generateBarChart, 'vendorname',
+                metrics, filterDict, null, null, null, null, addSelect);
+            getMetrics('#countryMetrics', generateBarChart, 'countryname',
+                metrics, filterDict, null, null, null, null, addSelect);
+            getMetrics('#campaignMetrics', generateLollipopChart, 'campaignname',
+                metrics, filterDict, null, null, null, null, addSelect);
+            getMetrics('#environmentMetrics', generateLollipopChart, 'environmentname',
+                metrics, filterDict, null, null, null, null, addSelect)
+            getMetrics('#kpiMetrics', generateLollipopChart, 'kpiname',
+                metrics, filterDict, null, null, null, null, addSelect)
+        }
+
+        function getDates() {
+            const fp = document.querySelector('#datePicker')._flatpickr;
+            return [{eventdate: fp.selectedDates}]
+        }
+
+        function getFilters(colName, filterDict) {
+            let newFilter = {};
+            newFilter[colName] = $('#' + colName + 'Select')[0].selectize.items
+            filterDict = filterDict.concat(newFilter)
+            return filterDict
+        }
+
+        $(document).ready(function() {
+            $('button[id^="applyFilter"]').unbind('click').click(function () {
+                let dropdownButton = "#" + $(this)[0].id;
+                $(dropdownButton).prop("disabled", true);
+                let oldHtml = $(dropdownButton).html();
+                $(dropdownButton).html(
+                    `<span class="spinner-grow spinner-grow-sm" role="status"
+                      aria-hidden="true"></span> Loading...`
+                  );
+                animateBar();
+                let filterDict = getDates();
+                filterDict = getFilters('campaignname', filterDict);
+                filterDict = getFilters('vendorname', filterDict);
+                filterDict = getFilters('countryname', filterDict);
+                filterDict = getFilters('environmentname', filterDict);
+                filterDict = getFilters('kpiname', filterDict);
+                getAllCharts(filterDict, dropdownButton, oldHtml, true);
+            });
+        });
+
+        $(document).ready(function() {
+            $('button[id^="getAllCharts"]').unbind('click').click(function () {
+                let dropdownButton = "#" + $(this)[0].id;
+                $(dropdownButton).prop("disabled", true);
+                $(dropdownButton).html(
+                    `<span class="spinner-grow spinner-grow-sm" role="status"
+                      aria-hidden="true"></span> Loading...`
+                  );
+                animateBar();
+                let filterDict = getDates();
+                filterDict = getFilters('campaignname', filterDict);
+                filterDict = getFilters('vendorname', filterDict);
+                filterDict = getFilters('countryname', filterDict);
+                filterDict = getFilters('environmentname', filterDict);
+                filterDict = getFilters('kpiname', filterDict);
+                getSecondaryCharts(filterDict);
+                $(dropdownButton).attr("hidden",true);
+            });
+        });
+
+        function addSelectOptions(data, xCol) {
+            let i = 0;
+            let newData = $.map(data, function (obj) {
+                obj['text'] = obj['text'] || obj[xCol];
+                obj['id'] = obj['text'] || obj[xCol];
+                obj['value'] = obj['text'] || obj[xCol];
+                i++;
+                return obj;
+            });
+            let elem = selectDiv ? selectDiv : "#" + xCol + "Select"
+            let selectizeElem = $(elem)[0].selectize
+            selectizeElem.load(function (callback) {
+                callback(newData);
+            });
+        }
+
+        $(document).ready(function () {
+            $("select[id$='MetricsSelect']").selectize();
+            let today = new Date();
+            let priorDate = new Date(new Date().setDate(today.getDate() - 30));
+            $("#datePicker").flatpickr({
+                mode: "range",
+                defaultDate: [priorDate, today]
+            });
+            let filterDict = getDates();
+            getAllCharts(filterDict)
+        });
     </script>
-    {% include "_table_builder.html" %}
 {% endblock %}

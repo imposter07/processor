@@ -2628,6 +2628,7 @@ def remove_upload_id_file(processor_id, current_user_id):
         import processor.reporting.expcolumns as exp
         os.chdir(adjust_path(cur_processor.local_path))
         os.remove(os.path.join(utl.config_path, exp.upload_id_file))
+        shutil.rmtree('backup')
         return True
     except:
         _set_task_progress(100)
@@ -2957,16 +2958,20 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         os.chdir(adjust_path(cur_processor.local_path))
         if not metrics:
             metrics = ['impressions', 'clicks', 'netcost']
-        if not os.path.exists('config/upload_id_file.csv'):
-            _set_task_progress(100)
-            return [pd.DataFrame({x: [] for x in dimensions + metrics})]
         dimensions = ['event.{}'.format(x) if x == 'eventdate'
                       else x for x in dimensions]
         dimensions = ','.join(dimensions)
         metric_sql = ','.join(['SUM({0}) AS {0}'.format(x) for x in metrics])
-        up_id = pd.read_csv('config/upload_id_file.csv')
-        up_id = up_id['uploadid'][0]
-        where_sql = "WHERE fullplacement.uploadid = '{}'".format(up_id)
+        if processor_id == 23:
+            where_sql = ""
+        else:
+            if not os.path.exists('config/upload_id_file.csv'):
+                _set_task_progress(100)
+                return [pd.DataFrame({x: [] for x in dimensions + metrics})]
+            else:
+                up_id = pd.read_csv('config/upload_id_file.csv')
+                up_id = up_id['uploadid'][0]
+                where_sql = "WHERE fullplacement.uploadid = '{}'".format(up_id)
         where_args = []
         if filter_dict:
             for f in filter_dict:
@@ -2983,6 +2988,8 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                             w = " AND {} IN ({})".format(
                                 k, ', '.join(['%s'] * len(v)))
                             where_args.extend(v)
+                        if where_sql == "":
+                            w = "{}{}".format("WHERE", w[4:])
                         where_sql += w
         _set_task_progress(30)
         command = """SELECT {0},{1}

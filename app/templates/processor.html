@@ -11,6 +11,16 @@
                    role="button"></i>
                 {{ _('Request Processor') }}
     </button><br>
+    <div class="col mb-3">
+        <div class="row">
+            <input id="datePicker"
+                   class="custom-select custom-select-sm
+                                          flatpickr flatpickr-input active"
+                   type="text" placeholder="Date"
+                   data-id="range"
+                   readonly="readonly" data-input>
+        </div>
+    </div>
 {% endblock %}
 
 {% block app_header %}
@@ -83,6 +93,12 @@
                 </div>
                 <div class="row" id="filterRow" hidden="">
                     <div class="col mb-3">
+                        <select id="productnameSelect" multiple=""
+                                class="form-control form-control-sm">
+                            <option value="">Product</option>
+                        </select>
+                    </div>
+                    <div class="col mb-3">
                         <select id="campaignnameSelect" multiple=""
                                 class="form-control form-control-sm">
                             <option value="">Campaign</option>
@@ -147,15 +163,15 @@
     <div class="row">
         <div class="col-md-3 h-50">
             <div class="card-header">
-                <h7 class="mb-3">Delivery</h7>
+                <h7 class="mb-3">Products</h7>
                 <select id="deliveryMetricsSelect"
                         class="form-control form-control-sm">
-                    <option>Select Campaign</option>
+                    <option>Select Metric</option>
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="deliveryMetricsProgress" class='widget'></div>
-                <div id="deliveryMetrics" style="height:250px;"></div>
+                <div id="productMetricsProgress" class='widget'></div>
+                <div id="productMetrics" style="height:250px;"></div>
             </div>
         </div>
         <div class="col-md-9 h-50">
@@ -291,12 +307,16 @@
         function getAllCharts(filterDict, clickElem=null, oldHtml=null,
                               allCharts=false) {
             let metrics = ['kpi']
+            let addSelect = !(clickElem)
+            /*
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name',
                  metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
+
+             */
             getMetrics('#dailyMetrics', generateAreaChart, 'eventdate',
                 metrics, filterDict);
-            getMetrics('#deliveryMetrics', generateProgressBars, 'vendorname',
-                ['netcost', 'plannednetcost'], filterDict);
+            getMetrics('#productMetrics', generateBarChart, 'productname',
+                metrics, filterDict, null, null, null, null);
             if (allCharts) {
                 getSecondaryCharts(filterDict, clickElem)
             }
@@ -343,6 +363,7 @@
                   );
                 animateBar();
                 let filterDict = getDates();
+                filterDict = getFilters('productname', filterDict);
                 filterDict = getFilters('campaignname', filterDict);
                 filterDict = getFilters('vendorname', filterDict);
                 filterDict = getFilters('countryname', filterDict);
@@ -362,6 +383,7 @@
                   );
                 animateBar();
                 let filterDict = getDates();
+                filterDict = getFilters('productname', filterDict)
                 filterDict = getFilters('campaignname', filterDict);
                 filterDict = getFilters('vendorname', filterDict);
                 filterDict = getFilters('countryname', filterDict);
@@ -394,7 +416,8 @@
             let priorDate = new Date(new Date().setDate(today.getDate() - 30));
             $("#datePicker").flatpickr({
                 mode: "range",
-                defaultDate: [priorDate, today]
+                defaultDate: [priorDate, today],
+                inline: true
             });
             let filterDict = getDates();
             getAllCharts(filterDict)

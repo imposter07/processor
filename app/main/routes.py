@@ -1861,7 +1861,7 @@ def edit_processor_conversions(object_name):
                                     object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_conversions',
-                                    object_namev=cur_proc.name))
+                                    object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
@@ -3107,7 +3107,6 @@ def get_metrics():
             job_name = '.get_raw_file_delta_table'
     else:
         job_name = '.get_data_tables_from_db'
-    print('job')
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
     job = task.wait_and_get_job(force_return=True)

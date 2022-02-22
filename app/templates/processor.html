@@ -161,10 +161,10 @@
 
     <br>
     <div class="row">
-        <div class="col-md-3 h-50">
+        <div class="col h-50">
             <div class="card-header">
                 <h7 class="mb-3">Products</h7>
-                <select id="deliveryMetricsSelect"
+                <select id="productMetricsSelect"
                         class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
@@ -174,7 +174,7 @@
                 <div id="productMetrics" style="height:250px;"></div>
             </div>
         </div>
-        <div class="col-md-9 h-50">
+        <div class="col h-50">
             <div class="card-header">
                 <h7 class="mb-3">Daily</h7>
                 <select id="dailyMetricsSelect" class="form-control form-control-sm">
@@ -308,15 +308,12 @@
                               allCharts=false) {
             let metrics = ['kpi']
             let addSelect = !(clickElem)
-            /*
             getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name',
                  metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
-
-             */
             getMetrics('#dailyMetrics', generateAreaChart, 'eventdate',
                 metrics, filterDict);
             getMetrics('#productMetrics', generateBarChart, 'productname',
-                metrics, filterDict, null, null, null, null);
+                metrics, filterDict, null, null, null, null, addSelect);
             if (allCharts) {
                 getSecondaryCharts(filterDict, clickElem)
             }
@@ -393,22 +390,6 @@
                 $(dropdownButton).attr("hidden",true);
             });
         });
-
-        function addSelectOptions(data, xCol) {
-            let i = 0;
-            let newData = $.map(data, function (obj) {
-                obj['text'] = obj['text'] || obj[xCol];
-                obj['id'] = obj['text'] || obj[xCol];
-                obj['value'] = obj['text'] || obj[xCol];
-                i++;
-                return obj;
-            });
-            let elem = selectDiv ? selectDiv : "#" + xCol + "Select"
-            let selectizeElem = $(elem)[0].selectize
-            selectizeElem.load(function (callback) {
-                callback(newData);
-            });
-        }
 
         $(document).ready(function () {
             $("select[id$='MetricsSelect']").selectize();

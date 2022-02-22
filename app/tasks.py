@@ -2876,23 +2876,26 @@ def get_processor_total_metrics(processor_id, current_user_id,
         import processor.reporting.utils as utl
         topline_analysis = cur_processor.processor_analysis.filter_by(
             key=az.Analyze.topline_col).all()
-        if not topline_analysis:
+        if processor_id == 23:
+            df = pd.DataFrame(columns=['impressions', 'clicks', 'netcost'])
+        elif not topline_analysis:
             _set_task_progress(100)
             return [pd.DataFrame()]
-        df = clean_topline_df_from_db(
-            [x for x in topline_analysis
-             if x.parameter == az.Analyze.topline_col][0], 'current_value')
-        tdf = clean_topline_df_from_db(
-            [x for x in topline_analysis
-             if x.parameter == az.Analyze.lw_topline_col][0], 'new_value')
-        twdf = clean_topline_df_from_db(
-            [x for x in topline_analysis
-             if x.parameter == az.Analyze.tw_topline_col][0], 'old_value')
-        df = df.join(tdf)
-        df = df.join(twdf)
+        else:
+            df = clean_topline_df_from_db(
+                [x for x in topline_analysis
+                 if x.parameter == az.Analyze.topline_col][0], 'current_value')
+            tdf = clean_topline_df_from_db(
+                [x for x in topline_analysis
+                 if x.parameter == az.Analyze.lw_topline_col][0], 'new_value')
+            twdf = clean_topline_df_from_db(
+                [x for x in topline_analysis
+                 if x.parameter == az.Analyze.tw_topline_col][0], 'old_value')
+            df = df.join(tdf)
+            df = df.join(twdf)
         if filter_dict:
             tdf = get_data_tables_from_db(
-                processor_id, current_user_id, dimensions=['productname'],
+                processor_id, current_user_id, dimensions=[],
                 metrics=['impressions', 'clicks', 'netcost'],
                 filter_dict=filter_dict)
             tdf = tdf[0][['impressions', 'clicks', 'netcost']]
@@ -2900,7 +2903,11 @@ def get_processor_total_metrics(processor_id, current_user_id,
                 columns={'impressions': 'Impressions', 'clicks': 'Clicks',
                          'netcost': 'Net Cost Final'})
             tdf['CPC'] = tdf['Net Cost Final'] / tdf['Clicks']
-            df = df.join(tdf.T)
+            if df.empty:
+                df = tdf.T
+                df['current_value'] = df[0]
+            else:
+                df = df.join(tdf.T)
             df['change'] = (df[0].astype(float) /
                             df['current_value'].astype(float))
             df = df.drop(columns='current_value').rename(
@@ -2962,6 +2969,10 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                       else x for x in dimensions]
         dimensions = ','.join(dimensions)
         metric_sql = ','.join(['SUM({0}) AS {0}'.format(x) for x in metrics])
+        if dimensions:
+            select_sql = '{0},{1}'.format(dimensions, metric_sql)
+        else:
+            select_sql = metric_sql
         if processor_id == 23:
             where_sql = ""
         else:
@@ -2992,7 +3003,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                             w = "{}{}".format("WHERE", w[4:])
                         where_sql += w
         _set_task_progress(30)
-        command = """SELECT {0},{1}
+        command = """SELECT {0}
             FROM lqadb.event
             FULL JOIN lqadb.fullplacement ON event.fullplacementid = fullplacement.fullplacementid
             FULL JOIN lqadb.plan ON plan.fullplacementid = fullplacement.fullplacementid
@@ -3002,9 +3013,10 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
             LEFT JOIN lqadb.product ON campaign.productid = product.productid
             LEFT JOIN lqadb.environment ON fullplacement.environmentid = environment.environmentid
             LEFT JOIN lqadb.kpi ON fullplacement.kpiid = kpi.kpiid
-            {2}
-            GROUP BY {0}
-        """.format(dimensions, metric_sql, where_sql)
+            {1}
+        """.format(select_sql, where_sql)
+        if dimensions:
+            command += 'GROUP BY {}'.format(dimensions)
         db_class = export.DB()
         db_class.input_config('dbconfig.json')
         db_class.connect()

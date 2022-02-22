@@ -295,22 +295,6 @@
             });
         });
 
-        function addSelectOptions(data, xCol) {
-            let i = 0;
-            let newData = $.map(data, function (obj) {
-                obj['text'] = obj['text'] || obj[xCol];
-                obj['id'] = obj['text'] || obj[xCol];
-                obj['value'] = obj['text'] || obj[xCol];
-                i++;
-                return obj;
-            });
-            let elem = selectDiv ? selectDiv : "#" + xCol + "Select"
-            let selectizeElem = $(elem)[0].selectize
-            selectizeElem.load(function (callback) {
-                callback(newData);
-            });
-        }
-
         $(document).ready(function () {
             $("select[id$='MetricsSelect']").selectize();
             $("#datePicker").flatpickr({

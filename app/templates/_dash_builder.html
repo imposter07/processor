@@ -994,8 +994,6 @@
                 force_return: forceReturn
             },
         }).done(function (data, status) {
-            console.log(data)
-            console.log(status)
             if (forceReturn) {
                 getMetricsComplete(chart, data, xCol, yCol,
                     createVisualFunction, filterDict, addSelect, elem)
@@ -1007,7 +1005,6 @@
                     oldHtml, clickElem)
             }
         }).fail(function (jqXHR, textStatus) {
-            console.log('fail:' + jqXHR);
             console.log("Request failed: " + textStatus);
         }).always(function () {
             if (forceReturn) {

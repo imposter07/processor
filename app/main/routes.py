@@ -3119,12 +3119,12 @@ def get_metrics():
         job_name = '.get_data_tables_from_db'
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
-    if 'force_return' in request.form and not request.form['force_return']:
+    if 'force_return' in request.form and request.form['force_return'] == 'false':
+        data = {'data': 'success', 'task': task.id, 'level': 'success'}
+    else:
         job = task.wait_and_get_job(force_return=True)
         df = job.result[0]
         data = df.reset_index().to_dict(orient='records')
-    else:
-        data = {'data': 'success', 'task': task.id, 'level': 'success'}
     return jsonify(data)
 
 

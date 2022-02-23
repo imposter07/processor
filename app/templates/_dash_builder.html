@@ -956,6 +956,8 @@
                 object_id: procId
             },
         }).done(function (data, status) {
+            console.log(data)
+            console.log(status)
             chart.update(100);
             if (Array.isArray(data) && data.length) {
                 yCol = (yCol.includes('kpi')) ? (
@@ -968,6 +970,7 @@
                 }
             }
         }).fail(function (jqXHR, textStatus) {
+            console.log('fail:' + jqXHR);
             console.log("Request failed: " + textStatus);
         }).always(function () {
             $(elem + 'Progress').remove()

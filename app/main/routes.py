@@ -26,7 +26,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project,\
-    Notes, Tutorial, Walkthrough, TutorialStage, WalkthroughSlide
+    Notes, Tutorial, Walkthrough, TutorialStage, WalkthroughSlide, Task
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -523,12 +523,21 @@ def get_task_progress():
         cur_obj = Processor.query.get(request.form['object_id'])
     else:
         cur_obj = cur_obj.query.filter_by(name=object_name).first()
-    task = cur_obj.get_task_in_progress(name=job_name)
+    data = {}
+    if 'task' in request.form and request.form['task']:
+        task = Task.query.get(request.form['task'])
+        if task.complete:
+            job = task.wait_and_get_job(force_return=True)
+            df = job.result[0]
+            data['data'] = df.reset_index().to_dict(orient='records')
+    else:
+        task = cur_obj.get_task_in_progress(name=job_name)
     if task:
         percent = task.get_progress()
     else:
         percent = 90
-    return jsonify({'percent': percent})
+    data['percent'] = percent
+    return jsonify(data)
 
 
 @bp.route('/translate', methods=['POST'])
@@ -3109,9 +3118,12 @@ def get_metrics():
         job_name = '.get_data_tables_from_db'
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
-    job = task.wait_and_get_job(force_return=True)
-    df = job.result[0]
-    data = df.reset_index().to_dict(orient='records')
+    if 'force_return' in request.form and request.form['force_return']:
+        job = task.wait_and_get_job(force_return=True)
+        df = job.result[0]
+        data = df.reset_index().to_dict(orient='records')
+    else:
+        data = {'data': 'success', 'task': task.id, 'level': 'success'}
     return jsonify(data)
 
 

@@ -910,7 +910,11 @@
     }
 
     function getDownloadProgressForRadial(tableName, chart, downloadingProgress,
-                                          procId = null) {
+                                          procId = null, forceReturn = true,
+                                          xCol = null, yCol = null,
+                                          createVisualFunction = null,
+                                          filterDict = null, addSelect = null,
+                                          elem = null, task = null) {
         downloadingProgress = setInterval(function () {
             $.post('/get_task_progress',
                 {
@@ -918,19 +922,51 @@
                     object_name: "{{ object_name }}",
                     object_level: "{{ edit_name }}",
                     task_name: tableName,
-                    object_id: procId
+                    object_id: procId,
+                    task: task
                 }).done(function (data, status) {
-                let newPercent = data['percent'];
-                chart.update(parseInt(newPercent))
+                    let newPercent = data['percent'];
+                    chart.update(parseInt(newPercent))
+                    if (!forceReturn && 'data' in data) {
+                        getMetricsComplete(chart, data['data'], xCol, yCol,
+                            createVisualFunction, filterDict, addSelect, elem);
+
+                    }
             });
         }, 10000);
         return downloadingProgress
     }
 
+    function getMetricsComplete(chart, data, xCol, yCol, createVisualFunction,
+        filterDict, addSelect, elem) {
+        chart.update(100);
+        if (Array.isArray(data) && data.length) {
+            yCol = (yCol.includes('kpi')) ? (
+                Object.keys(data[0]).filter(function (e) {
+                    return e !== 'index' && e !== xCol
+                })) : yCol
+            createVisualFunction(elem, data, xCol, yCol, filterDict);
+            if (addSelect) {
+                addSelectOptions(data, xCol)
+            }
+        }
+    }
+
+    function turnOffRadialProgress(elem, downloadingProgress, oldHtml, clickElem) {
+        $(elem + 'Progress').remove()
+        clearInterval(downloadingProgress);
+        if (oldHtml) {
+            $(clickElem).prop("disabled", false);
+            $(clickElem).html(oldHtml);
+            unanimateBar();
+        }
+    }
+
     function getMetrics(elem, createVisualFunction, xCol, yCol,
                         filterDict = null, parentClass = "", parentHeight = 250,
                         clickElem = null, oldHtml = null, addSelect = false,
-                        dashboardId = null, vendorKey = null, procId = null) {
+                        dashboardId = null, vendorKey = null, procId = null,
+                        forceReturn = true ) {
         if (filterDict) {
             $(elem).parent().html(
                 '<div id="' + elem.substring(1) +
@@ -953,38 +989,36 @@
                 filter_dict: JSON.stringify(filterDict),
                 dashboard_id: dashboardId,
                 vendor_key: vendorKey,
-                object_id: procId
+                object_id: procId,
+                force_return: forceReturn
             },
         }).done(function (data, status) {
             console.log(data)
             console.log(status)
-            chart.update(100);
-            if (Array.isArray(data) && data.length) {
-                yCol = (yCol.includes('kpi')) ? (
-                    Object.keys(data[0]).filter(function (e) {
-                        return e !== 'index' && e !== xCol
-                    })) : yCol
-                createVisualFunction(elem, data, xCol, yCol, filterDict);
-                if (addSelect) {
-                    addSelectOptions(data, xCol)
-                }
+            if (forceReturn) {
+                getMetricsComplete(chart, data, xCol, yCol,
+                    createVisualFunction, filterDict, addSelect, elem)
+            }
+            else {
+                downloadingProgress = getDownloadProgressForRadial('OutputData',
+                    chart, downloadingProgress, procId, forceReturn, xCol, yCol,
+                    createVisualFunction, filterDict, addSelect, elem, data['task'])
             }
         }).fail(function (jqXHR, textStatus) {
             console.log('fail:' + jqXHR);
             console.log("Request failed: " + textStatus);
         }).always(function () {
-            $(elem + 'Progress').remove()
-            clearInterval(downloadingProgress);
-            if (oldHtml) {
-                $(clickElem).prop("disabled", false);
-                $(clickElem).html(oldHtml);
-                unanimateBar();
+            if (forceReturn) {
+                turnOffRadialProgress(elem, downloadingProgress, oldHtml, clickElem);
             }
         });
         let chart = radialProgress(elem + 'Progress')
         let downloadingProgress = null
-        downloadingProgress = getDownloadProgressForRadial('OutputData',
-            chart, downloadingProgress, procId)
+        if (forceReturn) {
+            downloadingProgress = getDownloadProgressForRadial('OutputData',
+                chart, downloadingProgress, procId, forceReturn, xCol, yCol,
+                createVisualFunction, filterDict, addSelect, elem)
+        }
     }
 
     function radialProgress(selector) {

@@ -527,9 +527,10 @@ def get_task_progress():
     if 'task' in request.form and request.form['task']:
         task = Task.query.get(request.form['task'])
         if task.complete:
-            job = task.wait_and_get_job(force_return=True)
-            df = job.result[0]
-            data['data'] = df.reset_index().to_dict(orient='records')
+            job = task.get_rq_job()
+            if job.result:
+                df = job.result[0]
+                data['data'] = df.reset_index().to_dict(orient='records')
     else:
         task = cur_obj.get_task_in_progress(name=job_name)
     if task:

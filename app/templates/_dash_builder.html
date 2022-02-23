@@ -914,7 +914,8 @@
                                           xCol = null, yCol = null,
                                           createVisualFunction = null,
                                           filterDict = null, addSelect = null,
-                                          elem = null, task = null) {
+                                          elem = null, task = null,
+                                          oldHtml = null, clickElem = null) {
         downloadingProgress = setInterval(function () {
             $.post('/get_task_progress',
                 {
@@ -930,7 +931,7 @@
                     if (!forceReturn && 'data' in data) {
                         getMetricsComplete(chart, data['data'], xCol, yCol,
                             createVisualFunction, filterDict, addSelect, elem);
-
+                        turnOffRadialProgress(elem, downloadingProgress, oldHtml, clickElem);
                     }
             });
         }, 10000);
@@ -1002,7 +1003,8 @@
             else {
                 downloadingProgress = getDownloadProgressForRadial('OutputData',
                     chart, downloadingProgress, procId, forceReturn, xCol, yCol,
-                    createVisualFunction, filterDict, addSelect, elem, data['task'])
+                    createVisualFunction, filterDict, addSelect, elem, data['task'],
+                    oldHtml, clickElem)
             }
         }).fail(function (jqXHR, textStatus) {
             console.log('fail:' + jqXHR);

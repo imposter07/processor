@@ -8,8 +8,9 @@ import redis
 from datetime import datetime, timedelta
 from datetime import time as datetime_time
 from hashlib import md5
-from flask import current_app, url_for
+from flask import current_app, url_for, request
 from flask_login import UserMixin
+from flask_babel import _, get_locale
 import processor.reporting.vmcolumns as vmc
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login
@@ -278,6 +279,27 @@ class Post(SearchableMixin, db.Model):
     def processor_run_failed(self):
         return self.body[-11:] == 'run failed.'
 
+    @staticmethod
+    def get_posts_for_objects(cur_obj, fix_id, current_page, object_name,
+                              note_id=None):
+        page = request.args.get('page', 1, type=int)
+        post_filter = {'{}_id'.format(object_name): cur_obj.id}
+        if fix_id:
+            post_filter['request_id'] = fix_id
+        if note_id:
+            post_filter['note_id'] = note_id
+        query = Post.query
+        for attr, value in post_filter.items():
+            query = query.filter(getattr(Post, attr) == value)
+        posts = (query.
+                 order_by(Post.timestamp.desc()).
+                 paginate(page, 5, False))
+        next_url = url_for('main.' + current_page, page=posts.next_num,
+                           object_name=cur_obj.name) if posts.has_next else None
+        prev_url = url_for('main.' + current_page, page=posts.prev_num,
+                           object_name=cur_obj.name) if posts.has_prev else None
+        return posts, next_url, prev_url
+
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -401,6 +423,7 @@ class Campaign(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
     processor = db.relationship('Processor', backref='campaign', lazy='dynamic')
     uploader = db.relationship('Uploader', backref='campaign', lazy='dynamic')
+    plan = db.relationship('Plan', backref='campaign', lazy='dynamic')
 
     def check(self):
         campaign_check = Campaign.query.filter_by(
@@ -1266,6 +1289,30 @@ class Plan(db.Model):
         backref=db.backref('project_number_plan', lazy='dynamic'),
         lazy='dynamic')
     partners = db.relationship('Partner', backref='plan', lazy='dynamic')
+
+    @staticmethod
+    def get_current_plan(object_name=None, current_page=None, edit_progress=0,
+                         edit_name='Page', buttons=None):
+        kwargs = dict(title=_('Plan'), object_name=object_name,
+                      object_function_call={'object_name': object_name},
+                      edit_progress=edit_progress, edit_name=edit_name)
+        if object_name:
+            cur_obj = Plan.query.filter_by(name=object_name).first_or_404()
+            kwargs['object'] = cur_obj
+            kwargs['buttons'] = [{'Basic': 'plan.edit_plan'},
+                                 {'Topline': 'plan.topline'}]
+            posts, next_url, prev_url = Post.get_posts_for_objects(
+                cur_obj, None, current_page, 'plan')
+            kwargs['posts'] = posts.items
+            kwargs['next_url'] = next_url
+            kwargs['prev_url'] = prev_url
+        return kwargs
+
+    def get_url(self):
+        return url_for('plan.edit_plan', object_name=self.name)
+
+    def get_last_post(self):
+        return self.posts.order_by(Post.timestamp.desc()).first()
 
 
 class Partner(db.Model):

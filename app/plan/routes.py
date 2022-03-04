@@ -5,7 +5,7 @@ from app.plan import bp
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm
-from app.models import User, Client, Product, Campaign, Plan, Post
+from app.models import User, Client, Product, Campaign, Plan, Post, Partner
 
 
 @bp.route('/plan', methods=['GET', 'POST'])
@@ -104,4 +104,6 @@ def edit_plan(object_name):
 def topline(object_name):
     kwargs = Plan.get_current_plan(object_name, 'edit_plan', edit_progress=100,
                                    edit_name='Topline')
+    kwargs['partners'] = Partner.query.filter_by(
+        plan_id=kwargs['object'].id).all()
     return render_template('plan/plan.html', **kwargs)

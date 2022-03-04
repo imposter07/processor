@@ -1,4 +1,90 @@
 {% extends "create_processor.html" %}
 {% block app_content_2 %}
+    {% if edit_name == 'Topline' %}
+        <button id="addPartner"
+                class="btn btn-outline-success btn-block text-left"
+                type="button" href="">
+            <i class="fas fa-plus"
+               role="button"></i>
+            {{ _('Add Partner') }}
+        </button><br>
+        <div class="accordion" id="accordionPlan">
+            {% for partner in partners %}
+                {% set outer_loop = loop %}
+                <div class="card{{ loop.index }}">
+                    <button class="btn btn-block collapsed text-left progress-bar"
+                            id="heading{{ loop.index }}"
+                            type="button"
+                            style="background-color: #ffcccb;width:100%;color:black;"
+                            data-toggle="collapse"
+                            data-target="#collapsePartner{{ loop.index }}"
+                            aria-expanded="false"
+                            aria-controls="collapsePartner{{ loop.index }}">
+                        {{ partner.name }} - {{ partner.start_date }}
+                        - {{ partner.end_date }}
+                    </button>
+                    <div id="collapsePartner{{ loop.index }}" class="collapse"
+                         aria-labelledby="heading{{ loop.index }}"
+                         data-parent="#accordionPlan">
+                        <div class="card-body">
+                            <div class="accordion" id="accordionProcessor">
 
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    <script>
+        function addPartner(clickElem, oldHtml) {
+            let d1 = document.getElementById('accordionPlan');
+            let loopIndex = d1.children[d1.children.length - 1]
+            loopIndex = loopIndex ? loopIndex.id.replace('card', '') : '0'
+            let partnerCard = `
+                <div class="card` + loopIndex + `">
+                    <button class="btn btn-block collapsed text-left progress-bar"
+                            id="heading"` + loopIndex + `
+                            type="button"
+                            style="background-color: #ffcccb;width:100%;color:black;"
+                            data-toggle="collapse"
+                            data-target="#collapsePartner` + loopIndex + `"
+                            aria-expanded="false"
+                            aria-controls="collapsePartner` + loopIndex + `">
+                        Partner - START - END
+                    </button>
+                    <div id="collapsePartner` + loopIndex + `" class="collapse"
+                         aria-labelledby="heading` + loopIndex + `"
+                         data-parent="#accordionPlan">
+                        <div class="card-body">
+                            <div class="accordion" id="accordionProcessor` + loopIndex + `">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            d1.insertAdjacentHTML('beforeend', partnerCard);
+            $(clickElem).prop("disabled", false);
+            $(clickElem).html(oldHtml);
+        }
+
+        function addPartnerOnClick() {
+            $('[id^=addPartner]').unbind().click(function () {
+                let clickElem = "#" + $(this)[0].id;
+                $(clickElem).prop("disabled", true);
+                let oldHtml = $(clickElem).html();
+                $(clickElem).html(
+                    `<span class="spinner-grow spinner-grow-sm" role="status"
+                  aria-hidden="true"></span> Loading...`
+                );
+
+                addPartner(clickElem, oldHtml);
+            })
+        }
+
+        $(document).ready(function () {
+            addPartnerOnClick()
+        });
+
+    </script>
 {% endblock %}

@@ -1327,6 +1327,26 @@ class Partner(db.Model):
     placements = db.relationship('PartnerPlacements',
                                  backref='partner', lazy='dynamic')
 
+    def get_form_dict(self):
+        form_dict = {
+            'name': self.name,
+            'total_budget': self.total_budget,
+            'estimated_cpm': self.estimateD_cpm,
+            'estimated_cpc': self.estimated_cpc,
+            'start_date': self.start_date,
+            'end_date': self.end_date
+        }
+        return form_dict
+
+    def set_from_form(self, form, current_plan):
+        self.plan_id = current_plan.id
+        self.name = form['name']
+        self.total_budget = form['total_budget']
+        self.estimated_cpm = form['estimated_cpm']
+        self.estimated_cpc = form['estimated_cpc']
+        self.start_date = form['start_date']
+        self.end_date = form['end_date']
+
 
 class PartnerPlacements(db.Model):
     id = db.Column(db.Integer, primary_key=True)

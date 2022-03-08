@@ -43,3 +43,10 @@ def group_sql_to_dict(original_query_list, group_by='user_id'):
     for obj in original_query_list:
         groups[obj.__dict__[group_by]].append(obj)
     return groups
+
+
+def get_col_from_serialize_dict(data, col_name):
+    col_keys = [k for k, v in data.items() if v == col_name and 'name' in k]
+    col_val_keys = [x.replace('name', 'value') for x in col_keys]
+    col_vals = [v for k, v in data.items() if k in col_val_keys]
+    return col_vals

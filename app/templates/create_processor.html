@@ -477,7 +477,9 @@
             let validForm = document.getElementById('base_form_id').reportValidity()
             if (validForm) {
                 if ("{{ edit_name }}" === "Clean") {
-                    submitCleanForm(form_continue)
+                    submitCleanForm(form_continue)}
+                else if ("{{ edit_name }}" === "Topline") {
+                    submitToplineForm(form_continue)
                 } else {
                     document.getElementById("base_form_id").submit();
                 }

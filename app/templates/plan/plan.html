@@ -8,41 +8,15 @@
                role="button"></i>
             {{ _('Add Partner') }}
         </button><br>
-        <div class="accordion" id="accordionPlan">
-            {% for partner in partners %}
-                {% set outer_loop = loop %}
-                <div class="card{{ loop.index }}">
-                    <button class="btn btn-block collapsed text-left progress-bar"
-                            id="heading{{ loop.index }}"
-                            type="button"
-                            style="background-color: #ffcccb;width:100%;color:black;"
-                            data-toggle="collapse"
-                            data-target="#collapsePartner{{ loop.index }}"
-                            aria-expanded="false"
-                            aria-controls="collapsePartner{{ loop.index }}">
-                        {{ partner.name }} - {{ partner.start_date }}
-                        - {{ partner.end_date }}
-                    </button>
-                    <div id="collapsePartner{{ loop.index }}" class="collapse"
-                         aria-labelledby="heading{{ loop.index }}"
-                         data-parent="#accordionPlan">
-                        <div class="card-body">
-                            <div class="accordion" id="accordionProcessor">
-
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
+        <div class="accordion" id="accordionPlan"></div>
     {% endif %}
     <script>
         function addPartner(clickElem, oldHtml) {
             let d1 = document.getElementById('accordionPlan');
             let loopIndex = d1.children[d1.children.length - 1]
-            loopIndex = loopIndex ? loopIndex.id.replace('card', '') : '0'
+            loopIndex = loopIndex ? (parseInt(loopIndex.id.replace('card', '')) + 1).toString() : '0'
             let partnerCard = `
-                <div class="card` + loopIndex + `">
+                <div class="card" id="card` + loopIndex + `">
                     <button class="btn btn-block collapsed text-left progress-bar"
                             id="heading"` + loopIndex + `
                             type="button"
@@ -51,7 +25,35 @@
                             data-target="#collapsePartner` + loopIndex + `"
                             aria-expanded="false"
                             aria-controls="collapsePartner` + loopIndex + `">
-                        Partner - START - END
+                    <form id="toplinePartner` + loopIndex + `"  class="row">
+                        <div class="col form-group">
+                            <select id="partnerSelect` + loopIndex + `"
+                                    class="form-control form-control-sm"
+                                    name="name` + loopIndex + `">
+                                <option value="">Partner Name</option>
+                            </select>
+                        </div>
+                        <div class="col form-group">
+                            <input id="datePicker` + loopIndex + `"
+                                   class="custom-select custom-select-sm
+                                                          flatpickr flatpickr-input active"
+                                   type="text" placeholder="Date"
+                                   data-id="range" name="dates` + loopIndex + `"
+                                   readonly="readonly" data-input>
+                        </div>
+                        <div class="col form-group">
+                          <label class="control-label" for="total_budget` + loopIndex + `">Total Budget</label>
+                          <input class="form-control form-control-sm" id="total_budget` + loopIndex + `" name="total_budget` + loopIndex + `" step="any" type="number" value="">
+                        </div>
+                        <div class="col form-group">
+                          <label class="control-label" for="estimated_cpm` + loopIndex + `">CPM</label>
+                          <input class="form-control form-control-sm" id="estimated_cpm` + loopIndex + `" name="estimated_cpm` + loopIndex + `" step="any" type="number" value="">
+                        </div>
+                        <div class="col form-group">
+                          <label class="control-label" for="estimated_cpc` + loopIndex + `">CPC</label>
+                          <input class="form-control form-control-sm" id="estimated_cpc` + loopIndex + `" name="estimated_cpc` + loopIndex + `" step="any" type="number" value="">
+                        </div>
+                    </form>
                     </button>
                     <div id="collapsePartner` + loopIndex + `" class="collapse"
                          aria-labelledby="heading` + loopIndex + `"
@@ -66,6 +68,8 @@
             d1.insertAdjacentHTML('beforeend', partnerCard);
             $(clickElem).prop("disabled", false);
             $(clickElem).html(oldHtml);
+            addSelectize()
+            addDatePicker()
         }
 
         function addPartnerOnClick() {
@@ -82,8 +86,57 @@
             })
         }
 
+        function addDatePicker() {
+            $('[id^=datePicker]').flatpickr({
+                mode: "range",
+            });
+        }
+
+        function submitToplineForm(formContinue) {
+            let formTopline = $('[id^=toplinePartner]').serializeArray()
+            saveToplinePartners(formTopline, formContinue)
+        }
+
+        function saveToplinePartners(formTopline, formContinue) {
+            $.ajax({
+                type: "POST",
+                url: "/save_topline",
+                data: {
+                    object_name: "{{ object_name }}",
+                    object_type: "{{ title }}",
+                    object_level: "{{ edit_name }}",
+                    placement_form: formTopline
+                },
+            }).done(function (data, status) {
+                displayAlert(data['message'], data['level'])
+                if (data['level'] === 'success') {
+                    let element = document.getElementsByClassName('jumbotron')[0];
+                    let originalColor = element.style.backgroundColor;
+                    element.style.backgroundColor = "#b3ecff";
+                    let t = setTimeout(function () {
+                        element.style.backgroundColor = originalColor;
+                    }, (2 * 1000));
+                if (formContinue) {
+                    let nextPage = window.location.href.replace(
+                        '#', '').replace('clean', 'export')
+                    window.location.href = nextPage
+                    }
+                }
+
+            }).fail(function (jqXHR, textStatus) {
+
+            }).always(function () {
+                $('#loadingBtn').remove()
+                $('#loadRefresh').show()
+                unanimateBar()
+            });
+        }
+
         $(document).ready(function () {
-            addPartnerOnClick()
+            addPartnerOnClick();
+
+            addSelectize();
+            addDatePicker();
         });
 
     </script>

@@ -1,11 +1,13 @@
 from app import db
+import datetime as dt
 import app.utils as utl
 from flask_babel import _
 from app.plan import bp
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
-from app.plan.forms import PlanForm, EditPlanForm
-from app.models import User, Client, Product, Campaign, Plan, Post, Partner
+from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm
+from app.models import User, Client, Product, Campaign, Plan, Post, Partner, \
+    PartnerPlacements
 
 
 @bp.route('/plan', methods=['GET', 'POST'])
@@ -106,4 +108,49 @@ def topline(object_name):
                                    edit_name='Topline')
     kwargs['partners'] = Partner.query.filter_by(
         plan_id=kwargs['object'].id).all()
+    kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/save_topline', methods=['GET', 'POST'])
+@login_required
+def save_topline():
+    obj_name = request.form['object_name']
+    cur_plan = Plan.query.filter_by(name=obj_name).first_or_404()
+    data = request.form.to_dict()
+    topline_list = []
+    num_partners = max([v.split('name')[1] for k, v in data.items() if
+                        'name' in v and 'name' in k])
+    for x in range(int(num_partners) + 1):
+        tl_dict = {}
+        for col in ['name', 'dates', 'total_budget', 'estimated_cpm',
+                    'estimated_cpc']:
+            col_name = '{}{}'.format(col, x)
+            new_data = utl.get_col_from_serialize_dict(data, col_name)[0]
+            if col == 'dates':
+                date_list = new_data.split(' to ')
+                sd = date_list[0]
+                ed = date_list[1]
+                tl_dict['start_date'] = dt.datetime.strptime(sd, '%Y-%m-%d')
+                tl_dict['end_date'] = dt.datetime.strptime(ed, '%Y-%m-%d')
+            else:
+                tl_dict[col] = new_data
+        topline_list.append(tl_dict)
+    old_part = Partner.query.filter_by(plan_id=cur_plan.id).all()
+    if old_part:
+        for p in old_part:
+            new_p = [x for x in topline_list if p.name == x['name']]
+            if new_p:
+                new_p = new_p[0]
+                p.set_from_form(form=new_p, current_plan=cur_plan)
+                db.session.commit()
+                topline_list = [x for x in topline_list if p.name != x['name']]
+            else:
+                db.session.delete(p)
+    for p in topline_list:
+        new_p = Partner()
+        new_p.set_from_form(form=p, current_plan=cur_plan)
+        db.session.add(new_p)
+        db.session.commit()
+    return jsonify({'message': 'This data source {} was saved!'.format(
+        obj_name), 'level': 'success'})

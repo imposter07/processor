@@ -49,3 +49,7 @@ class EditPlanForm(PlanForm):
             processor = Plan.query.filter_by(name=self.name.data).first()
             if processor is not None:
                 raise ValidationError(_l('Please use a different name.'))
+
+
+class PlanToplineForm(FlaskForm):
+    form_continue = HiddenField('form_continue')

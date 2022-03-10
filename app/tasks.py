@@ -2876,26 +2876,23 @@ def get_processor_total_metrics(processor_id, current_user_id,
         import processor.reporting.utils as utl
         topline_analysis = cur_processor.processor_analysis.filter_by(
             key=az.Analyze.topline_col).all()
-        if processor_id == 23:
-            df = pd.DataFrame(columns=['impressions', 'clicks', 'netcost'])
-        elif not topline_analysis:
+        if not topline_analysis:
             _set_task_progress(100)
             return [pd.DataFrame()]
-        else:
-            df = clean_topline_df_from_db(
-                [x for x in topline_analysis
-                 if x.parameter == az.Analyze.topline_col][0], 'current_value')
-            tdf = clean_topline_df_from_db(
-                [x for x in topline_analysis
-                 if x.parameter == az.Analyze.lw_topline_col][0], 'new_value')
-            twdf = clean_topline_df_from_db(
-                [x for x in topline_analysis
-                 if x.parameter == az.Analyze.tw_topline_col][0], 'old_value')
-            df = df.join(tdf)
-            df = df.join(twdf)
+        df = clean_topline_df_from_db(
+            [x for x in topline_analysis
+             if x.parameter == az.Analyze.topline_col][0], 'current_value')
+        tdf = clean_topline_df_from_db(
+            [x for x in topline_analysis
+             if x.parameter == az.Analyze.lw_topline_col][0], 'new_value')
+        twdf = clean_topline_df_from_db(
+            [x for x in topline_analysis
+             if x.parameter == az.Analyze.tw_topline_col][0], 'old_value')
+        df = df.join(tdf)
+        df = df.join(twdf)
         if filter_dict:
             tdf = get_data_tables_from_db(
-                processor_id, current_user_id, dimensions=[],
+                processor_id, current_user_id, dimensions=['productname'],
                 metrics=['impressions', 'clicks', 'netcost'],
                 filter_dict=filter_dict)
             tdf = tdf[0][['impressions', 'clicks', 'netcost']]
@@ -2903,11 +2900,7 @@ def get_processor_total_metrics(processor_id, current_user_id,
                 columns={'impressions': 'Impressions', 'clicks': 'Clicks',
                          'netcost': 'Net Cost Final'})
             tdf['CPC'] = tdf['Net Cost Final'] / tdf['Clicks']
-            if df.empty:
-                df = tdf.T
-                df['current_value'] = df[0]
-            else:
-                df = df.join(tdf.T)
+            df = df.join(tdf.T)
             df['change'] = (df[0].astype(float) /
                             df['current_value'].astype(float))
             df = df.drop(columns='current_value').rename(
@@ -2969,10 +2962,6 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                       else x for x in dimensions]
         dimensions = ','.join(dimensions)
         metric_sql = ','.join(['SUM({0}) AS {0}'.format(x) for x in metrics])
-        if dimensions:
-            select_sql = '{0},{1}'.format(dimensions, metric_sql)
-        else:
-            select_sql = metric_sql
         if processor_id == 23:
             where_sql = ""
         else:
@@ -3003,7 +2992,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                             w = "{}{}".format("WHERE", w[4:])
                         where_sql += w
         _set_task_progress(30)
-        command = """SELECT {0}
+        command = """SELECT {0},{1}
             FROM lqadb.event
             FULL JOIN lqadb.fullplacement ON event.fullplacementid = fullplacement.fullplacementid
             FULL JOIN lqadb.plan ON plan.fullplacementid = fullplacement.fullplacementid
@@ -3013,10 +3002,9 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
             LEFT JOIN lqadb.product ON campaign.productid = product.productid
             LEFT JOIN lqadb.environment ON fullplacement.environmentid = environment.environmentid
             LEFT JOIN lqadb.kpi ON fullplacement.kpiid = kpi.kpiid
-            {1}
-        """.format(select_sql, where_sql)
-        if dimensions:
-            command += 'GROUP BY {}'.format(dimensions)
+            {2}
+            GROUP BY {0}
+        """.format(dimensions, metric_sql, where_sql)
         db_class = export.DB()
         db_class.input_config('dbconfig.json')
         db_class.connect()
@@ -3304,6 +3292,47 @@ def update_automatic_requests(processor_id, current_user_id):
                                        fix_type=fix_type,
                                        fix_description=msg,
                                        undefined=undefined)
+        fix_type = az.Analyze.double_counting_all
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis.data:
+            df = pd.DataFrame(analysis.data)
+            undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' + 
+                         df['Metric']).to_list()
+            msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
+        else:
+            undefined = []
+            msg = '{}'.format(analysis.message)
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)                   
+        fix_type = az.Analyze.double_counting_partial
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis.data:      
+            df = pd.DataFrame(analysis.data)
+            undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' + 
+                         df['Metric'] + 
+                         ': Proportion of duplicate placements - ' + 
+                         str(df['Num Duplicates']) + '/' + 
+                         str(df['Total Num Placements'])).to_list()
+            msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
+        else:
+            undefined = []
+            msg = '{}'.format(analysis.message)
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)                               
         _set_task_progress(100)
         return True
     except:
@@ -3805,6 +3834,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
         import processor.reporting.analyze as az
         import processor.reporting.vendormatrix as vm
         import processor.reporting.vmcolumns as vmc
+        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         analysis = ProcessorAnalysis.query.filter_by(
@@ -3859,6 +3889,45 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 old_ed = new_sd - dt.timedelta(days=1)
                 df.loc[idx, vmc.enddate] = old_ed.strftime('%Y-%m-%d')
                 df = df.append(ndf).reset_index(drop=True)
+        elif cur_fix.fix_type == az.Analyze.double_counting_all:
+            df = get_vendormatrix(processor_id, current_user_id)[0]
+            os.chdir(adjust_path(cur_processor.local_path))
+            tdf = pd.DataFrame(analysis.data).to_dict(orient='records')
+            for x in tdf:
+                vks = x[vmc.vendorkey].split(',')
+                if any('Rawfile' in y for y in vks):
+                    vk = [y for y in vks if 'Rawfile' in y][0]
+                    idx = df[df[vmc.vendorkey] == vk].index
+                    df.loc[idx, x['Metric']] = ''
+                elif (any('DCM' in y for y in vks) or
+                      any('Sizmek' in y for y in vks)):
+                    vks = [y for y in vks if 'DCM' in y]
+                    if not vks:
+                        vks = [y for y in vks if 'Sizmek' in y]
+                    for vk in vks:
+                        idx = df[df[vmc.vendorkey] == vk].index
+                        if (x['Metric'] == vmc.clicks or 
+                            x['Metric'] == vmc.impressions):
+                            df.loc[idx, 'RULE_1_QUERY'] = (
+                                    df.loc[idx, 'RULE_1_QUERY'][idx[0]] + ',' +
+                                    x[dctc.VEN])
+                        else:
+                            if not df.loc[idx, 'RULE_6_QUERY'].any():
+                                df.loc[idx, 'RULE_6_FACTOR'] = 0.0
+                                df.loc[idx, 'RULE_6_METRIC'] = ('POST' + '::' +
+                                                                x['Metric'])
+                                df.loc[idx, 'RULE_6_QUERY'] = x[dctc.VEN]
+                            else:
+                                df.loc[idx, 'RULE_6_METRIC'] = (
+                                        df.loc[idx, 'RULE_6_QUERY'][idx[0]] + 
+                                        '::' + x['Metric'])
+                                df.loc[idx, 'RULE_6_QUERY'] = (
+                                        df.loc[idx, 'RULE_6_QUERY'][idx[0]] + 
+                                        ',' + [dctc.VEN])
+                else:
+                    unavail_msg = ('QUICK FIX UNAVAILABLE. '
+                                   'CHECK DUPLICATE DATASOURCES AND RAWFILES')
+                    df = pd.DataFrame([{'Result': unavail_msg}])
         else:
             df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
         _set_task_progress(100)

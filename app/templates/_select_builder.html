@@ -3,7 +3,7 @@
 <script type="text/javascript" src="{{ url_for('static', filename='Selectize/selectize.js') }}"></script>
 <script>
     function addSelectize() {
-        $('select').selectize({
+        $('select:not(.flatpickr-monthDropdown-months)').selectize({
             dropdownParent:'body',
             shouldSort: false,
             duplicates: true,

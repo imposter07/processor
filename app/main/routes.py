@@ -219,7 +219,7 @@ def get_processor_user_map(processors):
         cu.ppd = '{0:.0f}'.format(cu.posts.filter(
             Post.timestamp > seven_days_ago.date()).count() / 7)
         """
-        if cu.id in [3, 5, 7, 9, 10, 11, 51, 63, 66, 76]:
+        if cu.id in [3, 5, 7, 9, 10, 11, 51, 63, 66, 76, 88, 93]:
             cu.data = True
         else:
             cu.data = False

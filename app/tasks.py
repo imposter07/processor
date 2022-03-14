@@ -2965,12 +2965,12 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         os.chdir(adjust_path(cur_processor.local_path))
         if not metrics:
             metrics = ['impressions', 'clicks', 'netcost']
-        dimensions = ['event.{}'.format(x) if x == 'eventdate'
-                      else x for x in dimensions]
-        dimensions = ','.join(dimensions)
+        dimensions_sql = ['event.{}'.format(x) if x == 'eventdate'
+                          else x for x in dimensions]
+        dimensions_sql = ','.join(dimensions_sql)
         metric_sql = ','.join(['SUM({0}) AS {0}'.format(x) for x in metrics])
-        if dimensions:
-            select_sql = '{0},{1}'.format(dimensions, metric_sql)
+        if dimensions_sql:
+            select_sql = '{0},{1}'.format(dimensions_sql, metric_sql)
         else:
             select_sql = metric_sql
         if processor_id == 23:
@@ -3006,17 +3006,17 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         command = """SELECT {0}
             FROM lqadb.event
             FULL JOIN lqadb.fullplacement ON event.fullplacementid = fullplacement.fullplacementid
-            FULL JOIN lqadb.plan ON plan.fullplacementid = fullplacement.fullplacementid
             LEFT JOIN lqadb.vendor ON fullplacement.vendorid = vendor.vendorid
             LEFT JOIN lqadb.campaign ON fullplacement.campaignid = campaign.campaignid
             LEFT JOIN lqadb.country ON fullplacement.countryid = country.countryid
             LEFT JOIN lqadb.product ON campaign.productid = product.productid
             LEFT JOIN lqadb.environment ON fullplacement.environmentid = environment.environmentid
             LEFT JOIN lqadb.kpi ON fullplacement.kpiid = kpi.kpiid
+            FULL JOIN lqadb.plan ON plan.fullplacementid = fullplacement.fullplacementid
             {1}
         """.format(select_sql, where_sql)
-        if dimensions:
-            command += 'GROUP BY {}'.format(dimensions)
+        if dimensions_sql:
+            command += 'GROUP BY {}'.format(dimensions_sql)
         db_class = export.DB()
         db_class.input_config('dbconfig.json')
         db_class.connect()

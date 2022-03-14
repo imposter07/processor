@@ -3304,6 +3304,47 @@ def update_automatic_requests(processor_id, current_user_id):
                                        fix_type=fix_type,
                                        fix_description=msg,
                                        undefined=undefined)
+        fix_type = az.Analyze.double_counting_all
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis.data:
+            df = pd.DataFrame(analysis.data)
+            undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' + 
+                         df['Metric']).to_list()
+            msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
+        else:
+            undefined = []
+            msg = '{}'.format(analysis.message)
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)                   
+        fix_type = az.Analyze.double_counting_partial
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis.data:      
+            df = pd.DataFrame(analysis.data)
+            undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' + 
+                         df['Metric'] + 
+                         ': Proportion of duplicate placements - ' + 
+                         str(df['Num Duplicates']) + '/' + 
+                         str(df['Total Num Placements'])).to_list()
+            msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
+        else:
+            undefined = []
+            msg = '{}'.format(analysis.message)
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)                               
         _set_task_progress(100)
         return True
     except:
@@ -3805,6 +3846,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
         import processor.reporting.analyze as az
         import processor.reporting.vendormatrix as vm
         import processor.reporting.vmcolumns as vmc
+        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         analysis = ProcessorAnalysis.query.filter_by(
@@ -3859,6 +3901,45 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 old_ed = new_sd - dt.timedelta(days=1)
                 df.loc[idx, vmc.enddate] = old_ed.strftime('%Y-%m-%d')
                 df = df.append(ndf).reset_index(drop=True)
+        elif cur_fix.fix_type == az.Analyze.double_counting_all:
+            df = get_vendormatrix(processor_id, current_user_id)[0]
+            os.chdir(adjust_path(cur_processor.local_path))
+            tdf = pd.DataFrame(analysis.data).to_dict(orient='records')
+            for x in tdf:
+                vks = x[vmc.vendorkey].split(',')
+                if any('Rawfile' in y for y in vks):
+                    vk = [y for y in vks if 'Rawfile' in y][0]
+                    idx = df[df[vmc.vendorkey] == vk].index
+                    df.loc[idx, x['Metric']] = ''
+                elif (any('DCM' in y for y in vks) or
+                      any('Sizmek' in y for y in vks)):
+                    vks = [y for y in vks if 'DCM' in y]
+                    if not vks:
+                        vks = [y for y in vks if 'Sizmek' in y]
+                    for vk in vks:
+                        idx = df[df[vmc.vendorkey] == vk].index
+                        if (x['Metric'] == vmc.clicks or 
+                            x['Metric'] == vmc.impressions):
+                            df.loc[idx, 'RULE_1_QUERY'] = (
+                                    df.loc[idx, 'RULE_1_QUERY'][idx[0]] + ',' +
+                                    x[dctc.VEN])
+                        else:
+                            if not df.loc[idx, 'RULE_6_QUERY'].any():
+                                df.loc[idx, 'RULE_6_FACTOR'] = 0.0
+                                df.loc[idx, 'RULE_6_METRIC'] = ('POST' + '::' +
+                                                                x['Metric'])
+                                df.loc[idx, 'RULE_6_QUERY'] = x[dctc.VEN]
+                            else:
+                                df.loc[idx, 'RULE_6_METRIC'] = (
+                                        df.loc[idx, 'RULE_6_QUERY'][idx[0]] + 
+                                        '::' + x['Metric'])
+                                df.loc[idx, 'RULE_6_QUERY'] = (
+                                        df.loc[idx, 'RULE_6_QUERY'][idx[0]] + 
+                                        ',' + [dctc.VEN])
+                else:
+                    unavail_msg = ('QUICK FIX UNAVAILABLE. '
+                                   'CHECK DUPLICATE DATASOURCES AND RAWFILES')
+                    df = pd.DataFrame([{'Result': unavail_msg}])
         else:
             df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
         _set_task_progress(100)

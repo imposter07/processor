@@ -528,7 +528,7 @@ def get_task_progress():
         task = Task.query.get(request.form['task'])
         if task.complete:
             job = task.get_rq_job()
-            if job.result:
+            if job and job.result:
                 df = job.result[0]
                 data['data'] = df.reset_index().to_dict(orient='records')
     else:

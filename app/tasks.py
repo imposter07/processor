@@ -3307,44 +3307,48 @@ def update_automatic_requests(processor_id, current_user_id):
         fix_type = az.Analyze.double_counting_all
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_processor.id, key=fix_type).first()
-        if analysis.data:
-            df = pd.DataFrame(analysis.data)
-            undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' + 
-                         df['Metric']).to_list()
-            msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
-            update_single_auto_request(processor_id, current_user_id,
-                                       fix_type=fix_type,
-                                       fix_description=msg,
-                                       undefined=undefined)
-        else:
-            undefined = []
-            msg = '{}'.format(analysis.message)
-            update_single_auto_request(processor_id, current_user_id,
-                                       fix_type=fix_type,
-                                       fix_description=msg,
-                                       undefined=undefined)                   
+        if analysis:
+            if analysis.data:
+                df = pd.DataFrame(analysis.data)
+                undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' +
+                             df['Metric']).to_list()
+                msg = (
+                    '{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
+            else:
+                undefined = []
+                msg = '{}'.format(analysis.message)
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
         fix_type = az.Analyze.double_counting_partial
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_processor.id, key=fix_type).first()
-        if analysis.data:      
-            df = pd.DataFrame(analysis.data)
-            undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' + 
-                         df['Metric'] + 
-                         ': Proportion of duplicate placements - ' + 
-                         str(df['Num Duplicates']) + '/' + 
-                         str(df['Total Num Placements'])).to_list()
-            msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
-            update_single_auto_request(processor_id, current_user_id,
-                                       fix_type=fix_type,
-                                       fix_description=msg,
-                                       undefined=undefined)
-        else:
-            undefined = []
-            msg = '{}'.format(analysis.message)
-            update_single_auto_request(processor_id, current_user_id,
-                                       fix_type=fix_type,
-                                       fix_description=msg,
-                                       undefined=undefined)                               
+        if analysis:
+            if analysis.data:
+                df = pd.DataFrame(analysis.data)
+                undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' +
+                             df['Metric'] +
+                             ': Proportion of duplicate placements - ' +
+                             str(df['Num Duplicates']) + '/' +
+                             str(df['Total Num Placements'])).to_list()
+                msg = (
+                    '{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
+            else:
+                undefined = []
+                msg = '{}'.format(analysis.message)
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
         _set_task_progress(100)
         return True
     except:

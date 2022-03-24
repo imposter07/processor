@@ -3813,7 +3813,8 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
         app.logger.error(
             'Unhandled exception - Processor {} User {} VK {}'.format(
                 processor_id, current_user_id, vk), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+        return [{'Error': {'Old': 'An error occurred with one or both files.',
+                           'New': 'An error occurred with one or both files.'}}]
 
 
 def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):

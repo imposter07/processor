@@ -10,7 +10,7 @@
         {% set outer_loop = loop %}
         <div class="card">
             <button class="btn {% if  processor_list[0].user.data%}
-            btn-secondary{% else %}btn-danger{% endif %} btn-block btn-secondary collapsed text-left"
+            btn-secondary{% else %}btn-info{% endif %} btn-block btn-secondary collapsed text-left"
                     id="heading{{ loop.index }}"
                     type="button"
                     data-toggle="collapse"

@@ -4,6 +4,10 @@
         .hiddenRow {
             padding: 0 !important;
         }
+
+        th {
+            cursor: pointer;
+        }
     </style>
     {% if edit_name == 'Topline' %}
         <div class="card-deck container-fluid text-center">
@@ -58,10 +62,10 @@
                 tableHeaders = tableHeaders + '<td id="row' + "{{table_head}}" + loopIndex + '"></td>'
             {% endfor %}
             let partnerCard = `
-                <tr data-toggle="collapse" data-target="#collapsePartner` + loopIndex + `" class="accordion-toggle">
+                <tr id="tr` + loopIndex + `" data-toggle="collapse" data-target="#collapsePartner` + loopIndex + `" class="accordion-toggle">
                     ` + tableHeaders + `
                 </tr>
-                <tr>
+                <tr id="trHidden` + loopIndex + `">
                     <td colspan="12" class="hiddenRow">
                     <div id="collapsePartner` + loopIndex + `" class="collapse"
                          aria-labelledby="heading` + loopIndex + `"
@@ -237,9 +241,6 @@
             let formatter = new Intl.NumberFormat('en-US', {
               style: 'currency',
               currency: 'USD',
-              // These options are needed to round to whole numbers if that's what you want.
-              //minimumFractionDigits: 0, // (this suffices for whole numbers, but will print 2500.10 as $2,500.1)
-              //maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
             });
             let data = [
                 {name:"Net Cost", current_value:formatter.format(sumCost), msg:"Of Total Budget", change: percentTotal},
@@ -250,12 +251,33 @@
             generateTotalCards('#totalCards', data);
         }
 
+        function sortTable() {
+            const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+            const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
+                    v1 !== '' && v2 !== '' && !isNaN(v1.replace('$','')) && !isNaN(v2.replace('$','')) ? v1.replace('$','') - v2.replace('$','') : v1.toString().localeCompare(v2)
+            )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
+            document.querySelectorAll('th').forEach(th => th.addEventListener('click', (() => {
+                const table =document.getElementById('accordionPlan');
+                console.log(table);
+                Array.from(table.querySelectorAll('.accordion-toggle'))
+                    .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
+                    .forEach(function(tr) {
+                        let loopIndex = tr.id.replace('tr', '');
+                        let hiddenElem = document.getElementById('trHidden' + loopIndex);
+                        hiddenElem.remove();
+                        table.appendChild(tr);
+                        table.appendChild(hiddenElem);
+                    });
+            })));
+        }
+
         $(document).ready(function () {
             addPartnerOnClick();
             addCurrentPartners();
             addSelectize();
             addDatePicker();
             populateTotalCards();
+            sortTable();
         });
 
     </script>

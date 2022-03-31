@@ -3400,8 +3400,7 @@ def update_automatic_requests(processor_id, current_user_id):
                 df = pd.DataFrame(analysis.data)
                 undefined = (df['mpVendor'] + ' - ' +
                              df['mpPackage Description'] + ' - ' +
-                             + df['mpPlacement Date'] + ': Clicks = '
-                             + df['Clicks']).to_list()
+                             + df['mpPlacement Date']).to_list()
                 msg = ('{} {}\n\n'.format(analysis.message, ', '
                                           .join(undefined)))
                 update_single_auto_request(processor_id, current_user_id,

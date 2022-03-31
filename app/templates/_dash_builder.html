@@ -884,27 +884,16 @@
 
     function generateTotalCards(elem, data, xCol, yCol) {
         data.forEach(function (d) {
-            $(elem).append(
-                '<div class="card mb-3 shadow-lg">' +
-                '<div class="card-body">' +
-                '<div class="text-muted small">' + d['name'] + '</div>' +
-                '<div class="row">' +
-                '<div class="col">' +
-                '<div class="text-large" style="text-align:center">' +
-                d['current_value'] + '</div>' +
-                '</div>' +
-                '</div>' +
-                '</div>' +
-                '<div class="card-footer">' +
-                '<p class="mb-0">' +
-                '<span class="text-muted small text-danger mr-2">' +
-                '<i class="mdi mdi-arrow-up-bold"></i>' +
-                (d['change'] * 100).toFixed(2) + '%</span>' +
-                '<span class="text-nowrap text-muted small">' +
-                d['msg'] + '</span>' +
-                '</p>' +
-                '</div>' +
-                '</div>'
+            $(elem).append(`
+                <div class="card mb-auto shadow-lg">
+                <h3 class="text-muted small">` + d['name'] + `</h3>
+                <h5 class="text-large" style="text-align:center">
+                ` + d['current_value'] + `</h5>
+                <div class="card-footer">
+                <p class="text-muted small">
+                ` + (d['change'] * 100).toFixed(2) + `% ` + d['msg'] + ` </p>
+                </div>
+                </div>`
             )
         });
     }

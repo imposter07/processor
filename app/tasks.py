@@ -3329,15 +3329,35 @@ def update_automatic_requests(processor_id, current_user_id):
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_processor.id, key=fix_type).first()
         if analysis:
+            if analysis.data:      
+                df = pd.DataFrame(analysis.data)
+                undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' + 
+                             df['Metric'] + 
+                             ': Proportion of duplicate placements - ' + 
+                             str(df['Num Duplicates']) + '/' + 
+                             str(df['Total Num Placements'])).to_list()
+                msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
+            else:
+                undefined = []
+                msg = '{}'.format(analysis.message)
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
+        fix_type = az.Analyze.placement_col
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis:
             if analysis.data:
                 df = pd.DataFrame(analysis.data)
-                undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' +
-                             df['Metric'] +
-                             ': Proportion of duplicate placements - ' +
-                             df['Num Duplicates'] + '/' +
-                             df['Total Num Placements']).to_list()
-                msg = (
-                    '{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+                undefined = (df['Vendor Key'] + ': Current Placement Column= ' +
+                             df['Current Placement Col'] +
+                             ' | Suggested= ' + df['Suggested Col']).to_list()
+                msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
                 update_single_auto_request(processor_id, current_user_id,
                                            fix_type=fix_type,
                                            fix_description=msg,
@@ -3945,6 +3965,14 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                     unavail_msg = ('QUICK FIX UNAVAILABLE. '
                                    'CHECK DUPLICATE DATASOURCES AND RAWFILES')
                     df = pd.DataFrame([{'Result': unavail_msg}])
+        elif cur_fix.fix_type == az.Analyze.placement_col:
+            df = get_vendormatrix(processor_id, current_user_id)[0]
+            os.chdir(adjust_path(cur_processor.local_path))
+            tdf = pd.DataFrame(analysis.data).to_dict(orient='records')
+            for x in tdf:
+                vk = x[vmc.vendorkey]
+                idx = df[df[vmc.vendorkey] == vk].index
+                df.loc[idx, vmc.placement] = x['Suggested Col']
         else:
             df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
         _set_task_progress(100)

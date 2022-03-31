@@ -3334,8 +3334,8 @@ def update_automatic_requests(processor_id, current_user_id):
                 undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' +
                              df['Metric'] +
                              ': Proportion of duplicate placements - ' +
-                             str(df['Num Duplicates']) + '/' +
-                             str(df['Total Num Placements'])).to_list()
+                             df['Num Duplicates'] + '/' +
+                             df['Total Num Placements']).to_list()
                 msg = (
                     '{} {}\n\n'.format(analysis.message, ','.join(undefined)))
                 update_single_auto_request(processor_id, current_user_id,

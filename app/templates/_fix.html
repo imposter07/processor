@@ -6,7 +6,8 @@
             object_name=fix.processor.name, fix_id=fix.id) }}">
             {{ processor.name }} - Fix Request #{{ fix.id }}</a>
             {% if not fix.complete %}
-                {% if fix.fix_type in ['max_api_length', 'unknown', 'raw_file_update', 'placement_col', 'double_counting_all'] %}
+                {% if fix.fix_type in ['max_api_length', 'unknown', 'raw_file_update', 'placement_col', 'double_counting_all',
+                                       'missing_flat_costs'] %}
                     <button class="btn btn-outline-success rounded-pill" id="quickFix{{ fix.id }}" style="float: right;">
                     Quick Fix</button>
                 {% endif %}

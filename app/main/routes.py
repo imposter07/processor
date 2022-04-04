@@ -1161,6 +1161,8 @@ def get_table():
         elif cur_fix.fix_type in ['raw_file_update', 'max_api_length',
                                 'placement_col', 'double_counting_all']:
             table_name = 'Vendormatrix'
+        elif cur_fix.fix_type in ['missing_flat_costs']:
+            table_name = 'Translate'
     if request.form['vendorkey'] != 'None':
         proc_arg['vk'] = request.form['vendorkey']
         table_name = '{}vendorkey{}'.format(

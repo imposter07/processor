@@ -3369,6 +3369,51 @@ def update_automatic_requests(processor_id, current_user_id):
                                            fix_type=fix_type,
                                            fix_description=msg,
                                            undefined=undefined)
+        fix_type = az.Analyze.missing_flat_costs
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis:
+            if analysis.data:
+                df = pd.DataFrame(analysis.data)
+                undefined = (df['mpVendor'] + ' - ' +
+                             df['mpPackage Description'] + ' - ' +
+                             + df['mpPlacement Date'] + ': Clicks = '
+                             + df['Clicks']).to_list()
+                msg = ('{} {}\n\n'.format(analysis.message, ', '
+                                          .join(undefined)))
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
+            else:
+                undefined = []
+                msg = '{}'.format(analysis.message)
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
+        fix_type = az.Analyze.missing_flat_clicks
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis:
+            if analysis.data:
+                df = pd.DataFrame(analysis.data)
+                undefined = (df['mpVendor'] + ' - ' +
+                             df['mpPackage Description'] + ' - ' +
+                             + df['mpPlacement Date']).to_list()
+                msg = ('{} {}\n\n'.format(analysis.message, ', '
+                                          .join(undefined)))
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
+            else:
+                undefined = []
+                msg = '{}'.format(analysis.message)
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
         _set_task_progress(100)
         return True
     except:
@@ -3973,6 +4018,17 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 vk = x[vmc.vendorkey]
                 idx = df[df[vmc.vendorkey] == vk].index
                 df.loc[idx, vmc.placement] = x['Suggested Col']
+        elif cur_fix.fix_type == az.Analyze.missing_flat_costs:
+            df = get_translation_dict(processor_id, current_user_id)[0]
+            os.chdir(adjust_path(cur_processor.local_path))
+            tdf = pd.DataFrame(analysis.data).to_dict(orient='records')
+            for x in tdf:
+                old_val = x[dctc.PD].strip('00:00:00')
+                new_val = x['First Click Date'].strip('00:00:00')
+                trans = [['mpPlacement Date', old_val, new_val,
+                         'Select::mpVendor', x[dctc.VEN]]]
+                tdf = pd.DataFrame(trans, columns =df.columns)
+                df = df.append(tdf, ignore_index=True, sort=False)
         else:
             df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
         _set_task_progress(100)

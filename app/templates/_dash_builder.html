@@ -899,7 +899,7 @@
     }
 
     function getDownloadProgressForRadial(tableName, chart, downloadingProgress,
-                                          procId = null, forceReturn = true,
+                                          procId = null, forceReturn = false,
                                           xCol = null, yCol = null,
                                           createVisualFunction = null,
                                           filterDict = null, addSelect = null,
@@ -923,7 +923,7 @@
                         turnOffRadialProgress(elem, downloadingProgress, oldHtml, clickElem);
                     }
             });
-        }, 10000);
+        }, 5000);
         return downloadingProgress
     }
 
@@ -956,7 +956,7 @@
                         filterDict = null, parentClass = "", parentHeight = 250,
                         clickElem = null, oldHtml = null, addSelect = false,
                         dashboardId = null, vendorKey = null, procId = null,
-                        forceReturn = true ) {
+                        forceReturn = false ) {
         if (filterDict) {
             $(elem).parent().html(
                 '<div id="' + elem.substring(1) +

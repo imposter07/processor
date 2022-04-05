@@ -507,6 +507,15 @@ def unfollow_processor(object_name):
                             object_name=processor_unfollow.name))
 
 
+@bp.route('/get_completed_task', methods=['GET', 'POST'])
+@login_required
+def get_completed_task():
+    task = Task.query.get(request.form['task'])
+    table_name, cur_proc, proc_arg, job_name = get_table_arguments()
+    response = get_table_return(task, table_name, proc_arg, job_name)
+    return response
+
+
 @bp.route('/get_task_progress', methods=['GET', 'POST'])
 @login_required
 def get_task_progress():
@@ -523,16 +532,12 @@ def get_task_progress():
         cur_obj = Processor.query.get(request.form['object_id'])
     else:
         cur_obj = cur_obj.query.filter_by(name=object_name).first()
-    data = {}
+    data = {'complete': False}
     if 'task' in request.form and request.form['task']:
         task = Task.query.get(request.form['task'])
         if task.complete:
-            if 'table' in request.form:
-                table_name, cur_proc, proc_arg, job_name = get_table_arguments()
-                response = get_table_return(task, table_name, proc_arg,
-                                            job_name)
-                return response
-            else:
+            data['complete'] = True
+            if 'table' not in request.form:
                 job = task.get_rq_job()
                 if job and job.result:
                     df = job.result[0]
@@ -541,6 +546,8 @@ def get_task_progress():
         task = cur_obj.get_task_in_progress(name=job_name)
     if task:
         percent = task.get_progress()
+        if task.complete:
+            data['complete'] = True
     else:
         percent = 90
     data['percent'] = percent

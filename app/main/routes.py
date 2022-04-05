@@ -527,10 +527,16 @@ def get_task_progress():
     if 'task' in request.form and request.form['task']:
         task = Task.query.get(request.form['task'])
         if task.complete:
-            job = task.get_rq_job()
-            if job and job.result:
-                df = job.result[0]
-                data['data'] = df.reset_index().to_dict(orient='records')
+            if 'table' in request.form:
+                table_name, cur_proc, proc_arg, job_name = get_table_arguments()
+                response = get_table_return(task, table_name, proc_arg,
+                                            job_name)
+                return response
+            else:
+                job = task.get_rq_job()
+                if job and job.result:
+                    df = job.result[0]
+                    data['data'] = df.reset_index().to_dict(orient='records')
     else:
         task = cur_obj.get_task_in_progress(name=job_name)
     if task:
@@ -1123,9 +1129,7 @@ def translate_table_name_to_job(table_name, proc_arg):
     return job_name, table_name, proc_arg
 
 
-@bp.route('/get_table', methods=['GET', 'POST'])
-@login_required
-def get_table():
+def get_table_arguments():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     proc_arg = {'running_user': cur_user.id}
     cur_obj = request.form['object_type']
@@ -1159,7 +1163,7 @@ def get_table():
             table_name = '{}vendorkey{}'.format(
                 table_name, 'Plan Net'.replace(' ', '___'))
         elif cur_fix.fix_type in ['raw_file_update', 'max_api_length',
-                                'placement_col', 'double_counting_all']:
+                                  'placement_col', 'double_counting_all']:
             table_name = 'Vendormatrix'
         elif cur_fix.fix_type in ['missing_flat_costs']:
             table_name = 'Translate'
@@ -1167,9 +1171,10 @@ def get_table():
         proc_arg['vk'] = request.form['vendorkey']
         table_name = '{}vendorkey{}'.format(
             table_name, request.form['vendorkey'].replace(' ', '___'))
-    msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
-    task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
-    db.session.commit()
+    return table_name, cur_proc, proc_arg, job_name
+
+
+def get_table_return(task, table_name, proc_arg, job_name, force_return=False):
     if job_name in ['.get_processor_sources']:
         job = task.wait_and_get_job(loops=20)
         if job:
@@ -1177,7 +1182,7 @@ def get_table():
         else:
             df = pd.DataFrame([{'Result': 'DATA IS REFRESHING.'}])
     else:
-        job = task.wait_and_get_job(force_return=True)
+        job = task.wait_and_get_job(force_return=force_return)
         df = job.result[0]
     if ('parameter' in proc_arg and (proc_arg['parameter'] == 'FullOutput' or
                                      proc_arg['parameter'] == 'Download')):
@@ -1201,6 +1206,22 @@ def get_table():
     else:
         data = df_to_html(df, table_name, job_name)
     return jsonify(data)
+
+
+@bp.route('/get_table', methods=['GET', 'POST'])
+@login_required
+def get_table():
+    table_name, cur_proc, proc_arg, job_name = get_table_arguments()
+    msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
+    task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
+    db.session.commit()
+    if ('force_return' in request.form and
+            request.form['force_return'] == 'false'):
+        data = {'data': 'success', 'task': task.id, 'level': 'success'}
+    else:
+        data = get_table_return(task, table_name, proc_arg, job_name,
+                                force_return=True)
+    return data
 
 
 @bp.context_processor
@@ -3122,7 +3143,8 @@ def get_metrics():
         job_name = '.get_data_tables_from_db'
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
-    if 'force_return' in request.form and request.form['force_return'] == 'false':
+    if ('force_return' in request.form and
+            request.form['force_return'] == 'false'):
         data = {'data': 'success', 'task': task.id, 'level': 'success'}
     else:
         job = task.wait_and_get_job(force_return=True)

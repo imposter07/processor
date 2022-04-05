@@ -551,32 +551,54 @@
                     }
             });
         }
-        function getTaskProgress(tableName, updateFunction=false) {
-            $.post('/get_task_progress',
-                {
-                    object_type: "{{ title }}",
-                    object_name: "{{ object_name }}",
-                    object_level: "{{ edit_name }}",
-                    task_name: tableName,
-                }).done(function (data, status) {
-                let downloadProgress = $('#downloadProgress');
-                let newPercent = data['percent'];
-                let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
-                if (newPercent > oldPercent) {
-                    if (updateFunction) {
-                        updateFunction(newPercent);
+
+        function getTaskProgress(tableName, updateFunction = false, downloadingProgress,
+                                 procId = null, task = null, forceReturn = false,
+                                 pond = 'None', vendorKey = 'None', oldHtml = null,
+                                 clickElem = null, fixId = null) {
+            downloadingProgress = setInterval(function() {
+                $.post('/get_task_progress',
+                    {
+                        object_type: "{{ title }}",
+                        object_name: "{{ object_name }}",
+                        object_level: "{{ edit_name }}",
+                        task_name: tableName,
+                        object_id: procId,
+                        task: task,
+                        table: tableName,
+                        fix_id: fixId,
+                        vendorkey: vendorKey
+                    }).done(function (data, status) {
+                    let downloadProgress = $('#downloadProgress');
+                    let newPercent = data['percent'];
+                    let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
+                    if (newPercent > oldPercent) {
+                        if (updateFunction) {
+                            updateFunction(newPercent);
+                        } else {
+                            downloadProgress.attr("style", "width: " + newPercent + "%")
+                        }
                     } else {
-                        downloadProgress.attr("style", "width: " + newPercent + "%")
+                        let percent = oldPercent + 2;
+                        if (updateFunction) {
+                            updateFunction(percent);
+                        } else {
+                            downloadProgress.attr("style", "width: " + percent + "%")
+                        }
                     }
-                } else {
-                    let percent = oldPercent + 2;
-                    if (updateFunction) {
-                        updateFunction(percent);
-                    } else {
-                        downloadProgress.attr("style", "width: " + percent + "%")
+                    if (!forceReturn) {
+                        let isComplete = typeof data === 'string';
+                        if (!isComplete) {
+                            isComplete = 'data' in data;
+                        }
+                        if (isComplete) {
+                            getTableComplete(tableName, pond, vendorKey, data);
+                            turnOffProgress(downloadingProgress, oldHtml, clickElem);
+                        }
                     }
-                }
-            });
+                });
+            }, 2500);
+            return downloadingProgress
         }
         function setDownloadBar(currentElement, textContent, pond = true) {
             $(
@@ -684,8 +706,40 @@
                 getTable(tableName, dropdownButton, oldHtml, 'None', pond)
             });
         });
+
+        function getTableComplete(tableName, pond, vendorKey, data){
+            if ((tableName === 'OutputDataFullOutput') || (tableName === 'download_raw_data')) {
+                let blob = new Blob([data], {type: 'text/csv'});
+                pond.addFile(blob);
+                let link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey + '.csv';
+                link.click();
+            } else if (tableName === 'raw_file_comparison') {
+                parseRawComp(data);
+            } else {
+                show_modal_table('modalTableButton');
+                let newTableName = data['data']['name'];
+                createTable(data['data']['cols'], data['data']['data'],
+                    newTableName);
+            }
+        }
+
+        function turnOffProgress(downloadingProgress, oldHtml, clickElem){
+            $(clickElem).prop("disabled", false);
+            $(clickElem).html(oldHtml);
+            $('#loadingBtn').replaceWith(oldHtml);
+            unanimateBar();
+            clearInterval(downloadingProgress);
+            downloadingProgress = null;
+            let downloadProgress = $('#downloadProgress');
+            downloadProgress.attr("style", "width: 100%");
+            unanimateBar("downloadProgress");
+            refreshButtons()
+        }
+
         function getTable(tableName, clickElem, oldHtml, vendorKey='None',
-                          pond='None', progress=true, fixId='None'){
+                          pond='None', progress=true, fixId='None', forceReturn=false){
             let uploaderType = ("{{ title }}" === "Uploader") ? "{{uploader_type}}" : "None";
             $.ajax({
                 type: "POST",
@@ -697,46 +751,31 @@
                     object_level: "{{ edit_name }}",
                     uploader_type: uploaderType,
                     vendorkey: vendorKey,
-                    fix_id: fixId
+                    fix_id: fixId,
+                    force_return: forceReturn
                 },
             }).done(function(data, status) {
-                if ((tableName === 'OutputDataFullOutput') || (tableName ==='download_raw_data')) {
-                  let blob = new Blob([data], {type: 'text/csv'});
-                  pond.addFile(blob);
-                  let link = document.createElement('a');
-                  link.href = window.URL.createObjectURL(blob);
-                  link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey +'.csv';
-                  link.click();
-                }
-                else if (tableName === 'raw_file_comparison'){
-                    parseRawComp(data);
+                if (forceReturn) {
+                    getTableComplete(tableName, pond, vendorKey);
                 }
                 else {
-                    show_modal_table('modalTableButton');
-                    let newTableName = data['data']['name'];
-                    createTable(data['data']['cols'], data['data']['data'],
-                        newTableName);}
+                    downloadingProgress = getTaskProgress(tableName, false, downloadingProgress,
+                        null, data['task'], forceReturn, pond, vendorKey, oldHtml, clickElem,
+                        fixId);
+                }
             }).fail(function(jqXHR, textStatus ) {
                 console.log("Request failed: " + textStatus);
                 let downloadProgress = $('#downloadProgress');
                 downloadProgress.attr("style", "width: 100%");
                 window.location.reload(true)
             }).always(function(){
-                $(clickElem).prop("disabled", false);
-                $(clickElem).html(oldHtml);
-                $('#loadingBtn').replaceWith(oldHtml);
-                unanimateBar();
-                clearInterval(downloadingProgress);
-                downloadingProgress = null;
-                let downloadProgress = $('#downloadProgress');
-                downloadProgress.attr("style", "width: 100%");
-                unanimateBar("downloadProgress");
-                refreshButtons()
+                if (forceReturn) {
+                    turnOffProgress(downloadingProgress, oldHtml, clickElem)
+                }
             });
-            if (progress) {
-                var downloadingProgress = setInterval(function () {
-                    getTaskProgress(tableName);
-                }, 2500)
+            let downloadingProgress = null;
+            if (progress && forceReturn) {
+                downloadingProgress = getTaskProgress(tableName);
             }
         }
         $(document).ready(function() {

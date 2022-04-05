@@ -269,40 +269,14 @@
                     `<span class="spinner-grow spinner-grow-sm" role="status"
                       aria-hidden="true"></span> Loading...`
                 );
-                requestProcessorModal(dropdownButton, oldHtml);
+                setDownloadBar(this, this.textContent, false);
+                getTable('all_processors', dropdownButton, oldHtml);
             })
         }
 
         function show_modal_table(destElem) {
             document.getElementById(destElem).click();
         }
-
-        function requestProcessorModal(clickElem, oldHtml) {
-            $.post('/get_table',
-                {
-                    table: 'all_processors',
-                    object_name: "None",
-                    object_type:  "User",
-                    object_level: "None",
-                    uploader_type: 'None',
-                    vendorkey: 'None'
-                }).done(function (data) {
-                    show_modal_table('modalTableButton');
-                    let newTableName = data['data']['name'];
-                    createTable(data['data']['cols'], data['data']['data'],
-                        newTableName);
-            }).fail(function (jqXHR, textStatus) {
-                console.log("Request failed: " + textStatus);
-            }).always(function () {
-                if (oldHtml) {
-                    $(clickElem).prop("disabled", false);
-                    $(clickElem).html(oldHtml);
-                }
-            });
-        }
-        $(document).ready(function() {
-            requestProcessor()
-        });
 
         function getAllCharts(filterDict, clickElem=null, oldHtml=null,
                               allCharts=false) {
@@ -409,7 +383,8 @@
                 inline: true
             });
             let filterDict = getDates();
-            getAllCharts(filterDict)
+            requestProcessor();
+            getAllCharts(filterDict);
         });
     </script>
 {% endblock %}

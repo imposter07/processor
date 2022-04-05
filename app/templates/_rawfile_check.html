@@ -105,6 +105,7 @@
                 `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
                             role="status" aria-hidden="true"></span> Loading...`
             );
+            setDownloadBar(rawFileTableBody, 'None', false);
             if ("{{ edit_name }}" === 'Clean') {
                 var vendorKey = $('#data_source_clean').val();
             } else {

@@ -3856,6 +3856,7 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
             config_file = {
                 'No Vendor Key': {'Old': (False, msg), 'New': (False, msg)}}
         else:
+            _set_task_progress(0)
             cur_processor = Processor.query.get(processor_id)
             import processor.reporting.analyze as az
             import processor.reporting.vendormatrix as vm
@@ -3863,7 +3864,9 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
             os.chdir(adjust_path(cur_processor.local_path))
             matrix = vm.VendorMatrix()
             aly = az.Analyze(matrix=matrix)
+            _set_task_progress(25)
             aly.compare_raw_files(vk)
+            _set_task_progress(85)
             file_name = "{}.json".format(vk)
             file_name = os.path.join(utl.tmp_file_suffix, file_name)
             with open(file_name, 'r') as f:

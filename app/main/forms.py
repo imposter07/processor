@@ -298,6 +298,15 @@ class EditProcessorRequestForm(ProcessorRequestForm):
                 raise ValidationError(_l('Please use a different name.'))
 
 
+class ProcessorPlanForm(FlaskForm):
+    plan_properties = SelectMultipleField(
+        _('Plan Properties'), choices=[(x, x) for x in [
+            'Add Account Types', 'Plan Net', 'Package Capping',
+            'Plan As Datasource']])
+    plan = FileField(_l('Media Plan'))
+    form_continue = HiddenField('form_continue')
+
+
 class AccountForm(FlaskForm):
     key = SelectField(
         'Account Type', choices=[(x, x) for x in vmc.api_keys])
@@ -368,7 +377,7 @@ class GeneralConversionForm(FlaskForm):
 class ProcessorRequestFinishForm(FlaskForm):
     owner = QuerySelectField(_l('Owner'), allow_blank=True,
                              query_factory=lambda: User.query.all(),
-                             get_label='username')
+                             get_label='username', validators=[DataRequired()])
     followers = SelectMultipleField(_l('Followers'))
     form_continue = HiddenField('form_continue')
 

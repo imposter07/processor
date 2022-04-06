@@ -732,6 +732,8 @@
                 link.click();
             } else if (tableName === 'raw_file_comparison') {
                 parseRawComp(data);
+            } else if (tableName === 'check_processor_plan') {
+                appendPlanInfo(data);
             } else {
                 show_modal_table('modalTableButton');
                 let newTableName = data['data']['name'];
@@ -953,7 +955,7 @@
                 },(2 * 1000));
             });
         });
-        function appendCardAsTable(dashForm, divId, rowNum, title){
+        function appendCardAsTable(dashForm, divId, rowNum, title, asDataTable=true){
             let tableName = dashForm['data']['name']
             $(rowNum).append('' +
                 '<div class="col">' +
@@ -963,8 +965,13 @@
                 '<div id=' + tableName + 'Elem></div>' +
                 '</div>' +
                 '</div>')
-            createTable(dashForm['data']['cols'], dashForm['data']['data'],
-                        tableName, tableName + 'Elem')
+            if (asDataTable){
+                createTable(dashForm['data']['cols'], dashForm['data']['data'],
+                    tableName, tableName + 'Elem')
+            }
+            else {
+                document.getElementById(tableName + 'Elem').innerHTML += dashForm['data']['data']
+            }
         }
 
         function makePlotElements(appendElem, baseId, title) {
@@ -1101,9 +1108,14 @@
         function appendRows() {
             let cardCol = '.card-columns'
             let parent = $(cardCol).parent()[0]
-            parent.classList.remove("row");
-            parent.innerHTML = '<div class="" id="baseRow"></div>'
-            $(cardCol).removeClass("card-columns")
+            if (typeof parent === 'undefined') {
+                parent = $('#base_form_id').parent()[0]
+                parent.insertAdjacentHTML('beforeend', '<div class="" id="baseRow"></div>')
+            } else {
+                parent.classList.remove("row");
+                parent.innerHTML = '<div class="" id="baseRow"></div>'
+                $(cardCol).removeClass("card-columns")
+            }
             $('#baseRow').append(
                 '<div class="row" id="rowZero"></div><br>' +
                 '<div class="row" id="rowOne"></div><br>' +
@@ -1301,6 +1313,18 @@
                     '<button class="' + btnClass + '">' + buttons[i]['name'] + '</button>';
             }
         }
+
+        function appendPlanInfo(data) {
+            appendCardAsTable(data, "metricsCardCol", "#rowOne", 'Plan Check', false);
+        }
+
+        function getPlan() {
+            appendRows();
+            let elem = $('#rowOne')
+            setDownloadBar(elem, elem.textContent, false);
+            getTable('check_processor_plan', '#rowOne', elem.innerHTML)
+        }
+
         $(document).ready(function(){
             $('input[id*="unresolved_relations"]').each(function(index){
                 if (($(this)[0].value === '0') || ($(this)[0].value === '')
@@ -1365,9 +1389,10 @@
             loadJS()
             if ("{{ edit_name }}" === "Clean") {
                 getDatasourceTable()
-            }
-            else if ("{{ edit_name }}" === "Automatic Notes") {
+            } else if ("{{ edit_name }}" === "Automatic Notes") {
                 getAutoNote()
+            } else if ("{{ edit_name }}" === "Plan") {
+                getPlan()
             }
         })
     </script>

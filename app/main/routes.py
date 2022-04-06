@@ -21,7 +21,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     EditUploaderNameCreateForm, EditUploaderCreativeForm,\
     UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
     PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm,\
-    ProcessorNoteForm, ProcessorAutoAnalysisForm, WalkthroughUploadForm
+    ProcessorNoteForm, ProcessorAutoAnalysisForm, WalkthroughUploadForm,\
+    ProcessorPlanForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -656,6 +657,7 @@ def processor():
 def get_navigation_buttons(buttons=None):
     if buttons == 'ProcessorRequest':
         buttons = [{'Basic': 'main.edit_request_processor'},
+                   {'Plan': 'main.edit_processor_plan'},
                    {'Accounts': 'main.edit_processor_account'},
                    {'Fees': 'main.edit_processor_fees'},
                    {'Conversions': 'main.edit_processor_conversions'},
@@ -1126,7 +1128,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'import_config': '.get_import_config_file',
                  'all_processors': '.get_all_processors',
                  'raw_file_comparison': '.get_raw_file_comparison',
-                 'quick_fix': '.apply_quick_fix'}
+                 'quick_fix': '.apply_quick_fix',
+                 'check_processor_plan': '.check_processor_plan'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -1774,6 +1777,17 @@ def edit_request_processor(object_name):
         form.cur_client.data = form_client.name
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
+
+
+@bp.route('/processor/<object_name>/edit/plan')
+@login_required
+def edit_processor_plan(object_name):
+    kwargs = get_current_processor(object_name,
+                                   current_page='edit_processor_plan',
+                                   edit_progress=50, edit_name='Plan',
+                                   buttons='ProcessorRequest')
+    kwargs['form'] = ProcessorPlanForm()
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/processor/<object_name>/edit/accounts', methods=['GET', 'POST'])

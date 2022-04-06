@@ -2344,10 +2344,7 @@ def build_processor_from_request(processor_id, current_user_id):
         _set_task_progress(0)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         cur_processor = Processor.query.get(processor_id)
-        base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
-            cur_processor.campaign.product.client.name,
-            cur_processor.campaign.product.name, cur_processor.campaign.name,
-            cur_processor.name)
+        base_path = create_local_path(cur_processor)
         cur_processor.local_path = base_path
         db.session.commit()
         _set_task_progress(12)
@@ -2406,19 +2403,48 @@ def build_processor_from_request(processor_id, current_user_id):
         send_processor_build_email(processor_id, current_user_id, progress)
 
 
+def create_local_path(cur_obj):
+    if not cur_obj.local_path:
+        base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
+            cur_obj.campaign.product.client.name,
+            cur_obj.campaign.product.name,
+            cur_obj.campaign.name,
+            cur_obj.name)
+    else:
+        base_path = cur_obj.local_path
+    return base_path
+
+
+def check_processor_plan(processor_id, current_user_id, object_type=Processor):
+    try:
+        import datetime as dt
+        cur_obj = object_type.query.get(processor_id)
+        base_path = create_local_path(cur_obj)
+        mp_path = os.path.join(base_path, 'mediaplan.csv')
+        if os.path.exists(mp_path):
+            t = os.path.getmtime(mp_path)
+            last_update = dt.datetime.fromtimestamp(t)
+            msg = 'Media Plan found.'
+            update_time = last_update.strftime('%Y-%m-%d')
+        else:
+            msg = 'Media Plan not found.'
+            update_time = 'None'
+        df = pd.DataFrame({'msg': [msg], 'update_time': [update_time]})
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def save_media_plan(processor_id, current_user_id, media_plan,
                     object_type=Processor):
     try:
         cur_obj = object_type.query.get(processor_id)
         cur_user = User.query.get(current_user_id)
-        if not cur_obj.local_path:
-            base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
-                cur_obj.campaign.product.client.name,
-                cur_obj.campaign.product.name,
-                cur_obj.campaign.name,
-                cur_obj.name)
-        else:
-            base_path = cur_obj.local_path
+        base_path = create_local_path(cur_obj)
         if not os.path.exists(base_path):
             os.makedirs(base_path)
         if object_type == Processor:

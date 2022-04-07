@@ -258,7 +258,6 @@
             )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
             document.querySelectorAll('th').forEach(th => th.addEventListener('click', (() => {
                 const table =document.getElementById('accordionPlan');
-                console.log(table);
                 Array.from(table.querySelectorAll('.accordion-toggle'))
                     .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
                     .forEach(function(tr) {

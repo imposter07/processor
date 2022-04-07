@@ -734,6 +734,8 @@
                 parseRawComp(data);
             } else if (tableName === 'check_processor_plan') {
                 appendPlanInfo(data);
+            } else if (tableName === 'apply_processor_plan') {
+                appendCardAsTable(data, "metricsCardCol", "#rowOne", 'Plan Check', false);
             } else {
                 show_modal_table('modalTableButton');
                 let newTableName = data['data']['name'];
@@ -1315,14 +1317,29 @@
         }
 
         function appendPlanInfo(data) {
-            appendCardAsTable(data, "metricsCardCol", "#rowOne", 'Plan Check', false);
+            appendCardAsTable(data, "metricsCardCol", "#rowZero", 'Plan Check', false);
         }
 
         function getPlan() {
+            planUploadEventListener();
             appendRows();
             let elem = $('#rowOne')
             setDownloadBar(elem, elem.textContent, false);
-            getTable('check_processor_plan', '#rowOne', elem.innerHTML)
+            getTable('check_processor_plan', '#rowZero', elem.innerHTML)
+
+        }
+
+        function planUploadEventListener() {
+            document.addEventListener('FilePond:processfile', (e) => {
+                let clickElem = '#rowOne'
+                let oldHtml = $(clickElem).html();
+                $(clickElem).html(
+                    `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
+                            role="status" aria-hidden="true"></span> Loading...`
+                );
+                setDownloadBar(clickElem, 'None', false);
+                getTable('apply_processor_plan', clickElem, oldHtml, 'None', 'None');
+            });
         }
 
         $(document).ready(function(){

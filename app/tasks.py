@@ -1943,7 +1943,7 @@ def set_processor_fees(processor_id, current_user_id):
         return False
 
 
-def set_processor_plan_net(processor_id, current_user_id):
+def set_processor_plan_net(processor_id, current_user_id, default_vm=None):
     try:
         cur_processor = Processor.query.get(processor_id)
         from uploader.upload.creator import MediaPlan
@@ -1964,7 +1964,10 @@ def set_processor_plan_net(processor_id, current_user_id):
         df = df.rename(columns={cam_name: dctc.CAM,
                                 MediaPlan.partner_name: dctc.VEN})
         df[dctc.FPN] = df[dctc.CAM] + '_' + df[dctc.VEN]
-        matrix = vm.VendorMatrix()
+        if default_vm:
+            matrix = default_vm
+        else:
+            matrix = vm.VendorMatrix()
         param = matrix.vendor_set('DCM')
         uncapped_partners = param['RULE_1_QUERY'].split('::')[1].split(',')
         df[dctc.UNC] = df[dctc.VEN].isin(uncapped_partners).replace(False, '')
@@ -2439,6 +2442,45 @@ def check_processor_plan(processor_id, current_user_id, object_type=Processor):
         return False
 
 
+def apply_processor_plan(processor_id, current_user_id):
+    progress = {
+        'Set Plan Net': ['Failed'],
+        'Set Spend Cap Config': ['Failed'],
+        'Set Spend Cap': ['Failed'],
+    }
+    try:
+        _set_task_progress(0)
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        import processor.reporting.dictcolumns as dctc
+        import processor.reporting.vendormatrix as vm
+        os.chdir('processor')
+        matrix = vm.VendorMatrix()
+        os.chdir(cur_path)
+        r = set_processor_plan_net(processor_id, current_user_id, matrix)
+        if r:
+            progress['Set Plan Net'] = ['Success!']
+        _set_task_progress(33)
+        os.chdir(cur_path)
+        r = set_spend_cap_config_file(processor_id, current_user_id, dctc.PKD)
+        if r:
+            progress['Set Spend Cap Config'] = ['Success!']
+        _set_task_progress(67)
+        os.chdir(cur_path)
+        r = save_spend_cap_file(processor_id, current_user_id, None,
+                                from_plan=True)
+        if r:
+            progress['Set Spend Cap'] = ['Success!']
+        df = pd.DataFrame(progress)
+        _set_task_progress(100)
+        return [df]
+    except:
+        df = pd.DataFrame(progress)
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return [df]
+
+
 def save_media_plan(processor_id, current_user_id, media_plan,
                     object_type=Processor):
     try:
@@ -2471,14 +2513,25 @@ def save_media_plan(processor_id, current_user_id, media_plan,
         return False
 
 
-def save_spend_cap_file(processor_id, current_user_id, new_data):
+def save_spend_cap_file(processor_id, current_user_id, new_data,
+                        from_plan=False):
     try:
+        import processor.reporting.dictcolumns as dctc
         cur_obj = Processor.query.get(processor_id)
         cur_user = User.query.get(current_user_id)
-        new_data.seek(0)
         file_name = '/dictionaries/plannet_placement.csv'
-        with open(cur_obj.local_path + file_name, 'wb') as f:
-            shutil.copyfileobj(new_data, f, length=131072)
+        if from_plan:
+            mp_file = os.path.join(cur_obj.local_path, 'mediaplan.csv')
+            df = pd.read_csv(mp_file)
+            pack_col = dctc.PKD.replace('mp', '')
+            df = df.groupby([pack_col])[dctc.PNC].sum().reset_index()
+            df = df[~df[pack_col].isin(['0', 0, 'None'])]
+            full_file_path = cur_obj.local_path + file_name
+            df.to_csv(full_file_path)
+        else:
+            new_data.seek(0)
+            with open(cur_obj.local_path + file_name, 'wb') as f:
+                shutil.copyfileobj(new_data, f, length=131072)
         msg_text = 'Spend cap file was saved.'
         processor_post_message(cur_obj, cur_user, msg_text)
         _set_task_progress(100)

@@ -1129,7 +1129,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'all_processors': '.get_all_processors',
                  'raw_file_comparison': '.get_raw_file_comparison',
                  'quick_fix': '.apply_quick_fix',
-                 'check_processor_plan': '.check_processor_plan'}
+                 'check_processor_plan': '.check_processor_plan',
+                 'apply_processor_plan': '.apply_processor_plan'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -1192,8 +1193,11 @@ def get_table_return(task, table_name, proc_arg, job_name, force_return=False):
         else:
             df = pd.DataFrame([{'Result': 'DATA IS REFRESHING.'}])
     else:
-        job = task.wait_and_get_job(force_return=force_return)
-        df = job.result[0]
+        job = task.wait_and_get_job(force_return=True)
+        if job and job.result:
+            df = job.result[0]
+        else:
+            df = pd.DataFrame([{'Result': 'AN UNEXPECTED ERROR OCCURRED.'}])
     if ('parameter' in proc_arg and (proc_arg['parameter'] == 'FullOutput' or
                                      proc_arg['parameter'] == 'Download')):
         z = zipfile.ZipFile(df)
@@ -1777,6 +1781,19 @@ def edit_request_processor(object_name):
         form.cur_client.data = form_client.name
     kwargs['form'] = form
     return render_template('create_processor.html',  **kwargs)
+
+
+@bp.route('/processor/<object_name>/edit/plan/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_plan_upload_file(object_name):
+    current_key, object_name, object_form, object_level =\
+        utl.parse_upload_file_request(request)
+    cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
+    check_and_add_media_plan(mem, cur_proc, object_type=Processor)
+    return jsonify({'data': 'success: {}'.format(cur_proc.name)})
 
 
 @bp.route('/processor/<object_name>/edit/plan')

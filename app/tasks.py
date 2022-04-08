@@ -4103,7 +4103,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 old_val = x[dctc.PD].strip('00:00:00')
                 new_val = x['First Click Date'].strip('00:00:00')
                 trans = [['mpPlacement Date', old_val, new_val,
-                         'Select::mpVendor', x[dctc.VEN]]]
+                         'Select::mpPackage Description', x[dctc.PKD]]]
                 tdf = pd.DataFrame(trans, columns =df.columns)
                 df = df.append(tdf, ignore_index=True, sort=False)
         else:

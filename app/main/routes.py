@@ -1215,7 +1215,7 @@ def get_table_return(task, table_name, proc_arg, job_name, force_return=False):
                 table_name = '{}vendorkey{}'.format(
                     table_name, request.form['vendorkey'].replace(' ', '___'))
     table_name = "modalTable{}".format(table_name)
-    if job_name in ['.get_raw_file_comparison']:
+    if job_name in ['.get_raw_file_comparison', '.check_processor_plan']:
         data = {'data': {'data': df, 'name': table_name}}
     else:
         data = df_to_html(df, table_name, job_name)

@@ -2427,14 +2427,15 @@ def check_processor_plan(processor_id, current_user_id, object_type=Processor):
         if os.path.exists(mp_path):
             t = os.path.getmtime(mp_path)
             last_update = dt.datetime.fromtimestamp(t)
-            msg = 'Media Plan found.'
             update_time = last_update.strftime('%Y-%m-%d')
+            msg = 'Media Plan found, was last updated {}'.format(update_time)
+            msg_level = 'success'
         else:
             msg = 'Media Plan not found.'
-            update_time = 'None'
-        df = pd.DataFrame({'msg': [msg], 'update_time': [update_time]})
+            msg_level = 'danger'
+        resp = {'msg': msg, 'level': msg_level}
         _set_task_progress(100)
-        return [df]
+        return [resp]
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
@@ -2470,7 +2471,8 @@ def apply_processor_plan(processor_id, current_user_id):
                                 from_plan=True)
         if r:
             progress['Set Spend Cap'] = ['Success!']
-        df = pd.DataFrame(progress)
+        df = pd.DataFrame(progress).T.reset_index()
+        df = df.rename(columns={0: 'Result', 'index': 'Plan Task'})
         _set_task_progress(100)
         return [df]
     except:
@@ -2535,6 +2537,7 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
         msg_text = 'Spend cap file was saved.'
         processor_post_message(cur_obj, cur_user, msg_text)
         _set_task_progress(100)
+        return True
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(

@@ -3,7 +3,7 @@
     <div id="alertContainer">
     <div id="alertPlaceholder"></div>
     </div>
-    <h3>{{ _('{} - {}'.format(title, object_name)) }}</h3>
+    <h1 class="text-muted font-weight-bolder">{{ _('{} - {}'.format(title, object_name)) }}</h1>
     <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
              class="progress-bar progress-bar-striped bg-info"
@@ -374,6 +374,14 @@
 {% endblock %}
 
 {% block app_content %}
+    {% if form_title %}
+        <div class="card-header">
+        <h4 class="text-capitalize font-weight-bolder text-center text-muted">{{ form_title }}</h4>
+        {% if form_description %}
+            <h6 class="card-subtitle mb-2 text-muted text-center">{{ form_description }}</h6>
+        {% endif %}
+        </div>
+    {% endif %}
     {% if form %}
         {% include '_form.html' %}
     {% endif %}
@@ -733,9 +741,12 @@
             } else if (tableName === 'raw_file_comparison') {
                 parseRawComp(data);
             } else if (tableName === 'check_processor_plan') {
-                appendPlanInfo(data);
+                appendMessage(data, 'planCheckCardCol', 'rowZero', 'Plan Check');
             } else if (tableName === 'apply_processor_plan') {
                 appendCardAsTable(data, "newPlanResultsCardCol", "#rowOne", 'NEW PLAN RESULTS', false);
+            } else if (tableName === 'get_plan_property') {
+                let title = 'PLAN PROPERTY - ' + vendorKey;
+                appendCardAsTable(data, "planPropertyCardCol", "#rowTwo", title, true);
             } else {
                 show_modal_table('modalTableButton');
                 let newTableName = data['data']['name'];
@@ -974,6 +985,7 @@
             else {
                 document.getElementById(tableName + 'Elem').innerHTML += dashForm['data']['data']
             }
+            document.getElementById('downloadProgressBaseClass').remove()
         }
 
         function makePlotElements(appendElem, baseId, title) {
@@ -1329,17 +1341,27 @@
             document.getElementById('downloadProgressBaseClass').remove()
         }
 
-        function appendPlanInfo(data) {
-            appendMessage(data, 'planCheckCardCol', 'rowZero', 'Plan Check')
+        function changePlanProperty() {
+            $('#plan_property_view').on('change', function (e) {
+                let clickElem = '#rowTwo';
+                let oldHtml = ``;
+                $(clickElem).html(
+                    `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
+                            role="status" aria-hidden="true"></span> Loading...`
+                );
+                let selectedText = this.options[e.target.selectedIndex].text;
+                setDownloadBar(clickElem, 'None', false);
+                getTable('get_plan_property', clickElem, oldHtml, selectedText);
+            });
         }
 
         function getPlan() {
             planUploadEventListener();
             appendRows();
-            let elem = $('#rowOne')
+            changePlanProperty();
+            let elem = $('#rowOne');
             setDownloadBar(elem, elem.textContent, false);
-            getTable('check_processor_plan', '#rowZero', elem.innerHTML)
-
+            getTable('check_processor_plan', '#rowZero', elem.innerHTML);
         }
 
         function planUploadEventListener() {

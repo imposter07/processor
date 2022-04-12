@@ -302,8 +302,14 @@ class ProcessorPlanForm(FlaskForm):
     plan_properties = SelectMultipleField(
         _('Plan Properties'), choices=[(x, x) for x in [
             'Add Account Types', 'Plan Net', 'Package Capping',
-            'Plan As Datasource']])
+            'Plan As Datasource']],
+        description='Select tasks you want the uploaded plan to accomplish.')
     plan = FileField(_l('Media Plan'))
+    plan_property_view = SelectField(
+        _('View Plan Properties'), choices=[(x, x) for x in [
+            '', 'Add Account Types', 'Plan Net', 'Package Capping',
+            'Plan As Datasource']],
+        description='Select to view current properties as a table.')
     form_continue = HiddenField('form_continue')
 
 

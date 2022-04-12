@@ -2418,6 +2418,67 @@ def create_local_path(cur_obj):
     return base_path
 
 
+def get_account_types(processor_id, current_user_id, vk):
+    try:
+        _set_task_progress(0)
+        cur_proc = Processor.query.get(processor_id)
+        if cur_proc.local_path:
+            cur_act_model = ProcessorDatasources
+        else:
+            cur_act_model = Account
+        acts = cur_act_model.query.filter_by(processor_id=processor_id).all()
+        acts = [x.key for x in acts if x.key]
+        df = pd.DataFrame({'Current Accounts': acts})
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def get_package_capping(processor_id, current_user_id, vk):
+    try:
+        _set_task_progress(0)
+        cur_obj = Processor.query.get(processor_id)
+        file_name = '/dictionaries/plannet_placement.csv'
+        full_file = cur_obj.local_path + file_name
+        if os.path.exists(full_file):
+            df = pd.read_csv(full_file)
+        else:
+            df = pd.DataFrame({'RESULT': ['SPEND CAP FILE DOES NOT EXIST']})
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def get_plan_property(processor_id, current_user_id, vk):
+    try:
+        _set_task_progress(0)
+        func_dict = {
+            'Add Account Types': get_account_types,
+            'Plan Net': get_dictionary,
+            'Package Capping': get_package_capping,
+            'Plan As Datasource': None}
+        cur_func = func_dict[vk]
+        if cur_func:
+            df = cur_func(processor_id, current_user_id, vk)
+        else:
+            df = [pd.DataFrame({'Result': ['FUNCTION NOT KNOWN']})]
+        _set_task_progress(100)
+        return df
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def check_processor_plan(processor_id, current_user_id, object_type=Processor):
     try:
         import datetime as dt
@@ -2448,6 +2509,7 @@ def apply_processor_plan(processor_id, current_user_id):
         'Set Plan Net': ['Failed'],
         'Set Spend Cap Config': ['Failed'],
         'Set Spend Cap': ['Failed'],
+        'Set Plan As DataSource': ['Failed']
     }
     try:
         _set_task_progress(0)

@@ -1951,7 +1951,8 @@ def set_processor_plan_net(processor_id, current_user_id, default_vm=None):
         import processor.reporting.vmcolumns as vmc
         import processor.reporting.dictionary as dct
         import processor.reporting.dictcolumns as dctc
-        os.chdir(adjust_path(cur_processor.local_path))
+        base_path = create_local_path(cur_processor)
+        os.chdir(adjust_path(base_path))
         if not os.path.exists('mediaplan.csv'):
             return False
         df = pd.read_csv('mediaplan.csv')
@@ -2504,12 +2505,91 @@ def check_processor_plan(processor_id, current_user_id, object_type=Processor):
         return False
 
 
+def set_plan_as_datasource(processor_id, current_user_id, base_matrix):
+    try:
+        _set_task_progress(0)
+        cur_obj = Processor.query.get(processor_id)
+        base_path = create_local_path(cur_obj)
+        mp_path = os.path.join(base_path, 'mediaplan.csv')
+        if os.path.exists(mp_path):
+            import processor.reporting.utils as utl
+            import processor.reporting.vmcolumns as vmc
+            import processor.reporting.vendormatrix as vm
+            raw_path = os.path.join(base_path, 'raw_data')
+            utl.dir_check(raw_path)
+            copy_file(mp_path, os.path.join(raw_path, 'mediaplan.csv'))
+            vm_path = os.path.join(base_path, 'config', 'Vendormatrix.csv')
+            if os.path.exists(vm_path):
+                os.chdir(adjust_path(cur_obj.local_path))
+                matrix = vm.VendorMatrix()
+                vm_df = matrix.vm_df
+                if vmc.api_mp_key not in vm_df[vmc.vendorkey].values:
+                    mp_df = base_matrix.vm_df[
+                        base_matrix.vm_df[vmc.vendorkey] == vmc.api_mp_key]
+                    mp_df = mp_df.reset_index(drop=True)
+                    vm_df = vm_df.append(mp_df).reset_index(drop=True)
+                    matrix.vm_df = vm_df
+                    matrix.write()
+            else:
+                utl.dir_check(os.path.join(base_path, 'config'))
+                os.chdir(adjust_path(base_path))
+                base_matrix.write()
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def add_account_types(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_proc = Processor.query.get(processor_id)
+        import processor.reporting.vmcolumns as vmc
+        from uploader.upload.creator import MediaPlan
+        if cur_proc.local_path:
+            cur_act_model = ProcessorDatasources
+        else:
+            cur_act_model = Account
+        acts = cur_act_model.query.filter_by(processor_id=processor_id).all()
+        acts = [x.key for x in acts if x.key]
+        base_path = create_local_path(cur_proc)
+        mp_path = os.path.join(base_path, 'mediaplan.csv')
+        if not os.path.exists(mp_path):
+            return False
+        df = pd.read_csv(mp_path)
+        partner_list = df[MediaPlan.partner_name].unique()
+        api_dict = {}
+        for key, value in vmc.api_partner_name_translation.items():
+            for v in value:
+                api_dict[v] = key
+        for partner in partner_list:
+            if partner in api_dict.keys():
+                api_key = api_dict[partner]
+                if api_key not in acts:
+                    new_act = cur_act_model()
+                    new_act.key = api_key
+                    new_act.processor_id = processor_id
+                    db.session.add(new_act)
+                    db.session.commit()
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def apply_processor_plan(processor_id, current_user_id):
     progress = {
         'Set Plan Net': ['Failed'],
         'Set Spend Cap Config': ['Failed'],
         'Set Spend Cap': ['Failed'],
-        'Set Plan As DataSource': ['Failed']
+        'Set Plan As DataSource': ['Failed'],
+        'Add Account Types': ['Failed']
     }
     try:
         _set_task_progress(0)
@@ -2522,17 +2602,27 @@ def apply_processor_plan(processor_id, current_user_id):
         r = set_processor_plan_net(processor_id, current_user_id, matrix)
         if r:
             progress['Set Plan Net'] = ['Success!']
-        _set_task_progress(33)
+        _set_task_progress(20)
         os.chdir(cur_path)
         r = set_spend_cap_config_file(processor_id, current_user_id, dctc.PKD)
         if r:
             progress['Set Spend Cap Config'] = ['Success!']
-        _set_task_progress(67)
+        _set_task_progress(40)
         os.chdir(cur_path)
         r = save_spend_cap_file(processor_id, current_user_id, None,
                                 from_plan=True)
         if r:
             progress['Set Spend Cap'] = ['Success!']
+        _set_task_progress(60)
+        os.chdir(cur_path)
+        r = set_plan_as_datasource(processor_id, current_user_id, matrix)
+        if r:
+            progress['Set Plan As DataSource'] = ['Success!']
+        _set_task_progress(80)
+        os.chdir(cur_path)
+        r = add_account_types(processor_id, current_user_id)
+        if r:
+            progress['Add Account Types'] = ['Success!']
         df = pd.DataFrame(progress).T.reset_index()
         df = df.rename(columns={0: 'Result', 'index': 'Plan Task'})
         _set_task_progress(100)
@@ -2585,12 +2675,13 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
         cur_user = User.query.get(current_user_id)
         file_name = '/dictionaries/plannet_placement.csv'
         if from_plan:
-            mp_file = os.path.join(cur_obj.local_path, 'mediaplan.csv')
+            base_path = create_local_path(cur_obj)
+            mp_file = os.path.join(base_path, 'mediaplan.csv')
             df = pd.read_csv(mp_file)
             pack_col = dctc.PKD.replace('mp', '')
             df = df.groupby([pack_col])[dctc.PNC].sum().reset_index()
             df = df[~df[pack_col].isin(['0', 0, 'None'])]
-            full_file_path = cur_obj.local_path + file_name
+            full_file_path = base_path + file_name
             df.to_csv(full_file_path)
         else:
             new_data.seek(0)
@@ -2618,7 +2709,8 @@ def set_spend_cap_config_file(processor_id, current_user_id, dict_col):
             'processor_dim': [dict_col],
             'processor_metric': ['Planned Net Cost']}
         df = pd.DataFrame(cap_config_dict)
-        os.chdir(adjust_path(cur_obj.local_path))
+        base_path = create_local_path(cur_obj)
+        os.chdir(adjust_path(base_path))
         df.to_csv('config/cap_config.csv', index=False)
         msg_text = ('{} spend cap config was updated.'
                     ''.format(cur_obj.name))

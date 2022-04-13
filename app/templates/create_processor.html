@@ -3,7 +3,7 @@
     <div id="alertContainer">
     <div id="alertPlaceholder"></div>
     </div>
-    <h1 class="text-muted font-weight-bolder">{{ _('{} - {}'.format(title, object_name)) }}</h1>
+    <h2 class="text-muted font-weight-bolder">{{ _('{} - {}'.format(title, object_name)) }}</h2>
     <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
              class="progress-bar progress-bar-striped bg-info"
@@ -744,6 +744,7 @@
                 appendMessage(data, 'planCheckCardCol', 'rowZero', 'Plan Check');
             } else if (tableName === 'apply_processor_plan') {
                 appendCardAsTable(data, "newPlanResultsCardCol", "#rowOne", 'NEW PLAN RESULTS', false);
+
             } else if (tableName === 'get_plan_property') {
                 let title = 'PLAN PROPERTY - ' + vendorKey;
                 appendCardAsTable(data, "planPropertyCardCol", "#rowTwo", title, true);
@@ -985,7 +986,10 @@
             else {
                 document.getElementById(tableName + 'Elem').innerHTML += dashForm['data']['data']
             }
-            document.getElementById('downloadProgressBaseClass').remove()
+            let dlBarElem = document.getElementById('downloadProgressBaseClass');
+            if (dlBarElem) {
+                dlBarElem.remove();
+            }
         }
 
         function makePlotElements(appendElem, baseId, title) {

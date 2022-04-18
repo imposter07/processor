@@ -1807,6 +1807,9 @@ def edit_processor_plan(object_name):
         form_title='PLAN', form_description=(
             'Upload current media plan and view properties of the plan.'))
     kwargs['form'] = ProcessorPlanForm()
+    kwargs['form'].plan_properties.data = [
+            'Add Account Types', 'Plan Net', 'Package Capping',
+            'Plan As Datasource']
     return render_template('create_processor.html', **kwargs)
 
 

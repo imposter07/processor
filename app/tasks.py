@@ -2555,7 +2555,7 @@ def add_account_types(processor_id, current_user_id):
             cur_act_model = Account
         acts = cur_act_model.query.filter_by(processor_id=processor_id).all()
         acts = [x.key for x in acts if x.key]
-        base_path = create_local_path(cur_proc)
+        base_path = adjust_path(create_local_path(cur_proc))
         mp_path = os.path.join(base_path, 'mediaplan.csv')
         if not os.path.exists(mp_path):
             return False
@@ -2572,6 +2572,8 @@ def add_account_types(processor_id, current_user_id):
                     new_act = cur_act_model()
                     new_act.key = api_key
                     new_act.processor_id = processor_id
+                    if cur_proc.local_path:
+                        new_act.name = 'API_{}_FromPlan'.format(api_key)
                     db.session.add(new_act)
                     db.session.commit()
         _set_task_progress(100)

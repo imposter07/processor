@@ -1213,7 +1213,7 @@ def get_table_return(task, table_name, proc_arg, job_name, force_return=False):
     for base_name in ['Relation', 'Uploader']:
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])
-            if 'vk' in proc_arg:
+            if 'vk' in proc_arg and job_name not in ['.check_processor_plan']:
                 table_name = '{}vendorkey{}'.format(
                     table_name, request.form['vendorkey'].replace(' ', '___'))
     table_name = "modalTable{}".format(table_name)

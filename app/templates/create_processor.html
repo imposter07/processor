@@ -1370,6 +1370,7 @@
 
         function planUploadEventListener() {
             document.addEventListener('FilePond:processfile', (e) => {
+                let planProp = JSON.stringify(document.getElementById('plan_properties').selectize.getValue())
                 let clickElem = '#rowOne'
                 let oldHtml = $(clickElem).html();
                 $(clickElem).html(
@@ -1377,7 +1378,7 @@
                             role="status" aria-hidden="true"></span> Loading...`
                 );
                 setDownloadBar(clickElem, 'None', false);
-                getTable('apply_processor_plan', clickElem, oldHtml, 'None', 'None');
+                getTable('apply_processor_plan', clickElem, oldHtml, planProp, 'None');
             });
         }
 

@@ -262,12 +262,12 @@ class ProcessorRequestForm(FlaskForm):
     description = StringField(_l('Description'), validators=[
         DataRequired()])
     plan_path = StringField(_l('Media Plan Path'), validators=[DataRequired()])
-    start_date = DateField(_l('Start Date'))
-    end_date = DateField(_l('End Date'))
+    start_date = DateField(_l('Start Date'), validators=[DataRequired()])
+    end_date = DateField(_l('End Date'), validators=[DataRequired()])
     first_report = DateField(_l('First Report Date'))
-    cur_client = SelectField(_l('Client'))
-    cur_product = SelectField(_l('Product'))
-    cur_campaign = SelectField(_l('Campaign'))
+    cur_client = SelectField(_l('Client'), validators=[DataRequired()])
+    cur_product = SelectField(_l('Product'), validators=[DataRequired()])
+    cur_campaign = SelectField(_l('Campaign'), validators=[DataRequired()])
     client_name = None
     product_name = None
     campaign_name = None

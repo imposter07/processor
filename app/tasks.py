@@ -2585,46 +2585,51 @@ def add_account_types(processor_id, current_user_id):
         return False
 
 
-def apply_processor_plan(processor_id, current_user_id):
-    progress = {
-        'Set Plan Net': ['Failed'],
-        'Set Spend Cap Config': ['Failed'],
-        'Set Spend Cap': ['Failed'],
-        'Set Plan As DataSource': ['Failed'],
-        'Add Account Types': ['Failed']
-    }
+def single_apply_processor_plan(processor_id, current_user_id, progress,
+                                progress_type, cur_path, matrix, dctc):
+    os.chdir(cur_path)
+    r = None
+    if progress_type == 'Plan Net':
+        r = set_processor_plan_net(processor_id, current_user_id, matrix)
+    elif progress_type == 'Package Capping':
+        r = set_spend_cap_config_file(processor_id, current_user_id, dctc.PKD)
+        if r:
+            os.chdir(cur_path)
+            r = save_spend_cap_file(processor_id, current_user_id, None,
+                                    from_plan=True)
+    elif progress_type == 'Plan As Datasource':
+        r = set_plan_as_datasource(processor_id, current_user_id, matrix)
+    elif progress_type == 'Add Account Types':
+        r = add_account_types(processor_id, current_user_id)
+    if r:
+        progress[progress_type] = ['Success!']
+    return progress
+
+
+def apply_processor_plan(processor_id, current_user_id, vk):
+    progress_types = ['Plan Net', 'Package Capping',
+                      'Plan As Datasource', 'Add Account Types']
+    progress = {}
+    for k in progress_types:
+        progress[k] = ['Failed']
     try:
-        _set_task_progress(0)
+        current_progress = 0
+        _set_task_progress(current_progress)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         import processor.reporting.dictcolumns as dctc
         import processor.reporting.vendormatrix as vm
         os.chdir('processor')
         matrix = vm.VendorMatrix()
         os.chdir(cur_path)
-        r = set_processor_plan_net(processor_id, current_user_id, matrix)
-        if r:
-            progress['Set Plan Net'] = ['Success!']
-        _set_task_progress(20)
-        os.chdir(cur_path)
-        r = set_spend_cap_config_file(processor_id, current_user_id, dctc.PKD)
-        if r:
-            progress['Set Spend Cap Config'] = ['Success!']
-        _set_task_progress(40)
-        os.chdir(cur_path)
-        r = save_spend_cap_file(processor_id, current_user_id, None,
-                                from_plan=True)
-        if r:
-            progress['Set Spend Cap'] = ['Success!']
-        _set_task_progress(60)
-        os.chdir(cur_path)
-        r = set_plan_as_datasource(processor_id, current_user_id, matrix)
-        if r:
-            progress['Set Plan As DataSource'] = ['Success!']
-        _set_task_progress(80)
-        os.chdir(cur_path)
-        r = add_account_types(processor_id, current_user_id)
-        if r:
-            progress['Add Account Types'] = ['Success!']
+        vk = json.loads(vk)
+        progress = {k: v if k in vk else ['Skipped']
+                    for k, v in progress.items()}
+        for progress_type in vk:
+            progress = single_apply_processor_plan(
+                processor_id, current_user_id, progress, progress_type,
+                cur_path, matrix, dctc)
+            current_progress += (100 / len(progress_types))
+            _set_task_progress(current_progress)
         df = pd.DataFrame(progress).T.reset_index()
         df = df.rename(columns={0: 'Result', 'index': 'Plan Task'})
         _set_task_progress(100)

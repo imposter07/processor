@@ -2585,6 +2585,22 @@ def add_account_types(processor_id, current_user_id):
         return False
 
 
+def write_plan_property(processor_id, current_user_id, vk, new_data):
+    try:
+        _set_task_progress(0)
+        if vk == 'Plan Net':
+            write_dictionary(processor_id, current_user_id, new_data, vk)
+        elif vk == 'Package Capping':
+            save_spend_cap_file(processor_id, current_user_id, new_data,
+                                as_json=True)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def single_apply_processor_plan(processor_id, current_user_id, progress,
                                 progress_type, cur_path, matrix, dctc):
     os.chdir(cur_path)
@@ -2675,7 +2691,7 @@ def save_media_plan(processor_id, current_user_id, media_plan,
 
 
 def save_spend_cap_file(processor_id, current_user_id, new_data,
-                        from_plan=False):
+                        from_plan=False, as_json=False):
     try:
         import processor.reporting.dictcolumns as dctc
         cur_obj = Processor.query.get(processor_id)
@@ -2689,7 +2705,16 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
             df = df.groupby([pack_col])[dctc.PNC].sum().reset_index()
             df = df[~df[pack_col].isin(['0', 0, 'None'])]
             full_file_path = base_path + file_name
-            df.to_csv(full_file_path)
+            df.to_csv(full_file_path, index=False)
+        elif as_json:
+            base_path = create_local_path(cur_obj)
+            cap_file = os.path.join(base_path, 'dictionaries',
+                                    'plannet_placement.csv')
+            df = pd.read_json(new_data)
+            if 'index' in df.columns:
+                df = df.drop('index', axis=1)
+            df = df.replace('NaN', '')
+            df.to_csv(cap_file, index=False)
         else:
             new_data.seek(0)
             with open(cur_obj.local_path + file_name, 'wb') as f:

@@ -1090,7 +1090,8 @@ def post_table():
                  'raw_data': '.write_raw_data',
                  'Uploader': '.write_uploader_file',
                  'import_config': '.write_import_config_file',
-                 'raw_file_comparison': '.write_raw_file_from_tmp'}
+                 'raw_file_comparison': '.write_raw_file_from_tmp',
+                 'get_plan_property': '.write_plan_property'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',
                       'dictionary_order']:
@@ -1213,7 +1214,8 @@ def get_table_return(task, table_name, proc_arg, job_name, force_return=False):
     for base_name in ['Relation', 'Uploader']:
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])
-            if 'vk' in proc_arg and job_name not in ['.check_processor_plan']:
+            if 'vk' in proc_arg and job_name not in [
+                '.check_processor_plan' '.apply_processor_plan']:
                 table_name = '{}vendorkey{}'.format(
                     table_name, request.form['vendorkey'].replace(' ', '___'))
     table_name = "modalTable{}".format(table_name)

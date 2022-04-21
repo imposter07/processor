@@ -635,6 +635,10 @@
             return downloadingProgress
         }
         function setDownloadBar(currentElement, textContent, pond = true) {
+            let oldDownload = document.getElementById('downloadProgressBaseClass')
+            if (oldDownload) {
+                oldDownload.remove();
+            }
             $(
                 '<div id="downloadProgressBaseClass" class="progress">\n' +
                 '  <div id="downloadProgress" ' +

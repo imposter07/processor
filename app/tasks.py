@@ -1904,6 +1904,17 @@ def set_conversions(processor_id, current_user_id):
         return False
 
 
+def convert_rate_card_to_relation(df, dctc):
+    df = df.rename(columns={'adserving_fee': dctc.AR,
+                            'reporting_fee': dctc.RFR,
+                            'type_name': dctc.SRV})
+    for col in [dctc.RFM, dctc.AM]:
+        df[col] = 'CPM'
+        df[col] = np.where(df[dctc.SRV].str.contains('Click'), 'CPC', 'CPM')
+    df = df[[dctc.SRV, dctc.AM, dctc.AR, dctc.RFM, dctc.RFR]]
+    return df
+
+
 def set_processor_fees(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
@@ -1917,13 +1928,7 @@ def set_processor_fees(processor_id, current_user_id):
                                   for col in row.__table__.columns.keys()
                                   if 'id' not in col))
         df = pd.DataFrame(rate_list)
-        df = df.rename(columns={'adserving_fee': dctc.AR,
-                                'reporting_fee': dctc.RFR,
-                                'type_name': dctc.SRV})
-        for col in [dctc.RFM, dctc.AM]:
-            df[col] = 'CPM'
-            df[col] = np.where(df[dctc.SRV].str.contains('Click'), 'CPC', 'CPM')
-        df = df[[dctc.SRV, dctc.AM, dctc.AR, dctc.RFM, dctc.RFR]]
+        df = convert_rate_card_to_relation(df, dctc)
         rc = dct.RelationalConfig()
         rc.read(dctc.filename_rel_config)
         params = rc.get_relation_params('Serving')
@@ -2458,6 +2463,41 @@ def get_package_capping(processor_id, current_user_id, vk):
         return False
 
 
+def get_media_plan(processor_id, current_user_id, vk):
+    try:
+        _set_task_progress(0)
+        cur_obj = Processor.query.get(processor_id)
+        base_path = create_local_path(cur_obj)
+        mp_path = os.path.join(base_path, 'mediaplan.csv')
+        if os.path.exists(mp_path):
+            df = pd.read_csv(mp_path)
+            mp_cols = [x for x in df.columns if 'Unnamed' not in x]
+            df = df[mp_cols]
+        else:
+            df = pd.DataFrame({'RESULT': ['MEDIA PLAN DOES NOT EXIST']})
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
+def get_serving_fees(processor_id, current_user_id, vk):
+    try:
+        _set_task_progress(0)
+        df = get_relational_config(processor_id, current_user_id,
+                                   parameter='Serving')[0]
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def get_plan_property(processor_id, current_user_id, vk):
     try:
         _set_task_progress(0)
@@ -2465,7 +2505,8 @@ def get_plan_property(processor_id, current_user_id, vk):
             'Add Account Types': get_account_types,
             'Plan Net': get_dictionary,
             'Package Capping': get_package_capping,
-            'Plan As Datasource': None}
+            'Plan As Datasource': get_media_plan,
+            'Add Fees': get_serving_fees}
         cur_func = func_dict[vk]
         if cur_func:
             df = cur_func(processor_id, current_user_id, vk)
@@ -2585,6 +2626,59 @@ def add_account_types(processor_id, current_user_id):
         return False
 
 
+def add_plan_fess_to_processor(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        import processor.reporting.dictcolumns as dctc
+        cur_proc = Processor.query.get(processor_id)
+        cur_user = User.query.get(current_user_id)
+        base_path = adjust_path(create_local_path(cur_proc))
+        mp_path = os.path.join(base_path, 'mediaplan.csv')
+        if not os.path.exists(mp_path):
+            return False
+        df = pd.read_csv(mp_path)
+        serving_cols = ['Ad Serving Type', 'Ad Serving Rate', 'Reporting Fee']
+        sdf = df.groupby(serving_cols).size().reset_index()[serving_cols]
+        sdf = sdf.rename(
+            columns={'Ad Serving Type': Rates.type_name.name,
+                     'Ad Serving Rate': Rates.adserving_fee.name,
+                     'Reporting Fee': Rates.reporting_fee.name})
+        afee_cols = ['Agency Fee Rate']
+        adf = df.groupby(afee_cols).size().reset_index()[afee_cols]
+        if cur_proc.local_path:
+            df = get_constant_dict(processor_id, current_user_id)[0]
+            df = df[df[dctc.DICT_COL_NAME] != dctc.AGF]
+            adf = pd.DataFrame(
+                {dctc.DICT_COL_NAME: [dctc.AGF],
+                 dctc.DICT_COL_VALUE: [adf[afee_cols].values[0][0]],
+                 dctc.DICT_COL_DICTNAME: [None]})
+            df = df.append(adf, ignore_index=True).reset_index(drop=True)
+            write_constant_dict(processor_id, current_user_id, df.to_json())
+            df = get_relational_config(processor_id, current_user_id,
+                                       parameter='Serving')[0]
+            sdf = convert_rate_card_to_relation(sdf, dctc)
+            df = df[~df[dctc.SRV].isin(sdf[dctc.SRV].to_list())]
+            df = df.append(sdf, ignore_index=True).reset_index(drop=True)
+            write_relational_config(processor_id, current_user_id, df.to_json(),
+                                    parameter='Serving')
+        else:
+            cur_proc.digital_agency_fees = adf[afee_cols].values[0][0]
+            write_rate_card(processor_id, current_user_id,
+                            sdf.to_json(orient='records'), 'None')
+            rate_card_name = '{}|{}'.format(cur_proc.name,
+                                            cur_user.username)
+            rate_card = RateCard.query.filter_by(name=rate_card_name).first()
+            cur_proc.rate_card_id = rate_card.id
+            db.session.commit()
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def write_plan_property(processor_id, current_user_id, vk, new_data):
     try:
         _set_task_progress(0)
@@ -2593,6 +2687,13 @@ def write_plan_property(processor_id, current_user_id, vk, new_data):
         elif vk == 'Package Capping':
             save_spend_cap_file(processor_id, current_user_id, new_data,
                                 as_json=True)
+        elif vk == 'Plan As Datasource':
+            save_media_plan(processor_id, current_user_id,
+                            pd.read_json(new_data))
+        elif vk == 'Add Fees':
+            import processor.reporting.dictcolumns as dctc
+            write_relational_config(processor_id, current_user_id, new_data,
+                                    dctc.SRV)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -2617,14 +2718,15 @@ def single_apply_processor_plan(processor_id, current_user_id, progress,
         r = set_plan_as_datasource(processor_id, current_user_id, matrix)
     elif progress_type == 'Add Account Types':
         r = add_account_types(processor_id, current_user_id)
+    elif progress_type == 'Add Fees':
+        r = add_plan_fess_to_processor(processor_id, current_user_id)
     if r:
         progress[progress_type] = ['Success!']
     return progress
 
 
 def apply_processor_plan(processor_id, current_user_id, vk):
-    progress_types = ['Plan Net', 'Package Capping',
-                      'Plan As Datasource', 'Add Account Types']
+    progress_types = Processor.get_plan_properties()
     progress = {}
     for k in progress_types:
         progress[k] = ['Failed']

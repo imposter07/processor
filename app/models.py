@@ -625,6 +625,11 @@ class Processor(db.Model):
                    {'Export': 'main.edit_processor_export'}]
         return buttons
 
+    @staticmethod
+    def get_plan_properties():
+        return ['Add Account Types', 'Plan Net', 'Package Capping',
+                'Plan As Datasource', 'Add Fees']
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)

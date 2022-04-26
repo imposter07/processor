@@ -44,11 +44,15 @@ function selectColumns(editor, csv, header) {
 function createTable(colData, rawData, tableName,
                      elem = "modal-body-table") {
     let cols = JSON.parse(colData);
-    let tableFields = cols.map(function (e) {
+    var tableFields = cols.map(function (e) {
         if (e === 'index') {
             return {label: e, name: e, type: "hidden"}
         } else {
-            return {label: e, name: e}
+            if (tableName === 'metrics_table') {
+                return {label: e, name: e, type: "select", options: Object.keys($('#' + $('table[id^=modalTable]')[0].id).DataTable().data()[0])}
+            } else {
+                return {label: e, name: e}
+            }
         }
     });
     let tableCols = cols.map(function (e) {
@@ -57,11 +61,19 @@ function createTable(colData, rawData, tableName,
     let tableJquery = '#' + tableName;
     document.getElementById(elem).innerHTML = rawData;
     $(document).ready(function () {
-        let editor = new $.fn.dataTable.Editor({
-            table: tableJquery,
-            idSrc: 'index',
-            fields: tableFields
-        });
+        if (tableName === 'metrics_table') {
+            var editor = new $.fn.dataTable.Editor({
+                table: tableJquery,
+                idSrc: 'index',
+                fields: tableFields
+            });
+        } else {
+            var editor = new $.fn.dataTable.Editor({
+                table: tableJquery,
+                idSrc: 'index',
+                fields: tableFields
+            });
+        }
         editor.on('open', function (e, type, mode, action) {
             if ((type === 'main') && (elem === 'modal-body-table')) {
                 $('#modalTable').modal('hide');

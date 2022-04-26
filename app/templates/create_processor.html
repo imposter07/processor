@@ -957,6 +957,24 @@
                 },(2 * 1000));
             });
         });
+        function appendMetricTable(dashForm, divId, rowNum, title, asDataTable=true){
+            let tableName = dashForm['data']['name']
+            $(rowNum).append('' +
+                '<div class="col">' +
+                '<div id="' + divId + '" class="card">' +
+                '<h6 class="card-header"><small class="text-muted">' + title +
+                '</small></h6>' +
+                '<div id=' + tableName + 'Elem></div>' +
+                '</div>' +
+                '</div>')
+            if (asDataTable){
+                createMetricTable(dashForm['data']['cols'], dashForm['data']['data'],
+                    tableName, tableName + 'Elem', dashForm['ds_raw_cols'])
+            }
+            else {
+                document.getElementById(tableName + 'Elem').innerHTML += dashForm['data']['data']
+            }
+        }
         function appendCardAsTable(dashForm, divId, rowNum, title, asDataTable=true){
             let tableName = dashForm['data']['name']
             $(rowNum).append('' +
@@ -1156,7 +1174,7 @@
                 } else {
                     appendForm(data['placement_form'], '#rowOne',
                         'placeForm', 'Column Selection')
-                    appendCardAsTable(data['metrics_table'], "metricsCardCol",
+                    appendMetricTable(data['metrics_table'], "metricsCardCol",
                         "#rowOne", 'Active Metrics');
                     appendCardAsTable(data['rules_table'], "rulesCardCol",
                         '#rowThree', 'Rules');

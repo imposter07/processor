@@ -182,3 +182,146 @@ function createTable(colData, rawData, tableName,
 
     });
 }
+
+function createMetricTable(colData, rawData, tableName,
+                           elem = "modal-body-table", rawColData) {
+    let cols = JSON.parse(colData);
+    let rawCols = JSON.parse(rawColData);
+    var tableFields = cols.map(function (e) {
+        if (e === 'index') {
+            return {label: e, name: e, type: "hidden"}
+        } else {
+            if (tableName === 'metrics_table') {
+                return {label: e, name: e, type: "select", options: rawCols}
+//                return {label: e, name: e, type: "select", options: Object.keys($('#' + $('table[id^=modalTable]')[0].id).DataTable().data()[0])}
+            } else {
+                return {label: e, name: e}
+            }
+        }
+    });
+    let tableCols = cols.map(function (e) {
+        return {data: e}
+    });
+    let tableJquery = '#' + tableName;
+    document.getElementById(elem).innerHTML = rawData;
+    $(document).ready(function () {
+        if (tableName === 'metrics_table') {
+            var editor = new $.fn.dataTable.Editor({
+                table: tableJquery,
+                idSrc: 'index',
+                fields: tableFields
+            });
+        } else {
+            var editor = new $.fn.dataTable.Editor({
+                table: tableJquery,
+                idSrc: 'index',
+                fields: tableFields
+            });
+        }
+        editor.on('open', function (e, type, mode, action) {
+            if ((type === 'main') && (elem === 'modal-body-table')) {
+                $('#modalTable').modal('hide');
+            }
+        });
+        editor.on('close', function () {
+            if (elem === 'modal-body-table') {
+                $('#modalTable').modal('show');
+            }
+        });
+        let uploadEditor = new $.fn.dataTable.Editor({
+            fields: [{
+                label: 'CSV file:',
+                name: 'csv',
+                type: 'upload',
+                ajax: function (files) {
+                    // Ajax override of the upload so we can handle the file locally. Here we use Papa
+                    // to parse the CSV.
+                    Papa.parse(files[0], {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: function (results) {
+                            if (results.errors.length) {
+                                uploadEditor.field('csv').error('CSV parsing error: ' + results.errors[0].message);
+                            } else {
+                                uploadEditor.close();
+                                selectColumns(editor, results.data, results.meta.fields);
+                            }
+                        }
+                    });
+                }
+            }]
+        });
+        let dom = "<div class='row'><div class='col'>B</div><div class='col'>f</div></div>";
+        var table = $(tableJquery).DataTable({
+            dom: "Bfrtip",
+            columns: tableCols,
+            "deferRender": true,
+            "orderClasses": false,
+            "scrollX": true,
+            responsive: true,
+            keys: {
+                columns: ':not(:first-child)',
+                editor: editor
+            },
+            select: {
+                style: 'os',
+                selector: 'td:first-child',
+                blurable: true
+            },
+            buttons: [
+                {
+                    extend: 'searchPanes',
+                    config: {
+                        cascadePanes: true,
+                        viewTotal: true,
+                        layout: 'columns-3'
+                    }
+                },
+                {
+                    extend: 'collection',
+                    text: 'Export',
+                    buttons: [
+                        'copy',
+                        'excel',
+                        'csv',
+                        'pdf'
+                    ]
+                },
+                {extend: 'create', editor: editor},
+                {extend: 'edit', editor: editor},
+                {
+                    extend: "selected",
+                    text: 'Duplicate',
+                    action: function (e, dt, node, config) {
+                        // Start in edit mode, and then change to create
+                        editor
+                            .edit(table.rows({selected: true}).indexes(), {
+                                title: 'Duplicate record',
+                                buttons: 'Create from existing'
+                            })
+                            .mode('create');
+                    }
+                },
+                {extend: 'remove', editor: editor},
+                {
+                    text: 'Import CSV',
+                    action: function () {
+                        uploadEditor.create({
+                            title: 'CSV file import'
+                        });
+                        $('#modalTable').modal('hide');
+                    }
+                },
+                {
+                    extend: 'selectAll',
+                    className: 'btn-space'
+                },
+                {
+                    extend: 'colvis',
+                    collectionLayout: 'fixed two-column'
+                },
+            ]
+        });
+
+    });
+}

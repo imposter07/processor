@@ -1315,7 +1315,9 @@ def get_datasource():
     df = pd.DataFrame(metrics).T.reset_index()
     df = df.rename({'index': 'Metric Name', 0: 'Metric Value'}, axis=1)
     data = df_to_html(df, 'metrics_table')
-    data['ds_raw_cols'] = get_datasource_raw_columns(obj_name, datasource_name)
+    ds_raw_cols = get_datasource_raw_columns(obj_name, datasource_name)
+    ds_raw_cols = json.dumps(ds_raw_cols)
+    data['ds_raw_cols'] = ds_raw_cols
     rules = ds.get_datasource_for_processor()['vm_rules']
     df = pd.DataFrame(rules).T
     rules_data = df_to_html(df, 'rules_table')

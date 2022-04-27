@@ -2507,9 +2507,12 @@ def get_plan_property(processor_id, current_user_id, vk):
             'Package Capping': get_package_capping,
             'Plan As Datasource': get_media_plan,
             'Add Fees': get_serving_fees}
-        cur_func = func_dict[vk]
-        if cur_func:
-            df = cur_func(processor_id, current_user_id, vk)
+        if vk in func_dict:
+            cur_func = func_dict[vk]
+            if cur_func:
+                df = cur_func(processor_id, current_user_id, vk)
+            else:
+                df = [pd.DataFrame({'Result': ['FUNCTION NOT KNOWN']})]
         else:
             df = [pd.DataFrame({'Result': ['FUNCTION NOT KNOWN']})]
         _set_task_progress(100)

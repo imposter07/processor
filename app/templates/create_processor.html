@@ -515,7 +515,7 @@
         }
         function SendDataTable(modalTableName="modalTable", formContinue = null,
                                oldPage = '', newPage = '') {
-            let sourceElem = $('table[id^=' + modalTableName + ']')[0].id;
+            let sourceElem = $('table[id^=modalTable]')[0].id;
             try {
                 var sendTable = $('#' + sourceElem).DataTable();
             } catch (err) {

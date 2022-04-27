@@ -49,7 +49,8 @@ function createTable(colData, rawData, tableName,
             return {label: e, name: e, type: "hidden"}
         } else {
             if (tableName === 'metrics_table') {
-                return {label: e, name: e, type: "select", options: Object.keys($('#' + $('table[id^=modalTable]')[0].id).DataTable().data()[0])}
+                return {label: e, name: e}
+//                return {label: e, name: e, type: "select", options: Object.keys($('#' + $('table[id^=modalTable]')[0].id).DataTable().data()[0])}
             } else {
                 return {label: e, name: e}
             }

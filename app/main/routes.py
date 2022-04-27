@@ -1315,7 +1315,7 @@ def get_datasource():
     df = pd.DataFrame(metrics).T.reset_index()
     df = df.rename({'index': 'Metric Name', 0: 'Metric Value'}, axis=1)
     data = df_to_html(df, 'metrics_table')
-    data['ds_raw_cols'] = ##GET IT GURL
+    data['ds_raw_cols'] = get_datasource_raw_columns(obj_name, datasource_name)
     rules = ds.get_datasource_for_processor()['vm_rules']
     df = pd.DataFrame(rules).T
     rules_data = df_to_html(df, 'rules_table')
@@ -1421,7 +1421,6 @@ def get_datasource_raw_columns(obj_name, datasource_name):
         vendor_key=datasource_name).first()
 
     import processor.reporting.analyze as az
-
     all_analysis = ProcessorAnalysis.query.filter_by(
         processor_id=ds.processor_id, key=az.Analyze.raw_columns).first()
     if all_analysis and all_analysis.data:
@@ -1434,7 +1433,6 @@ def get_datasource_raw_columns(obj_name, datasource_name):
         raw_cols = raw_cols[0]
     else:
         raw_cols = []
-
     return raw_cols
 
 @bp.route('/processor/<object_name>/edit/clean/upload_file',

@@ -184,19 +184,19 @@ function createTable(colData, rawData, tableName,
 }
 
 function createMetricTable(colData, rawData, tableName,
-                           elem = "modal-body-table", rawColData) {
+                           elem = "modal-body-table", rawColData, vmcColData) {
     let cols = JSON.parse(colData);
     let rawCols = JSON.parse(rawColData);
+    let vmcCols = JSON.parse(vmcColData)
     var tableFields = cols.map(function (e) {
         if (e === 'index') {
             return {label: e, name: e, type: "hidden"}
+        } else if (e === 'Metric Name') {
+            return {label: e, name: e, type: "select", options: vmcCols}
+        } else if (e === 'Metric Value') {
+            return {label: e, name: e, type: "select", multiple: true, separator: "|", options: rawCols}
         } else {
-            if (tableName === 'metrics_table') {
-                return {label: e, name: e, type: "select", options: rawCols}
-//                return {label: e, name: e, type: "select", options: Object.keys($('#' + $('table[id^=modalTable]')[0].id).DataTable().data()[0])}
-            } else {
-                return {label: e, name: e}
-            }
+            return {label: e, name: e}
         }
     });
     let tableCols = cols.map(function (e) {
@@ -205,19 +205,11 @@ function createMetricTable(colData, rawData, tableName,
     let tableJquery = '#' + tableName;
     document.getElementById(elem).innerHTML = rawData;
     $(document).ready(function () {
-        if (tableName === 'metrics_table') {
-            var editor = new $.fn.dataTable.Editor({
-                table: tableJquery,
-                idSrc: 'index',
-                fields: tableFields
-            });
-        } else {
-            var editor = new $.fn.dataTable.Editor({
-                table: tableJquery,
-                idSrc: 'index',
-                fields: tableFields
-            });
-        }
+        let editor = new $.fn.dataTable.Editor({
+            table: tableJquery,
+            idSrc: 'index',
+            fields: tableFields
+        });
         editor.on('open', function (e, type, mode, action) {
             if ((type === 'main') && (elem === 'modal-body-table')) {
                 $('#modalTable').modal('hide');

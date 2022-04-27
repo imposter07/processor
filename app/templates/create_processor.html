@@ -969,7 +969,8 @@
                 '</div>')
             if (asDataTable){
                 createMetricTable(dashForm['data']['cols'], dashForm['data']['data'],
-                    tableName, tableName + 'Elem', dashForm['ds_raw_cols'])
+                    tableName, tableName + 'Elem', dashForm['select_cols']['ds_raw_cols'],
+                    dashForm['select_cols']['vmc_cols'])
             }
             else {
                 document.getElementById(tableName + 'Elem').innerHTML += dashForm['data']['data']

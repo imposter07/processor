@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import yaml
 import time
 import copy
 import shutil
@@ -1377,7 +1378,6 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
 
 def set_uploader_config_files(uploader_id, current_user_id):
     try:
-        import yaml
         import uploader.upload.fbapi as fbapi
         import uploader.upload.awapi as awapi
         import uploader.upload.dcapi as dcapi
@@ -2439,8 +2439,9 @@ def get_account_types(processor_id, current_user_id, vk):
         return [df]
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
         return False
 
 
@@ -2458,8 +2459,9 @@ def get_package_capping(processor_id, current_user_id, vk):
         return [df]
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
         return False
 
 
@@ -2479,8 +2481,9 @@ def get_media_plan(processor_id, current_user_id, vk):
         return [df]
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
         return False
 
 
@@ -2493,8 +2496,9 @@ def get_serving_fees(processor_id, current_user_id, vk):
         return [df]
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
         return False
 
 
@@ -3187,10 +3191,10 @@ def get_processor_total_metrics_file(processor_id, current_user_id):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
-        import reporting.analyze as az
-        import reporting.vendormatrix as vm
-        import reporting.dictcolumns as dctc
-        import reporting.vmcolumns as vmc
+        import processor.reporting.analyze as az
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.dictcolumns as dctc
+        import processor.reporting.vmcolumns as vmc
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         aly = az.Analyze(file_name='Raw Data Output.csv', matrix=matrix)
@@ -3749,7 +3753,7 @@ def update_automatic_requests(processor_id, current_user_id):
                          + df['mpPlacement Date'] + ': Clicks = '
                          + df['Clicks']).to_list()
             msg = ('{} {}\n\n'.format(analysis.message, ', '
-                                        .join(undefined)))
+                                      .join(undefined)))
             update_single_auto_request(processor_id, current_user_id,
                                        fix_type=fix_type,
                                        fix_description=msg,
@@ -4085,7 +4089,9 @@ def get_project_numbers(processor_id, current_user_id):
         return [df]
     except:
         _set_task_progress(100)
-        app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
         return pd.DataFrame()
 
 
@@ -4106,8 +4112,8 @@ def get_all_processors(user_id, running_user):
     except:
         _set_task_progress(100)
         app.logger.error(
-            'Unhandled exception - User {}'.format(user_id),
-            exc_info=sys.exc_info())
+            'Unhandled exception - User {} running_user - {}'.format(
+                user_id, running_user), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
@@ -4157,8 +4163,8 @@ def update_tutorial(user_id, running_user, tutorial_name, new_data):
     except:
         _set_task_progress(100)
         app.logger.error(
-            'Unhandled exception - User {}'.format(user_id),
-            exc_info=sys.exc_info())
+            'Unhandled exception - User {} running_user - {}'.format(
+                user_id, running_user), exc_info=sys.exc_info())
         return False
 
 
@@ -4212,8 +4218,8 @@ def update_walkthrough(user_id, running_user, new_data):
     except:
         _set_task_progress(100)
         app.logger.error(
-            'Unhandled exception - User {}'.format(user_id),
-            exc_info=sys.exc_info())
+            'Unhandled exception - User {} running_user - {}'.format(
+                user_id, running_user), exc_info=sys.exc_info())
         return False
 
 
@@ -4359,8 +4365,8 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                         vks = [y for y in vks if 'Sizmek' in y]
                     for vk in vks:
                         idx = df[df[vmc.vendorkey] == vk].index
-                        if (x['Metric'] == vmc.clicks or 
-                            x['Metric'] == vmc.impressions):
+                        if (x['Metric'] == vmc.clicks or
+                                x['Metric'] == vmc.impressions):
                             df.loc[idx, 'RULE_1_QUERY'] = (
                                     df.loc[idx, 'RULE_1_QUERY'][idx[0]] + ',' +
                                     x[dctc.VEN])
@@ -4398,7 +4404,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 new_val = x['First Click Date'].strip('00:00:00')
                 trans = [['mpPlacement Date', old_val, new_val,
                          'Select::mpPackage Description', x[dctc.PKD]]]
-                tdf = pd.DataFrame(trans, columns =df.columns)
+                tdf = pd.DataFrame(trans, columns=df.columns)
                 df = df.append(tdf, ignore_index=True, sort=False)
         else:
             df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])

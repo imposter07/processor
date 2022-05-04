@@ -186,6 +186,10 @@ function createMetricTable(colData, rawData, tableName,
             return {label: e, name: e}
         }
     });
+
+    var vmcOptions = vmcCols.map(function (e) {
+        return {text: e, value: e}
+    });
     let tableCols = cols.map(function (e) {
         return {data: e}
     });
@@ -195,9 +199,28 @@ function createMetricTable(colData, rawData, tableName,
         $(tableJquery).append("<colgroup><col id='col0'><col id='col1'></colgroup>")
 
         let dom = "<div class='row'><div class='col'>B</div><div class='col'>f</div></div>";
+
+
+        var rows = document.getElementById(elem).getElementsByTagName('tr');
+        colIndex = 0;
+        for (var j = 0, col; col = rows[0].cells[j]; j++) {
+            if (rows[0].cells[j].innerHTML === 'Metric Name') {
+                colIndex = j;
+            }
+        }
+        for (var i = 1, row; row = rows[i]; i++) {
+            //rows[i].cells[colIndex].setAttribute("contenteditable", "true")
+            rows[i].cells[colIndex].innerHTML = `<select name='metric_name_select' id='metric_name_select'>`
+            var $metricnameselect = $("select[name='metric_name_select']")
+            $metricnameselect.selectize({options: vmcOptions,
+                                         searchField: 'text'})
+//            $(vmcCols).each(function(i, v){
+//                $metricnameselect.append($("<option>", {value: v, html: v}))
+//            });
+        }
 //        var table = $(tableJquery).DataTable({
 //
 //        });
-//        $(tableJquery).selectize()
+//        $('select').selectize()
     });
 }

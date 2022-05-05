@@ -2575,6 +2575,7 @@ def set_plan_as_datasource(processor_id, current_user_id, base_matrix):
                     mp_df = base_matrix.vm_df[
                         base_matrix.vm_df[vmc.vendorkey] == vmc.api_mp_key]
                     mp_df = mp_df.reset_index(drop=True)
+                    mp_df[vmc.firstrow] = 0
                     vm_df = vm_df.append(mp_df).reset_index(drop=True)
                     matrix.vm_df = vm_df
                     matrix.write()
@@ -2813,6 +2814,7 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
             pack_col = dctc.PKD.replace('mp', '')
             df = df.groupby([pack_col])[dctc.PNC].sum().reset_index()
             df = df[~df[pack_col].isin(['0', 0, 'None'])]
+            df = df.rename(columns={dctc.PNC: 'Net Cost (Capped)'})
             full_file_path = base_path + file_name
             df.to_csv(full_file_path, index=False)
         elif as_json:

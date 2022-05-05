@@ -693,6 +693,7 @@ def get_navigation_buttons(buttons=None):
                    {'Ad': 'main.edit_uploader_ad_aw'}]
     else:
         buttons = [{'Basic': 'main.edit_processor'},
+                   {'Plan': 'main.edit_processor_plan_normal'},
                    {'Import': 'main.edit_processor_import'},
                    {'Clean': 'main.edit_processor_clean'},
                    {'Export': 'main.edit_processor_export'}]
@@ -1800,16 +1801,39 @@ def edit_processor_plan_upload_file(object_name):
     return jsonify({'data': 'success: {}'.format(cur_proc.name)})
 
 
-@bp.route('/processor/<object_name>/edit/plan')
+@bp.route('/processor/<object_name>/edit/plan_normal/upload_file',
+          methods=['GET', 'POST'])
 @login_required
-def edit_processor_plan(object_name):
+def edit_processor_plan_normal_upload_file(object_name):
+    return edit_processor_plan_upload_file(object_name)
+
+
+def get_plan_kwargs(object_name, request_flow=True):
+    if request_flow:
+        buttons = 'ProcessorRequest'
+    else:
+        buttons = 'Processor'
     kwargs = get_current_processor(
         object_name, current_page='edit_processor_plan', edit_progress=50,
-        edit_name='Plan', buttons='ProcessorRequest',
+        edit_name='Plan', buttons=buttons,
         form_title='PLAN', form_description=(
             'Upload current media plan and view properties of the plan.'))
     kwargs['form'] = ProcessorPlanForm()
     kwargs['form'].plan_properties.data = Processor.get_plan_properties()
+    return kwargs
+
+
+@bp.route('/processor/<object_name>/edit/plan')
+@login_required
+def edit_processor_plan(object_name):
+    kwargs = get_plan_kwargs(object_name, request_flow=True)
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<object_name>/edit/plan_normal')
+@login_required
+def edit_processor_plan_normal(object_name):
+    kwargs = get_plan_kwargs(object_name, request_flow=False)
     return render_template('create_processor.html', **kwargs)
 
 

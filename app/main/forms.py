@@ -262,12 +262,12 @@ class ProcessorRequestForm(FlaskForm):
     description = StringField(_l('Description'), validators=[
         DataRequired()])
     plan_path = StringField(_l('Media Plan Path'), validators=[DataRequired()])
-    start_date = DateField(_l('Start Date'))
-    end_date = DateField(_l('End Date'))
+    start_date = DateField(_l('Start Date'), validators=[DataRequired()])
+    end_date = DateField(_l('End Date'), validators=[DataRequired()])
     first_report = DateField(_l('First Report Date'))
-    cur_client = SelectField(_l('Client'))
-    cur_product = SelectField(_l('Product'))
-    cur_campaign = SelectField(_l('Campaign'))
+    cur_client = SelectField(_l('Client'), validators=[DataRequired()])
+    cur_product = SelectField(_l('Product'), validators=[DataRequired()])
+    cur_campaign = SelectField(_l('Campaign'), validators=[DataRequired()])
     client_name = None
     product_name = None
     campaign_name = None
@@ -300,10 +300,14 @@ class EditProcessorRequestForm(ProcessorRequestForm):
 
 class ProcessorPlanForm(FlaskForm):
     plan_properties = SelectMultipleField(
-        _('Plan Properties'), choices=[(x, x) for x in [
-            'Add Account Types', 'Plan Net', 'Package Capping',
-            'Plan As Datasource']])
+        _('Plan Properties'), choices=[
+            (x, x) for x in Processor.get_plan_properties()],
+        description='Select tasks you want the uploaded plan to accomplish.')
     plan = FileField(_l('Media Plan'))
+    plan_property_view = SelectField(
+        _('View Plan Properties'), choices=[
+            (x, x) for x in [''] + Processor.get_plan_properties()],
+        description='Select to view current properties as a table.')
     form_continue = HiddenField('form_continue')
 
 

@@ -8,18 +8,41 @@
         th {
             cursor: pointer;
         }
+
+        tr:hover {
+            background-color: lightsteelblue !important;
+        }
+
+        tr:hover td {
+            background-color: transparent;
+        }
+
     </style>
     {% if edit_name == 'Topline' %}
         <div class="card-deck container-fluid text-center">
             <div id="totalCards" class="row w-100"></div>
         </div>
-        <button id="addPartner"
-                class="btn btn-outline-success btn-block text-left"
-                type="button" href="">
-            <i class="fas fa-plus"
-               role="button"></i>
-            {{ _('Add Partner') }}
-        </button><br>
+        <div class="row">
+            <div class="col">
+                <button id="addPartner"
+                        class="btn btn-outline-success btn-block text-left"
+                        type="button" href="">
+                    <i class="fas fa-plus"
+                       role="button"></i>
+                    {{ _('Add Partner') }}
+                </button>
+            </div>
+            <div class="col">
+                <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="fa-solid fa-magnifying-glass" href="#" role="button"></i></span>
+                    </div>
+                    <input id="tableSearchInput" type="text" class="form-control" placeholder="Search"
+                           aria-label="Username"
+                           aria-describedby="basic-addon1" onkeyup="searchTable()">
+                </div>
+            </div>
+        </div>
         <table id="planTable" class="table table-striped table-responsive-sm small">
             <thead>
             <tr>
@@ -257,7 +280,15 @@
                     v1 !== '' && v2 !== '' && !isNaN(v1.replace('$','')) && !isNaN(v2.replace('$','')) ? v1.replace('$','') - v2.replace('$','') : v1.toString().localeCompare(v2)
             )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
             document.querySelectorAll('th').forEach(th => th.addEventListener('click', (() => {
-                const table =document.getElementById('accordionPlan');
+                const table = document.getElementById('accordionPlan');
+                let sortArrow = th.getElementsByClassName('fas');
+                if (sortArrow.length > 0) {
+                    let downArrow = sortArrow[0].classList.contains('fa-arrow-down');
+                    let arrowReplace = (downArrow) ? ['down', 'up'] : ['up', 'down'];
+                    sortArrow[0].className = sortArrow[0].className.replace(arrowReplace[0], arrowReplace[1]);
+                } else {
+                    th.innerHTML += `<i class="fas fa-arrow-down" href="#" role="button"></i>`;
+                }
                 Array.from(table.querySelectorAll('.accordion-toggle'))
                     .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
                     .forEach(function(tr) {
@@ -268,6 +299,20 @@
                         table.appendChild(hiddenElem);
                     });
             })));
+        }
+
+        function searchTable() {
+            const trs = document.querySelectorAll('#accordionPlan tr:not(.header)')
+            const filter = document.querySelector('#tableSearchInput').value
+            const regex = new RegExp(filter, 'i')
+            const isFoundInTds = td => regex.test(td.innerHTML)
+            const isFound = childrenArr => childrenArr.some(isFoundInTds)
+            const setTrStyleDisplay = ({style, children}) => {
+                style.display = isFound([
+                    ...children // <-- All columns
+                ]) ? '' : 'none'
+            }
+            trs.forEach(setTrStyleDisplay)
         }
 
         $(document).ready(function () {

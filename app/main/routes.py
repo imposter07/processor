@@ -869,7 +869,7 @@ def get_walk_questions(edit_name):
 
 def get_current_processor(object_name, current_page, edit_progress=0,
                           edit_name='Page', buttons=None, fix_id=None,
-                          note_id=None):
+                          note_id=None, form_title=None, form_description=None):
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     posts, next_url, prev_url = get_posts_for_objects(
@@ -892,7 +892,8 @@ def get_current_processor(object_name, current_page, edit_progress=0,
                 run_links=run_links, edit_links=edit_links,
                 output_links=output_links, request_links=request_links,
                 next_url=next_url, prev_url=prev_url,
-                walkthrough=walk)
+                walkthrough=walk, form_title=form_title,
+                form_description=form_description)
     args['buttons'] = get_navigation_buttons(buttons)
     return args
 
@@ -1089,7 +1090,8 @@ def post_table():
                  'raw_data': '.write_raw_data',
                  'Uploader': '.write_uploader_file',
                  'import_config': '.write_import_config_file',
-                 'raw_file_comparison': '.write_raw_file_from_tmp'}
+                 'raw_file_comparison': '.write_raw_file_from_tmp',
+                 'get_plan_property': '.write_plan_property'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',
                       'dictionary_order']:
@@ -1130,7 +1132,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'raw_file_comparison': '.get_raw_file_comparison',
                  'quick_fix': '.apply_quick_fix',
                  'check_processor_plan': '.check_processor_plan',
-                 'apply_processor_plan': '.apply_processor_plan'}
+                 'apply_processor_plan': '.apply_processor_plan',
+                 'get_plan_property': '.get_plan_property'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -1211,11 +1214,12 @@ def get_table_return(task, table_name, proc_arg, job_name, force_return=False):
     for base_name in ['Relation', 'Uploader']:
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])
-            if 'vk' in proc_arg:
+            if 'vk' in proc_arg and job_name not in [
+                '.check_processor_plan' '.apply_processor_plan']:
                 table_name = '{}vendorkey{}'.format(
                     table_name, request.form['vendorkey'].replace(' ', '___'))
     table_name = "modalTable{}".format(table_name)
-    if job_name in ['.get_raw_file_comparison']:
+    if job_name in ['.get_raw_file_comparison', '.check_processor_plan']:
         data = {'data': {'data': df, 'name': table_name}}
     else:
         data = df_to_html(df, table_name, job_name)
@@ -1824,11 +1828,13 @@ def edit_processor_plan_upload_file(object_name):
 @bp.route('/processor/<object_name>/edit/plan')
 @login_required
 def edit_processor_plan(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_plan',
-                                   edit_progress=50, edit_name='Plan',
-                                   buttons='ProcessorRequest')
+    kwargs = get_current_processor(
+        object_name, current_page='edit_processor_plan', edit_progress=50,
+        edit_name='Plan', buttons='ProcessorRequest',
+        form_title='PLAN', form_description=(
+            'Upload current media plan and view properties of the plan.'))
     kwargs['form'] = ProcessorPlanForm()
+    kwargs['form'].plan_properties.data = Processor.get_plan_properties()
     return render_template('create_processor.html', **kwargs)
 
 

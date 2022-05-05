@@ -3,7 +3,7 @@
     <div id="alertContainer">
     <div id="alertPlaceholder"></div>
     </div>
-    <h3>{{ _('{} - {}'.format(title, object_name)) }}</h3>
+    <h2 class="text-muted font-weight-bolder">{{ _('{} - {}'.format(title, object_name)) }}</h2>
     <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
              class="progress-bar progress-bar-striped bg-info"
@@ -374,6 +374,14 @@
 {% endblock %}
 
 {% block app_content %}
+    {% if form_title %}
+        <div class="card-header">
+        <h4 class="text-capitalize font-weight-bolder text-center text-muted">{{ form_title }}</h4>
+        {% if form_description %}
+            <h6 class="card-subtitle mb-2 text-muted text-center">{{ form_description }}</h6>
+        {% endif %}
+        </div>
+    {% endif %}
     {% if form %}
         {% include '_form.html' %}
     {% endif %}
@@ -479,8 +487,12 @@
                 if ("{{ edit_name }}" === "Clean") {
                     submitCleanForm(form_continue)}
                 else if ("{{ edit_name }}" === "Topline") {
-                    submitToplineForm(form_continue)
-                } else {
+                    submitToplineForm(form_continue);
+                }
+                else if ("{{ edit_name }}" === "Plan") {
+                    SendDataTable('modalTable', form_continue, 'plan', 'accounts');
+                }
+                else {
                     document.getElementById("base_form_id").submit();
                 }
             }
@@ -501,7 +513,8 @@
                  window.location.reload(true)
              }
         }
-        function SendDataTable(modalTableName="modalTable") {
+        function SendDataTable(modalTableName="modalTable", formContinue = null,
+                               oldPage = '', newPage = '') {
             let sourceElem = $('table[id^=modalTable]')[0].id;
             try {
                 var sendTable = $('#' + sourceElem).DataTable();
@@ -524,7 +537,7 @@
                       'Loading...' +
                     '</button>');
             }
-            let saveBtnElem = $('#' + modalTableName + 'SaveButton')
+            let saveBtnElem = $('#' + modalTableName + 'SaveButton');
             let oldHtml = saveBtnElem.parent().parent().html();
             saveBtnElem.parent().html('' +
                     '<button id="loadingBtnModal" class="btn btn-success btn-lg btn-block" type="button" disabled>' +
@@ -548,6 +561,12 @@
                         $('#' + modalTableName).modal('hide');
                         displayAlert(data['message'], data['level']);
                         $('#loadingBtnModal').replaceWith(oldHtml);
+                    }
+                    if (newPage) {
+                        completeSave(data, formContinue, oldPage, newPage);
+                        $('#loadingBtn').remove();
+                        $('#loadRefresh').show();
+                        unanimateBar();
                     }
             });
         }
@@ -616,6 +635,10 @@
             return downloadingProgress
         }
         function setDownloadBar(currentElement, textContent, pond = true) {
+            let oldDownload = document.getElementById('downloadProgressBaseClass')
+            if (oldDownload) {
+                oldDownload.remove();
+            }
             $(
                 '<div id="downloadProgressBaseClass" class="progress">\n' +
                 '  <div id="downloadProgress" ' +
@@ -733,9 +756,13 @@
             } else if (tableName === 'raw_file_comparison') {
                 parseRawComp(data);
             } else if (tableName === 'check_processor_plan') {
-                appendPlanInfo(data);
+                appendMessage(data, 'planCheckCardCol', 'rowZero', 'Plan Check');
             } else if (tableName === 'apply_processor_plan') {
-                appendCardAsTable(data, "metricsCardCol", "#rowOne", 'Plan Check', false);
+                appendCardAsTable(data, "newPlanResultsCardCol", "#rowOne", 'NEW PLAN RESULTS', false);
+            } else if (tableName === 'get_plan_property') {
+                document.getElementById('rowOne').innerHTML = '';
+                let title = 'PLAN PROPERTY - ' + vendorKey;
+                appendCardAsTable(data, "planPropertyCardCol", "#rowTwo", title, true);
             } else {
                 show_modal_table('modalTableButton');
                 let newTableName = data['data']['name'];
@@ -977,12 +1004,12 @@
             }
         }
         function appendCardAsTable(dashForm, divId, rowNum, title, asDataTable=true){
-            let tableName = dashForm['data']['name']
+            let tableName = dashForm['data']['name'];
             $(rowNum).append('' +
-                '<div class="col">' +
+                '<div class="col text-center">' +
                 '<div id="' + divId + '" class="card">' +
-                '<h6 class="card-header"><small class="text-muted">' + title +
-                '</small></h6>' +
+                '<h5 class="card-header font-weight-bold text-primary">' + title +
+                '</h5>' +
                 '<div id=' + tableName + 'Elem></div>' +
                 '</div>' +
                 '</div>')
@@ -992,6 +1019,10 @@
             }
             else {
                 document.getElementById(tableName + 'Elem').innerHTML += dashForm['data']['data']
+            }
+            let dlBarElem = document.getElementById('downloadProgressBaseClass');
+            if (dlBarElem) {
+                dlBarElem.remove();
             }
         }
 
@@ -1060,14 +1091,14 @@
             let dataSourceName = $('#data_source_clean').val();
             if (dataSourceName === 'Plan Net') {
                 $('#rowZero').append(
-                    '<div class="col">' +
+                    '<div class="col text-center">' +
                     '<div class="card">' +
-                    '<h6 class="card-header"><small class="text-muted">Raw File</small></h6>' +
+                    '<h5 class="card-header font-weight-bold text-primary">RAW FILE</small></h5>' +
                     '</div>' +
                     '</div>' +
-                    '<div class="col">' +
+                    '<div class="col text-center">' +
                     '<div class="card">' +
-                    '<h6 class="card-header"><small class="text-muted">Dictionary</small></h6>' +
+                    '<h5 class="card-header font-weight-bold text-primary">DICTIONARY</h5>' +
                     '<div class="btn-group btn-group-sm btn-block" role="group">' +
                     '<button id="_refresh_dictionary"' +
                     'class="btn btn-outline-success">' +
@@ -1084,9 +1115,9 @@
                 )
             } else {
                 $('#rowZero').append(
-                    '<div class="col">' +
+                    '<div class="col text-center">' +
                     '<div class="card">' +
-                    '<h6 class="card-header"><small class="text-muted">Raw File</small></h6>' +
+                    '<h5 class="card-header font-weight-bold text-primary">RAW FILE</h5>' +
                     '<div class="btn-group btn-group-sm btn-block" role="group">' +
                     '<button id="_refresh_raw_data"' +
                     'class="btn btn-outline-success">' +
@@ -1101,9 +1132,9 @@
                     '</div>' +
                     '</div>' +
                     '</div>' +
-                    '<div class="col">' +
+                    '<div class="col text-center">' +
                     '<div class="card">' +
-                    '<h6 class="card-header"><small class="text-muted">Dictionary</small></h6>' +
+                    '<h5 class="card-header font-weight-bold text-primary">DICTIONARY</h5>' +
                     '<div class="btn-group btn-group-sm btn-block" role="group">' +
                     '<button id="_refresh_dictionary"' +
                     'class="btn btn-outline-success">' +
@@ -1147,10 +1178,10 @@
 
         function appendForm(form, row, name, title) {
             $(row).append('' +
-                '<div class="col">' +
+                '<div class="col text-center">' +
                 '<div id="' + name + '" class="card h-100">' +
-                '<h6 class="card-header"><small class="text-muted">'+ title +
-                '</small></h6>' +
+                '<h5 class="card-header font-weight-bold text-primary">'+ title +
+                '</h5>' +
                 form +
                 '</div>' +
                 '</div>')
@@ -1174,11 +1205,11 @@
                     displayAlert(data['message'], 'danger')
                 } else {
                     appendForm(data['placement_form'], '#rowOne',
-                        'placeForm', 'Column Selection')
+                        'placeForm', 'COLUMN SELECTION')
                     appendMetricTable(data['metrics_table'], "metricsCardCol",
-                        "#rowOne", 'Active Metrics');
+                        "#rowOne", 'ACTIVE METRICS');
                     appendCardAsTable(data['rules_table'], "rulesCardCol",
-                        '#rowThree', 'Rules');
+                        '#rowThree', 'RULES');
                 }
                 loadJS();
             }).fail(function(jqXHR, textStatus ) {
@@ -1208,6 +1239,22 @@
                 tableRules, formContinue)
         }
 
+        function completeSave(data, formContinue, oldPage = 'clean', newPage = 'export') {
+            displayAlert(data['message'], data['level'])
+            if (data['level'] === 'success') {
+                let element = document.getElementsByClassName('jumbotron')[0];
+                let originalColor = element.style.backgroundColor;
+                element.style.backgroundColor = "#b3ecff";
+                let t = setTimeout(function () {
+                    element.style.backgroundColor = originalColor;
+                }, (2 * 1000));
+                if (formContinue) {
+                    window.location.href = window.location.href.replace(
+                        '#', '').replace(oldPage, newPage);
+                }
+            }
+        }
+
         function saveDataSource(dataSourceName, formPlacement, tableMetrics,
                                 tableRules, formContinue) {
             $.ajax({
@@ -1223,21 +1270,7 @@
                     rules_table: tableRules
                 },
             }).done(function (data, status) {
-                displayAlert(data['message'], data['level'])
-                if (data['level'] === 'success') {
-                    let element = document.getElementsByClassName('jumbotron')[0];
-                    let originalColor = element.style.backgroundColor;
-                    element.style.backgroundColor = "#b3ecff";
-                    let t = setTimeout(function () {
-                        element.style.backgroundColor = originalColor;
-                    }, (2 * 1000));
-                if (formContinue) {
-                    let nextPage = window.location.href.replace(
-                        '#', '').replace('clean', 'export')
-                    window.location.href = nextPage
-                    }
-                }
-
+                completeSave(data, formContinue);
             }).fail(function (jqXHR, textStatus) {
 
             }).always(function () {
@@ -1258,7 +1291,7 @@
             }).done(function(data, status) {
                 appendRows();
                 appendCardAsTable(data['data'], "dsCardCol",
-                    "#rowOne", 'Data Source Table');
+                    "#rowOne", 'DATA SOURCE TABLE');
             }).fail(function(jqXHR, textStatus ) {
 
             }).always(function(){
@@ -1335,21 +1368,45 @@
             }
         }
 
-        function appendPlanInfo(data) {
-            appendCardAsTable(data, "metricsCardCol", "#rowZero", 'Plan Check', false);
+        function appendMessage(data, divId, rowNum, title) {
+            let elem = document.getElementById(rowNum);
+            let d = data['data']['data']
+            elem.innerHTML +=
+                `<div class="col text-white text-center">
+                 <div id="` + divId + `" class="card">
+                 <div class="card-header bg-` + d['level'] +`" style="opacity: .4"><h4 class="font-weight-bold">`
+                 + title + " - " + d['msg'] + `</h4></div>
+                 </div>
+                 </div>`
+            document.getElementById('downloadProgressBaseClass').remove()
+        }
+
+        function changePlanProperty() {
+            $('#plan_property_view').on('change', function (e) {
+                let clickElem = '#rowTwo';
+                let oldHtml = ``;
+                $(clickElem).html(
+                    `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
+                            role="status" aria-hidden="true"></span> Loading...`
+                );
+                let selectedText = this.options[e.target.selectedIndex].text;
+                setDownloadBar(clickElem, 'None', false);
+                getTable('get_plan_property', clickElem, oldHtml, selectedText);
+            });
         }
 
         function getPlan() {
             planUploadEventListener();
             appendRows();
-            let elem = $('#rowOne')
+            changePlanProperty();
+            let elem = $('#rowOne');
             setDownloadBar(elem, elem.textContent, false);
-            getTable('check_processor_plan', '#rowZero', elem.innerHTML)
-
+            getTable('check_processor_plan', '#rowZero', elem.innerHTML);
         }
 
         function planUploadEventListener() {
             document.addEventListener('FilePond:processfile', (e) => {
+                let planProp = JSON.stringify(document.getElementById('plan_properties').selectize.getValue())
                 let clickElem = '#rowOne'
                 let oldHtml = $(clickElem).html();
                 $(clickElem).html(
@@ -1357,7 +1414,7 @@
                             role="status" aria-hidden="true"></span> Loading...`
                 );
                 setDownloadBar(clickElem, 'None', false);
-                getTable('apply_processor_plan', clickElem, oldHtml, 'None', 'None');
+                getTable('apply_processor_plan', clickElem, oldHtml, planProp, 'None');
             });
         }
 

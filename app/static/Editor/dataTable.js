@@ -41,6 +41,27 @@ function selectColumns(editor, csv, header) {
     });
 }
 
+function getColumnIndex(tableElem, colName) {
+    var rows = document.getElementById(tableElem).getElementsByTagName('tr');
+    for (var j = 0, col; col = rows[0].cells[j]; j++) {
+        if (rows[0].cells[j].innerHTML === colName) {
+            return j;
+        }
+    }
+}
+
+function onMetricClick(elem, opts, multiple=false) {
+    elem.onclick = ''
+    defaultValue = elem.innerHTML;
+    elem.innerHTML = `<select name='metric_select' id='metric_select'>`;
+    var $metricnameselect = $(`select[name='metric_select']`);
+    $metricnameselect.selectize({options: opts,
+                                 searchField: 'text',
+                                 items: [defaultValue]
+
+                                 });
+}
+
 function createTable(colData, rawData, tableName,
                      elem = "modal-body-table") {
     let cols = JSON.parse(colData);
@@ -200,23 +221,24 @@ function createMetricTable(colData, rawData, tableName,
 
         let dom = "<div class='row'><div class='col'>B</div><div class='col'>f</div></div>";
 
+        nameColIndex = getColumnIndex(elem, 'Metric Name');
+        valueColIndex = getColumnIndex(elem, 'Metric Value');
 
         var rows = document.getElementById(elem).getElementsByTagName('tr');
-        colIndex = 0;
-        for (var j = 0, col; col = rows[0].cells[j]; j++) {
-            if (rows[0].cells[j].innerHTML === 'Metric Name') {
-                colIndex = j;
-            }
-        }
         for (var i = 1, row; row = rows[i]; i++) {
+            nameElem = rows[i].cells[nameColIndex]
+            nameElem.onclick = function() {onMetricClick(this, vmcOptions)}
             //rows[i].cells[colIndex].setAttribute("contenteditable", "true")
-            rows[i].cells[colIndex].innerHTML = `<select name='metric_name_select' id='metric_name_select'>`
-            var $metricnameselect = $("select[name='metric_name_select']")
-            $metricnameselect.selectize({options: vmcOptions,
-                                         searchField: 'text'})
-//            $(vmcCols).each(function(i, v){
-//                $metricnameselect.append($("<option>", {value: v, html: v}))
-//            });
+//            defaultValue = rows[i].cells[nameColIndex].innerHTML;
+//            rows[i].cells[nameColIndex].innerHTML = `<select name='metric_name_select${i}' id='metric_name_select${i}'>`
+//            var $metricnameselect = $(`select[name='metric_name_select${i}']`);
+//            testSelectize = $metricnameselect.selectize({options: vmcOptions,
+//                                         searchField: 'text',
+//                                         items: [defaultValue],
+//                                         onDropdownClose: function(value) {
+//                                             alert('Selectize changed: ' + value);
+//                                             }
+//                                         });
         }
 //        var table = $(tableJquery).DataTable({
 //

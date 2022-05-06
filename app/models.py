@@ -1336,10 +1336,10 @@ class Partner(db.Model):
         form_dict = {
             'name': self.name,
             'total_budget': self.total_budget,
-            'estimated_cpm': self.estimateD_cpm,
+            'estimated_cpm': self.estimated_cpm,
             'estimated_cpc': self.estimated_cpc,
-            'start_date': self.start_date,
-            'end_date': self.end_date
+            'start_date': datetime.strftime(self.start_date, '%Y-%m-%d'),
+            'end_date': datetime.strftime(self.end_date, '%Y-%m-%d')
         }
         return form_dict
 

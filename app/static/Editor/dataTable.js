@@ -51,15 +51,24 @@ function getColumnIndex(tableElem, colName) {
 }
 
 function onMetricClick(elem, opts, multiple=false) {
-    elem.onclick = ''
+    elem.onclick = '';
     defaultValue = elem.innerHTML;
-    elem.innerHTML = `<select name='metric_select' id='metric_select'>`;
+    elem.innerHTML = `<select name='metric_select' id='metric_select'></select>`;
     var $metricnameselect = $(`select[name='metric_select']`);
     $metricnameselect.selectize({options: opts,
                                  searchField: 'text',
-                                 items: [defaultValue]
-
+                                 items: [defaultValue],
+                                 onBlur: function() {submitSelection(opts, multiple);}
                                  });
+}
+
+function submitSelection(opts, multiple) {
+    console.log('here')
+    var value = document.getElementById('metric_select').selectize.getValue();
+    console.log(value);
+    var cellElem = document.getElementById('metric_select').parentElement;
+    cellElem.innerHTML = value;
+    cellElem.onclick = function() {onMetricClick(this, opts, multiple);}
 }
 
 function createTable(colData, rawData, tableName,
@@ -217,8 +226,6 @@ function createMetricTable(colData, rawData, tableName,
     let tableJquery = '#' + tableName;
     document.getElementById(elem).innerHTML = rawData;
     $(document).ready(function () {
-        $(tableJquery).append("<colgroup><col id='col0'><col id='col1'></colgroup>")
-
         let dom = "<div class='row'><div class='col'>B</div><div class='col'>f</div></div>";
 
         nameColIndex = getColumnIndex(elem, 'Metric Name');
@@ -227,7 +234,7 @@ function createMetricTable(colData, rawData, tableName,
         var rows = document.getElementById(elem).getElementsByTagName('tr');
         for (var i = 1, row; row = rows[i]; i++) {
             nameElem = rows[i].cells[nameColIndex]
-            nameElem.onclick = function() {onMetricClick(this, vmcOptions)}
+            nameElem.onclick = function() {onMetricClick(this, vmcOptions);}
             //rows[i].cells[colIndex].setAttribute("contenteditable", "true")
 //            defaultValue = rows[i].cells[nameColIndex].innerHTML;
 //            rows[i].cells[nameColIndex].innerHTML = `<select name='metric_name_select${i}' id='metric_name_select${i}'>`
@@ -245,4 +252,16 @@ function createMetricTable(colData, rawData, tableName,
 //        });
 //        $('select').selectize()
     });
+}
+
+function getMetricTableAsArray() {
+    let metricArray = $('#metrics_table tbody').children().map(function() {
+        var children = $(this).children();
+        return {
+            'Metric Name': children.eq(0).text(),
+            'Metric Value': children.eq(1).text(),
+            'index': children.eq(2).text()
+        }
+    }).get();
+    return metricArray
 }

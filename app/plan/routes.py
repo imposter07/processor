@@ -107,19 +107,6 @@ def edit_plan(object_name):
 def topline(object_name):
     kwargs = Plan.get_current_plan(object_name, 'edit_plan', edit_progress=100,
                                    edit_name='Topline')
-    kwargs['partners'] = Partner.query.filter_by(
-        plan_id=kwargs['object'].id).all()
-    kwargs['form'] = PlanToplineForm()
-    cur_plan = kwargs['object']
-    sd = cur_plan.start_date
-    ed = cur_plan.end_date
-    weeks = [sd + dt.timedelta(days=x)
-             for i, x in enumerate(range((ed-sd).days)) if i % 7 == 0]
-    kwargs['topline_headers'] = ['Partner', 'Cost'] + weeks + ['eCPM', 'eCPC']
-    kwargs['weeks'] = [
-        [dt.datetime.strftime(x, '%Y-%m-%d'),
-         dt.datetime.strftime(x + dt.timedelta(days=6), '%Y-%m-%d')]
-        for x in weeks]
     return render_template('plan/plan.html', **kwargs)
 
 

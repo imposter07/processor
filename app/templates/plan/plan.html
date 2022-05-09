@@ -46,24 +46,32 @@
         <table id="planTable" class="table table-striped table-responsive-sm small"></table>
     {% endif %}
     <script>
+        function addDays(date, days) {
+            let result = new Date(date);
+            result.setDate(result.getDate() + days);
+            return result;
+        }
         function shadeDates(loopIndex) {
             const fp = document.querySelector('#datePicker' + loopIndex)._flatpickr;
             let dateRange = fp.selectedDates;
             let startDate = new Date(dateRange[0]);
             let endDate = new Date(dateRange[1]);
+            let weekString =  '';
             let calStart = '';
             let calEnd = '';
             let element = '';
             let elementId = '';
-            {% for week in weeks %}
-                calStart = new Date("{{ week[0] }}");
-                calEnd = new Date("{{ week[1] }}");
-                elementId = "row" + "{{ week[0] }}" + loopIndex;
-                if (calEnd >= startDate && calStart <= endDate) {
+            let weeks = document.querySelectorAll('*[id^="col20"]');
+            weeks.forEach(week => {
+                weekString = week.id.replace('col', '');
+                calStart = new Date(weekString);
+                calEnd = addDays(calStart, 6);
+                elementId = "row" + weekString + loopIndex;
+                if (calEnd.getDate() >= startDate.getDate() && calStart.getDate() <= endDate.getDate()) {
                     element = document.getElementById(elementId);
                     element.style.backgroundColor = "#b3ecff";
                 }
-            {% endfor %}
+            });
         }
         function addPartner(clickElem, oldHtml, partner = null, tableName = 'planTable') {
             let curTable = document.getElementById(tableName);
@@ -220,11 +228,10 @@
         });
 
         function getAllElementsWithAttribute(attribute) {
-            var matchingElements = [];
-            var allElements = document.querySelectorAll("#planTable > thead > tr > th");
-            for (var i = 0, n = allElements.length; i < n; i++) {
+            let matchingElements = [];
+            let allElements = document.querySelectorAll("#planTable > thead > tr > th");
+            for (let i = 0, n = allElements.length; i < n; i++) {
                 if (allElements[i].getAttribute(attribute) !== null) {
-                    // Element exists with attribute. Add to array.
                     matchingElements.push(allElements[i]);
                 }
             }

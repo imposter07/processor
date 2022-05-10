@@ -52,21 +52,29 @@ function getColumnIndex(tableElem, colName) {
 
 function onMetricClick(elem, opts, multiple=false) {
     elem.onclick = '';
-    defaultValue = elem.innerHTML;
-    elem.innerHTML = `<select name='metric_select' id='metric_select'></select>`;
-    var $metricnameselect = $(`select[name='metric_select']`);
-    $metricnameselect.selectize({options: opts,
-                                 searchField: 'text',
-                                 items: [defaultValue],
-                                 onBlur: function() {submitSelection(opts, multiple);}
-                                 });
+    let defaultValue = [elem.innerHTML];
+    if (multiple) {
+        defaultValue = elem.innerHTML.split("|");
+        elem.innerHTML = `<select name='metric_select' id='metric_select' multiple></select>`;
+    } else {
+        elem.innerHTML = `<select name='metric_select' id='metric_select'></select>`;
+    }
+    let metricSelect = $(`select[name='metric_select']`);
+    let metricSelectize = metricSelect.selectize({options: opts,
+                                                  searchField: 'text',
+                                                  items: defaultValue,
+                                                  delimiter: '|',
+                                                  onBlur: function() {submitSelection(opts, multiple);}
+                                                  });
+    metricSelectize[0].selectize.open()
 }
 
 function submitSelection(opts, multiple) {
-    console.log('here')
-    var value = document.getElementById('metric_select').selectize.getValue();
-    console.log(value);
-    var cellElem = document.getElementById('metric_select').parentElement;
+    let value = document.getElementById('metric_select').selectize.getValue();
+    if (multiple) {
+        value = value.join("|")
+    }
+    let cellElem = document.getElementById('metric_select').parentElement;
     cellElem.innerHTML = value;
     cellElem.onclick = function() {onMetricClick(this, opts, multiple);}
 }
@@ -220,6 +228,9 @@ function createMetricTable(colData, rawData, tableName,
     var vmcOptions = vmcCols.map(function (e) {
         return {text: e, value: e}
     });
+    var rawOptions = rawCols.map(function (e) {
+        return {text: e, value: e}
+    });
     let tableCols = cols.map(function (e) {
         return {data: e}
     });
@@ -235,6 +246,9 @@ function createMetricTable(colData, rawData, tableName,
         for (var i = 1, row; row = rows[i]; i++) {
             nameElem = rows[i].cells[nameColIndex]
             nameElem.onclick = function() {onMetricClick(this, vmcOptions);}
+
+            valueElem = rows[i].cells[valueColIndex]
+            valueElem.onclick = function() {onMetricClick(this, rawOptions, multiple=true);}
             //rows[i].cells[colIndex].setAttribute("contenteditable", "true")
 //            defaultValue = rows[i].cells[nameColIndex].innerHTML;
 //            rows[i].cells[nameColIndex].innerHTML = `<select name='metric_name_select${i}' id='metric_name_select${i}'>`

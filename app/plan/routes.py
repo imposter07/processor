@@ -1,5 +1,6 @@
-import json
 from app import db
+import numpy as np
+import pandas as pd
 import datetime as dt
 import app.utils as utl
 from flask_babel import _
@@ -7,8 +8,8 @@ from app.plan import bp
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm
-from app.models import User, Client, Product, Campaign, Plan, Post, Partner, \
-    PartnerPlacements
+from app.models import Client, Product, Campaign, Plan, Post, Partner, \
+    ProcessorAnalysis
 
 
 @bp.route('/plan', methods=['GET', 'POST'])
@@ -107,6 +108,7 @@ def edit_plan(object_name):
 def topline(object_name):
     kwargs = Plan.get_current_plan(object_name, 'edit_plan', edit_progress=100,
                                    edit_name='Topline')
+    kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)
 
 
@@ -117,9 +119,16 @@ def get_topline():
         name=request.form['object_name']).first_or_404()
     partners = Partner.query.filter_by(plan_id=cur_plan.id).all()
     partners = [x.get_form_dict() for x in partners]
-    partner_list = [{'name': 'Facebook', 'impressions': 1000},
-                    {'name': 'Google SEM', 'impressions': 1000},
-                    {'name': 'Instagram', 'impressions': 2000}]
+    a = ProcessorAnalysis.query.filter_by(
+        processor_id=23, key='database_cache', parameter='vendorname').first()
+    df = pd.read_json(a.data)
+    df = df[df['impressions'] > 0].sort_values('impressions', ascending=False)
+    df['eCPM'] = (df['netcost'] / (df['impressions'] / 1000)).round(2)
+    df['eCPC'] = (df['netcost'] / df['clicks']).round(2)
+    df = df.replace([np.inf, -np.inf], np.nan)
+    df = df.fillna(0)
+    df = df.rename(columns={'vendorname': 'name'})
+    partner_list = df.to_dict(orient='records')
     sd = cur_plan.start_date
     ed = cur_plan.end_date
     weeks = [sd + dt.timedelta(days=x)

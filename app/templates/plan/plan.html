@@ -19,31 +19,53 @@
 
     </style>
     {% if edit_name == 'Topline' %}
-        <div class="card-deck container-fluid text-center">
-            <div id="totalCards" class="row w-100"></div>
-        </div>
-        <div class="row">
-            <div class="col">
-                <button id="addPartner"
-                        class="btn btn-outline-success btn-block text-left"
-                        type="button" href="">
-                    <i class="fas fa-plus"
-                       role="button"></i>
-                    {{ _('Add Partner') }}
-                </button>
+        <div class="card shadow outer text-center">
+            <div class="card-header">
+                <h5>Metric Totals</h5>
+                <h6 class="card-subtitle mb-2 text-muted">Total metric values
+                    for the current plan.</h6>
             </div>
-            <div class="col">
-                <div class="input-group mb-3">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text"><i class="fa-solid fa-magnifying-glass" href="#" role="button"></i></span>
-                    </div>
-                    <input id="tableSearchInput" type="text" class="form-control" placeholder="Search"
-                           aria-label="Username"
-                           aria-describedby="basic-addon1" onkeyup="searchTable()">
+            <div class="card-body">
+                <div class="card-deck container-fluid text-center">
+                    <div id="totalCards" class="row w-100"></div>
                 </div>
             </div>
         </div>
-        <table id="planTable" class="table table-striped table-responsive-sm small"></table>
+        <div class="card shadow outer text-center">
+            <div class="card-header">
+                <h5>Topline Table - {{ object_name }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">Total metric values
+                    for the current plan.</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <div class="input-group">
+                            <div id="selectAddPartnerPlaceholder" class="col">Select Partners...</div>
+                            <div class="input-group-btn">
+                                <button id="addPartner"
+                                        class="btn btn-outline-success btn-block text-left"
+                                        type="button" href="">
+                                    <i class="fas fa-plus" role="button"></i>
+                                    {{ _('Add Partner(s)') }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fa-solid fa-magnifying-glass" href="#" role="button"></i></span>
+                            </div>
+                            <input id="tableSearchInput" type="text" class="form-control" placeholder="Search"
+                                   aria-label="Username"
+                                   aria-describedby="basic-addon1" onkeyup="searchTable()">
+                        </div>
+                    </div>
+                </div>
+                <table id="planTable" class="table table-striped table-responsive-sm small"></table>
+            </div>
+        </div>
     {% endif %}
     <script>
         function addDays(date, days) {
@@ -88,6 +110,7 @@
             tableHeadElems.forEach(tableHeadElem => {
                 tableHeaders = tableHeaders + '<td id="row' + tableHeadElem.id.replace('col', '') + loopIndex + '"></td>'
             });
+            let partnerOptionHtml = document.getElementById('colSelectPartner').innerHTML;
             let partnerCard = `
                 <tr id="tr` + loopIndex + `" data-toggle="collapse"
                     data-target="#collapsePartner` + loopIndex + `" class="accordion-toggle">
@@ -106,7 +129,7 @@
                                         <select id="partnerSelect` + loopIndex + `"
                                                 class="form-control form-control-sm"
                                                 name="name` + loopIndex + `">
-                                            <option value="">Partner Name</option>
+                                            ` + partnerOptionHtml + `
                                         </select>
                                     </div>
                                     <div class="col form-group">
@@ -167,7 +190,14 @@
                     `<span class="spinner-grow spinner-grow-sm" role="status"
                   aria-hidden="true"></span> Loading...`
                 );
-                addPartner(clickElem, oldHtml);
+                let selectedPartners = document.getElementById('partnerSelectAdd').selectize.getValue();
+                let partners = selectedPartners.map(function (e) {
+                    return Object.assign({}, {name: e},
+                        document.getElementById('colSelectPartner').querySelector('option[value="' + e + '"]').dataset)
+                })
+                partners.forEach(partner => {
+                    addPartner(clickElem, oldHtml, partner);
+                })
             })
         }
 
@@ -322,8 +352,17 @@
                     colElem.innerHTML += `<select id="` + selectName + `" hidden=''></select>`;
                     let colSelectElem = document.getElementById(selectName);
                     col['values'].forEach(val => {
-                        colSelectElem.innerHTML += `<option value="` + val['name'] + `">` + val['name'] + `</option>`;
+                        colSelectElem.innerHTML += `
+                            <option data-estimated_cpm="` + val['eCPM'] + `"
+                                    data-estimated_cpc="` + val['eCPC'] + `"
+                                    value="` + val['name'] + `">` + val['name'] + `</option>`;
                     })
+                    document.getElementById('selectAddPartnerPlaceholder').innerHTML = `
+                        <select id="partnerSelectAdd" multiple="" class="width100 form-control">
+                            <option value="">Select Partners To Add...</option>
+                        </select>`;
+                    document.getElementById('partnerSelectAdd').innerHTML += document.getElementById('colSelectPartner').innerHTML;
+                    addSelectize();
                 }
             })
         }

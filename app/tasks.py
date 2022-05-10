@@ -3418,6 +3418,8 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                 metric_names=metric_names, df=df, db_translate=True)
             df = df.replace([np.inf, -np.inf], np.nan)
             df = df.fillna(0)
+        update_analysis_in_db_reporting_cache(
+            processor_id, current_user_id, df, dimensions, metrics, filter_dict)
         _set_task_progress(100)
         return [df]
     except:
@@ -3798,6 +3800,43 @@ def update_automatic_requests(processor_id, current_user_id):
         return False
 
 
+def update_analysis_in_db_reporting_cache(processor_id, current_user_id, df,
+                                          dimensions, metrics, filter_dict):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.analyze as az
+        dimensions_str = '|'.join(dimensions)
+        metrics_str = '|'.join(metrics)
+        filter_dict = {k: v for x in filter_dict for k, v in x.items()}
+        filter_col_str = '|'.join(filter_dict.keys())
+        filter_val_str = '|'.join([x for x in filter_dict.values()][0])
+        old_analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=az.Analyze.database_cache,
+            parameter=dimensions_str, parameter_2=metrics_str,
+            filter_col=filter_col_str, filter_val=filter_val_str).first()
+        if old_analysis:
+            old_analysis.data = df.to_json()
+            old_analysis.date = datetime.today().date()
+            db.session.commit()
+        else:
+            new_analysis = ProcessorAnalysis(
+                key=az.Analyze.database_cache, parameter=dimensions_str,
+                parameter_2=metrics_str, filter_col=filter_col_str,
+                filter_val=filter_val_str, data=df.to_json(),
+                processor_id=cur_processor.id, date=datetime.today().date())
+            db.session.add(new_analysis)
+            db.session.commit()
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def update_analysis_in_db(processor_id, current_user_id):
     try:
         _set_task_progress(0)
@@ -3819,7 +3858,8 @@ def update_analysis_in_db(processor_id, current_user_id):
                 x[az.Analyze.analysis_dict_split_col] == analysis.split_col and
                 x[az.Analyze.analysis_dict_param_col] == analysis.parameter and
                 x[az.Analyze.analysis_dict_param_2_col] == analysis.parameter_2]
-            if not analysis_dict_val:
+            if (not analysis_dict_val and
+                    analysis.key != az.Analyze.database_cache):
                 db.session.delete(analysis)
                 db.session.commit()
         for analysis in analysis_dict:

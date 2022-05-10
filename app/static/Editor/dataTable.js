@@ -213,17 +213,6 @@ function createMetricTable(colData, rawData, tableName,
     let cols = JSON.parse(colData);
     let rawCols = JSON.parse(rawColData);
     let vmcCols = JSON.parse(vmcColData)
-    var tableFields = cols.map(function (e) {
-        if (e === 'index') {
-            return {label: e, name: e, type: "hidden"}
-        } else if (e === 'Metric Name') {
-            return {label: e, name: e, type: "select", options: vmcCols}
-        } else if (e === 'Metric Value') {
-            return {label: e, name: e, type: "select", multiple: true, separator: "|", options: rawCols}
-        } else {
-            return {label: e, name: e}
-        }
-    });
 
     var vmcOptions = vmcCols.map(function (e) {
         return {text: e, value: e}
@@ -231,13 +220,10 @@ function createMetricTable(colData, rawData, tableName,
     var rawOptions = rawCols.map(function (e) {
         return {text: e, value: e}
     });
-    let tableCols = cols.map(function (e) {
-        return {data: e}
-    });
+
     let tableJquery = '#' + tableName;
     document.getElementById(elem).innerHTML = rawData;
     $(document).ready(function () {
-        let dom = "<div class='row'><div class='col'>B</div><div class='col'>f</div></div>";
 
         nameColIndex = getColumnIndex(elem, 'Metric Name');
         valueColIndex = getColumnIndex(elem, 'Metric Value');
@@ -249,22 +235,7 @@ function createMetricTable(colData, rawData, tableName,
 
             valueElem = rows[i].cells[valueColIndex]
             valueElem.onclick = function() {onMetricClick(this, rawOptions, multiple=true);}
-            //rows[i].cells[colIndex].setAttribute("contenteditable", "true")
-//            defaultValue = rows[i].cells[nameColIndex].innerHTML;
-//            rows[i].cells[nameColIndex].innerHTML = `<select name='metric_name_select${i}' id='metric_name_select${i}'>`
-//            var $metricnameselect = $(`select[name='metric_name_select${i}']`);
-//            testSelectize = $metricnameselect.selectize({options: vmcOptions,
-//                                         searchField: 'text',
-//                                         items: [defaultValue],
-//                                         onDropdownClose: function(value) {
-//                                             alert('Selectize changed: ' + value);
-//                                             }
-//                                         });
         }
-//        var table = $(tableJquery).DataTable({
-//
-//        });
-//        $('select').selectize()
     });
 }
 

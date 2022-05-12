@@ -1293,7 +1293,7 @@ class Plan(db.Model):
         secondaryjoin="project_number_plan.c.project_id == Project.id",
         backref=db.backref('project_number_plan', lazy='dynamic'),
         lazy='dynamic')
-    partners = db.relationship('Partner', backref='plan', lazy='dynamic')
+    phases = db.relationship('PlanPhase', backref='plan', lazy='dynamic')
 
     @staticmethod
     def get_current_plan(object_name=None, current_page=None, edit_progress=0,
@@ -1320,10 +1320,27 @@ class Plan(db.Model):
         return self.posts.order_by(Post.timestamp.desc()).first()
 
 
-class Partner(db.Model):
+class PlanPhase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), index=True)
     plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    partners = db.relationship('Partner', backref='plan', lazy='dynamic')
+
+    def get_form_dict(self):
+        form_dict = {
+            'name': self.name,
+            'start_date': datetime.strftime(self.start_date, '%Y-%m-%d'),
+            'end_date': datetime.strftime(self.end_date, '%Y-%m-%d')
+        }
+        return form_dict
+
+
+class Partner(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    plan_phase_id = db.Column(db.Integer, db.ForeignKey('plan_phase.id'))
     total_budget = db.Column(db.Numeric)
     estimated_cpm = db.Column(db.Numeric)
     estimated_cpc = db.Column(db.Numeric)
@@ -1344,7 +1361,7 @@ class Partner(db.Model):
         return form_dict
 
     def set_from_form(self, form, current_plan):
-        self.plan_id = current_plan.id
+        self.plan_phase_id = current_plan.id
         self.name = form['name']
         self.total_budget = form['total_budget']
         self.estimated_cpm = form['estimated_cpm']

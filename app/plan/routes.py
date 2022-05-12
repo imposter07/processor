@@ -9,7 +9,7 @@ from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm
 from app.models import Client, Product, Campaign, Plan, Post, Partner, \
-    ProcessorAnalysis
+    ProcessorAnalysis, PlanPhase
 
 
 @bp.route('/plan', methods=['GET', 'POST'])
@@ -75,6 +75,13 @@ def edit_plan(object_name):
                     plan_id=current_plan.id)
         db.session.add(post)
         db.session.commit()
+        if not current_plan.phases.all():
+            phase = PlanPhase(
+                name='Launch', plan_id=current_plan.id,
+                start_date=current_plan.start_date,
+                end_date=current_plan.end_date)
+            db.session.add(phase)
+            db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('plan.edit_plan',
                                     object_name=current_plan.name))
@@ -117,7 +124,8 @@ def topline(object_name):
 def get_topline():
     cur_plan = Plan.query.filter_by(
         name=request.form['object_name']).first_or_404()
-    partners = Partner.query.filter_by(plan_id=cur_plan.id).all()
+    partners = Partner.query.filter(
+        Partner.plan_phase_id.in_([x.id for x in cur_plan.phases])).all()
     partners = [x.get_form_dict() for x in partners]
     a = ProcessorAnalysis.query.filter_by(
         processor_id=23, key='database_cache', parameter='vendorname').first()
@@ -142,13 +150,9 @@ def get_topline():
             cur_col['type'] = 'select'
             cur_col['values'] = partner_list
         cols.append(cur_col)
-    weeks = [
-        [dt.datetime.strftime(x, '%Y-%m-%d'),
-         dt.datetime.strftime(x + dt.timedelta(days=6), '%Y-%m-%d')]
-        for x in weeks]
+    phases = [x.get_form_dict() for x in cur_plan.phases.all()]
     return jsonify({'data': {'partners': partners,
-                             'cols': cols,
-                             'weeks': weeks}})
+                             'cols': cols, 'phases': phases}})
 
 
 @bp.route('/save_topline', methods=['GET', 'POST'])
@@ -175,7 +179,8 @@ def save_topline():
             else:
                 tl_dict[col] = new_data
         topline_list.append(tl_dict)
-    old_part = Partner.query.filter_by(plan_id=cur_plan.id).all()
+    old_part = Partner.query.filter(
+        Partner.plan_phase_id.in_([x.id for x in cur_plan.phases])).all()
     if old_part:
         for p in old_part:
             new_p = [x for x in topline_list if p.name == x['name']]

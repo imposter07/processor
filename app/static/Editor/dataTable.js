@@ -94,6 +94,7 @@ function createTable(colData, rawData, tableName,
     });
     let tableJquery = '#' + tableName;
     document.getElementById(elem).innerHTML = rawData;
+    $(tableJquery).attr({"data-pagination":true});
     $(document).ready(function () {
         let editor = new $.fn.dataTable.Editor({
             table: tableJquery,
@@ -221,13 +222,36 @@ function createMetricTable(colData, rawData, tableName,
         return {text: e, value: e}
     });
 
-    let buttonsHtml = `<button class="btn btn-secondary buttons-create"
+    let buttonsHtml = `<button class="btn btn-success" data-toggle="modal" data-target="#activeMetricModal"
         tabindex="0" aria-controls="metrics_table" type="button">
-          <span>New</span>
+          <i class="fas fa-plus" style="color:white"></i>
         </button>`
     let tableJquery = '#' + tableName;
     document.getElementById(elem).innerHTML = buttonsHtml + rawData;
     $(document).ready(function () {
+        modalElem = $("#activeMetricModal .modal-body")
+        modalElem.html(`<div class="form-group row justify-content-center align-items-center">
+                          <div class="col-md-4">
+                            <label for="metric_name_select">Metric Name</label>
+                            <select name='metric_name_select' id='metric_name_select'></select>
+                          </div>
+                        </div>
+                        <div class="form-group row justify-content-center align-items-center">
+                          <div class="col-md-4">
+                            <label for="metric_value_select">Metric Value</label>
+                            <select name='metric_value_select' id='metric_value_select' multiple></select>
+                          </div>
+                        </div>`);
+        let nameSelect = $(`select[name='metric_name_select']`);
+        let nameSelectize = nameSelect.selectize({options: vmcOptions,
+                                                  searchField: 'text',
+                                                  delimiter: '|'
+                                                  });
+        let valueSelect = $(`select[name='metric_value_select']`);
+        let valueSelectize = valueSelect.selectize({options: rawOptions,
+                                                  searchField: 'text',
+                                                  delimiter: '|'
+                                                  });
 
         nameColIndex = getColumnIndex(elem, 'Metric Name');
         valueColIndex = getColumnIndex(elem, 'Metric Value');

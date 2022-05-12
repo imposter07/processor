@@ -212,7 +212,7 @@ function createMetricTable(colData, rawData, tableName,
                            elem = "modal-body-table", rawColData, vmcColData) {
     let cols = JSON.parse(colData);
     let rawCols = JSON.parse(rawColData);
-    let vmcCols = JSON.parse(vmcColData)
+    let vmcCols = JSON.parse(vmcColData);
 
     var vmcOptions = vmcCols.map(function (e) {
         return {text: e, value: e}
@@ -221,8 +221,12 @@ function createMetricTable(colData, rawData, tableName,
         return {text: e, value: e}
     });
 
+    let buttonsHtml = `<button class="btn btn-secondary buttons-create"
+        tabindex="0" aria-controls="metrics_table" type="button">
+          <span>New</span>
+        </button>`
     let tableJquery = '#' + tableName;
-    document.getElementById(elem).innerHTML = rawData;
+    document.getElementById(elem).innerHTML = buttonsHtml + rawData;
     $(document).ready(function () {
 
         nameColIndex = getColumnIndex(elem, 'Metric Name');

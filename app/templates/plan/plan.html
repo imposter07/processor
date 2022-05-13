@@ -69,7 +69,7 @@
                                         class="btn btn-outline-success btn-block text-left"
                                         type="button" href="">
                                     <i class="fas fa-plus" role="button"></i>
-                                    {{ _('Add Partner(s)') }}
+                                    {{ _('') }}
                                 </button>
                             </div>
                         </div>
@@ -190,15 +190,15 @@
                                     </div>
                                     <div class="col form-group">
                                       <label class="control-label" for="total_budget` + loopIndex + `">Total Budget</label>
-                                      <input class="form-control form-control-sm" id="total_budget` + loopIndex + `" name="total_budget` + loopIndex + `" step="any" type="number" value="">
+                                      <input class="form-control form-control-sm" id="total_budget` + loopIndex + `" name="total_budget` + loopIndex + `" step="any" type="number" value="" oninput="syncTableWithForm(` + loopIndex + `)">
                                     </div>
                                     <div class="col form-group">
                                       <label class="control-label" for="estimated_cpm` + loopIndex + `">CPM</label>
-                                      <input class="form-control form-control-sm" id="estimated_cpm` + loopIndex + `" name="estimated_cpm` + loopIndex + `" step="any" type="number" value="">
+                                      <input class="form-control form-control-sm" id="estimated_cpm` + loopIndex + `" name="estimated_cpm` + loopIndex + `" step="any" type="number" value="" oninput="syncTableWithForm(` + loopIndex + `)">
                                     </div>
                                     <div class="col form-group">
                                       <label class="control-label" for="estimated_cpc` + loopIndex + `">CPC</label>
-                                      <input class="form-control form-control-sm" id="estimated_cpc` + loopIndex + `" name="estimated_cpc` + loopIndex + `" step="any" type="number" value="">
+                                      <input class="form-control form-control-sm" id="estimated_cpc` + loopIndex + `" name="estimated_cpc` + loopIndex + `" step="any" type="number" value="" oninput="syncTableWithForm(` + loopIndex + `)">
                                     </div>
                                 </form>
                             </div>
@@ -207,8 +207,6 @@
                     </td>
                 </tr>`;
             d1.insertAdjacentHTML('beforeend', partnerCard);
-            $(clickElem).prop("disabled", false);
-            $(clickElem).html(oldHtml);
             addSelectize();
             addDatePicker();
             sortTable();
@@ -222,9 +220,7 @@
                 document.getElementById("estimated_cpm" + loopIndex).value = partner.estimated_cpm;
                 document.getElementById("estimated_cpc" + loopIndex).value = partner.estimated_cpc;
                 document.getElementById('rowPartner' + loopIndex).innerHTML = partner.name;
-                document.getElementById('rowCost' + loopIndex).innerHTML = "$" + partner.total_budget;
-                document.getElementById('roweCPM' + loopIndex).innerHTML = "$" + partner.estimated_cpm;
-                document.getElementById('roweCPC' + loopIndex).innerHTML = "$" + partner.estimated_cpc;
+                syncTableWithForm(loopIndex);
                 shadeDates(loopIndex);
             }
         }
@@ -239,14 +235,19 @@
                   aria-hidden="true"></span> Loading...`
                 );
                 let selectedPartners = document.getElementById('partnerSelectAdd').selectize.getValue();
+                document.getElementById('partnerSelectAdd').selectize.clear();
                 let partners = selectedPartners.map(function (e) {
+                    let metricElem = document.getElementById('colSelectPartner').querySelector('option[value="' + e + '"]');
+                    let metrics = (metricElem === null) ? {estimated_cpc: 0, estimated_cpm: 0} : metricElem.dataset
                     return Object.assign({}, {name: e, total_budget: 0,
                         start_date: "{{ object.start_date }}", end_date: "{{ object.end_date }}"},
-                        document.getElementById('colSelectPartner').querySelector('option[value="' + e + '"]').dataset)
+                        metrics)
                 })
                 partners.forEach(partner => {
                     addPartner(clickElem, oldHtml, partner);
                 })
+                $(clickElem).prop("disabled", false);
+                $(clickElem).html(oldHtml);
             })
         }
 
@@ -267,6 +268,7 @@
             let selector = '[id^=datePicker]';
             $(selector).flatpickr({
                 mode: "range",
+                inline: true
             });
             $(selector).change(function () {
                 let loopIndex = this.id.replace('datePicker', '');
@@ -335,6 +337,19 @@
             return matchingElements;
         }
 
+        function syncTableWithForm(loopIndex) {
+            document.getElementById('rowCost' + loopIndex).innerHTML = "$" + document.getElementById("total_budget" + loopIndex).value;
+            document.getElementById('roweCPM' + loopIndex).innerHTML = "$" + document.getElementById("estimated_cpm" + loopIndex).value;
+            document.getElementById('roweCPC' + loopIndex).innerHTML = "$" + document.getElementById("estimated_cpc" + loopIndex).value;
+            if (document.getElementById('rowCost' + loopIndex).innerHTML === "$0") {
+                document.getElementById('tr' + loopIndex).classList.add('shadeCell2');
+            }
+            else {
+                document.getElementById('tr' + loopIndex).classList.remove('shadeCell2');
+            }
+            populateTotalCards();
+        }
+
         function populateTotalCards() {
             let table = document.getElementById("accordionPlan");
             let sumCost = 0;
@@ -359,12 +374,12 @@
               currency: 'USD',
             });
             let data = [
-                {name:"Net Cost", current_value:formatter.format(sumCost), msg:"Of Total Budget", change: percentTotal},
-                {name:"Impressions", current_value:sumImps.toLocaleString("en-US"), msg:"", change: ""},
-                {name:"Clicks", current_value:sumClicks.toLocaleString("en-US"), msg:"", change: ""},
-                {name:"CPM", current_value:formatter.format(sumCost / (sumImps / 1000)), msg:"", change: ""},
-                {name:"CPC", current_value:formatter.format(sumCost / sumClicks), msg:"", change: ""},]
-            generateTotalCards('#totalCards', data);
+                {name:"Net Cost", numeric_value:sumCost, current_value:formatter.format(sumCost), msg:"Of Total Budget", change: percentTotal},
+                {name:"Impressions", numeric_value:sumImps, current_value:sumImps.toFixed(0).toLocaleString("en-US"), msg:"", change: ""},
+                {name:"Clicks", numeric_value:sumClicks, current_value:sumClicks.toFixed(0).toLocaleString("en-US"), msg:"", change: ""},
+                {name:"CPM", numeric_value: sumCost / (sumImps / 1000), current_value:formatter.format(sumCost / (sumImps / 1000)), msg:"", change: ""},
+                {name:"CPC", numeric_value: sumCost / sumClicks, current_value:formatter.format(sumCost / sumClicks), msg:"", change: ""},]
+            generateTotalCards('totalCards', data);
         }
 
         function sortTable() {
@@ -422,7 +437,6 @@
             firstCell.classList.add('text-uppercase');
             firstCell.classList.add('font-weight-bold');
             document.getElementById('rowPartner' + rowNum).innerHTML = phase.name;
-            console.log(colorClass);
             shadeDates(rowNum, [phase.start_date, phase.end_date], colorClass);
         }
 

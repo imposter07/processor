@@ -152,7 +152,7 @@
     </div>
     <div class="modal hide fade" id="activeMetricModal" tabindex="-1" role="dialog"
          aria-labelledby="exampleModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-xl mw-100 w-90" role="document">
+      <div class="modal-dialog modal-lg w-90" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
@@ -164,7 +164,9 @@
           </div>
           <div class="modal-body"></div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-block btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-success w-25" id="activeMetricModalTableSaveButton"
+                        onclick="addActiveMetric()">Save</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
           </div>
         </div>
       </div>

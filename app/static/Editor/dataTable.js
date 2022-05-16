@@ -79,6 +79,35 @@ function submitSelection(opts, multiple) {
     cellElem.onclick = function() {onMetricClick(this, opts, multiple);}
 }
 
+function addActiveMetric() {
+    let table = document.getElementById('metrics_table');
+    let row = table.insertRow(-1);
+    let nameCell = row.insertCell(0);
+    let valueCell = row.insertCell(1);
+    let indexCell = row.insertCell(2);
+    let deleteCell = row.insertCell(3);
+
+    nameCell.innerHTML = document.getElementById('metric_name_select').selectize.getValue();
+    valueCell.innerHTML = document.getElementById('metric_value_select').selectize.getValue().join("|");
+    indexCell.innerHTML = row.rowIndex - 1;
+    deleteCell.innerHTML = deleteButton();
+    $('#activeMetricModal').modal('hide');
+    document.getElementById('metric_name_select').selectize.clear();
+    document.getElementById('metric_value_select').selectize.clear();
+}
+
+function deleteTableRow(obj) {
+    $(obj).closest("tr").remove()
+}
+
+function deleteButton() {
+    let deleteButtonHTML = `<button class="btn btn-danger btn-sm" onclick="deleteTableRow(this)"
+        tabindex="0" aria-controls="metrics_table" type="button">
+          <i class="fas fa-minus" style="color:white"></i>
+        </button>`
+    return deleteButtonHTML
+}
+
 function createTable(colData, rawData, tableName,
                      elem = "modal-body-table") {
     let cols = JSON.parse(colData);
@@ -226,6 +255,8 @@ function createMetricTable(colData, rawData, tableName,
         tabindex="0" aria-controls="metrics_table" type="button">
           <i class="fas fa-plus" style="color:white"></i>
         </button>`
+
+    let deleteButtonHtml = deleteButton()
     let tableJquery = '#' + tableName;
     document.getElementById(elem).innerHTML = buttonsHtml + rawData;
     $(document).ready(function () {
@@ -257,12 +288,16 @@ function createMetricTable(colData, rawData, tableName,
         valueColIndex = getColumnIndex(elem, 'Metric Value');
 
         var rows = document.getElementById(elem).getElementsByTagName('tr');
+        rows[0].setAttribute('style',"text-align: left");
         for (var i = 1, row; row = rows[i]; i++) {
             nameElem = rows[i].cells[nameColIndex]
             nameElem.onclick = function() {onMetricClick(this, vmcOptions);}
 
             valueElem = rows[i].cells[valueColIndex]
             valueElem.onclick = function() {onMetricClick(this, rawOptions, multiple=true);}
+
+            let deleteCell = rows[i].insertCell(-1)
+            deleteCell.innerHTML = deleteButtonHtml
         }
     });
 }

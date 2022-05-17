@@ -79,8 +79,19 @@ function submitSelection(opts, multiple) {
     cellElem.onclick = function() {onMetricClick(this, opts, multiple);}
 }
 
-function addActiveMetric() {
-    let table = document.getElementById('metrics_table');
+function resetIndex(tableElem) {
+    indexColIndex = getColumnIndex(tableElem, 'index');
+    var rows = document.getElementById(tableElem).getElementsByTagName('tr');
+    for (var i = 1, row; row = rows[i]; i++) {
+        let indexElem = rows[i].cells[indexColIndex]
+        indexElem.innerHTML = rows[i].rowIndex - 1
+    }
+}
+
+function addActiveMetric(vmcOptions, rawOptions) {
+    let tableName = 'metrics_table'
+    let tableElem = tableName + 'Elem'
+    let table = document.getElementById(tableName);
     let row = table.insertRow(-1);
     let nameCell = row.insertCell(0);
     let valueCell = row.insertCell(1);
@@ -88,9 +99,14 @@ function addActiveMetric() {
     let deleteCell = row.insertCell(3);
 
     nameCell.innerHTML = document.getElementById('metric_name_select').selectize.getValue();
+    nameCell.onclick = function() {onMetricClick(this, vmcOptions);}
+
     valueCell.innerHTML = document.getElementById('metric_value_select').selectize.getValue().join("|");
+    valueCell.onclick = function() {onMetricClick(this, rawOptions, multiple=true);}
+
     indexCell.innerHTML = row.rowIndex - 1;
-    deleteCell.innerHTML = deleteButton();
+    deleteCell.innerHTML = deleteButton(tableName);
+    resetIndex(tableElem);
     $('#activeMetricModal').modal('hide');
     document.getElementById('metric_name_select').selectize.clear();
     document.getElementById('metric_value_select').selectize.clear();
@@ -100,9 +116,11 @@ function deleteTableRow(obj) {
     $(obj).closest("tr").remove()
 }
 
-function deleteButton() {
-    let deleteButtonHTML = `<button class="btn btn-danger btn-sm" onclick="deleteTableRow(this)"
-        tabindex="0" aria-controls="metrics_table" type="button">
+function deleteButton(tableName) {
+    let tableElem = tableName + 'Elem'
+    let deleteButtonHTML = `<button class="btn btn-danger btn-sm"
+        onclick="deleteTableRow(this); resetIndex('${tableElem}');"
+        tabindex="0" aria-controls=${tableName} type="button">
           <i class="fas fa-minus" style="color:white"></i>
         </button>`
     return deleteButtonHTML
@@ -239,7 +257,7 @@ function createTable(colData, rawData, tableName,
 }
 
 function createMetricTable(colData, rawData, tableName,
-                           elem = "modal-body-table", rawColData, vmcColData) {
+                           elem, rawColData, vmcColData) {
     let cols = JSON.parse(colData);
     let rawCols = JSON.parse(rawColData);
     let vmcCols = JSON.parse(vmcColData);
@@ -256,7 +274,7 @@ function createMetricTable(colData, rawData, tableName,
           <i class="fas fa-plus" style="color:white"></i>
         </button>`
 
-    let deleteButtonHtml = deleteButton()
+    let deleteButtonHtml = deleteButton(tableName)
     let tableJquery = '#' + tableName;
     document.getElementById(elem).innerHTML = buttonsHtml + rawData;
     $(document).ready(function () {
@@ -273,6 +291,8 @@ function createMetricTable(colData, rawData, tableName,
                             <select name='metric_value_select' id='metric_value_select' multiple></select>
                           </div>
                         </div>`);
+        let modalSaveButton = $('#activeMetricModalTableSaveButton')
+        modalSaveButton.attr("onclick", `addActiveMetric(${JSON.stringify(vmcOptions)}, ${JSON.stringify(rawOptions)})`)
         let nameSelect = $(`select[name='metric_name_select']`);
         let nameSelectize = nameSelect.selectize({options: vmcOptions,
                                                   searchField: 'text',
@@ -290,6 +310,7 @@ function createMetricTable(colData, rawData, tableName,
         var rows = document.getElementById(elem).getElementsByTagName('tr');
         rows[0].setAttribute('style',"text-align: left");
         for (var i = 1, row; row = rows[i]; i++) {
+            rows[i].setAttribute("style", "word-break:break-all")
             nameElem = rows[i].cells[nameColIndex]
             nameElem.onclick = function() {onMetricClick(this, vmcOptions);}
 
@@ -304,7 +325,7 @@ function createMetricTable(colData, rawData, tableName,
 
 function getMetricTableAsArray() {
     let metricArray = $('#metrics_table tbody').children().map(function() {
-        var children = $(this).children();
+        let children = $(this).children();
         return {
             'Metric Name': children.eq(0).text(),
             'Metric Value': children.eq(1).text(),

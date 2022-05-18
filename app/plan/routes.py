@@ -1,5 +1,6 @@
-import json
 from app import db
+import numpy as np
+import pandas as pd
 import datetime as dt
 import app.utils as utl
 from flask_babel import _
@@ -7,8 +8,8 @@ from app.plan import bp
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm
-from app.models import User, Client, Product, Campaign, Plan, Post, Partner, \
-    PartnerPlacements
+from app.models import Client, Product, Campaign, Plan, Post, Partner, \
+    ProcessorAnalysis, PlanPhase
 
 
 @bp.route('/plan', methods=['GET', 'POST'])
@@ -74,6 +75,13 @@ def edit_plan(object_name):
                     plan_id=current_plan.id)
         db.session.add(post)
         db.session.commit()
+        if not current_plan.phases.all():
+            phase = PlanPhase(
+                name='Launch', plan_id=current_plan.id,
+                start_date=current_plan.start_date,
+                end_date=current_plan.end_date)
+            db.session.add(phase)
+            db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('plan.edit_plan',
                                     object_name=current_plan.name))
@@ -107,20 +115,44 @@ def edit_plan(object_name):
 def topline(object_name):
     kwargs = Plan.get_current_plan(object_name, 'edit_plan', edit_progress=100,
                                    edit_name='Topline')
-    kwargs['partners'] = Partner.query.filter_by(
-        plan_id=kwargs['object'].id).all()
     kwargs['form'] = PlanToplineForm()
-    cur_plan = kwargs['object']
+    return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/get_topline', methods=['GET', 'POST'])
+@login_required
+def get_topline():
+    cur_plan = Plan.query.filter_by(
+        name=request.form['object_name']).first_or_404()
+    partners = Partner.query.filter(
+        Partner.plan_phase_id.in_([x.id for x in cur_plan.phases])).all()
+    partners = [x.get_form_dict() for x in partners]
+    a = ProcessorAnalysis.query.filter_by(
+        processor_id=23, key='database_cache', parameter='vendorname').first()
+    df = pd.read_json(a.data)
+    df = df[df['impressions'] > 0].sort_values('impressions', ascending=False)
+    df['eCPM'] = (df['netcost'] / (df['impressions'] / 1000)).round(2)
+    df['eCPC'] = (df['netcost'] / df['clicks']).round(2)
+    df = df.replace([np.inf, -np.inf], np.nan)
+    df = df.fillna(0)
+    df = df.rename(columns={'vendorname': 'name'})
+    partner_list = df.to_dict(orient='records')
     sd = cur_plan.start_date
     ed = cur_plan.end_date
     weeks = [sd + dt.timedelta(days=x)
              for i, x in enumerate(range((ed-sd).days)) if i % 7 == 0]
-    kwargs['topline_headers'] = ['Partner', 'Cost'] + weeks + ['eCPM', 'eCPC']
-    kwargs['weeks'] = [
-        [dt.datetime.strftime(x, '%Y-%m-%d'),
-         dt.datetime.strftime(x + dt.timedelta(days=6), '%Y-%m-%d')]
-        for x in weeks]
-    return render_template('plan/plan.html', **kwargs)
+    weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
+    col_list = ['Partner', 'Cost'] + weeks_str + ['eCPM', 'eCPC']
+    cols = []
+    for x in col_list:
+        cur_col = {'name': x, 'type': ''}
+        if x == 'Partner':
+            cur_col['type'] = 'select'
+            cur_col['values'] = partner_list
+        cols.append(cur_col)
+    phases = [x.get_form_dict() for x in cur_plan.phases.all()]
+    return jsonify({'data': {'partners': partners,
+                             'cols': cols, 'phases': phases}})
 
 
 @bp.route('/save_topline', methods=['GET', 'POST'])
@@ -147,7 +179,8 @@ def save_topline():
             else:
                 tl_dict[col] = new_data
         topline_list.append(tl_dict)
-    old_part = Partner.query.filter_by(plan_id=cur_plan.id).all()
+    old_part = Partner.query.filter(
+        Partner.plan_phase_id.in_([x.id for x in cur_plan.phases])).all()
     if old_part:
         for p in old_part:
             new_p = [x for x in topline_list if p.name == x['name']]

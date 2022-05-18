@@ -17,79 +17,154 @@
             background-color: transparent;
         }
 
+        .shadeCell {
+            background-color: #b3ecff !important;
+            transition: all 1s;
+        }
+
+        .shadeCell0 {
+            background-color: rgb(31,119,180) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
+        .shadeCell1 {
+            background-color: rgb(174,199,232) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
+        .shadeCell2 {
+            background-color: rgb(255,127,14) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
     </style>
     {% if edit_name == 'Topline' %}
-        <div class="card-deck container-fluid text-center">
-            <div id="totalCards" class="row w-100"></div>
-        </div>
-        <div class="row">
-            <div class="col">
-                <button id="addPartner"
-                        class="btn btn-outline-success btn-block text-left"
-                        type="button" href="">
-                    <i class="fas fa-plus"
-                       role="button"></i>
-                    {{ _('Add Partner') }}
-                </button>
+        <div class="card shadow outer text-center">
+            <div class="card-header">
+                <h5>Metric Totals</h5>
+                <h6 class="card-subtitle mb-2 text-muted">Total metric values
+                    for the current plan.</h6>
             </div>
-            <div class="col">
-                <div class="input-group mb-3">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text"><i class="fa-solid fa-magnifying-glass" href="#" role="button"></i></span>
-                    </div>
-                    <input id="tableSearchInput" type="text" class="form-control" placeholder="Search"
-                           aria-label="Username"
-                           aria-describedby="basic-addon1" onkeyup="searchTable()">
+            <div class="card-body">
+                <div class="card-deck container-fluid text-center">
+                    <div id="totalCards" class="row w-100"></div>
                 </div>
             </div>
         </div>
-        <table id="planTable" class="table table-striped table-responsive-sm small">
-            <thead>
-            <tr>
-                {% for table_head in topline_headers %}
-                    <th id="col{{ table_head }}">{{ table_head }}</th>
-                {% endfor %}
-            </tr>
-            </thead>
-            <tbody id="accordionPlan">
-
-            </tbody>
-        </table>
+        <div class="card shadow outer text-center">
+            <div class="card-header">
+                <h5>Topline Table - {{ object_name }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">Topline details broken out by partner
+                    for the current plan.</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <div class="input-group mb-3">
+                            <div id="selectAddPartnerPlaceholder">Select Partners...</div>
+                            <div class="input-group-append">
+                                <button id="addPartner"
+                                        class="btn btn-outline-success btn-block text-left"
+                                        type="button" href="">
+                                    <i class="fas fa-plus" role="button"></i>
+                                    {{ _('') }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="input-group-btn">
+                            <button id="addPhase"
+                                    class="btn btn-outline-success btn-block text-left"
+                                    type="button" href="">
+                                <i class="fas fa-plus" role="button"></i>
+                                {{ _('Add Phase') }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fa-solid fa-magnifying-glass" href="#" role="button"></i></span>
+                            </div>
+                            <input id="tableSearchInput" type="text" class="form-control" placeholder="Search"
+                                   aria-label="Username"
+                                   aria-describedby="basic-addon1" onkeyup="searchTable()">
+                        </div>
+                    </div>
+                </div>
+                <table id="planTable" class="table table-striped table-responsive-sm small"></table>
+            </div>
+        </div>
     {% endif %}
     <script>
-        function shadeDates(loopIndex) {
-            const fp = document.querySelector('#datePicker' + loopIndex)._flatpickr;
-            let dateRange = fp.selectedDates;
+        function addDays(date, days) {
+            let result = new Date(date);
+            result.setDate(result.getDate() + days);
+            return result;
+        }
+
+        function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell") {
+            if (!dateRange) {
+                const fp = document.querySelector('#datePicker' + loopIndex)._flatpickr;
+                dateRange = fp.selectedDates;
+            }
             let startDate = new Date(dateRange[0]);
             let endDate = new Date(dateRange[1]);
+            let weekString =  '';
             let calStart = '';
             let calEnd = '';
             let element = '';
             let elementId = '';
-            {% for week in weeks %}
-                calStart = new Date("{{ week[0] }}");
-                calEnd = new Date("{{ week[1] }}");
-                elementId = "row" + "{{ week[0] }}" + loopIndex;
+            let weeks = document.querySelectorAll('*[id^="col20"]');
+            weeks.forEach(week => {
+                weekString = week.id.replace('col', '');
+                calStart = new Date(weekString);
+                calEnd = addDays(calStart, 6);
+                elementId = "row" + weekString + loopIndex;
                 if (calEnd >= startDate && calStart <= endDate) {
                     element = document.getElementById(elementId);
-                    element.style.backgroundColor = "#b3ecff";
+                    element.classList.add(cellClass);
                 }
-            {% endfor %}
+                else {
+                    element = document.getElementById(elementId);
+                    element.classList.remove(cellClass);
+                }
+            });
         }
-        function addPartner(clickElem, oldHtml, partner = null) {
-            let d1 = document.getElementById('accordionPlan');
+
+        function getRowHtml(loopIndex, tableName='planTable') {
+            let tableHeadElems = document.getElementById(tableName + 'Header');
+            tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
+            let tableHeaders = '';
+            tableHeadElems.forEach(tableHeadElem => {
+                tableHeaders = tableHeaders + '<td id="row' + tableHeadElem.id.replace('col', '') + loopIndex + '"></td>'
+            });
+            return tableHeaders
+        }
+
+        function addPartner(clickElem, oldHtml, partner = null, tableName = 'planTable') {
+            let curTable = document.getElementById(tableName);
+            let d1 = document.getElementById("accordionPlan");
+            if (!(d1)) {
+                curTable.innerHTML += `<tbody id="accordionPlan"></tbody>`;
+            }
+            d1 = document.getElementById("accordionPlan");
             let loopIndex = d1.querySelectorAll(".accordion:last-child");
             loopIndex = (loopIndex.length != 0) ? (parseInt(loopIndex[loopIndex.length- 1].id.replace('accordionPartner', '')) + 1).toString() : '0'
-            let tableHeaders = ''
-            {% for table_head in topline_headers %}
-                tableHeaders = tableHeaders + '<td id="row' + "{{table_head}}" + loopIndex + '"></td>'
-            {% endfor %}
+            let tableHeadElems = document.getElementById(tableName + 'Header');
+            tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
+            let tableHeaders = getRowHtml(loopIndex);
+            let partnerOptionHtml = document.getElementById('colSelectPartner').innerHTML;
             let partnerCard = `
-                <tr id="tr` + loopIndex + `" data-toggle="collapse" data-target="#collapsePartner` + loopIndex + `" class="accordion-toggle">
+                <tr id="tr` + loopIndex + `" data-toggle="collapse"
+                    data-target="#collapsePartner` + loopIndex + `" class="accordion-toggle">
                     ` + tableHeaders + `
                 </tr>
                 <tr id="trHidden` + loopIndex + `">
-                    <td colspan="12" class="hiddenRow">
+                    <td colspan="` + tableHeadElems.length + `" class="hiddenRow">
                     <div id="collapsePartner` + loopIndex + `" class="collapse"
                          aria-labelledby="heading` + loopIndex + `"
                          data-parent="#accordionPlan">
@@ -101,7 +176,7 @@
                                         <select id="partnerSelect` + loopIndex + `"
                                                 class="form-control form-control-sm"
                                                 name="name` + loopIndex + `">
-                                            <option value="">Partner Name</option>
+                                            ` + partnerOptionHtml + `
                                         </select>
                                     </div>
                                     <div class="col form-group">
@@ -115,15 +190,15 @@
                                     </div>
                                     <div class="col form-group">
                                       <label class="control-label" for="total_budget` + loopIndex + `">Total Budget</label>
-                                      <input class="form-control form-control-sm" id="total_budget` + loopIndex + `" name="total_budget` + loopIndex + `" step="any" type="number" value="">
+                                      <input class="form-control form-control-sm" id="total_budget` + loopIndex + `" name="total_budget` + loopIndex + `" step="any" type="number" value="" oninput="syncTableWithForm(` + loopIndex + `)">
                                     </div>
                                     <div class="col form-group">
                                       <label class="control-label" for="estimated_cpm` + loopIndex + `">CPM</label>
-                                      <input class="form-control form-control-sm" id="estimated_cpm` + loopIndex + `" name="estimated_cpm` + loopIndex + `" step="any" type="number" value="">
+                                      <input class="form-control form-control-sm" id="estimated_cpm` + loopIndex + `" name="estimated_cpm` + loopIndex + `" step="any" type="number" value="" oninput="syncTableWithForm(` + loopIndex + `)">
                                     </div>
                                     <div class="col form-group">
                                       <label class="control-label" for="estimated_cpc` + loopIndex + `">CPC</label>
-                                      <input class="form-control form-control-sm" id="estimated_cpc` + loopIndex + `" name="estimated_cpc` + loopIndex + `" step="any" type="number" value="">
+                                      <input class="form-control form-control-sm" id="estimated_cpc` + loopIndex + `" name="estimated_cpc` + loopIndex + `" step="any" type="number" value="" oninput="syncTableWithForm(` + loopIndex + `)">
                                     </div>
                                 </form>
                             </div>
@@ -132,23 +207,20 @@
                     </td>
                 </tr>`;
             d1.insertAdjacentHTML('beforeend', partnerCard);
-            $(clickElem).prop("disabled", false);
-            $(clickElem).html(oldHtml);
-            addSelectize()
-            addDatePicker()
+            addSelectize();
+            addDatePicker();
+            sortTable();
             if (partner) {
                 let selectize = $('#partnerSelect' + loopIndex)[0].selectize;
                 selectize.addOption({text: partner.name, id: partner.name, value: partner.name});
                 selectize.setValue(partner.name);
                 let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
-                fp.setDate([partner.start_date, partner.end_date])
+                fp.setDate([partner.start_date, partner.end_date]);
                 document.getElementById("total_budget" + loopIndex).value = partner.total_budget;
                 document.getElementById("estimated_cpm" + loopIndex).value = partner.estimated_cpm;
                 document.getElementById("estimated_cpc" + loopIndex).value = partner.estimated_cpc;
                 document.getElementById('rowPartner' + loopIndex).innerHTML = partner.name;
-                document.getElementById('rowCost' + loopIndex).innerHTML = "$" + partner.total_budget;
-                document.getElementById('roweCPM' + loopIndex).innerHTML = "$" + partner.estimated_cpm;
-                document.getElementById('roweCPC' + loopIndex).innerHTML = "$" + partner.estimated_cpc;
+                syncTableWithForm(loopIndex);
                 shadeDates(loopIndex);
             }
         }
@@ -162,20 +234,51 @@
                     `<span class="spinner-grow spinner-grow-sm" role="status"
                   aria-hidden="true"></span> Loading...`
                 );
+                let selectedPartners = document.getElementById('partnerSelectAdd').selectize.getValue();
+                document.getElementById('partnerSelectAdd').selectize.clear();
+                let partners = selectedPartners.map(function (e) {
+                    let metricElem = document.getElementById('colSelectPartner').querySelector('option[value="' + e + '"]');
+                    let metrics = (metricElem === null) ? {estimated_cpc: 0, estimated_cpm: 0} : metricElem.dataset
+                    return Object.assign({}, {name: e, total_budget: 0,
+                        start_date: "{{ object.start_date }}", end_date: "{{ object.end_date }}"},
+                        metrics)
+                })
+                partners.forEach(partner => {
+                    addPartner(clickElem, oldHtml, partner);
+                })
+                $(clickElem).prop("disabled", false);
+                $(clickElem).html(oldHtml);
+            })
+        }
 
-                addPartner(clickElem, oldHtml);
+        function addPhaseOnClick() {
+            $('[id^=addPhase]').unbind().click(function () {
+                let clickElem = "#" + $(this)[0].id;
+                $(clickElem).prop("disabled", true);
+                let oldHtml = $(clickElem).html();
+                $(clickElem).html(
+                    `<span class="spinner-grow spinner-grow-sm" role="status"
+                  aria-hidden="true"></span> Loading...`
+                );
+                addPhase();
             })
         }
 
         function addDatePicker() {
-            $('[id^=datePicker]').flatpickr({
+            let selector = '[id^=datePicker]';
+            $(selector).flatpickr({
                 mode: "range",
+                inline: true
+            });
+            $(selector).change(function () {
+                let loopIndex = this.id.replace('datePicker', '');
+                shadeDates(loopIndex);
             });
         }
 
         function submitToplineForm(formContinue) {
-            let formTopline = $('[id^=toplinePartner]').serializeArray()
-            saveToplinePartners(formTopline, formContinue)
+            let formTopline = $('[id^=toplinePartner]').serializeArray();
+            saveToplinePartners(formTopline, formContinue);
         }
 
         function saveToplinePartners(formTopline, formContinue) {
@@ -207,25 +310,16 @@
             }).fail(function (jqXHR, textStatus) {
 
             }).always(function () {
-                $('#loadingBtn').remove()
-                $('#loadRefresh').show()
-                unanimateBar()
+                $('#loadingBtn').remove();
+                $('#loadRefresh').show();
+                unanimateBar();
             });
         }
 
-        function addCurrentPartners(){
-            let cpart = {};
-            {% for partner in partners %}
-                cpart = {
-                    name:"{{ partner.name }}",
-                    start_date: "{{ partner.start_date}}",
-                    end_date: "{{ partner.end_date}}",
-                    total_budget: {{ partner.total_budget }},
-                    estimated_cpm: {{ partner.estimated_cpm }},
-                    estimated_cpc: {{ partner.estimated_cpc }}
-                };
-                addPartner('', '', cpart);
-            {% endfor %}
+        function addCurrentPartners(partners){
+            partners.forEach(partner => {
+                addPartner('', '', partner);
+            });
         }
 
         $('.collapse').on('show.bs.collapse', function () {
@@ -233,15 +327,27 @@
         });
 
         function getAllElementsWithAttribute(attribute) {
-            var matchingElements = [];
-            var allElements = document.querySelectorAll("#planTable > thead > tr > th");
-            for (var i = 0, n = allElements.length; i < n; i++) {
+            let matchingElements = [];
+            let allElements = document.querySelectorAll("#planTable > thead > tr > th");
+            for (let i = 0, n = allElements.length; i < n; i++) {
                 if (allElements[i].getAttribute(attribute) !== null) {
-                    // Element exists with attribute. Add to array.
                     matchingElements.push(allElements[i]);
                 }
             }
             return matchingElements;
+        }
+
+        function syncTableWithForm(loopIndex) {
+            document.getElementById('rowCost' + loopIndex).innerHTML = "$" + document.getElementById("total_budget" + loopIndex).value;
+            document.getElementById('roweCPM' + loopIndex).innerHTML = "$" + document.getElementById("estimated_cpm" + loopIndex).value;
+            document.getElementById('roweCPC' + loopIndex).innerHTML = "$" + document.getElementById("estimated_cpc" + loopIndex).value;
+            if (document.getElementById('rowCost' + loopIndex).innerHTML === "$0") {
+                document.getElementById('tr' + loopIndex).classList.add('shadeCell2');
+            }
+            else {
+                document.getElementById('tr' + loopIndex).classList.remove('shadeCell2');
+            }
+            populateTotalCards();
         }
 
         function populateTotalCards() {
@@ -249,16 +355,18 @@
             let sumCost = 0;
             let sumImps = 0;
             let sumClicks = 0;
-            for (let i = 0; i < (table.rows.length - 1); i += 2) {
-                let cost = parseFloat(table.rows[i].cells[1].innerHTML.replace('$', ''));
-                sumCost = sumCost + cost;
-                let partnerNum = i / 2;
-                let cpm = parseFloat(document.getElementById('roweCPM' + partnerNum).innerHTML.replace('$', ''));
-                let imps = (cost / cpm) * 1000;
-                sumImps = sumImps + imps;
-                let cpc = parseFloat(document.getElementById('roweCPC' + partnerNum).innerHTML.replace('$', ''));
-                let clicks = (cost / cpc);
-                sumClicks = sumClicks + clicks;
+            if (table) {
+                for (let i = 0; i < (table.rows.length - 1); i += 2) {
+                    let cost = parseFloat(table.rows[i].cells[1].innerHTML.replace('$', ''));
+                    sumCost = sumCost + cost;
+                    let partnerNum = i / 2;
+                    let cpm = parseFloat(document.getElementById('roweCPM' + partnerNum).innerHTML.replace('$', ''));
+                    let imps = (cost / cpm) * 1000;
+                    sumImps = sumImps + imps;
+                    let cpc = parseFloat(document.getElementById('roweCPC' + partnerNum).innerHTML.replace('$', ''));
+                    let clicks = (cost / cpc);
+                    sumClicks = sumClicks + clicks;
+                }
             }
             let percentTotal = sumCost / parseFloat("{{ object.total_budget }}");
             let formatter = new Intl.NumberFormat('en-US', {
@@ -266,12 +374,12 @@
               currency: 'USD',
             });
             let data = [
-                {name:"Net Cost", current_value:formatter.format(sumCost), msg:"Of Total Budget", change: percentTotal},
-                {name:"Impressions", current_value:sumImps.toLocaleString("en-US"), msg:"", change: ""},
-                {name:"Clicks", current_value:sumClicks.toLocaleString("en-US"), msg:"", change: ""},
-                {name:"CPM", current_value:formatter.format(sumCost / (sumImps / 1000)), msg:"", change: ""},
-                {name:"CPC", current_value:formatter.format(sumCost / sumClicks), msg:"", change: ""},]
-            generateTotalCards('#totalCards', data);
+                {name:"Net Cost", numeric_value:sumCost, current_value:formatter.format(sumCost), msg:"Of Total Budget", change: percentTotal},
+                {name:"Impressions", numeric_value:sumImps, current_value:sumImps.toFixed(0).toLocaleString("en-US"), msg:"", change: ""},
+                {name:"Clicks", numeric_value:sumClicks, current_value:sumClicks.toFixed(0).toLocaleString("en-US"), msg:"", change: ""},
+                {name:"CPM", numeric_value: sumCost / (sumImps / 1000), current_value:formatter.format(sumCost / (sumImps / 1000)), msg:"", change: ""},
+                {name:"CPC", numeric_value: sumCost / sumClicks, current_value:formatter.format(sumCost / sumClicks), msg:"", change: ""},]
+            generateTotalCards('totalCards', data);
         }
 
         function sortTable() {
@@ -315,13 +423,82 @@
             trs.forEach(setTrStyleDisplay)
         }
 
+        function addPhase(phase, index=0, tableName = 'planTable') {
+            let thead = document.getElementById(tableName + 'THead');
+            let rowNum = ((index * -1) - 1).toString();
+            let colorClass = "shadeCell" + index;
+            let tableHeaders = getRowHtml(rowNum);
+            let phaseRow = `
+            <tr id="planTablePhaseHeader` + rowNum + `">
+                ` + tableHeaders + `
+            </tr>`;
+            thead.innerHTML = phaseRow + thead.innerHTML;
+            let firstCell = document.getElementById('rowPartner' + rowNum);
+            firstCell.classList.add('text-uppercase');
+            firstCell.classList.add('font-weight-bold');
+            document.getElementById('rowPartner' + rowNum).innerHTML = phase.name;
+            shadeDates(rowNum, [phase.start_date, phase.end_date], colorClass);
+        }
+
+        function addCurrentPhases(phases, tableName = 'planTable') {
+            phases.forEach(function (phase, i) {
+                addPhase(phase, i, tableName);
+            });
+        }
+
+        function addTableColumns(cols, name) {
+            let table = document.getElementById(name);
+            table.innerHTML += `<thead id ="planTableTHead"><tr id=` + name + `Header></tr></thead>`;
+            let thead = document.getElementById(name + 'Header');
+            cols.forEach(col => {
+                let colName = col['name'];
+                thead.innerHTML += `<th id="col` + colName +`">` + colName + `</th>`;
+                if (col['type'] === 'select') {
+                    let selectName = 'colSelect' + colName;
+                    let colElem = document.getElementById('col' + colName);
+                    colElem.innerHTML += `<select id="` + selectName + `" hidden=''></select>`;
+                    let colSelectElem = document.getElementById(selectName);
+                    col['values'].forEach(val => {
+                        colSelectElem.innerHTML += `
+                            <option data-estimated_cpm="` + val['eCPM'] + `"
+                                    data-estimated_cpc="` + val['eCPC'] + `"
+                                    value="` + val['name'] + `">` + val['name'] + `</option>`;
+                    })
+                    document.getElementById('selectAddPartnerPlaceholder').innerHTML = `
+                        <select id="partnerSelectAdd" multiple="" class="width100 form-control">
+                            <option value="">Select Partners To Add...</option>
+                        </select>`;
+                    document.getElementById('partnerSelectAdd').innerHTML += document.getElementById('colSelectPartner').innerHTML;
+                    addSelectize();
+                }
+            });
+        }
+
+        function getToplineTable() {
+            $.ajax({
+                type: "POST",
+                url: "/get_topline",
+                data: {
+                    object_name: "{{ object_name }}",
+                    object_type: "{{ title }}",
+                    object_level: "{{ edit_name }}",
+                },
+            }).done(function (data, status) {
+                addTableColumns(data['data']['cols'], 'planTable');
+                addCurrentPhases(data['data']['phases']);
+                addCurrentPartners(data['data']['partners']);
+                populateTotalCards();
+                addSelectize();
+                addDatePicker();
+            }).fail(function (jqXHR, textStatus) {
+                console.log("Request failed: " + textStatus);
+            }).always(function () {
+            });
+        }
+
         $(document).ready(function () {
+            getToplineTable();
             addPartnerOnClick();
-            addCurrentPartners();
-            addSelectize();
-            addDatePicker();
-            populateTotalCards();
-            sortTable();
         });
 
     </script>

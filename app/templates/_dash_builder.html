@@ -882,19 +882,46 @@
             })
     }
 
+    function animateValue(obj, end, duration, displayValue) {
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            let start = Number(obj.innerHTML.replace(/[^0-9.-]+/g,""));
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            obj.innerHTML = Math.floor(progress * (end - start) + start);
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            }
+            else {
+                obj.innerHTML = displayValue;
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
     function generateTotalCards(elem, data, xCol, yCol) {
+        elem = elem.replace('#', '');
         data.forEach(function (d) {
-            $(elem).append(`
-                <div class="card mb-auto shadow-lg">
-                <h3 class="text-muted small">` + d['name'] + `</h3>
-                <h5 class="text-large" style="text-align:center">
-                ` + d['current_value'] + `</h5>
-                <div class="card-footer">
-                <p class="text-muted small">
-                ` + (d['change'] * 100).toFixed(2) + `% ` + d['msg'] + ` </p>
-                </div>
-                </div>`
-            )
+            let totalCardElem = document.getElementById('totalCard' + d['name']);
+            if (totalCardElem === null) {
+                let curElem = document.getElementById(elem);
+                curElem.innerHTML += `
+                    <div id="totalCard` + d['name'] + `" class="card mb-auto shadow-lg">
+                    <h3 class="text-muted small">` + d['name'] + `</h3>
+                    <h5 id="totalCardValue` + d['name'] + `" class="text-large" style="text-align:center">
+                    ` + d['current_value'] + `</h5>
+                    <div class="card-footer">
+                    <p id="totalCardChange` + d['name'] + `" class="text-muted small">
+                    ` + (d['change'] * 100).toFixed(2) + `% ` + d['msg'] + ` </p>
+                    </div>
+                    </div>`
+            }
+            else {
+                let changeElem = document.getElementById("totalCardValue" + d['name']);
+                animateValue(changeElem, d['numeric_value'], 500, d['current_value'])
+                changeElem = document.getElementById("totalCardChange" + d['name']);
+                animateValue(changeElem, d['change'], 500, (d['change'] * 100).toFixed(2) + `% ` + d['msg'])
+            }
         });
     }
 

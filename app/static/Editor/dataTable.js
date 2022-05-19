@@ -141,7 +141,6 @@ function createTable(colData, rawData, tableName,
     });
     let tableJquery = '#' + tableName;
     document.getElementById(elem).innerHTML = rawData;
-    $(tableJquery).attr({"data-pagination":true});
     $(document).ready(function () {
         let editor = new $.fn.dataTable.Editor({
             table: tableJquery,
@@ -252,7 +251,6 @@ function createTable(colData, rawData, tableName,
                 },
             ]
         });
-
     });
 }
 

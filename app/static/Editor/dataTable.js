@@ -270,7 +270,7 @@ function createMetricTable(colData, rawData, tableName,
     });
 
     let buttonsHtml = `<button class="btn btn-success" data-toggle="modal" data-target="#activeMetricModal"
-        tabindex="0" aria-controls="metrics_table" type="button">
+        tabindex="0" aria-controls=${tableName} type="button">
           <i class="fas fa-plus" style="color:white"></i>
         </button>`
 

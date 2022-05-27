@@ -41,6 +41,91 @@ function selectColumns(editor, csv, header) {
     });
 }
 
+function getColumnIndex(tableElem, colName) {
+    var rows = document.getElementById(tableElem).getElementsByTagName('tr');
+    for (var j = 0, col; col = rows[0].cells[j]; j++) {
+        if (rows[0].cells[j].innerHTML === colName) {
+            return j;
+        }
+    }
+}
+
+function onMetricClick(elem, opts, multiple=false) {
+    elem.onclick = '';
+    let defaultValue = [elem.innerHTML];
+    if (multiple) {
+        defaultValue = elem.innerHTML.split("|");
+        elem.innerHTML = `<select name='metric_select' id='metric_select' multiple></select>`;
+    } else {
+        elem.innerHTML = `<select name='metric_select' id='metric_select'></select>`;
+    }
+    let metricSelect = $(`select[name='metric_select']`);
+    let metricSelectize = metricSelect.selectize({options: opts,
+                                                  searchField: 'text',
+                                                  items: defaultValue,
+                                                  delimiter: '|',
+                                                  onBlur: function() {submitSelection(opts, multiple);}
+                                                  });
+    metricSelectize[0].selectize.open()
+}
+
+function submitSelection(opts, multiple) {
+    let value = document.getElementById('metric_select').selectize.getValue();
+    if (multiple) {
+        value = value.join("|")
+    }
+    let cellElem = document.getElementById('metric_select').parentElement;
+    cellElem.innerHTML = value;
+    cellElem.onclick = function() {onMetricClick(this, opts, multiple);}
+}
+
+function resetIndex(tableElem) {
+    indexColIndex = getColumnIndex(tableElem, 'index');
+    var rows = document.getElementById(tableElem).getElementsByTagName('tr');
+    for (var i = 1, row; row = rows[i]; i++) {
+        let indexElem = rows[i].cells[indexColIndex]
+        indexElem.innerHTML = rows[i].rowIndex - 1
+    }
+}
+
+function addActiveMetric(vmcOptions, rawOptions) {
+    let tableName = 'metrics_table'
+    let tableElem = tableName + 'Elem'
+    let table = document.getElementById(tableName);
+    let row = table.insertRow(-1);
+    let nameCell = row.insertCell(0);
+    let valueCell = row.insertCell(1);
+    let indexCell = row.insertCell(2);
+    let deleteCell = row.insertCell(3);
+
+    nameCell.innerHTML = document.getElementById('metric_name_select').selectize.getValue();
+    nameCell.onclick = function() {onMetricClick(this, vmcOptions);}
+
+    valueCell.innerHTML = document.getElementById('metric_value_select').selectize.getValue().join("|");
+    valueCell.onclick = function() {onMetricClick(this, rawOptions, multiple=true);}
+
+    indexCell.innerHTML = row.rowIndex - 1;
+    deleteCell.innerHTML = deleteButton(tableName);
+    resetIndex(tableElem);
+    $('#activeMetricModal').modal('hide');
+    document.getElementById('metric_name_select').selectize.clear();
+    document.getElementById('metric_value_select').selectize.clear();
+}
+
+function deleteTableRow(obj) {
+    $(obj).closest("tr").remove()
+}
+
+function deleteButton(tableName) {
+    let tableElem = tableName + 'Elem'
+    let deleteButtonHTML = `<button class="btn btn-danger btn-sm"
+        onclick="deleteTableRow(this); resetIndex('${tableElem}');"
+        tabindex="0" aria-controls=${tableName} type="button">
+          <i class="fas fa-minus" style="color:white"></i>
+        </button>`
+    return deleteButtonHTML
+}
+
 function createTable(colData, rawData, tableName,
                      elem = "modal-body-table") {
     let cols = JSON.parse(colData);
@@ -166,6 +251,84 @@ function createTable(colData, rawData, tableName,
                 },
             ]
         });
-
     });
+}
+
+function createMetricTable(colData, rawData, tableName,
+                           elem, rawColData, vmcColData) {
+    let cols = JSON.parse(colData);
+    let rawCols = JSON.parse(rawColData);
+    let vmcCols = JSON.parse(vmcColData);
+
+    var vmcOptions = vmcCols.map(function (e) {
+        return {text: e, value: e}
+    });
+    var rawOptions = rawCols.map(function (e) {
+        return {text: e, value: e}
+    });
+
+    let buttonsHtml = `<button class="btn btn-success" data-toggle="modal" data-target="#activeMetricModal"
+        tabindex="0" aria-controls=${tableName} type="button">
+          <i class="fas fa-plus" style="color:white"></i>
+        </button>`
+
+    let deleteButtonHtml = deleteButton(tableName)
+    let tableJquery = '#' + tableName;
+    document.getElementById(elem).innerHTML = buttonsHtml + rawData;
+    $(document).ready(function () {
+        modalElem = $("#activeMetricModal .modal-body")
+        modalElem.html(`<div class="form-group row justify-content-center align-items-center">
+                          <div class="col-md-4">
+                            <label for="metric_name_select">Metric Name</label>
+                            <select name='metric_name_select' id='metric_name_select'></select>
+                          </div>
+                        </div>
+                        <div class="form-group row justify-content-center align-items-center">
+                          <div class="col-md-4">
+                            <label for="metric_value_select">Metric Value</label>
+                            <select name='metric_value_select' id='metric_value_select' multiple></select>
+                          </div>
+                        </div>`);
+        let modalSaveButton = $('#activeMetricModalTableSaveButton')
+        modalSaveButton.attr("onclick", `addActiveMetric(${JSON.stringify(vmcOptions)}, ${JSON.stringify(rawOptions)})`)
+        let nameSelect = $(`select[name='metric_name_select']`);
+        let nameSelectize = nameSelect.selectize({options: vmcOptions,
+                                                  searchField: 'text',
+                                                  delimiter: '|'
+                                                  });
+        let valueSelect = $(`select[name='metric_value_select']`);
+        let valueSelectize = valueSelect.selectize({options: rawOptions,
+                                                  searchField: 'text',
+                                                  delimiter: '|'
+                                                  });
+
+        nameColIndex = getColumnIndex(elem, 'Metric Name');
+        valueColIndex = getColumnIndex(elem, 'Metric Value');
+
+        var rows = document.getElementById(elem).getElementsByTagName('tr');
+        rows[0].setAttribute('style',"text-align: left");
+        for (var i = 1, row; row = rows[i]; i++) {
+            rows[i].setAttribute("style", "word-break:break-all")
+            nameElem = rows[i].cells[nameColIndex]
+            nameElem.onclick = function() {onMetricClick(this, vmcOptions);}
+
+            valueElem = rows[i].cells[valueColIndex]
+            valueElem.onclick = function() {onMetricClick(this, rawOptions, multiple=true);}
+
+            let deleteCell = rows[i].insertCell(-1)
+            deleteCell.innerHTML = deleteButtonHtml
+        }
+    });
+}
+
+function getMetricTableAsArray() {
+    let metricArray = $('#metrics_table tbody').children().map(function() {
+        let children = $(this).children();
+        return {
+            'Metric Name': children.eq(0).text(),
+            'Metric Value': children.eq(1).text(),
+            'index': children.eq(2).text()
+        }
+    }).get();
+    return metricArray
 }

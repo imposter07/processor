@@ -22,4 +22,6 @@ werkzeug==2.0.2
 pandas==0.24.2
 Numpy==1.19.5
 seaborn==0.11.1
+filelock==3.4.1
+async-timeout==4.0.2
 git+https://github.com/jamezzz5/processor.git

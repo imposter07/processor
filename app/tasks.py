@@ -3841,6 +3841,8 @@ def update_analysis_in_db_reporting_cache(processor_id, current_user_id, df,
         import processor.reporting.analyze as az
         dimensions_str = '|'.join(dimensions)
         metrics_str = '|'.join(metrics)
+        if not filter_dict:
+            filter_dict = {}
         filter_dict = {k: v for x in filter_dict for k, v in x.items()}
         filter_col_str = '|'.join(filter_dict.keys())
         filter_val = []

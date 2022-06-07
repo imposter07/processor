@@ -573,6 +573,25 @@ def get_dict_order(processor_id, current_user_id, vk):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+def get_change_dict_order(processor_id, current_user_id, vk):
+    # TODO: Set up return to give relevant values/format for change modal
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.vendormatrix as vm
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk)
+        tables = [data_source.get_dict_order_df(include_index=False).head().T.reset_index()]
+        _set_task_progress(100)
+        return tables
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
 def delete_dict(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)

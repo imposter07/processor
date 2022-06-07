@@ -1120,6 +1120,7 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'Relation': '.get_relational_config',
                  'OutputData': '.get_data_tables',
                  'dictionary_order': '.get_dict_order',
+                 'change_dictionary_order': '.get_change_dict_order',
                  'raw_data': '.get_raw_data',
                  'download_raw_data': '.get_raw_data',
                  'dictionary': '.get_dictionary',

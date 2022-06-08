@@ -7,9 +7,10 @@ from flask_babel import _
 from app.plan import bp
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
-from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm
+from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
+    CreateSowForm
 from app.models import Client, Product, Campaign, Plan, Post, Partner, \
-    ProcessorAnalysis, PlanPhase
+    ProcessorAnalysis, PlanPhase, Sow
 
 
 @bp.route('/plan', methods=['GET', 'POST'])
@@ -113,8 +114,9 @@ def edit_plan(object_name):
 @bp.route('/plan/<object_name>/topline', methods=['GET', 'POST'])
 @login_required
 def topline(object_name):
-    kwargs = Plan.get_current_plan(object_name, 'edit_plan', edit_progress=100,
-                                   edit_name='Topline')
+    kwargs = Plan().get_current_plan(object_name, 'edit_plan',
+                                     edit_progress=100,
+                                     edit_name='Topline')
     kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)
 
@@ -198,3 +200,57 @@ def save_topline():
         db.session.commit()
     return jsonify({'message': 'This data source {} was saved!'.format(
         obj_name), 'level': 'success'})
+
+
+@bp.route('/plan/<object_name>/sow', methods=['GET', 'POST'])
+@login_required
+def edit_sow(object_name):
+    kwargs = Plan().get_current_plan(
+        object_name, 'edit_sow', edit_progress=75, edit_name='SOW')
+    form = CreateSowForm()
+    cur_plan = kwargs['object']
+    kwargs['form'] = form
+    current_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
+    if request.method == 'POST':
+        form.validate()
+        if not current_sow:
+            current_sow = Sow(plan_id=cur_plan.id)
+            db.session.add(current_sow)
+            db.session.commit()
+        current_sow.project_name = form.project_name.data
+        current_sow.project_contact = form.project_contact.data
+        current_sow.date_submitted = form.date_submitted.data
+        current_sow.liquid_contact = form.liquid_contact.data
+        current_sow.liquid_project = form.liquid_project.data
+        current_sow.start_date = form.start_date.data
+        current_sow.end_date = form.end_date.data
+        current_sow.client_name = form.client_name.data
+        current_sow.campaign = form.campaign.data
+        current_sow.address = form.address.data
+        current_sow.phone = form.phone.data
+        current_sow.fax = form.fax.data
+        current_sow.total_project_budget = form.total_project_budget.data
+        current_sow.ad_serving = form.ad_serving.data
+        db.session.commit()
+        creation_text = 'SOW was edited.'
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    plan_id=cur_plan.id)
+        db.session.add(post)
+        db.session.commit()
+    elif request.method == 'GET':
+        form.project_name.data = current_sow.project_name
+        form.project_contact.data = current_sow.project_contact
+        form.date_submitted.data = current_sow.date_submitted
+        form.liquid_contact.data = current_sow.liquid_contact
+        form.liquid_project.data = current_sow.liquid_project
+        form.start_date.data = current_sow.start_date
+        form.end_date.data = current_sow.end_date
+        form.client_name.data = current_sow.client_name
+        form.campaign.data = current_sow.campaign
+        form.address.data = current_sow.address
+        form.phone.data = current_sow.phone
+        form.fax.data = current_sow.fax
+        form.total_project_budget.data = current_sow.total_project_budget
+        form.ad_serving.data = current_sow.ad_serving
+    return render_template('plan/plan.html', **kwargs)

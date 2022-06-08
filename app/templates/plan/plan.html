@@ -497,8 +497,10 @@
         }
 
         $(document).ready(function () {
+        {% if edit_name == 'Topline' %}
             getToplineTable();
             addPartnerOnClick();
+        {% endif %}
         });
 
     </script>

@@ -3845,6 +3845,8 @@ def update_analysis_in_db_reporting_cache(processor_id, current_user_id, df,
         import processor.reporting.analyze as az
         dimensions_str = '|'.join(dimensions)
         metrics_str = '|'.join(metrics)
+        if not filter_dict:
+            filter_dict = {}
         filter_dict = {k: v for x in filter_dict for k, v in x.items()}
         filter_col_str = '|'.join(filter_dict.keys())
         filter_val = []
@@ -4511,8 +4513,6 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 processor_id, current_user_id, fix_id), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
-
-<<<<<<< HEAD
 def get_request_table(processor_id, current_user_id, fix_id):
     try:
         cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
@@ -4531,7 +4531,8 @@ def get_request_table(processor_id, current_user_id, fix_id):
             processor_id, current_user_id), exc_info=sys.exc_info())
         msg = 'DATA WAS UNABLE TO BE LOADED.'
         return [pd.DataFrame([{'Result': msg}]), msg]
-=======
+
+
 def get_sow(plan_id, current_user_id):
     try:
         _set_task_progress(0)
@@ -4671,4 +4672,3 @@ def get_sow(plan_id, current_user_id):
             'Unhandled exception - Processor {} User {}'.format(
                 plan_id, current_user_id), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
->>>>>>> 938e3d8f221374e534178f95004b71ed3fa7c0f8

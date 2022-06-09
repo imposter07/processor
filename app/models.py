@@ -612,9 +612,6 @@ class Processor(db.Model):
                 order_by(Requests.created_at.desc()).all())
 
     def get_requests_processor_analysis(self, analysis_key):
-        print(self.id)
-        print(analysis_key)
-        print(self.processor_analysis.filter_by(key=analysis_key).first())
         return self.processor_analysis.filter_by(key=analysis_key).first()
 
     def to_dict(self):

@@ -282,6 +282,10 @@ class Post(SearchableMixin, db.Model):
     @staticmethod
     def get_posts_for_objects(cur_obj, fix_id, current_page, object_name,
                               note_id=None):
+        if object_name == 'plan':
+            route_prefix = 'plan.'
+        else:
+            route_prefix = 'main.'
         page = request.args.get('page', 1, type=int)
         post_filter = {'{}_id'.format(object_name): cur_obj.id}
         if fix_id:
@@ -294,9 +298,9 @@ class Post(SearchableMixin, db.Model):
         posts = (query.
                  order_by(Post.timestamp.desc()).
                  paginate(page, 5, False))
-        next_url = url_for('main.' + current_page, page=posts.next_num,
+        next_url = url_for(route_prefix + current_page, page=posts.next_num,
                            object_name=cur_obj.name) if posts.has_next else None
-        prev_url = url_for('main.' + current_page, page=posts.prev_num,
+        prev_url = url_for(route_prefix + current_page, page=posts.prev_num,
                            object_name=cur_obj.name) if posts.has_prev else None
         return posts, next_url, prev_url
 
@@ -1307,16 +1311,28 @@ class Plan(db.Model):
     phases = db.relationship('PlanPhase', backref='plan', lazy='dynamic')
 
     @staticmethod
-    def get_current_plan(object_name=None, current_page=None, edit_progress=0,
-                         edit_name='Page', buttons=None):
+    def get_output_links():
+        output_links = {}
+        for idx, out_file in enumerate(
+                (('SOW', 'Downloads the SOW.'),
+                 ('Topline', 'Downloads the Topline.'))):
+            output_links[idx] = dict(title=out_file[0], nest=[],
+                                     tooltip=out_file[1])
+        return output_links
+
+    def get_current_plan(self, object_name=None, current_page=None,
+                         edit_progress=0, edit_name='Page', buttons=None):
+        output_links = self.get_output_links()
         kwargs = dict(title=_('Plan'), object_name=object_name,
                       object_function_call={'object_name': object_name},
-                      edit_progress=edit_progress, edit_name=edit_name)
+                      edit_progress=edit_progress, edit_name=edit_name,
+                      output_links=output_links)
         if object_name:
             cur_obj = Plan.query.filter_by(name=object_name).first_or_404()
             kwargs['object'] = cur_obj
             kwargs['buttons'] = [{'Basic': 'plan.edit_plan'},
-                                 {'Topline': 'plan.topline'}]
+                                 {'Topline': 'plan.topline'},
+                                 {'Sow': 'plan.edit_sow'}]
             posts, next_url, prev_url = Post.get_posts_for_objects(
                 cur_obj, None, current_page, 'plan')
             kwargs['posts'] = posts.items
@@ -1329,6 +1345,41 @@ class Plan(db.Model):
 
     def get_last_post(self):
         return self.posts.order_by(Post.timestamp.desc()).first()
+
+    def launch_task(self, name, description, running_user, *args, **kwargs):
+        rq_job = current_app.task_queue.enqueue('app.tasks' + name,
+                                                self.id, running_user,
+                                                *args, **kwargs)
+        task = Task(id=rq_job.get_id(), name=name, description=description,
+                    user_id=self.user_id, plan_id=self.id)
+        db.session.add(task)
+        return task
+
+    def get_tasks_in_progress(self):
+        return Task.query.filter_by(plan=self, complete=False).all()
+
+    def get_task_in_progress(self, name):
+        return Task.query.filter_by(name=name, plan=self,
+                                    complete=False).first()
+
+
+class Sow(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_name = db.Column(db.String, index=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
+    project_contact = db.Column(db.String)
+    date_submitted = db.Column(db.Date)
+    liquid_contact = db.Column(db.String)
+    liquid_project = db.Column(db.Integer)
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    client_name = db.Column(db.String)
+    campaign = db.Column(db.String)
+    address = db.Column(db.String)
+    phone = db.Column(db.String)
+    fax = db.Column(db.String)
+    total_project_budget = db.Column(db.Numeric)
+    ad_serving = db.Column(db.Numeric)
 
 
 class PlanPhase(db.Model):

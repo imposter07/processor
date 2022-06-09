@@ -17,7 +17,7 @@ from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
-    Tutorial, TutorialStage, Walkthrough, WalkthroughSlide
+    Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow
 
 app = create_app()
 app.app_context().push()
@@ -492,15 +492,19 @@ def set_data_sources(processor_id, current_user_id, form_sources):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def get_file_in_memory(tables):
+def get_file_in_memory(tables, file_name='raw.csv'):
     import io
     import zipfile
+    file_type = os.path.splitext(file_name)[1]
     mem = io.BytesIO()
     with zipfile.ZipFile(mem, mode='w') as f:
-        data = zipfile.ZipInfo('raw.csv')
+        data = zipfile.ZipInfo(file_name)
         data.date_time = time.localtime(time.time())[:6]
         data.compress_type = zipfile.ZIP_DEFLATED
-        f.writestr(data, data=tables.to_csv())
+        if file_type == '.pdf':
+            f.write(tables, arcname=file_name)
+        else:
+            f.writestr(data, data=tables.to_csv())
     mem.seek(0)
     return mem
 
@@ -4508,6 +4512,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+<<<<<<< HEAD
 def get_request_table(processor_id, current_user_id, fix_id):
     try:
         cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
@@ -4526,3 +4531,144 @@ def get_request_table(processor_id, current_user_id, fix_id):
             processor_id, current_user_id), exc_info=sys.exc_info())
         msg = 'DATA WAS UNABLE TO BE LOADED.'
         return [pd.DataFrame([{'Result': msg}]), msg]
+=======
+def get_sow(plan_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.units import mm
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
+        from reportlab.platypus import Paragraph, Table, TableStyle
+        from reportlab.lib.units import inch
+        cur_plan = Plan.query.get(plan_id)
+        cur_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
+        file_name = "SOW_{}.pdf".format(plan_id)
+        c = canvas.Canvas(file_name, pagesize=letter)
+        width, height = A4
+        c.setPageSize((width, height))
+        c.setFont('Helvetica-Bold', 10)
+        t_pos = 780
+        c.drawCentredString(290, t_pos, "STATEMENT OF WORK")
+        c.line(230, t_pos - 3, 350, t_pos - 3)
+        c.drawCentredString(
+            290, t_pos + 15, '{} - {} -  - MARKETING CAMPAIGN'.format(
+                cur_sow.client_name, cur_sow.campaign))
+        c.setFont('Helvetica-Bold', 8)
+        c.drawString(72, t_pos - 30, "Project Overview")
+        c.setFont('Helvetica-Bold', 7)
+        c.drawString(100, t_pos - 50, "Project: {}".format(
+            cur_sow.project_name))
+        c.drawString(100, t_pos - 60,
+                     "Advertiser project contact: " + cur_sow.project_contact)
+        c.drawString(100, t_pos - 70, "Date submitted: {}".format(
+            cur_sow.date_submitted.strftime("%m-%d-%Y")))
+        c.drawString(100, t_pos - 80, "Total Project Budget: " + "${}".format(
+            cur_sow.total_project_budget))
+        c.drawString(350, t_pos - 50,
+                     "Liquid project contact: " + cur_sow.liquid_contact)
+        c.drawString(350, t_pos - 60, "Liquid project #: {}".format(
+            cur_sow.liquid_project))
+        c.drawString(100, t_pos - 100, "Flight dates: {} - {}".format(
+            cur_sow.start_date.strftime("%m/%d/%Y"),
+            cur_sow.end_date.strftime("%m/%d/%Y")))
+
+        data1 = [
+            ["Description", "Total Net Dollars"],
+            ["Amazon", '${:0,.2f}'.format(1212.16)],
+            ["Verizon", '${:0,.2f}'.format(0)],
+            ["Samsung", '${:0,.2f}'.format(1234.89)],
+            ["The Trade Desk", '${:0,.2f}'.format(12900)],
+            ["Xbox", '${:0,.2f}'.format(13987.40)]
+        ]
+
+        data = [
+            ["Amazon", 1212.16],
+            ["Verizon", 0],
+            ["Samsung", 1234.89],
+            ["The Trade Desk", 12900],
+            ["Xbox", 13987.40]
+        ]
+
+        data_tab = pd.DataFrame(data,
+                                columns=['Description', 'Total Net Dollars'])
+        net_media = sum(data_tab['Total Net Dollars'])
+
+        v_digital = ["Xbox", "xbox", "Amazon", "amazon"]
+        v_programm = ["The Trade Desk", "TTD"]
+
+        def vendor_cat(row):
+            if row[0] in v_digital:
+                return 'Digital'
+            elif row[0] in v_programm:
+                return 'Programmatic'
+            else:
+                return 'Traditional'
+
+        data_tab['Vendor'] = data_tab.apply(vendor_cat, axis=1)
+
+        sum_by_cat = data_tab.groupby('Vendor')['Total Net Dollars'].sum()
+        sum_by_cat.reset_index(name='Total Net Dollars')
+
+        digital = sum_by_cat[0] * 0.075
+        programm = sum_by_cat[1] * 0.125
+        trad = sum_by_cat[2] * 0.045
+        ag_fee = digital + trad
+
+        camp_ttl = net_media + ag_fee + float(cur_sow.ad_serving) + programm
+        styles = getSampleStyleSheet()
+        styleN = styles["BodyText"]
+        last_row = Paragraph(
+            ('<b>Total Due To Liquid: Billed upon campaign commencement. '
+             'Payment terms are net 30 days.</b>'),
+            styleN)
+
+        data2 = [
+            ["", ""],
+            ["Net Media", '${:0,.2f}'.format(net_media)],
+            ["Agency Fees", '${:0,.2f}'.format(ag_fee)],
+            ["Adserving Fees", '${:0,.2f}'.format(cur_sow.ad_serving)],
+            ["Programmatic Agency Fees", '${:0,.2f}'.format(programm)],
+            ["", ""],
+            ["Campaign Total", '${:0,.2f}'.format(camp_ttl)],
+            [last_row, '${:0,.2f}'.format(camp_ttl)]
+        ]
+
+        all_data = data1 + data2
+
+        grid = [('GRID', (0, 0), (-1, -1), 0.7, colors.black),
+                ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+                ('BACKGROUND', (0, 0), (1, 0), colors.lightgrey),
+                ('FONTNAME', (-1, 0), (0, -1), 'Helvetica')]
+        table = Table(all_data, style=TableStyle(grid), colWidths=[250, 220])
+        table.setStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.black)])
+
+        data_len = len(all_data)
+        table.setStyle(TableStyle([('FONTNAME', (0, data_len - 1),
+                                    (1, data_len - 1), 'Helvetica-Bold'),
+                                   ('BACKGROUND', (0, data_len - 1),
+                                    (-1, data_len - 1), colors.lightgrey),
+                                   ]))
+        aw = width
+        ah = height
+        w1, h1 = table.wrap(aw, ah)  # find required
+        if width <= aw and height <= ah:
+            table.drawOn(c, inch, height - h1 - inch * 2.5)
+        else:
+            raise ValueError
+        c.save()
+        pdf_file = get_file_in_memory(file_name, file_name='sow.pdf')
+        os.remove(file_name)
+        _set_task_progress(100)
+        return [pdf_file]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                plan_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+>>>>>>> 938e3d8f221374e534178f95004b71ed3fa7c0f8

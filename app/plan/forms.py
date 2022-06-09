@@ -1,6 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import SelectField, HiddenField, StringField, \
-    DateField, TextAreaField, DecimalField
+    DateField, TextAreaField, DecimalField, FloatField, SelectMultipleField, \
+    IntegerField
 
 from wtforms.validators import ValidationError, DataRequired, Regexp
 from flask_babel import lazy_gettext as _l
@@ -52,4 +53,29 @@ class EditPlanForm(PlanForm):
 
 
 class PlanToplineForm(FlaskForm):
+    form_continue = HiddenField('form_continue')
+
+
+class CreateSowForm(FlaskForm):
+    project_name = StringField('Project', validators=[DataRequired()])
+    project_contact = StringField('Advertiser project contact',
+                                  validators=[DataRequired()])
+    date_submitted = DateField('Date submitted', validators=[DataRequired()])
+    liquid_contact = StringField('Liquid project contact',
+                                 validators=[DataRequired()])
+    liquid_project = IntegerField('Liquid project number',
+                                  validators=[DataRequired()])
+    start_date = DateField('Start date', validators=[DataRequired()])
+    end_date = DateField('End date', validators=[DataRequired()])
+    client_name = StringField('Client name', validators=[DataRequired()])
+    campaign = StringField('Campaign', validators=[DataRequired()])
+    address = StringField('Liquid address', validators=[DataRequired()])
+    phone = StringField('Liquid phone', validators=[DataRequired()])
+    fax = StringField('Liquid fax', validators=[DataRequired()])
+    total_project_budget = DecimalField('Total budget',
+                                        validators=[DataRequired()])
+    ad_serving = DecimalField('Ad serving cost', validators=[DataRequired()])
+    vendor = SelectMultipleField('Vendors', choices=['Facebook', 'Samsung',
+                                                     'The Trade Desk', 'TikTok',
+                                                     'DCM'])
     form_continue = HiddenField('form_continue')

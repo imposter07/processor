@@ -593,7 +593,7 @@
         }
 
         function getCompletedTask(tableName, procId = null, task = null, pond = 'None',
-                                  vendorKey = 'None', fixId = null) {
+                                  vendorKey = 'None', fixId = 'None') {
             $.post('/get_completed_task',
                 {
                     object_type: "{{ title }}",
@@ -634,7 +634,13 @@
                                     vendorKey, fixId);
                             }
                         }
-                        let downloadProgress = $('#downloadProgress');
+                        if (typeof clickElem.id != 'undefined') {
+                            var downloadID = '#downloadProgress' + clickElem.id
+                        }
+                        else {
+                            var downloadID = '#downloadProgress'
+                        }
+                        let downloadProgress = $(downloadID);
                         let newPercent = data['percent'];
                         let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
                         if (newPercent > oldPercent) {
@@ -766,6 +772,20 @@
             });
         });
 
+
+        function addCollapse(elem, tableID){
+            var rows = elem.getElementsByTagName('tr');
+            button = `<button class="btn btn-secondary btn-block mt-auto  bi bi-chevron-up collapsed"
+                      type="button" data-toggle="collapse" data-target="#collapse${ tableID }"
+                      aria-expanded="false" aria-controls="${ tableID }"></button>`
+            if (rows.length > 4) {
+                for (var i = 4, row; row = rows[i]; i++) {
+                    row.setAttribute("class", "collapse")
+                    row.setAttribute("id", "collapse" + tableID)
+                }
+                elem.innerHTML += button
+            }
+        }
         function getTableComplete(tableName, pond, vendorKey, data){
             if ((tableName === 'OutputDataFullOutput') || (tableName === 'download_raw_data')) {
                 let blob = new Blob([data], {type: 'text/csv'});
@@ -776,6 +796,11 @@
                 link.click();
             } else if (tableName === 'raw_file_comparison') {
                 parseRawComp(data);
+            } else if (tableName === 'request_table') {
+                element = document.getElementById(data['html_data']['data']['name'])
+                element.innerHTML += data['msg']
+                element.innerHTML += data['html_data']['data']['data']
+                addCollapse(element, data['html_data']['data']['name'])
             } else if (tableName === 'check_processor_plan') {
                 appendMessage(data, 'planCheckCardCol', 'rowZero', 'Plan Check');
             } else if (tableName === 'apply_processor_plan') {
@@ -799,9 +824,15 @@
             unanimateBar();
             clearInterval(downloadingProgress);
             downloadingProgress = null;
-            let downloadProgress = $('#downloadProgress');
+            if (typeof clickElem.id != 'undefined') {
+                var downloadID = 'downloadProgress' + clickElem.id
+            }
+            else {
+                var downloadID = 'downloadProgress'
+            }
+            let downloadProgress = $("#" + downloadID);
             downloadProgress.attr("style", "width: 100%");
-            unanimateBar("downloadProgress");
+            unanimateBar(downloadID);
             refreshButtons()
         }
 
@@ -823,7 +854,7 @@
                 },
             }).done(function(data, status) {
                 if (forceReturn) {
-                    getTableComplete(tableName, pond, vendorKey);
+                    getTableComplete(tableName, pond, vendorKey, data);
                 }
                 else {
                     downloadingProgress = getTaskProgress(tableName, false, downloadingProgress,
@@ -842,7 +873,9 @@
             });
             let downloadingProgress = null;
             if (progress && forceReturn) {
-                downloadingProgress = getTaskProgress(tableName);
+                downloadingProgress = getTaskProgress(tableName, false,
+                        downloadingProgress, null, null, forceReturn,
+                        pond, vendorKey, oldHtml, clickElem, fixId);
             }
         }
         $(document).ready(function() {

@@ -583,6 +583,11 @@ class Processor(db.Model):
         return Task.query.filter_by(name=name, processor=self,
                                     complete=False).first()
 
+    def get_request_task_in_progress(self, name, description):
+        return Task.query.filter_by(name=name, processor=self,
+                                    complete=False, description=description
+                                    ).first()
+
     def run(self, processor_args, current_user):
         post_body = ('Running {} for processor: {}...'.format(
             processor_args, self.name))
@@ -601,6 +606,12 @@ class Processor(db.Model):
     def get_open_requests(self):
         return (self.requests.filter_by(complete=False).
                 order_by(Requests.created_at.desc()).all())
+
+    def get_requests_processor_analysis(self, analysis_key):
+        print(self.id)
+        print(analysis_key)
+        print(self.processor_analysis.filter_by(key=analysis_key).first())
+        return self.processor_analysis.filter_by(key=analysis_key).first()
 
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()

@@ -574,14 +574,20 @@ def get_dict_order(processor_id, current_user_id, vk):
 
 
 def get_change_dict_order(processor_id, current_user_id, vk):
-    # TODO: Set up return to give relevant values/format for change modal
+    #TODO: Need to allow for possibility that there are more name pieces than autodict columns
     try:
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
-        tables = [data_source.get_dict_order_df(include_index=False).head().T.reset_index()]
+        tdf = data_source.get_dict_order_df(include_index=False)
+        sample_size = 5
+        if len(tdf.index) < sample_size:
+            tables = [tdf.T]
+        else:
+            tdf = tdf.sample(sample_size).T
+            tables = [tdf]
         _set_task_progress(100)
         return tables
     except:

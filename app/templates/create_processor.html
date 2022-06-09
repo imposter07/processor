@@ -173,7 +173,7 @@
     </div>
     <div class="modal hide fade" id="changeOrderModal" tabindex="-1" role="dialog"
          aria-labelledby="exampleModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg w-90" role="document">
+      <div class="modal-dialog modal-dialog-scrollable modal-xl mw-100 w-90" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
@@ -183,7 +183,9 @@
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
-          <div class="modal-body"></div>
+          <div class="modal-body">
+              <div id="change-order-modal-body-table"></div>
+          </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-success w-25" id="changeOrderModalTableSaveButton">
                 Save</button>
@@ -808,6 +810,9 @@
             } else if (tableName === 'change_dictionary_order') {
 <!--                add logic here to open modal, set up selectize, etc. Do we want to do this in dataTable file? Maybe.-->
                 $('#changeOrderModal').modal('show');
+                let newTableName = data['data']['name']
+                createChangeDictOrder(data['data']['cols'], data['data']['data'],
+                    newTableName);
             } else {
                 show_modal_table('modalTableButton');
                 let newTableName = data['data']['name'];

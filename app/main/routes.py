@@ -1253,11 +1253,14 @@ def utility_functions():
 
 def df_to_html(df, name, job_name=''):
     pd.set_option('display.max_colwidth', -1)
-    df = df.reset_index()
-    if 'index' in df.columns and job_name != '.get_import_config_file':
-        df = df[[x for x in df.columns if x != 'index'] + ['index']]
+    set_index = True
+    if 'change_dictionary_order' not in name:
+        set_index = False
+        df = df.reset_index()
+        if 'index' in df.columns and job_name != '.get_import_config_file':
+            df = df[[x for x in df.columns if x != 'index'] + ['index']]
     data = df.to_html(
-        index=False, table_id=name,
+        index=set_index, table_id=name,
         classes='table table-striped table-responsive-sm small',
         border=0)
     cols = json.dumps(df.columns.tolist())

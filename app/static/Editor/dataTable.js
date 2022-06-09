@@ -332,3 +332,8 @@ function getMetricTableAsArray() {
     }).get();
     return metricArray
 }
+
+function createChangeDictOrder(colData, rawData, tableName,
+                               elem = "change-order-modal-body-table") {
+    document.getElementById(elem).innerHTML = rawData;
+}

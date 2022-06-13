@@ -27,7 +27,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project,\
-    Notes, Tutorial, Walkthrough, TutorialStage, WalkthroughSlide, Task
+    Notes, Tutorial, Walkthrough, TutorialStage, WalkthroughSlide, Task, Plan
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -1135,7 +1135,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'quick_fix': '.apply_quick_fix',
                  'check_processor_plan': '.check_processor_plan',
                  'apply_processor_plan': '.apply_processor_plan',
-                 'get_plan_property': '.get_plan_property'}
+                 'get_plan_property': '.get_plan_property',
+                 'SOW': '.get_sow'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -1160,6 +1161,11 @@ def get_table_arguments():
         table_name = 'Uploader'
         proc_arg['uploader_type'] = request.form['uploader_type']
         proc_arg['object_level'] = request.form['object_level']
+        cur_proc = cur_obj.query.filter_by(
+            name=request.form['object_name']).first_or_404()
+    elif cur_obj == 'Plan':
+        cur_obj = Plan
+        table_name = 'SOW'
         cur_proc = cur_obj.query.filter_by(
             name=request.form['object_name']).first_or_404()
     else:
@@ -1203,16 +1209,24 @@ def get_table_return(task, table_name, proc_arg, job_name, force_return=False):
             df = job.result[0]
         else:
             df = pd.DataFrame([{'Result': 'AN UNEXPECTED ERROR OCCURRED.'}])
-    if ('parameter' in proc_arg and (proc_arg['parameter'] == 'FullOutput' or
-                                     proc_arg['parameter'] == 'Download')):
+    if (table_name == 'SOW') or (
+            'parameter' in proc_arg and (
+            proc_arg['parameter'] == 'FullOutput' or
+            proc_arg['parameter'] == 'Download')):
         z = zipfile.ZipFile(df)
-        df = z.read('raw.csv')
+        if table_name == 'SOW':
+            file_name = 'sow.pdf'
+            mime_type = 'application/pdf'
+        else:
+            file_name = 'raw.csv'
+            mime_type = 'application/pdf'
+        df = z.read(file_name)
         z.close()
         mem = io.BytesIO()
         mem.write(df)
         mem.seek(0)
         return send_file(mem, as_attachment=True,
-                         attachment_filename='test.csv', mimetype='text/csv')
+                         attachment_filename=file_name, mimetype=mime_type)
     for base_name in ['Relation', 'Uploader']:
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])

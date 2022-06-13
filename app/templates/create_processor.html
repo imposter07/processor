@@ -206,7 +206,7 @@
             {% include 'processor_popup.html' %}
         {% endwith %}
     {% endif %}
-    {% if object and object.local_path %}
+    {% if (object and object.local_path) or title == 'Plan' %}
     <div class="accordion" id="accordionExample">
         <div class="card">
             <button class="btn btn-outline-success btn-block
@@ -541,8 +541,10 @@
                 }
             }
             else {
-                if ($('#name').val().includes("'")) {
-                    displayAlert('Remove apostrophe from name.', 'danger')
+                if (document.getElementById('name')) {
+                    if ($('#name').val().includes("'")) {
+                        displayAlert('Remove apostrophe from name.', 'danger')
+                    }
                 }
                 else {
                     displayAlert('Please correct the required fields.', 'danger')
@@ -790,12 +792,15 @@
         });
 
         function getTableComplete(tableName, pond, vendorKey, data){
-            if ((tableName === 'OutputDataFullOutput') || (tableName === 'download_raw_data')) {
-                let blob = new Blob([data], {type: 'text/csv'});
+            if ((tableName === 'OutputDataFullOutput') ||
+                (tableName === 'download_raw_data') ||
+                (tableName === 'OutputDataSOW')) {
+                let mimeType = tableName === 'OutputDataSOW' ? 'application/pdf' : 'text/csv'
+                let blob = new Blob([data], {type: mimeType});
                 pond.addFile(blob);
                 let link = document.createElement('a');
                 link.href = window.URL.createObjectURL(blob);
-                link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey + '.csv';
+                link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey + '.' + mimeType.split('/')[1];
                 link.click();
             } else if (tableName === 'raw_file_comparison') {
                 parseRawComp(data);
@@ -1274,15 +1279,19 @@
                 unanimateBar()
             });
         }
+
         function changeDataSource() {
-            $('#data_source_clean').on('change', function(e){
+            $('#data_source_clean').on('change', function (e) {
                 let selectedText = this.options[e.target.selectedIndex].text;
-                getDataSource(selectedText);
-                $('#data_source_clean').parent().append(
-                    `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"' +
-                    'role="status" aria-hidden="true"></span> Loading...`)
+                if (selectedText !== '') {
+                    getDataSource(selectedText);
+                    $('#data_source_clean').parent().append(
+                        `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"' +
+                    'role="status" aria-hidden="true"></span> Loading...`);
+                }
             });
         }
+
         function submitCleanForm(formContinue) {
             let dataSourceName = $('#data_source_clean').val();
             let formPlacement = $('#formPlacement').serializeArray()

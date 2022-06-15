@@ -574,14 +574,13 @@ def get_dict_order(processor_id, current_user_id, vk):
 
 
 def get_change_dict_order(processor_id, current_user_id, vk):
-    #TODO: Need to allow for possibility that there are more name pieces than autodict columns
     try:
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
-        tdf = data_source.get_dict_order_df(include_index=False)
+        tdf = data_source.get_dict_order_df(include_index=False, include_full_name=True)
         sample_size = 5
         if len(tdf.index) < sample_size:
             tables = [tdf.T]

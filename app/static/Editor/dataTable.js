@@ -333,7 +333,26 @@ function getMetricTableAsArray() {
     return metricArray
 }
 
-function createChangeDictOrder(colData, rawData, tableName,
+function createChangeDictOrder(colData, rawData, tableName, dictColData,
                                elem = "change-order-modal-body-table") {
+    let dictCols = JSON.parse(dictColData);
+    let dictOptions = dictCols.map(function (e) {
+        return {text: e, value: e}
+    });
     document.getElementById(elem).innerHTML = rawData;
+    labelColIndex = getColumnIndex(elem, '');
+    let rows = document.getElementById(elem).getElementsByTagName('tr');
+    for (var i = 3, row; row = rows[i]; i++) {
+        labelElem = rows[i].cells[labelColIndex]
+        let defaultValue = [labelElem.innerHTML];
+        labelElem.innerHTML = `<select name='auto_order_select${i}' id='auto_order_select${i}'></select>`;
+        let labelSelect = $(`select[name='auto_order_select${i}']`);
+        let labelSelectize = labelSelect.selectize({options: dictOptions,
+                                                    searchField: 'text',
+                                                    items: defaultValue,
+                                                    delimiter: '|',
+                                                    });
+        labelSelectize[0].selectize.addOption({value:defaultValue, text:defaultValue});
+        labelSelectize[0].selectize.addItem(defaultValue);
+    }
 }

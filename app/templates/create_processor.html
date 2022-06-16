@@ -817,7 +817,7 @@
                 $('#changeOrderModal').modal('show');
                 let newTableName = data['data']['name']
                 createChangeDictOrder(data['data']['cols'], data['data']['data'],
-                    newTableName);
+                    newTableName, data['dict_cols']);
             } else {
                 show_modal_table('modalTableButton');
                 let newTableName = data['data']['name'];

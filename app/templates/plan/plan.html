@@ -35,10 +35,59 @@
         }
 
         .shadeCell2 {
-            background-color: rgb(255,127,14) !important;
+            background-color: rgb(255,187,120) !important;
             opacity: 0.5;
             transition: all 1s;
         }
+
+        .shadeCell3 {
+            background-color: rgb(152,223,138) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
+        .shadeCell4 {
+            background-color: rgb(255,152,150) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
+        .shadeCell5 {
+            background-color: rgb(197,176,213) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
+        .shadeCell6 {
+            background-color: rgb(196,156,148) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
+        .shadeCell7 {
+            background-color: rgb(247,182,210) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
+        .shadeCell8 {
+            background-color: rgb(199,199,199) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
+        .shadeCell9 {
+            background-color: rgb(219,219,141) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
+        .shadeCell10 {
+            background-color: rgb(158,218,229) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
     </style>
     {% if edit_name == 'Topline' %}
         <div class="card shadow outer text-center">
@@ -62,40 +111,58 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col">
-                        <div class="input-group mb-3">
-                            <div id="selectAddPartnerPlaceholder">Select Partners...</div>
-                            <div class="input-group-append">
-                                <button id="addPartner"
-                                        class="btn btn-outline-success btn-block text-left"
-                                        type="button" href="">
-                                    <i class="fas fa-plus" role="button"></i>
-                                    {{ _('') }}
-                                </button>
+                        <div class="row">
+                            <div class="col">
+                                <div class="input-group mb-3">
+                                    <div id="selectAddPartnerPlaceholder">Select
+                                        Partners...
+                                    </div>
+                                    <div class="input-group-append">
+                                        <button id="addPartner"
+                                                class="btn btn-outline-success btn-block text-left"
+                                                type="button" href="">
+                                            <i class="fas fa-plus"
+                                               role="button"></i>
+                                            {{ _('') }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="input-group-btn">
+                                    <button id="addPhase"
+                                            class="btn btn-outline-success btn-block text-left"
+                                            type="button" href="">
+                                        <i class="fas fa-plus"
+                                           role="button"></i>
+                                        {{ _('Add Phase') }}
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="input-group mb-3">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text"><i
+                                                class="fa-solid fa-magnifying-glass"
+                                                href="#"
+                                                role="button"></i></span>
+                                    </div>
+                                    <input id="tableSearchInput" type="text"
+                                           class="form-control"
+                                           placeholder="Search"
+                                           aria-label="Username"
+                                           aria-describedby="basic-addon1"
+                                           onkeyup="searchTable()">
+                                </div>
                             </div>
                         </div>
+                        <table id="planTable"
+                               class="table table-striped table-responsive-sm small"></table>
                     </div>
-                    <div class="col">
-                        <div class="input-group-btn">
-                            <button id="addPhase"
-                                    class="btn btn-outline-success btn-block text-left"
-                                    type="button" href="">
-                                <i class="fas fa-plus" role="button"></i>
-                                {{ _('Add Phase') }}
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="input-group mb-3">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i class="fa-solid fa-magnifying-glass" href="#" role="button"></i></span>
-                            </div>
-                            <input id="tableSearchInput" type="text" class="form-control" placeholder="Search"
-                                   aria-label="Username"
-                                   aria-describedby="basic-addon1" onkeyup="searchTable()">
-                        </div>
+                    <div id="planTableSlideCol" class="col" style="display:none;">
+                        <div id="planTableSlide" class="card-deck"></div>
                     </div>
                 </div>
-                <table id="planTable" class="table table-striped table-responsive-sm small"></table>
             </div>
         </div>
     {% endif %}
@@ -209,6 +276,7 @@
             d1.insertAdjacentHTML('beforeend', partnerCard);
             addSelectize();
             addDatePicker();
+            editPhaseOnClick();
             sortTable();
             if (partner) {
                 let selectize = $('#partnerSelect' + loopIndex)[0].selectize;
@@ -221,7 +289,7 @@
                 document.getElementById("estimated_cpc" + loopIndex).value = partner.estimated_cpc;
                 document.getElementById('rowPartner' + loopIndex).innerHTML = partner.name;
                 syncTableWithForm(loopIndex);
-                shadeDates(loopIndex);
+                shadeDates(loopIndex, null, 'shadeCell' + loopIndex);
             }
         }
 
@@ -251,6 +319,81 @@
             })
         }
 
+        function addPhaseCard(loopIndex, phase = null) {
+            let phaseCard = `
+                <div id="toplinePhaseCard` + loopIndex + `"
+                    class="card shadow outer text-center" style="display: none;">
+                    <div class="card-header">
+
+                    </div>
+                    <div class="card-body">
+                        <form id="toplinePhase` + loopIndex + `"  class="row">
+                            <div class="col form-group">
+                                <label class="control-label" for="phaseSelect` + loopIndex + `">Phase Name</label>
+                                <select id="phaseSelect` + loopIndex + `"
+                                        class="form-control form-control-sm"
+                                        name="name` + loopIndex + `">
+                                </select>
+                            </div>
+                            <div class="col form-group">
+                                <label class="control-label" for="datePicker` + loopIndex + `">Dates</label>
+                                <input id="datePicker` + loopIndex + `"
+                                       class="custom-select custom-select-sm
+                                                              flatpickr flatpickr-input active"
+                                       type="text" placeholder="Date"
+                                       data-id="range" name="dates` + loopIndex + `"
+                                       readonly="readonly" data-input>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `
+            let elem = document.getElementById('planTableSlide');
+            elem.insertAdjacentHTML('beforeend', phaseCard);
+            togglePhaseCard(loopIndex);
+            editPhaseOnClick();
+            addSelectize();
+            addDatePicker();
+            if (phase) {
+                let selectize = $('#phaseSelect' + loopIndex)[0].selectize;
+                selectize.addOption({
+                    text: phase.name,
+                    id: phase.name,
+                    value: phase.name
+                });
+                selectize.setValue(phase.name);
+                let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
+                fp.setDate([phase.start_date, phase.end_date]);
+            }
+        }
+
+        function turnOffAllCards() {
+            document.getElementById('planTableSlideCol').style.display = 'none';
+            let allCards = document.querySelectorAll("[id^='toplinePhaseCard']");
+            allCards.forEach(card => {
+                card.style.display = 'none'
+            });
+        }
+
+        function togglePhaseCard(currentIndex) {
+            let currentCard = document.getElementById('toplinePhaseCard' + currentIndex);
+            if (currentCard.style.display === 'none') {
+                turnOffAllCards();
+                currentCard.style.display = '';
+                document.getElementById('planTableSlideCol').style.display = '';
+            }
+            else {
+                turnOffAllCards();
+            }
+        }
+
+        function editPhaseOnClick() {
+            $('[id^=planTablePhaseHeader]').unbind().click(function () {
+                let currentIndex = this.id.replace('planTablePhaseHeader', '');
+                togglePhaseCard(currentIndex);
+            })
+        }
+
         function addPhaseOnClick() {
             $('[id^=addPhase]').unbind().click(function () {
                 let clickElem = "#" + $(this)[0].id;
@@ -260,7 +403,9 @@
                     `<span class="spinner-grow spinner-grow-sm" role="status"
                   aria-hidden="true"></span> Loading...`
                 );
-                addPhase();
+                addPhase({'name': 'NEW PHASE'});
+                $(clickElem).prop("disabled", false);
+                $(clickElem).html(oldHtml);
             })
         }
 
@@ -272,7 +417,8 @@
             });
             $(selector).change(function () {
                 let loopIndex = this.id.replace('datePicker', '');
-                shadeDates(loopIndex);
+                let shadeColor = loopIndex.replace('-', '')
+                shadeDates(loopIndex, null, 'shadeCell' + shadeColor);
             });
         }
 
@@ -423,27 +569,33 @@
             trs.forEach(setTrStyleDisplay)
         }
 
-        function addPhase(phase, index=0, tableName = 'planTable') {
+        function addPhase(phase, tableName = 'planTable') {
             let thead = document.getElementById(tableName + 'THead');
-            let rowNum = ((index * -1) - 1).toString();
-            let colorClass = "shadeCell" + index;
-            let tableHeaders = getRowHtml(rowNum);
+            let phaseHeaders = document.querySelectorAll("[id^='" + tableName + "PhaseHeader']");
+            let tHeadIds = Array.prototype.map.call(phaseHeaders, function (elem) {
+                return parseInt(elem.id.replace('planTablePhaseHeader', ''));
+            });
+            let minId = (tHeadIds.length !== 0) ? (Math.min.apply(Math, tHeadIds) - 1).toString() : '-1';
+            let colorClass = "shadeCell" + minId.replace('-', '');
+            let tableHeaders = getRowHtml(minId);
             let phaseRow = `
-            <tr id="planTablePhaseHeader` + rowNum + `">
+            <tr id="planTablePhaseHeader` + minId + `">
                 ` + tableHeaders + `
             </tr>`;
             thead.innerHTML = phaseRow + thead.innerHTML;
-            let firstCell = document.getElementById('rowPartner' + rowNum);
+            let firstCell = document.getElementById('rowPartner' + minId);
             firstCell.classList.add('text-uppercase');
             firstCell.classList.add('font-weight-bold');
-            document.getElementById('rowPartner' + rowNum).innerHTML = phase.name;
-            shadeDates(rowNum, [phase.start_date, phase.end_date], colorClass);
+            document.getElementById('rowPartner' + minId).innerHTML = phase.name;
+            shadeDates(minId, [phase.start_date, phase.end_date], colorClass);
+            addPhaseCard(minId, phase);
         }
 
         function addCurrentPhases(phases, tableName = 'planTable') {
             phases.forEach(function (phase, i) {
-                addPhase(phase, i, tableName);
+                addPhase(phase, tableName);
             });
+            turnOffAllCards();
         }
 
         function addTableColumns(cols, name) {
@@ -500,6 +652,7 @@
         {% if edit_name == 'Topline' %}
             getToplineTable();
             addPartnerOnClick();
+            addPhaseOnClick();
         {% endif %}
         });
 

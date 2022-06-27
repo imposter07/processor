@@ -3376,12 +3376,10 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
             processor_id, current_user_id, pd.DataFrame(),
             dimensions, metrics, filter_dict, check=True)
         if old_analysis:
-            print('old analysis')
             if old_analysis.date == datetime.today().date():
-                print('analysis today')
+                df = pd.read_json(old_analysis.data).sort_index()
                 _set_task_progress(100)
-                return [pd.read_json(old_analysis.data)]
-        print('no old')
+                return [df]
         dimensions_sql = ['event.{}'.format(x) if x == 'eventdate'
                           else x for x in dimensions]
         dimensions_sql = ','.join(dimensions_sql)
@@ -3875,14 +3873,15 @@ def update_analysis_in_db_reporting_cache(processor_id, current_user_id, df,
         filter_col_str = '|'.join(filter_dict.keys())
         filter_val = []
         for k, v in filter_dict.items():
-            new_list = v
-            if k == 'eventdate':
-                sd = datetime.strptime(
-                    v[0], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
-                ed = datetime.strptime(
-                    v[1], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
-                new_list = [sd, ed]
-            filter_val.append(','.join(new_list))
+            if v:
+                new_list = v
+                if k == 'eventdate':
+                    sd = datetime.strptime(
+                        v[0], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
+                    ed = datetime.strptime(
+                        v[1], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
+                    new_list = [sd, ed]
+                filter_val.append(','.join(new_list))
         filter_val_str = '|'.join(filter_val)
         old_analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_processor.id, key=az.Analyze.database_cache,

@@ -560,16 +560,21 @@
              }
         }
         function SendDataTable(modalTableName="modalTable", formContinue = null,
-                               oldPage = '', newPage = '') {
+                               oldPage = '', newPage = '', dataTable = true) {
             let sourceElem = $('table[id^=modalTable]')[0].id;
-            try {
-                var sendTable = $('#' + sourceElem).DataTable();
-            } catch (err) {
-                sendTable = $('#' + sourceElem).DataTable();
+            let data
+            if (dataTable) {
+                try {
+                    var sendTable = $('#' + sourceElem).DataTable();
+                } catch (err) {
+                    sendTable = $('#' + sourceElem).DataTable();
+                }
+                data = sendTable
+                .data().toArray();
+            } else {
+                data = getTableAsArray(sourceElem);
             }
             let sendTableName = sourceElem.replace('modalTable', '');
-            let data = sendTable
-                .data().toArray();
             let json = JSON.stringify(data);
             if (sendTableName === 'Vendormatrix'){
                 $('#refresh_data_sources').parent().html('' +

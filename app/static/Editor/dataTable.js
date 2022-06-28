@@ -355,7 +355,18 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
     let dictOptions = dictCols.map(function (e) {
         return {text: e, value: e}
     });
-    document.getElementById(elem).innerHTML = rawData;
+    let buttonsHtml = `<div class="text-left">
+        <button class="btn btn-primary" tabindex="0" aria-controls=${tableName} type="button" title="Shift order up"
+          onclick="shiftOrderUp('${elem}')">
+          <i class="fas fa-angle-double-up" style="color:white"></i>
+        </button>
+        <button class="btn btn-primary" tabindex="1" aria-controls=${tableName} type="button" title="Shift order down"
+          onclick="shiftOrderDown('${elem}')">
+          <i class="fas fa-angle-double-down" style="color:white"></i>
+        </button>
+      </div>`
+
+    document.getElementById(elem).innerHTML = buttonsHtml + rawData;
     let labelColIndex = getColumnIndex(elem, '');
     let rows = document.getElementById(elem).getElementsByTagName('tr');
     for (var i = 3, row; row = rows[i]; i++) {
@@ -370,6 +381,30 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
                                                     });
         labelSelectize[0].selectize.addOption({value:defaultValue, text:defaultValue});
         labelSelectize[0].selectize.addItem(defaultValue);
+    }
+}
+
+function shiftOrderUp(modalElem) {
+    let labelColIndex = getColumnIndex(modalElem, '');
+    let rows = document.getElementById(modalElem).getElementsByTagName('tr');
+    for (var i = 3, row; row = rows[i]; i++) {
+        let nextValue = $(`#auto_order_select${i+1}`).val();
+        if (!nextValue) {
+            nextValue = 'mpMisc'
+        }
+        document.getElementById(`auto_order_select${i}`).selectize.setValue(nextValue, false);
+    }
+}
+
+function shiftOrderDown(modalElem) {
+    let labelColIndex = getColumnIndex(modalElem, '');
+    let rows = document.getElementById(modalElem).getElementsByTagName('tr');
+    for (var i = rows.length - 1; i > 2; i--) {
+        let prevValue = $(`#auto_order_select${i-1}`).val();
+        if (!prevValue) {
+            prevValue = 'mpMisc'
+        }
+        document.getElementById(`auto_order_select${i}`).selectize.setValue(prevValue, false);
     }
 }
 

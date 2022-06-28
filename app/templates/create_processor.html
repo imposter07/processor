@@ -187,9 +187,11 @@
               <div id="change-order-modal-body-table"></div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-success w-25" id="changeOrderModalTableSaveButton">
-                Save</button>
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <div class="btn-group btn-group-lg btn-block" role="group" aria-label="Basic example">
+              <button type="button" class="btn btn-success" id="changeOrderModalSaveButton"
+                    onclick="removeChangeOrderSelectize();SendDataTable('changeOrderModal', null, '', '', false)">Save</button>
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
           </div>
         </div>
       </div>
@@ -561,7 +563,7 @@
         }
         function SendDataTable(modalTableName="modalTable", formContinue = null,
                                oldPage = '', newPage = '', dataTable = true) {
-            let sourceElem = $('table[id^=modalTable]')[0].id;
+            let sourceElem = $(`#${modalTableName} table[id^=modalTable]`)[0].id;
             let data
             if (dataTable) {
                 try {

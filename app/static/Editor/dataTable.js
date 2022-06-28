@@ -334,7 +334,7 @@ function getMetricTableAsArray() {
 }
 
 function getTableAsArray(tableId) {
-    rows = document.getElementById(tableId).getElementsByTagName('tr');
+    let rows = document.getElementById(tableId).getElementsByTagName('tr');
     let tableArray = []
     for (var i = 1, row; row = rows[i]; i++) {
         col = rows[i].children
@@ -356,7 +356,7 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
         return {text: e, value: e}
     });
     document.getElementById(elem).innerHTML = rawData;
-    labelColIndex = getColumnIndex(elem, '');
+    let labelColIndex = getColumnIndex(elem, '');
     let rows = document.getElementById(elem).getElementsByTagName('tr');
     for (var i = 3, row; row = rows[i]; i++) {
         labelElem = rows[i].cells[labelColIndex]
@@ -370,5 +370,15 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
                                                     });
         labelSelectize[0].selectize.addOption({value:defaultValue, text:defaultValue});
         labelSelectize[0].selectize.addItem(defaultValue);
+    }
+}
+
+function removeChangeOrderSelectize(elem = "change-order-modal-body-table") {
+    let labelColIndex = getColumnIndex(elem, '');
+    let rows = document.getElementById(elem).getElementsByTagName('tr');
+    for (var i = 3, row; row = rows[i]; i++) {
+        let value = document.getElementById(`auto_order_select${i}`).selectize.getValue();
+        let cellElem = document.getElementById(`auto_order_select${i}`).parentElement;
+        cellElem.innerHTML = value;
     }
 }

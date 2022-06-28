@@ -783,6 +783,49 @@ def write_dictionary(processor_id, current_user_id, new_data, vk):
                 processor_id, current_user_id, vk), exc_info=sys.exc_info())
 
 
+def write_dictionary_order(processor_id, current_user_id, new_data, vk):
+    try:
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
+        sources = ProcessorDatasources.query.filter_by(
+            processor_id=cur_processor.id).all()
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.vmcolumns as vmc
+        _set_task_progress(0)
+        df = pd.read_json(new_data)
+        if df.empty:
+            dict_order = ''
+        else:
+            dict_order = df['NaT'].drop([0, 1]).to_list()
+            dict_order = '\r\n'.join(dict_order)
+        ds = [x for x in sources if x.vendor_key == vk]
+        if ds:
+            ds = ds[0]
+            ds.auto_dictionary_order = dict_order
+            db.session.commit()
+        sources = ProcessorDatasources.query.filter_by(
+            processor_id=cur_processor.id).all()
+        sources = [x.get_datasource_for_processor() for x in sources]
+        for idx, source in enumerate(sources):
+            if source[vmc.vendorkey] == vk:
+                sources[idx]['original_vendor_key'] = vk
+            else:
+                sources[idx][
+                    'original_vendor_key'] = sources[idx][vmc.vendorkey]
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        matrix.set_data_sources(sources)
+        msg_text = ('{} processor auto dictionary order: {} was updated.'
+                    ''.format(cur_processor.name, vk))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+
+
 def get_translation_dict(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)

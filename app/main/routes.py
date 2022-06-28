@@ -1093,7 +1093,8 @@ def post_table():
                  'Uploader': '.write_uploader_file',
                  'import_config': '.write_import_config_file',
                  'raw_file_comparison': '.write_raw_file_from_tmp',
-                 'get_plan_property': '.write_plan_property'}
+                 'get_plan_property': '.write_plan_property',
+                 'change_dictionary_order': '.write_dictionary_order'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',
                       'dictionary_order']:

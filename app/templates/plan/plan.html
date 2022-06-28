@@ -1,8 +1,12 @@
 {% extends "create_processor.html" %}
 {% block app_content_2 %}
     <style>
-        .table {
+        .table .card-deck {
             overflow-x: scroll;
+        }
+
+        .card {
+            min-width: 100px;
         }
 
         th, td {
@@ -238,7 +242,7 @@
             tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
             let tableHeaders = getRowHtml(loopIndex);
             let partnerOptionHtml = document.getElementById('colSelectPartner').innerHTML;
-            let partnerFormNames = ['total_budget', 'estimated_cpm', 'estimated_cpc', 'cplpv', 'cpbc', 'cpv', 'vcr']
+            let partnerFormNames = ['total_budget', 'estimated_cpm', 'estimated_cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
             let partnerForm = ''
             partnerFormNames.forEach((partnerFormName) => {
                 partnerForm += `
@@ -500,10 +504,8 @@
         }
 
         function syncTableWithForm(loopIndex) {
-            let partnerFormNames = ['total_budget', 'estimated_cpm', 'estimated_cpc', 'cplpv', 'cpbc', 'cpv', 'vcr']
+            let partnerFormNames = ['total_budget', 'estimated_cpm', 'estimated_cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
             partnerFormNames.forEach((partnerFormName) => {
-                console.log(partnerFormName)
-                console.log(loopIndex)
                 document.getElementById('row' + partnerFormName + loopIndex).innerHTML = "$" + document.getElementById(partnerFormName + loopIndex).value;
             });
             if (document.getElementById('rowtotal_budget' + loopIndex).innerHTML === "$0") {
@@ -521,35 +523,62 @@
 
         function populateTotalCards() {
             let table = document.getElementById("accordionPlan");
-            let sumCost = 0;
-            let sumImps = 0;
-            let sumClicks = 0;
+            let formatter = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+            });
+            let partnerFormNames = [
+                ['', 'total_budget', 1],
+                ['estimated_cpm', 'Impressions', 0],
+                ['estimated_cpc', 'Clicks', 0],
+                ['cplpv', 'Landing Page', 0],
+                ['cpbc', 'Button Clicks', 0],
+                ['cpv', 'Views', 0],
+                ['cpcv', 'Video Views 100', 0]]
+            let data = [];
+            data = partnerFormNames.map(function (e) {
+                return {name: e[1], numeric_value: 0, current_value: 0, msg: '', change: ''}
+            })
             if (table) {
                 for (let i = 0; i < (table.rows.length - 1); i += 2) {
                     let partnerNum = i / 2;
-                    let cost = parseFloat(document.getElementById('rowtotal_budget' + partnerNum).innerHTML.replace('$', ''));
-                    sumCost = sumCost + cost;
-                    let cpm = parseFloat(document.getElementById('rowestimated_cpm' + partnerNum).innerHTML.replace('$', ''));
-                    let imps = (cost / cpm) * 1000;
-                    document.getElementById('rowImpressions' + partnerNum).innerHTML = formatNumber(imps);
-                    sumImps = sumImps + imps;
-                    let cpc = parseFloat(document.getElementById('rowestimated_cpc' + partnerNum).innerHTML.replace('$', ''));
-                    let clicks = (cost / cpc);
-                    document.getElementById('rowClicks' + partnerNum).innerHTML = formatNumber(clicks);
-                    sumClicks = sumClicks + clicks;
+                    let partnerCost =  parseFloat(document.getElementById('rowtotal_budget' + partnerNum).innerHTML.replace('$', ''));
+                    partnerFormNames.forEach(partnerFormName => {
+                        let costPerName =  partnerFormName[0];
+                        let summableName = partnerFormName[1];
+                        let targetColName = partnerFormName[partnerFormName[2]];
+                        let rowValue = parseFloat(document.getElementById('row' + targetColName + partnerNum).innerHTML.replace('$', ''));
+                        let idx = data.findIndex(x => x.name === summableName);
+                        if (costPerName !== '') {
+                            rowValue = partnerCost / rowValue;
+                            if (summableName === 'Impressions') {
+                                rowValue = rowValue * 1000;
+                            }
+                            document.getElementById('row' + summableName + partnerNum).innerHTML = formatNumber(rowValue);
+                        }
+                        data[idx]['numeric_value'] += rowValue;
+                    });
                 }
             }
-            let percentTotal = sumCost / parseFloat("{{ object.total_budget }}");
-            let formatter = new Intl.NumberFormat('en-US', {
-              style: 'currency',
-              currency: 'USD',
+            let idxSumCost = data.findIndex(x => x.name === 'total_budget');
+            let sumCost = data[idxSumCost]['numeric_value'];
+            partnerFormNames.forEach(partnerFormName => {
+                let costPerName = partnerFormName[0];
+                let summableName = partnerFormName[1];
+                let idx = data.findIndex(x => x.name === summableName);
+                data[idx]['current_value'] = formatNumber(data[idx]['numeric_value']);
+                if (costPerName !== '') {
+                    let curVal = sumCost / data[idx]['numeric_value'];
+                    if (summableName === 'Impressions') {
+                        curVal = curVal * 1000;
+                    }
+                    data.push({name: costPerName, numeric_value: curVal, current_value: formatter.format(curVal)})
+                }
+                else {
+                    data[idx]['msg'] = "Of Total Budget";
+                    data[idx]['change'] = sumCost / parseFloat("{{ object.total_budget }}");
+                }
             });
-            let data = [
-                {name:"Net Cost", numeric_value:sumCost, current_value:formatter.format(sumCost), msg:"Of Total Budget", change: percentTotal},
-                {name:"Impressions", numeric_value:sumImps, current_value:formatNumber(sumImps), msg:"", change: ""},
-                {name:"Clicks", numeric_value:sumClicks, current_value:formatNumber(sumClicks), msg:"", change: ""},
-                {name:"CPM", numeric_value: sumCost / (sumImps / 1000), current_value:formatter.format(sumCost / (sumImps / 1000)), msg:"", change: ""},
-                {name:"CPC", numeric_value: sumCost / sumClicks, current_value:formatter.format(sumCost / sumClicks), msg:"", change: ""},]
             generateTotalCards('totalCards', data);
         }
 

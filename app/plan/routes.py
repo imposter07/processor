@@ -142,7 +142,7 @@ def get_topline():
     df['Views'] = df['videoviews']
     df['cpv'] = df['CPV'].round(2)
     df['Video Views 100'] = df['videoviews100']
-    df['vcr'] = df['VCR'].round(2)
+    df['cpcv'] = (df['netcost'] / df['videoviews100']).round(2)
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.fillna(0)
     df = df.rename(columns={'vendorname': 'name'})
@@ -154,7 +154,7 @@ def get_topline():
     weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
     metric_cols = ['estimated_cpm', 'Impressions', 'estimated_cpc', 'Clicks',
                    'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
-                   'cpv', 'Video Views 100', 'vcr']
+                   'cpv', 'Video Views 100', 'cpcv']
     col_list = ['partner_type', 'Partner', 'total_budget'] + weeks_str + metric_cols
     cols = []
     for x in col_list:

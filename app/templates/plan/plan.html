@@ -1,6 +1,18 @@
 {% extends "create_processor.html" %}
 {% block app_content_2 %}
     <style>
+        .table .card-deck {
+            overflow-x: scroll;
+        }
+
+        .card {
+            min-width: 100px;
+        }
+
+        th, td {
+            min-width: 25px;
+        }
+
         .hiddenRow {
             padding: 0 !important;
         }
@@ -140,6 +152,11 @@
                                 </div>
                             </div>
                             <div class="col">
+                                <div id="selectAddMetricsPlaceholder">Select
+                                    Metrics...
+                                </div>
+                            </div>
+                            <div class="col">
                                 <div class="input-group mb-3">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i
@@ -225,6 +242,20 @@
             tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
             let tableHeaders = getRowHtml(loopIndex);
             let partnerOptionHtml = document.getElementById('colSelectPartner').innerHTML;
+            let partnerFormNames = ['total_budget', 'estimated_cpm', 'estimated_cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
+            let partnerForm = ''
+            partnerFormNames.forEach((partnerFormName) => {
+                partnerForm += `
+                <div class="col form-group">
+                    <label class="control-label"
+                           for="` + partnerFormName + loopIndex + `">` + partnerFormName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ') + `</label>
+                    <input class="form-control form-control-sm"
+                           id="` + partnerFormName + loopIndex + `"
+                           name="` + partnerFormName + loopIndex + `" step="any"
+                           type="number" value=""
+                           oninput="syncTableWithForm(` + loopIndex + `)">
+                </div>`
+            });
             let partnerCard = `
                 <tr id="tr` + loopIndex + `" data-toggle="collapse"
                     data-target="#collapsePartner` + loopIndex + `" class="accordion-toggle">
@@ -255,18 +286,7 @@
                                                data-id="range" name="dates` + loopIndex + `"
                                                readonly="readonly" data-input>
                                     </div>
-                                    <div class="col form-group">
-                                      <label class="control-label" for="total_budget` + loopIndex + `">Total Budget</label>
-                                      <input class="form-control form-control-sm" id="total_budget` + loopIndex + `" name="total_budget` + loopIndex + `" step="any" type="number" value="" oninput="syncTableWithForm(` + loopIndex + `)">
-                                    </div>
-                                    <div class="col form-group">
-                                      <label class="control-label" for="estimated_cpm` + loopIndex + `">CPM</label>
-                                      <input class="form-control form-control-sm" id="estimated_cpm` + loopIndex + `" name="estimated_cpm` + loopIndex + `" step="any" type="number" value="" oninput="syncTableWithForm(` + loopIndex + `)">
-                                    </div>
-                                    <div class="col form-group">
-                                      <label class="control-label" for="estimated_cpc` + loopIndex + `">CPC</label>
-                                      <input class="form-control form-control-sm" id="estimated_cpc` + loopIndex + `" name="estimated_cpc` + loopIndex + `" step="any" type="number" value="" oninput="syncTableWithForm(` + loopIndex + `)">
-                                    </div>
+                                    ` + partnerForm + `
                                 </form>
                             </div>
                         </div>
@@ -284,9 +304,9 @@
                 selectize.setValue(partner.name);
                 let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
                 fp.setDate([partner.start_date, partner.end_date]);
-                document.getElementById("total_budget" + loopIndex).value = partner.total_budget;
-                document.getElementById("estimated_cpm" + loopIndex).value = partner.estimated_cpm;
-                document.getElementById("estimated_cpc" + loopIndex).value = partner.estimated_cpc;
+                partnerFormNames.forEach((partnerFormName) => {
+                    document.getElementById(partnerFormName + loopIndex).value = partner[partnerFormName]
+                });
                 document.getElementById('rowPartner' + loopIndex).innerHTML = partner.name;
                 syncTableWithForm(loopIndex);
                 shadeDates(loopIndex, null, 'shadeCell' + loopIndex);
@@ -484,10 +504,11 @@
         }
 
         function syncTableWithForm(loopIndex) {
-            document.getElementById('rowCost' + loopIndex).innerHTML = "$" + document.getElementById("total_budget" + loopIndex).value;
-            document.getElementById('roweCPM' + loopIndex).innerHTML = "$" + document.getElementById("estimated_cpm" + loopIndex).value;
-            document.getElementById('roweCPC' + loopIndex).innerHTML = "$" + document.getElementById("estimated_cpc" + loopIndex).value;
-            if (document.getElementById('rowCost' + loopIndex).innerHTML === "$0") {
+            let partnerFormNames = ['total_budget', 'estimated_cpm', 'estimated_cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
+            partnerFormNames.forEach((partnerFormName) => {
+                document.getElementById('row' + partnerFormName + loopIndex).innerHTML = "$" + document.getElementById(partnerFormName + loopIndex).value;
+            });
+            if (document.getElementById('rowtotal_budget' + loopIndex).innerHTML === "$0") {
                 document.getElementById('tr' + loopIndex).classList.add('shadeCell2');
             }
             else {
@@ -496,35 +517,68 @@
             populateTotalCards();
         }
 
+        function formatNumber(currentNumber) {
+            return currentNumber.toFixed(0).toLocaleString("en-US").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
         function populateTotalCards() {
             let table = document.getElementById("accordionPlan");
-            let sumCost = 0;
-            let sumImps = 0;
-            let sumClicks = 0;
+            let formatter = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+            });
+            let partnerFormNames = [
+                ['', 'total_budget', 1],
+                ['estimated_cpm', 'Impressions', 0],
+                ['estimated_cpc', 'Clicks', 0],
+                ['cplpv', 'Landing Page', 0],
+                ['cpbc', 'Button Clicks', 0],
+                ['cpv', 'Views', 0],
+                ['cpcv', 'Video Views 100', 0]]
+            let data = [];
+            data = partnerFormNames.map(function (e) {
+                return {name: e[1], numeric_value: 0, current_value: 0, msg: '', change: ''}
+            })
             if (table) {
                 for (let i = 0; i < (table.rows.length - 1); i += 2) {
-                    let cost = parseFloat(table.rows[i].cells[1].innerHTML.replace('$', ''));
-                    sumCost = sumCost + cost;
                     let partnerNum = i / 2;
-                    let cpm = parseFloat(document.getElementById('roweCPM' + partnerNum).innerHTML.replace('$', ''));
-                    let imps = (cost / cpm) * 1000;
-                    sumImps = sumImps + imps;
-                    let cpc = parseFloat(document.getElementById('roweCPC' + partnerNum).innerHTML.replace('$', ''));
-                    let clicks = (cost / cpc);
-                    sumClicks = sumClicks + clicks;
+                    let partnerCost =  parseFloat(document.getElementById('rowtotal_budget' + partnerNum).innerHTML.replace('$', ''));
+                    partnerFormNames.forEach(partnerFormName => {
+                        let costPerName =  partnerFormName[0];
+                        let summableName = partnerFormName[1];
+                        let targetColName = partnerFormName[partnerFormName[2]];
+                        let rowValue = parseFloat(document.getElementById('row' + targetColName + partnerNum).innerHTML.replace('$', ''));
+                        let idx = data.findIndex(x => x.name === summableName);
+                        if (costPerName !== '') {
+                            rowValue = partnerCost / rowValue;
+                            if (summableName === 'Impressions') {
+                                rowValue = rowValue * 1000;
+                            }
+                            document.getElementById('row' + summableName + partnerNum).innerHTML = formatNumber(rowValue);
+                        }
+                        data[idx]['numeric_value'] += rowValue;
+                    });
                 }
             }
-            let percentTotal = sumCost / parseFloat("{{ object.total_budget }}");
-            let formatter = new Intl.NumberFormat('en-US', {
-              style: 'currency',
-              currency: 'USD',
+            let idxSumCost = data.findIndex(x => x.name === 'total_budget');
+            let sumCost = data[idxSumCost]['numeric_value'];
+            partnerFormNames.forEach(partnerFormName => {
+                let costPerName = partnerFormName[0];
+                let summableName = partnerFormName[1];
+                let idx = data.findIndex(x => x.name === summableName);
+                data[idx]['current_value'] = formatNumber(data[idx]['numeric_value']);
+                if (costPerName !== '') {
+                    let curVal = sumCost / data[idx]['numeric_value'];
+                    if (summableName === 'Impressions') {
+                        curVal = curVal * 1000;
+                    }
+                    data.push({name: costPerName, numeric_value: curVal, current_value: formatter.format(curVal)})
+                }
+                else {
+                    data[idx]['msg'] = "Of Total Budget";
+                    data[idx]['change'] = sumCost / parseFloat("{{ object.total_budget }}");
+                }
             });
-            let data = [
-                {name:"Net Cost", numeric_value:sumCost, current_value:formatter.format(sumCost), msg:"Of Total Budget", change: percentTotal},
-                {name:"Impressions", numeric_value:sumImps, current_value:sumImps.toFixed(0).toLocaleString("en-US"), msg:"", change: ""},
-                {name:"Clicks", numeric_value:sumClicks, current_value:sumClicks.toFixed(0).toLocaleString("en-US"), msg:"", change: ""},
-                {name:"CPM", numeric_value: sumCost / (sumImps / 1000), current_value:formatter.format(sumCost / (sumImps / 1000)), msg:"", change: ""},
-                {name:"CPC", numeric_value: sumCost / sumClicks, current_value:formatter.format(sumCost / sumClicks), msg:"", change: ""},]
             generateTotalCards('totalCards', data);
         }
 
@@ -614,6 +668,10 @@
                         colSelectElem.innerHTML += `
                             <option data-estimated_cpm="` + val['eCPM'] + `"
                                     data-estimated_cpc="` + val['eCPC'] + `"
+                                    data-cplpv="` + val['CPLPV'] + `"
+                                    data-cpbc="` + val['CPBC'] + `"
+                                    data-CPV="` + val['CPV'] + `"
+                                    data-CPCV="` + val['CPCV'] + `"
                                     value="` + val['name'] + `">` + val['name'] + `</option>`;
                     })
                     document.getElementById('selectAddPartnerPlaceholder').innerHTML = `

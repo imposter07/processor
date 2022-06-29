@@ -135,6 +135,14 @@ def get_topline():
     df = df[df['impressions'] > 0].sort_values('impressions', ascending=False)
     df['eCPM'] = (df['netcost'] / (df['impressions'] / 1000)).round(2)
     df['eCPC'] = (df['netcost'] / df['clicks']).round(2)
+    df['cplpv'] = df['CPLPV'].round(2)
+    df['Landing Page'] = df['landingpage']
+    df['cpbc'] = df['CPBC'].round(2)
+    df['Button Clicks'] = df['buttonclick']
+    df['Views'] = df['videoviews']
+    df['cpv'] = df['CPV'].round(2)
+    df['Video Views 100'] = df['videoviews100']
+    df['cpcv'] = (df['netcost'] / df['videoviews100']).round(2)
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.fillna(0)
     df = df.rename(columns={'vendorname': 'name'})
@@ -144,7 +152,10 @@ def get_topline():
     weeks = [sd + dt.timedelta(days=x)
              for i, x in enumerate(range((ed-sd).days)) if i % 7 == 0]
     weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
-    col_list = ['Partner', 'Cost'] + weeks_str + ['eCPM', 'eCPC']
+    metric_cols = ['estimated_cpm', 'Impressions', 'estimated_cpc', 'Clicks',
+                   'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
+                   'cpv', 'Video Views 100', 'cpcv']
+    col_list = ['partner_type', 'Partner', 'total_budget'] + weeks_str + metric_cols
     cols = []
     for x in col_list:
         cur_col = {'name': x, 'type': ''}

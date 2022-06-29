@@ -512,8 +512,8 @@ def unfollow_processor(object_name):
 @login_required
 def get_completed_task():
     task = Task.query.get(request.form['task'])
-    table_name, cur_proc, proc_arg, job_name, fix_id = get_table_arguments()
-    response = get_table_return(task, table_name, proc_arg, job_name, fix_id)
+    table_name, cur_proc, proc_arg, job_name = get_table_arguments()
+    response = get_table_return(task, table_name, proc_arg, job_name)
     return response
 
 
@@ -1151,7 +1151,6 @@ def get_table_arguments():
     proc_arg = {'running_user': cur_user.id}
     cur_obj = request.form['object_type']
     table_name = request.form['table']
-    fix_id = request.form['fix_id']
     if cur_obj == 'Processor':
         cur_obj = Processor
         cur_proc = cur_obj.query.filter_by(
@@ -1208,10 +1207,10 @@ def get_table_arguments():
         proc_arg['vk'] = request.form['vendorkey']
         table_name = '{}vendorkey{}'.format(
             table_name, request.form['vendorkey'].replace(' ', '___'))
-    return table_name, cur_proc, proc_arg, job_name, fix_id
+    return table_name, cur_proc, proc_arg, job_name
 
 
-def get_table_return(task, table_name, proc_arg, job_name, fix_id,
+def get_table_return(task, table_name, proc_arg, job_name,
                      force_return=False):
     if job_name in ['.get_processor_sources']:
         job = task.wait_and_get_job(loops=20)
@@ -1266,9 +1265,10 @@ def get_table_return(task, table_name, proc_arg, job_name, fix_id,
 @bp.route('/get_table', methods=['GET', 'POST'])
 @login_required
 def get_table():
-    table_name, cur_proc, proc_arg, job_name, fix_id = get_table_arguments()
+    table_name, cur_proc, proc_arg, job_name = get_table_arguments()
     if job_name == '.get_request_table':
-        msg_text = 'Getting {} table for {}'.format(table_name, fix_id)
+        msg_text = 'Getting {} table for {}'.format(
+            table_name, proc_arg['fix_id'])
     else:
         msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
@@ -1277,7 +1277,7 @@ def get_table():
             request.form['force_return'] == 'false'):
         data = {'data': 'success', 'task': task.id, 'level': 'success'}
     else:
-        data = get_table_return(task, table_name, proc_arg, job_name, fix_id,
+        data = get_table_return(task, table_name, proc_arg, job_name,
                                 force_return=True)
     return data
 

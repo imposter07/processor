@@ -379,7 +379,10 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
                                                     items: defaultValue,
                                                     delimiter: '|',
                                                     create: true,
-                                                    showAddOptionOnCreate: true
+                                                    persist: false,
+                                                    showAddOptionOnCreate: true,
+                                                    onBlur: function() {if ($(this)[0].getValue() === '') {
+                                                        $(this)[0].setValue('mpMisc')}}
                                                     });
         labelSelectize[0].selectize.addOption({value:defaultValue, text:defaultValue});
         labelSelectize[0].selectize.addItem(defaultValue);

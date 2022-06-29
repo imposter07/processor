@@ -378,6 +378,8 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
                                                     searchField: 'text',
                                                     items: defaultValue,
                                                     delimiter: '|',
+                                                    create: true,
+                                                    showAddOptionOnCreate: true
                                                     });
         labelSelectize[0].selectize.addOption({value:defaultValue, text:defaultValue});
         labelSelectize[0].selectize.addItem(defaultValue);
@@ -392,6 +394,7 @@ function shiftOrderUp(modalElem) {
         if (!nextValue) {
             nextValue = 'mpMisc'
         }
+        document.getElementById(`auto_order_select${i}`).selectize.addOption({value:nextValue, text:nextValue});
         document.getElementById(`auto_order_select${i}`).selectize.setValue(nextValue, false);
     }
 }
@@ -404,6 +407,7 @@ function shiftOrderDown(modalElem) {
         if (!prevValue) {
             prevValue = 'mpMisc'
         }
+        document.getElementById(`auto_order_select${i}`).selectize.addOption({value:prevValue, text:prevValue});
         document.getElementById(`auto_order_select${i}`).selectize.setValue(prevValue, false);
     }
 }

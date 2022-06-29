@@ -155,13 +155,16 @@ def get_topline():
     metric_cols = ['estimated_cpm', 'Impressions', 'estimated_cpc', 'Clicks',
                    'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
                    'cpv', 'Video Views 100', 'cpcv']
-    col_list = ['partner_type', 'Partner', 'total_budget'] + weeks_str + metric_cols
+    col_list = (['partner_type', 'Partner', 'total_budget'] + weeks_str +
+                metric_cols)
     cols = []
     for x in col_list:
         cur_col = {'name': x, 'type': ''}
         if x == 'Partner':
             cur_col['type'] = 'select'
             cur_col['values'] = partner_list
+        if x in metric_cols:
+            cur_col['type'] = 'metrics'
         cols.append(cur_col)
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
     return jsonify({'data': {'partners': partners,

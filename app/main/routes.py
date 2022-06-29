@@ -1303,7 +1303,7 @@ def rename_duplicates(old):
 def get_placement_form(data_source):
     form = PlacementForm()
     ds_dict = data_source.get_form_dict_with_split()
-    auto_order_cols = list(rename_duplicates(ds_dict['auto_dictionary_order']))
+    auto_order_cols = list(utl.rename_duplicates(ds_dict['auto_dictionary_order']))
     ds_dict['auto_dictionary_order'] = auto_order_cols
     form.set_column_choices(data_source.id, ds_dict)
     form.full_placement_columns.data = ds_dict['full_placement_columns']

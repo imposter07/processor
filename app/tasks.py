@@ -13,6 +13,7 @@ from flask import render_template
 from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
+from app.utils import rename_duplicates
 from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
@@ -797,6 +798,7 @@ def write_dictionary_order(processor_id, current_user_id, new_data, vk):
             dict_order = ''
         else:
             dict_order = df['NaT'].drop([0, 1]).to_list()
+            dict_order = list(rename_duplicates(dict_order))
             dict_order = '\r\n'.join(dict_order)
         ds = [x for x in sources if x.vendor_key == vk]
         if ds:

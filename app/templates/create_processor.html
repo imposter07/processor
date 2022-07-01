@@ -820,7 +820,6 @@
                 let title = 'PLAN PROPERTY - ' + vendorKey;
                 appendCardAsTable(data, "planPropertyCardCol", "#rowTwo", title, true);
             } else if (tableName === 'change_dictionary_order') {
-<!--                add logic here to open modal, set up selectize, etc. Do we want to do this in dataTable file? Maybe.-->
                 $('#changeOrderModal').modal('show');
                 let newTableName = data['data']['name']
                 createChangeDictOrder(data['data']['cols'], data['data']['data'],

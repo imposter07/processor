@@ -3893,6 +3893,27 @@ def update_automatic_requests(processor_id, current_user_id):
                                        fix_type=fix_type,
                                        fix_description=msg,
                                        undefined=undefined)
+        fix_type = az.Analyze.missing_serving
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_processor.id, key=fix_type).first()
+        if analysis.data:
+            df = pd.DataFrame(analysis.data)
+            undefined = (df['Vendor Key'] + ' - ' +
+                         df['mpPlacement Name'] + ' - '
+                         + df['mpServing']).to_list()
+            msg = ('{} {}\n\n'.format(analysis.message, ', '
+                                      .join(undefined)))
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
+        else:
+            undefined = []
+            msg = '{}'.format(analysis.message)
+            update_single_auto_request(processor_id, current_user_id,
+                                       fix_type=fix_type,
+                                       fix_description=msg,
+                                       undefined=undefined)
         _set_task_progress(100)
         return True
     except:

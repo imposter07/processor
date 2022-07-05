@@ -4535,6 +4535,25 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 processor_id, current_user_id, fix_id), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
+def get_request_table(processor_id, current_user_id, fix_id):
+    try:
+        cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
+        analysis = cur_proc.get_requests_processor_analysis(fix_id)
+        if analysis and analysis.data:
+            df = pd.DataFrame(analysis.data)
+            msg = analysis.message
+        else:
+            df = pd.DataFrame()
+            msg = ''
+        _set_task_progress(100)
+        return [df, msg]
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        msg = 'DATA WAS UNABLE TO BE LOADED.'
+        return [pd.DataFrame([{'Result': msg}]), msg]
+
 
 def get_sow(plan_id, current_user_id):
     try:

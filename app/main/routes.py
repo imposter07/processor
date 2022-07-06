@@ -1134,6 +1134,7 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'import_config': '.get_import_config_file',
                  'all_processors': '.get_all_processors',
                  'raw_file_comparison': '.get_raw_file_comparison',
+                 'request_table': '.get_request_table',
                  'quick_fix': '.apply_quick_fix',
                  'check_processor_plan': '.check_processor_plan',
                  'apply_processor_plan': '.apply_processor_plan',
@@ -1176,21 +1177,35 @@ def get_table_arguments():
     job_name, table_name, proc_arg = translate_table_name_to_job(
         table_name=table_name, proc_arg=proc_arg)
     if cur_proc.get_task_in_progress(job_name):
-        flash(_('This job: {} is already running!').format(table_name))
-        return jsonify({'data': {'data': [], 'cols': [], 'name': table_name}})
+        if job_name == '.get_request_table':
+            description = 'Getting {} table for {}'.format(
+                table_name, request.form['fix_id'])
+            if cur_proc.get_request_task_in_progress(
+                    job_name, description):
+                flash(_('This job: {} is already running!').format(table_name))
+                return jsonify(
+                    {'data': {'data': [], 'cols': [], 'name': table_name}})
+        else:
+            flash(_('This job: {} is already running!').format(table_name))
+            return jsonify(
+                {'data': {'data': [], 'cols': [], 'name': table_name}})
     if request.form['fix_id'] != 'None':
-        proc_arg['fix_id'] = request.form['fix_id']
-        cur_fix = Requests.query.get(request.form['fix_id'])
-        if cur_fix.fix_type in ['missing_metrics', 'unknown']:
-            table_name = 'dictionary'
-            proc_arg['vk'] = 'Plan Net'
-            table_name = '{}vendorkey{}'.format(
-                table_name, 'Plan Net'.replace(' ', '___'))
-        elif cur_fix.fix_type in ['raw_file_update', 'max_api_length',
-                                  'placement_col', 'double_counting_all']:
-            table_name = 'Vendormatrix'
-        elif cur_fix.fix_type in ['missing_flat_costs']:
-            table_name = 'Translate'
+        if job_name == '.apply_quick_fix':
+            proc_arg['fix_id'] = request.form['fix_id']
+            cur_fix = Requests.query.get(request.form['fix_id'])
+            if cur_fix.fix_type in ['missing_metrics', 'unknown']:
+                table_name = 'dictionary'
+                proc_arg['vk'] = 'Plan Net'
+                table_name = '{}vendorkey{}'.format(
+                    table_name, 'Plan Net'.replace(' ', '___'))
+            elif cur_fix.fix_type in ['raw_file_update', 'max_api_length',
+                                      'placement_col', 'double_counting_all']:
+                table_name = 'Vendormatrix'
+            elif cur_fix.fix_type in ['missing_flat_costs']:
+                table_name = 'Translate'
+        if job_name == '.get_request_table':
+            proc_arg['fix_id'] = request.form['fix_id']
+            table_name = table_name + '-' + request.form['fix_id']
     if request.form['vendorkey'] != 'None':
         proc_arg['vk'] = request.form['vendorkey']
         table_name = '{}vendorkey{}'.format(
@@ -1198,7 +1213,8 @@ def get_table_arguments():
     return table_name, cur_proc, proc_arg, job_name
 
 
-def get_table_return(task, table_name, proc_arg, job_name, force_return=False):
+def get_table_return(task, table_name, proc_arg, job_name,
+                     force_return=False):
     if job_name in ['.get_processor_sources']:
         job = task.wait_and_get_job(loops=20)
         if job:
@@ -1239,6 +1255,11 @@ def get_table_return(task, table_name, proc_arg, job_name, force_return=False):
     table_name = "modalTable{}".format(table_name)
     if job_name in ['.get_raw_file_comparison', '.check_processor_plan']:
         data = {'data': {'data': df, 'name': table_name}}
+    elif job_name == '.get_request_table':
+        table_name = table_name.replace('modalTable', '')
+        msg = job.result[1]
+        table_data = df_to_html(df, table_name, job_name)
+        data = {'html_data': table_data, 'msg': msg}
     else:
         data = df_to_html(df, table_name, job_name)
         if job_name == '.get_change_dict_order':
@@ -1250,7 +1271,11 @@ def get_table_return(task, table_name, proc_arg, job_name, force_return=False):
 @login_required
 def get_table():
     table_name, cur_proc, proc_arg, job_name = get_table_arguments()
-    msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
+    if job_name == '.get_request_table':
+        msg_text = 'Getting {} table for {}'.format(
+            table_name, proc_arg['fix_id'])
+    else:
+        msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
     if ('force_return' in request.form and
@@ -1447,6 +1472,7 @@ def get_datasource_table():
     table_data = df_to_html(df, 'datasource_table')
     return jsonify({'data': table_data})
 
+
 def get_datasource_raw_columns(obj_name, datasource_name):
     cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
     ds = cur_proc.processor_datasources.filter_by(
@@ -1466,6 +1492,7 @@ def get_datasource_raw_columns(obj_name, datasource_name):
     else:
         raw_cols = []
     return raw_cols
+
 
 @bp.route('/processor/<object_name>/edit/clean/upload_file',
           methods=['GET', 'POST'])

@@ -122,8 +122,8 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col">
-                        <div id="selectAddMetricsPlaceholder" style="display:none;">Select
+                    <div class="col" style="display:none;">
+                        <div id="selectAddMetricsPlaceholder">Select
                             Metrics...
                         </div>
                     </div>
@@ -160,7 +160,7 @@
                                     </button>
                                     <button id="toggleMetrics"
                                             class="btn btn-outline-secondary text-left"
-                                            type="button" href="" onclick="toggleMetricsSelect()">
+                                            type="button" href="" onclick="toggleMetricsSelect();">
                                         <i class="fas fa-list-check"
                                            role="button"></i>
                                         {{ _('Toggle Metrics') }}
@@ -402,6 +402,10 @@
             allCards.forEach(card => {
                 card.style.display = 'none'
             });
+            let allPhaseHeaders = document.querySelectorAll("[id^='planTablePhaseHeader']");
+            allPhaseHeaders.forEach(header => {
+                header.classList.remove('shadeCell');
+            });
         }
 
         function togglePhaseCard(currentIndex) {
@@ -410,6 +414,7 @@
                 turnOffAllCards();
                 currentCard.style.display = '';
                 document.getElementById('planTableSlideCol').style.display = '';
+                document.getElementById('planTablePhaseHeader' + currentIndex).classList.add('shadeCell');
             }
             else {
                 turnOffAllCards();
@@ -438,13 +443,13 @@
         function toggleMetricsSelect() {
             let elem = document.getElementById('selectAddMetricsPlaceholder');
             let clickElem = document.getElementById('toggleMetrics');
-            if (elem.style.display === "none") {
-                elem.style.display = "";
+            if (elem.parentElement.style.display === "none") {
+                elem.parentElement.style.display = "";
                 clickElem.classList.remove('btn-outline-secondary');
                 clickElem.classList.add('btn-secondary');
             }
             else {
-                elem.style.display = "none";
+                elem.parentElement.style.display = "none";
                 clickElem.classList.add('btn-outline-secondary');
                 clickElem.classList.remove('btn-secondary');
             }
@@ -630,6 +635,7 @@
             const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
                     v1 !== '' && v2 !== '' && !isNaN(v1.replace('$','')) && !isNaN(v2.replace('$','')) ? v1.replace('$','') - v2.replace('$','') : v1.toString().localeCompare(v2)
             )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
+            document.getElementById('planTableHeader').innerHTML = document.getElementById('planTableHeader').innerHTML;
             document.querySelectorAll('th').forEach(th => th.addEventListener('click', (() => {
                 const table = document.getElementById('accordionPlan');
                 let sortArrow = th.getElementsByClassName('fas');

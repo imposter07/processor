@@ -1,3 +1,14 @@
+<style>
+    .table thead th {
+      text-align: left;
+    }
+    .bi-chevron-up {
+      transition: transform 0.3s ease-in-out;
+    }
+    .bi-chevron-up.collapsed {
+      transform: rotate(180deg);
+    }
+</style>
 <div class="card mb-3">
     <div class="card-header">
         <h3>
@@ -6,10 +17,12 @@
             object_name=fix.processor.name, fix_id=fix.id) }}">
             {{ processor.name }} - Fix Request #{{ fix.id }}</a>
             {% if not fix.complete %}
+                {% if object_name %}
                 {% if fix.fix_type in ['max_api_length', 'unknown', 'raw_file_update', 'placement_col', 'double_counting_all',
-                                       'missing_flat_costs'] %}
+                       'missing_flat_costs'] %}
                     <button class="btn btn-outline-success rounded-pill" id="quickFix{{ fix.id }}" style="float: right;">
                     Quick Fix</button>
+                {% endif %}
                 {% endif %}
                 <div class="dropdown" style="float: right;">
                   <button class="btn btn-danger rounded-pill dropdown-toggle
@@ -46,17 +59,25 @@
             </span>
         </h3>
     </div>
+
+{% if object_name %}
     <div class="card">
         <div class="card-body">
-        <p class="card-text">
-            {% for col, value in fix.to_dict().items() %}
-                {% if value %}
-                    <span id="campaign{{ processor.id }}">
-                        {{ col }}: {{ value }}</span>
-                    <br>
-                {% endif %}
-            {% endfor %}
+        <p class="card-text"  style="margin: 0 auto;">
+            <h6>{{ fix.fix_type }}</h6>
+            <br>
+            <div id="request_table-{{ fix.fix_type }}" style="th {text-align: left;}">
+            </div>
+            <br>
+            <div id="downloadProgressBaseClass" class="progress">
+                <div id="downloadProgressrequest_table-{{ fix.fix_type }}"
+                     class="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                     role="progressbar" style="width: 1%" aria-valuenow="1" aria-valuemin="0"
+                     aria-valuemax="100">
+                </div>
+            </div>
         </p>
+
         </div>
         <div class="card-footer">
             {% with post = fix.get_last_post() %}
@@ -74,6 +95,15 @@
 </div>
 <script>
     $(document).ready(function () {
+        tableName = "request_table-{{ fix.fix_type }}"
+        fixType = "{{ fix.fix_type }}"
+        elem = document.getElementById(tableName)
+        oldHTML = elem.html
+        getTable('request_table', elem, oldHTML, vendorKey='None',
+                  pond='None', progress=true, fixId=fixType, forceReturn=true)
+        animateBar();
+    });
+    $(document).ready(function () {
         $('button[id^="quickFix"]').unbind().click(function () {
             let dropdownButton = "#" + $(this)[0].id;
             $(dropdownButton).prop("disabled", true);
@@ -88,3 +118,18 @@
         });
     });
 </script>
+
+{% else %}
+    <div class="card">
+        <div class="card-body">
+        <p class="card-text"  style="margin: 0 auto;">
+            <h5>
+                <a href="{{ url_for('main.edit_processor_view_fix',
+                object_name=fix.processor.name, fix_id=fix.id) }}">
+                    {{ fix.fix_type }}
+                </a>
+            </h5>
+        </p>
+    </div>
+</div>
+{% endif %}

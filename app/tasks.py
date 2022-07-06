@@ -582,16 +582,17 @@ def get_change_dict_order(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.vendormatrix as vm
+        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
         tdf = data_source.get_dict_order_df(include_index=False, include_full_name=True)
+        dict_cols = [col for col in dctc.COLS if col not in [dctc.FPN, dctc.PN]]
         sample_size = 5
-        if len(tdf.index) < sample_size:
-            tables = [tdf.T]
-        else:
-            tdf = tdf.sample(sample_size).T
-            tables = [tdf]
+        if len(tdf.index) > sample_size:
+            tdf = tdf.sample(sample_size)
+        tdf = tdf.T
+        tables = [tdf, dict_cols]
         _set_task_progress(100)
         return tables
     except:

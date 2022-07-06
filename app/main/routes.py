@@ -30,7 +30,6 @@ from app.models import User, Post, Message, Notification, Processor, \
     Notes, Tutorial, Walkthrough, TutorialStage, WalkthroughSlide, Task, Plan
 from app.translate import translate
 from app.main import bp
-import processor.reporting.dictcolumns as dctc
 import processor.reporting.vmcolumns as vmc
 import uploader.upload.creator as cre
 
@@ -1263,7 +1262,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
     else:
         data = df_to_html(df, table_name, job_name)
         if job_name == '.get_change_dict_order':
-            data['dict_cols'] = json.dumps([col for col in dctc.COLS if col not in [dctc.FPN, dctc.PN]])
+            data['dict_cols'] = json.dumps(job.result[1])
     return jsonify(data)
 
 

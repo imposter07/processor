@@ -789,10 +789,9 @@ def write_dictionary_order(processor_id, current_user_id, new_data, vk):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
-        sources = ProcessorDatasources.query.filter_by(
-            processor_id=cur_processor.id).all()
         import processor.reporting.vendormatrix as vm
         import processor.reporting.vmcolumns as vmc
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
         _set_task_progress(0)
         df = pd.read_json(new_data)
         if df.empty:
@@ -800,27 +799,16 @@ def write_dictionary_order(processor_id, current_user_id, new_data, vk):
         else:
             dict_order = df['NaT'].drop([0, 1]).to_list()
             dict_order = list(rename_duplicates(dict_order))
-            dict_order = '\r\n'.join(dict_order)
-        ds = [x for x in sources if x.vendor_key == vk]
-        if ds:
-            ds = ds[0]
-            ds.auto_dictionary_order = dict_order
-            db.session.commit()
-        sources = ProcessorDatasources.query.filter_by(
-            processor_id=cur_processor.id).all()
-        sources = [x.get_datasource_for_processor() for x in sources]
-        for idx, source in enumerate(sources):
-            if source[vmc.vendorkey] == vk:
-                sources[idx]['original_vendor_key'] = vk
-            else:
-                sources[idx][
-                    'original_vendor_key'] = sources[idx][vmc.vendorkey]
+            dict_order = '|'.join(dict_order)
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
-        matrix.set_data_sources(sources)
+        matrix.vm_change_on_key(vk, vmc.autodicord, dict_order)
+        matrix.write()
         msg_text = ('{} processor auto dictionary order: {} was updated.'
                     ''.format(cur_processor.name, vk))
         processor_post_message(cur_processor, user_that_ran, msg_text)
+        os.chdir(cur_path)
+        get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

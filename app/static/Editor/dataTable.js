@@ -350,7 +350,7 @@ function getTableAsArray(tableId) {
 }
 
 function createChangeDictOrder(colData, rawData, tableName, dictColData,
-                               elem = "change-order-modal-body-table") {
+                               elem = "modal-body-table") {
     let dictCols = JSON.parse(dictColData);
     let dictOptions = dictCols.map(function (e) {
         return {text: e, value: e}
@@ -415,7 +415,7 @@ function shiftOrderDown(modalElem) {
     }
 }
 
-function removeChangeOrderSelectize(elem = "change-order-modal-body-table") {
+function removeChangeOrderSelectize(elem = "modal-body-table") {
     let labelColIndex = getColumnIndex(elem, '');
     let rows = document.getElementById(elem).getElementsByTagName('tr');
     for (var i = 3, row; row = rows[i]; i++) {

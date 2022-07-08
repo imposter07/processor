@@ -3237,7 +3237,7 @@ def edit_processor_duplication(object_name):
 @login_required
 def get_metrics():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    dimensions = [request.form['x_col']]
+    dimensions = request.form['x_col'].split('|')
     if 'dashboard_id' in request.form and request.form['dashboard_id']:
         dash = Dashboard.query.get(request.form['dashboard_id'])
         metrics = dash.get_metrics()

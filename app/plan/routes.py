@@ -130,11 +130,12 @@ def get_topline():
         Partner.plan_phase_id.in_([x.id for x in cur_plan.phases])).all()
     partners = [x.get_form_dict() for x in partners]
     a = ProcessorAnalysis.query.filter_by(
-        processor_id=23, key='database_cache', parameter='vendorname').first()
+        processor_id=23, key='database_cache',
+        parameter='vendorname|vendortypename').first()
     df = pd.read_json(a.data)
     df = df[df['impressions'] > 0].sort_values('impressions', ascending=False)
-    df['eCPM'] = (df['netcost'] / (df['impressions'] / 1000)).round(2)
-    df['eCPC'] = (df['netcost'] / df['clicks']).round(2)
+    df['cpm'] = (df['netcost'] / (df['impressions'] / 1000)).round(2)
+    df['cpc'] = (df['netcost'] / df['clicks']).round(2)
     df['cplpv'] = df['CPLPV'].round(2)
     df['Landing Page'] = df['landingpage']
     df['cpbc'] = df['CPBC'].round(2)
@@ -145,24 +146,33 @@ def get_topline():
     df['cpcv'] = (df['netcost'] / df['videoviews100']).round(2)
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.fillna(0)
-    df = df.rename(columns={'vendorname': 'name'})
+    df = df[['vendorname', 'vendortypename', 'cpm', 'cpc',
+             'cplpv', 'cpbc', 'cpv', 'cpcv']]
+    df = df.rename(columns={
+        'vendorname': 'Partner', 'vendortypename': 'partner_type'})
     partner_list = df.to_dict(orient='records')
     sd = cur_plan.start_date
     ed = cur_plan.end_date
     weeks = [sd + dt.timedelta(days=x)
              for i, x in enumerate(range((ed-sd).days)) if i % 7 == 0]
     weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
-    metric_cols = ['estimated_cpm', 'Impressions', 'estimated_cpc', 'Clicks',
+    metric_cols = ['cpm', 'Impressions', 'cpc', 'Clicks',
                    'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
                    'cpv', 'Video Views 100', 'cpcv']
     col_list = (['partner_type', 'Partner', 'total_budget'] + weeks_str +
                 metric_cols)
     cols = []
     for x in col_list:
-        cur_col = {'name': x, 'type': ''}
+        cur_col = {'name': x, 'type': '', 'add_select_box': False}
         if x == 'Partner':
             cur_col['type'] = 'select'
             cur_col['values'] = partner_list
+            cur_col['add_select_box'] = True
+        if x == 'partner_type':
+            cur_col['type'] = 'select'
+            cur_col['values'] = pd.DataFrame(
+                df['partner_type'].unique()).rename(
+                    columns={0: 'partner_type'}).to_dict(orient='records')
         if x in metric_cols:
             cur_col['type'] = 'metrics'
         cols.append(cur_col)
@@ -182,8 +192,7 @@ def save_topline():
                         'name' in v and 'name' in k])
     for x in range(int(num_partners) + 1):
         tl_dict = {}
-        for col in ['name', 'dates', 'total_budget', 'estimated_cpm',
-                    'estimated_cpc']:
+        for col in ['name', 'dates', 'total_budget', 'cpm', 'cpc']:
             col_name = '{}{}'.format(col, x)
             new_data = utl.get_col_from_serialize_dict(data, col_name)[0]
             if col == 'dates':

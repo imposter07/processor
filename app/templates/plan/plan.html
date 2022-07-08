@@ -249,19 +249,26 @@
             let tableHeadElems = document.getElementById(tableName + 'Header');
             tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
             let tableHeaders = getRowHtml(loopIndex);
-            let partnerOptionHtml = document.getElementById('colSelectPartner').innerHTML;
-            let partnerFormNames = ['total_budget', 'estimated_cpm', 'estimated_cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
-            let partnerForm = ''
+            let partnerFormNames = ['Partner', 'partner_type', 'total_budget', 'cpm',
+                'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
+            let partnerForm = '';
             partnerFormNames.forEach((partnerFormName) => {
+                let colName = 'col' + partnerFormName;
+                let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
+                let inputStartHtml = (inputCheck) ? '<select ': '<input type="number" value="" step="any"'
+                let inputInnerHtml = (inputCheck) ? document.getElementById('colSelect' + partnerFormName).innerHTML: '';
+                let inputEndHtml = (inputCheck) ? '</select>' : '';
+                let inputIdHtml = (inputCheck) ? partnerFormName.toLowerCase() + 'Select' + loopIndex: partnerFormName + loopIndex;
                 partnerForm += `
                 <div class="col form-group">
                     <label class="control-label"
-                           for="` + partnerFormName + loopIndex + `">` + partnerFormName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ') + `</label>
-                    <input class="form-control form-control-sm"
-                           id="` + partnerFormName + loopIndex + `"
-                           name="` + partnerFormName + loopIndex + `" step="any"
-                           type="number" value=""
+                           for="` + inputIdHtml + `">` + partnerFormName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ') + `</label>
+                    ` + inputStartHtml + ` class="form-control form-control-sm"
+                           id="` + inputIdHtml + `"
+                           name="` + inputIdHtml + `"
+                           onchange="syncTableWithForm(` + loopIndex + `)"
                            oninput="syncTableWithForm(` + loopIndex + `)">
+                    ` + inputInnerHtml + inputEndHtml + `
                 </div>`
             });
             let partnerCard = `
@@ -277,14 +284,6 @@
                         <div class="card-body">
                             <div class="accordion" id="accordionPartner` + loopIndex + `" >
                                 <form id="toplinePartner` + loopIndex + `"  class="row">
-                                    <div class="col form-group">
-                                        <label class="control-label" for="partnerSelect` + loopIndex + `">Partner</label>
-                                        <select id="partnerSelect` + loopIndex + `"
-                                                class="form-control form-control-sm"
-                                                name="name` + loopIndex + `">
-                                            ` + partnerOptionHtml + `
-                                        </select>
-                                    </div>
                                     <div class="col form-group">
                                         <label class="control-label" for="datePicker` + loopIndex + `">Dates</label>
                                         <input id="datePicker` + loopIndex + `"
@@ -307,15 +306,22 @@
             editPhaseOnClick();
             sortTable();
             if (partner) {
-                let selectize = $('#partnerSelect' + loopIndex)[0].selectize;
-                selectize.addOption({text: partner.name, id: partner.name, value: partner.name});
-                selectize.setValue(partner.name);
                 let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
                 fp.setDate([partner.start_date, partner.end_date]);
                 partnerFormNames.forEach((partnerFormName) => {
-                    document.getElementById(partnerFormName + loopIndex).value = partner[partnerFormName]
+                    let colName = 'col' + partnerFormName;
+                    let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
+                    let currentElemId = (inputCheck) ? partnerFormName.toLowerCase() + 'Select' + loopIndex : partnerFormName + loopIndex;
+                    let curElem =  document.getElementById(currentElemId);
+                    let newValue = partner[partnerFormName.toLowerCase()];
+                    if (inputCheck) {
+                        curElem.selectize.addOption({text: newValue, id: newValue, value: newValue});
+                        curElem.selectize.setValue(newValue);
+                    }
+                    else {
+                        curElem.value = newValue;
+                    }
                 });
-                document.getElementById('rowPartner' + loopIndex).innerHTML = partner.name;
                 syncTableWithForm(loopIndex);
                 shadeDates(loopIndex, null, 'shadeCell' + loopIndex);
             }
@@ -335,7 +341,7 @@
                 document.getElementById('partnerSelectAdd').selectize.clear();
                 let partners = selectedPartners.map(function (e) {
                     let metricElem = document.getElementById('colSelectPartner').querySelector('option[value="' + e + '"]');
-                    let metrics = (metricElem === null) ? {estimated_cpc: 0, estimated_cpm: 0} : metricElem.dataset
+                    let metrics = (metricElem === null) ? {cpc: 0, cpm: 0} : metricElem.dataset
                     return Object.assign({}, {name: e, total_budget: 0,
                         start_date: "{{ object.start_date }}", end_date: "{{ object.end_date }}"},
                         metrics)
@@ -552,9 +558,15 @@
         }
 
         function syncTableWithForm(loopIndex) {
-            let partnerFormNames = ['total_budget', 'estimated_cpm', 'estimated_cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
+            let partnerFormNames = ['partner_type', 'Partner', 'total_budget',
+                'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv'];
             partnerFormNames.forEach((partnerFormName) => {
-                document.getElementById('row' + partnerFormName + loopIndex).innerHTML = "$" + document.getElementById(partnerFormName + loopIndex).value;
+                let colName = 'col' + partnerFormName;
+                let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
+                let currentElemId = (inputCheck) ? partnerFormName.toLowerCase() + 'Select' + loopIndex : partnerFormName + loopIndex;
+                let currentElem = document.getElementById(currentElemId);
+                let currentValue = (inputCheck) ? currentElem.selectize.getValue() : '$' + currentElem.value;
+                document.getElementById('row' + partnerFormName + loopIndex).innerHTML = currentValue;
             });
             if (document.getElementById('rowtotal_budget' + loopIndex).innerHTML === "$0") {
                 document.getElementById('tr' + loopIndex).classList.add('shadeCell2');
@@ -577,8 +589,8 @@
             });
             let partnerFormNames = [
                 ['', 'total_budget', 1],
-                ['estimated_cpm', 'Impressions', 0],
-                ['estimated_cpc', 'Clicks', 0],
+                ['cpm', 'Impressions', 0],
+                ['cpc', 'Clicks', 0],
                 ['cplpv', 'Landing Page', 0],
                 ['cpbc', 'Button Clicks', 0],
                 ['cpv', 'Views', 0],
@@ -713,27 +725,30 @@
             toggleMetricsOnChange();
             cols.forEach(col => {
                 let colName = col['name'];
-                thead.innerHTML += `<th id="col` + colName +`">` + colName + `</th>`;
+                thead.innerHTML += `<th data-type="` + col['type'] + `" id="col` + colName +`">` + colName + `</th>`;
                 if (col['type'] === 'select') {
                     let selectName = 'colSelect' + colName;
                     let colElem = document.getElementById('col' + colName);
                     colElem.innerHTML += `<select id="` + selectName + `" hidden=''></select>`;
                     let colSelectElem = document.getElementById(selectName);
                     col['values'].forEach(val => {
+                        let optionData = '';
+                        Object.entries(val).forEach(([k,v]) => {
+                            optionData += `data-` + k + `="` + v +`" `;
+                        })
                         colSelectElem.innerHTML += `
-                            <option data-estimated_cpm="` + val['eCPM'] + `"
-                                    data-estimated_cpc="` + val['eCPC'] + `"
-                                    data-cplpv="` + val['CPLPV'] + `"
-                                    data-cpbc="` + val['CPBC'] + `"
-                                    data-CPV="` + val['CPV'] + `"
-                                    data-CPCV="` + val['CPCV'] + `"
-                                    value="` + val['name'] + `">` + val['name'] + `</option>`;
+                            <option ` + optionData + `
+                                    value="` + val[colName] + `">` + val[colName] + `</option>`;
                     })
-                    document.getElementById('selectAddPartnerPlaceholder').innerHTML = `
-                        <select id="partnerSelectAdd" multiple="" class="width100 form-control">
-                            <option value="">Select Partners To Add...</option>
+                    if (col['add_select_box']) {
+                        let placeHolderName = 'selectAdd' + colName + 'Placeholder';
+                        let addBoxName = colName.toLowerCase() + 'SelectAdd';
+                        document.getElementById(placeHolderName).innerHTML = `
+                        <select id="` + addBoxName + `" multiple="" class="width100 form-control">
+                            <option value="">Select `+ colName + `s To Add...</option>
                         </select>`;
-                    document.getElementById('partnerSelectAdd').innerHTML += document.getElementById('colSelectPartner').innerHTML;
+                        document.getElementById(addBoxName).innerHTML += document.getElementById(selectName).innerHTML;
+                    }
                     addSelectize();
                 }
                 if (col['type'] === 'metrics') {

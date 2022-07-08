@@ -3380,10 +3380,11 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                 for k, v in f.items():
                     if v:
                         if k == 'eventdate':
-                            sd = datetime.strptime(v[0],
-                                '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
-                            ed = datetime.strptime(v[1],
-                                '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
+                            date_format_str = '%Y-%m-%dT%H:%M:%S.%fZ'
+                            sd = datetime.strptime(
+                                v[0], date_format_str).strftime('%Y-%m-%d')
+                            ed = datetime.strptime(
+                                v[1], date_format_str).strftime('%Y-%m-%d')
                             w = (" AND (event.{0} BETWEEN '{1}' AND '{2}' "
                                  "OR event.{0} IS NULL)".format(k, sd, ed))
                         else:
@@ -4535,6 +4536,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 processor_id, current_user_id, fix_id), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
+
 def get_request_table(processor_id, current_user_id, fix_id):
     try:
         cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
@@ -4642,11 +4644,11 @@ def get_sow(plan_id, current_user_id):
 
         camp_ttl = net_media + ag_fee + float(cur_sow.ad_serving) + programm
         styles = getSampleStyleSheet()
-        styleN = styles["BodyText"]
+        style_n = styles["BodyText"]
         last_row = Paragraph(
             ('<b>Total Due To Liquid: Billed upon campaign commencement. '
              'Payment terms are net 30 days.</b>'),
-            styleN)
+            style_n)
 
         data2 = [
             ["", ""],

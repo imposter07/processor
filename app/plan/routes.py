@@ -159,11 +159,12 @@ def get_topline():
     metric_cols = ['cpm', 'Impressions', 'cpc', 'Clicks',
                    'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
                    'cpv', 'Video Views 100', 'cpcv']
-    col_list = (['partner_type', 'Partner', 'total_budget'] + weeks_str +
-                metric_cols)
+    col_list = (['partner_type', 'Partner', 'total_budget', 'Phase'] +
+                weeks_str + metric_cols)
     cols = []
     for x in col_list:
-        cur_col = {'name': x, 'type': '', 'add_select_box': False}
+        cur_col = {'name': x, 'type': '', 'add_select_box': False,
+                   'hidden': False, 'header': False}
         if x == 'Partner':
             cur_col['type'] = 'select'
             cur_col['values'] = partner_list
@@ -173,6 +174,11 @@ def get_topline():
             cur_col['values'] = pd.DataFrame(
                 df['partner_type'].unique()).rename(
                     columns={0: 'partner_type'}).to_dict(orient='records')
+        if x == 'Phase':
+            cur_col['type'] = 'select'
+            cur_col['values'] = ['Launch', 'Pre-Launch']
+            cur_col['hidden'] = True
+            cur_col['header'] = True
         if x in metric_cols:
             cur_col['type'] = 'metrics'
         cols.append(cur_col)

@@ -127,11 +127,11 @@
                             Metrics...
                         </div>
                     </div>
-                    <div id="planTableSlideCol" class="col"
+                    <div id="planTableSlideCol" class="col-3"
                          style="display:none;">
                         <div id="planTableSlide" class="card-deck"></div>
                     </div>
-                    <div class="col">
+                    <div class="col-6">
                         <div class="row">
                             <div class="col">
                                 <div class="input-group mb-3">
@@ -232,9 +232,33 @@
             tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
             let tableHeaders = '';
             tableHeadElems.forEach(tableHeadElem => {
-                tableHeaders = tableHeaders + '<td id="row' + tableHeadElem.id.replace('col', '') + loopIndex + '"></td>'
+                tableHeaders = tableHeaders + `<td id="row${tableHeadElem.id.replace('col', '')}${loopIndex}" style="display:${tableHeadElem.style.display};"></td>`
             });
             return tableHeaders
+        }
+
+        function buildFormFromCols(loopIndex, formNames) {
+            let fromFromCols = '';
+            formNames.forEach((formName) => {
+                let colName = 'col' + formName;
+                let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
+                let inputStartHtml = (inputCheck) ? '<select ' : '<input type="number" value="" step="any"'
+                let inputInnerHtml = (inputCheck) ? document.getElementById('colSelect' + formName).innerHTML : '';
+                let inputEndHtml = (inputCheck) ? '</select>' : '';
+                let inputIdHtml = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
+                fromFromCols += `
+                <div class="col form-group">
+                    <label class="control-label"
+                           for="` + inputIdHtml + `">` + formName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ') + `</label>
+                    ` + inputStartHtml + ` class="form-control form-control-sm"
+                           id="` + inputIdHtml + `"
+                           name="` + inputIdHtml + `"
+                           onchange="syncSingleTableWithForm(${loopIndex}, '${formName}')"
+                           oninput="syncSingleTableWithForm(${loopIndex}, '${formName}')">
+                    ` + inputInnerHtml + inputEndHtml + `
+                </div>`
+            });
+            return fromFromCols
         }
 
         function addPartner(clickElem, oldHtml, partner = null, tableName = 'planTable') {
@@ -251,26 +275,7 @@
             let tableHeaders = getRowHtml(loopIndex);
             let partnerFormNames = ['Partner', 'partner_type', 'total_budget', 'cpm',
                 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
-            let partnerForm = '';
-            partnerFormNames.forEach((partnerFormName) => {
-                let colName = 'col' + partnerFormName;
-                let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
-                let inputStartHtml = (inputCheck) ? '<select ': '<input type="number" value="" step="any"'
-                let inputInnerHtml = (inputCheck) ? document.getElementById('colSelect' + partnerFormName).innerHTML: '';
-                let inputEndHtml = (inputCheck) ? '</select>' : '';
-                let inputIdHtml = (inputCheck) ? partnerFormName.toLowerCase() + 'Select' + loopIndex: partnerFormName + loopIndex;
-                partnerForm += `
-                <div class="col form-group">
-                    <label class="control-label"
-                           for="` + inputIdHtml + `">` + partnerFormName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ') + `</label>
-                    ` + inputStartHtml + ` class="form-control form-control-sm"
-                           id="` + inputIdHtml + `"
-                           name="` + inputIdHtml + `"
-                           onchange="syncTableWithForm(` + loopIndex + `)"
-                           oninput="syncTableWithForm(` + loopIndex + `)">
-                    ` + inputInnerHtml + inputEndHtml + `
-                </div>`
-            });
+            let partnerForm = buildFormFromCols(loopIndex, partnerFormNames);
             let partnerCard = `
                 <tr id="tr` + loopIndex + `" data-toggle="collapse"
                     data-target="#collapsePartner` + loopIndex + `" class="accordion-toggle">
@@ -322,7 +327,7 @@
                         curElem.value = newValue;
                     }
                 });
-                syncTableWithForm(loopIndex);
+                syncTableWithForm(loopIndex, partnerFormNames);
                 shadeDates(loopIndex, null, 'shadeCell' + loopIndex);
             }
             toggleMetrics();
@@ -355,6 +360,8 @@
         }
 
         function addPhaseCard(loopIndex, phase = null) {
+            let formNames = ['Phase', 'total_budget'];
+            let phaseForm = buildFormFromCols(loopIndex, formNames);
             let phaseCard = `
                 <div id="toplinePhaseCard` + loopIndex + `"
                     class="card shadow outer text-center" style="display: none;">
@@ -362,14 +369,8 @@
 
                     </div>
                     <div class="card-body">
-                        <form id="toplinePhase` + loopIndex + `"  class="row">
-                            <div class="col form-group">
-                                <label class="control-label" for="phaseSelect` + loopIndex + `">Phase Name</label>
-                                <select id="phaseSelect` + loopIndex + `"
-                                        class="form-control form-control-sm"
-                                        name="name` + loopIndex + `">
-                                </select>
-                            </div>
+                        <form id="toplinePhase` + loopIndex + `"  class="">
+                            ` + phaseForm + `
                             <div class="col form-group">
                                 <label class="control-label" for="datePicker` + loopIndex + `">Dates</label>
                                 <input id="datePicker` + loopIndex + `"
@@ -557,24 +558,28 @@
             return matchingElements;
         }
 
-        function syncTableWithForm(loopIndex) {
-            let partnerFormNames = ['partner_type', 'Partner', 'total_budget',
-                'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv'];
-            partnerFormNames.forEach((partnerFormName) => {
-                let colName = 'col' + partnerFormName;
-                let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
-                let currentElemId = (inputCheck) ? partnerFormName.toLowerCase() + 'Select' + loopIndex : partnerFormName + loopIndex;
-                let currentElem = document.getElementById(currentElemId);
-                let currentValue = (inputCheck) ? currentElem.selectize.getValue() : '$' + currentElem.value;
-                document.getElementById('row' + partnerFormName + loopIndex).innerHTML = currentValue;
-            });
-            if (document.getElementById('rowtotal_budget' + loopIndex).innerHTML === "$0") {
-                document.getElementById('tr' + loopIndex).classList.add('shadeCell2');
-            }
-            else {
-                document.getElementById('tr' + loopIndex).classList.remove('shadeCell2');
+        function syncSingleTableWithForm(loopIndex, formName) {
+            let colName = 'col' + formName;
+            let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
+            let currentElemId = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
+            let currentElem = document.getElementById(currentElemId);
+            let currentValue = (inputCheck) ? currentElem.selectize.getValue() : '$' + currentElem.value;
+            document.getElementById('row' + formName + loopIndex).innerHTML = currentValue;
+            let curRow = document.getElementById('tr' + loopIndex);
+            if (curRow) {
+                if (document.getElementById('rowtotal_budget' + loopIndex).innerHTML === "$0") {
+                    document.getElementById('tr' + loopIndex).classList.add('shadeCell2');
+                } else {
+                    document.getElementById('tr' + loopIndex).classList.remove('shadeCell2');
+                }
             }
             populateTotalCards();
+        }
+
+        function syncTableWithForm(loopIndex, formNames) {
+            formNames.forEach((formName) => {
+                syncSingleTableWithForm(loopIndex, formName);
+            });
         }
 
         function formatNumber(currentNumber) {
@@ -726,6 +731,9 @@
             cols.forEach(col => {
                 let colName = col['name'];
                 thead.innerHTML += `<th data-type="` + col['type'] + `" id="col` + colName +`">` + colName + `</th>`;
+                if (col['hidden']) {
+                    document.getElementById('col' + colName).style.display = 'none';
+                }
                 if (col['type'] === 'select') {
                     let selectName = 'colSelect' + colName;
                     let colElem = document.getElementById('col' + colName);

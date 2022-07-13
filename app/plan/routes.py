@@ -156,6 +156,7 @@ def get_topline():
     weeks = [sd + dt.timedelta(days=x)
              for i, x in enumerate(range((ed-sd).days)) if i % 7 == 0]
     weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
+    form_cols = ['total_budget', 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
     metric_cols = ['cpm', 'Impressions', 'cpc', 'Clicks',
                    'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
                    'cpv', 'Video Views 100', 'cpcv']
@@ -164,23 +165,27 @@ def get_topline():
     cols = []
     for x in col_list:
         cur_col = {'name': x, 'type': '', 'add_select_box': False,
-                   'hidden': False, 'header': False}
+                   'hidden': False, 'header': False, 'form': False}
         if x == 'Partner':
             cur_col['type'] = 'select'
             cur_col['values'] = partner_list
             cur_col['add_select_box'] = True
+            cur_col['form'] = True
         if x == 'partner_type':
             cur_col['type'] = 'select'
+            cur_col['form'] = True
             cur_col['values'] = pd.DataFrame(
                 df['partner_type'].unique()).rename(
                     columns={0: 'partner_type'}).to_dict(orient='records')
         if x == 'Phase':
             cur_col['type'] = 'select'
-            cur_col['values'] = ['Launch', 'Pre-Launch']
+            cur_col['values'] = [{'Phase': x} for x in ['Launch', 'Pre-Launch']]
             cur_col['hidden'] = True
             cur_col['header'] = True
         if x in metric_cols:
             cur_col['type'] = 'metrics'
+        if x in form_cols:
+            cur_col['form'] = True
         cols.append(cur_col)
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
     return jsonify({'data': {'partners': partners,

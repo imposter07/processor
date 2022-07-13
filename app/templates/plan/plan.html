@@ -127,11 +127,13 @@
                             Metrics...
                         </div>
                     </div>
-                    <div id="planTableSlideCol" class="col-3"
+                </div>
+                <div class="row">
+                    <div id="planTableSlideCol" class="col-xs"
                          style="display:none;">
                         <div id="planTableSlide" class="card-deck"></div>
                     </div>
-                    <div class="col-6">
+                    <div class="col">
                         <div class="row">
                             <div class="col">
                                 <div class="input-group mb-3">
@@ -237,7 +239,7 @@
             return tableHeaders
         }
 
-        function buildFormFromCols(loopIndex, formNames) {
+        function buildFormFromCols(loopIndex, formNames, tableName = 'planTable') {
             let fromFromCols = '';
             formNames.forEach((formName) => {
                 let colName = 'col' + formName;
@@ -246,6 +248,11 @@
                 let inputInnerHtml = (inputCheck) ? document.getElementById('colSelect' + formName).innerHTML : '';
                 let inputEndHtml = (inputCheck) ? '</select>' : '';
                 let inputIdHtml = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
+                let phaseIds = getPhaseIds(tableName);
+                let phaseData = ''
+                phaseIds.forEach(phaseId => {
+                    phaseData += ' data-' + phaseId + '=""'
+                })
                 fromFromCols += `
                 <div class="col form-group">
                     <label class="control-label"
@@ -254,11 +261,18 @@
                            id="` + inputIdHtml + `"
                            name="` + inputIdHtml + `"
                            onchange="syncSingleTableWithForm(${loopIndex}, '${formName}')"
-                           oninput="syncSingleTableWithForm(${loopIndex}, '${formName}')">
+                           oninput="syncSingleTableWithForm(${loopIndex}, '${formName}')"
+                           ${phaseData}>
                     ` + inputInnerHtml + inputEndHtml + `
                 </div>`
             });
             return fromFromCols
+        }
+
+        function getTableHeadElems(tableName) {
+            let tableHeadElems = document.getElementById(tableName + 'Header');
+            tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
+            return tableHeadElems
         }
 
         function addPartner(clickElem, oldHtml, partner = null, tableName = 'planTable') {
@@ -270,11 +284,9 @@
             d1 = document.getElementById("accordionPlan");
             let loopIndex = d1.querySelectorAll(".accordion:last-child");
             loopIndex = (loopIndex.length != 0) ? (parseInt(loopIndex[loopIndex.length- 1].id.replace('accordionPartner', '')) + 1).toString() : '0'
-            let tableHeadElems = document.getElementById(tableName + 'Header');
-            tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
+            let tableHeadElems = getTableHeadElems(tableName);
             let tableHeaders = getRowHtml(loopIndex);
-            let partnerFormNames = ['Partner', 'partner_type', 'total_budget', 'cpm',
-                'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
+            let partnerFormNames = tableHeadElems.filter(col => col.dataset['form'] === 'true').map(col => col.id.replace('col', ''));
             let partnerForm = buildFormFromCols(loopIndex, partnerFormNames);
             let partnerCard = `
                 <tr id="tr` + loopIndex + `" data-toggle="collapse"
@@ -415,6 +427,32 @@
             });
         }
 
+        function setPhaseMetrics(currentIndex, tableName = 'planTable') {
+            let tableHeadElems = getTableHeadElems(tableName);
+            tableHeadElems.forEach(col => {
+                if (col.dataset['form'] === 'true' && col.dataset['type'] !== 'select') {
+                    let colName = col.id.replace('col', '');
+                    let elems = document.querySelectorAll(`input[id^=${colName}]`);
+                    elems.forEach(e => {
+                        let newVal = null;
+                        if (currentIndex) {
+                            if (e.dataset[currentIndex]) {
+                                newVal = e.dataset[currentIndex];
+                            }
+                        }
+                        else {
+                            newVal = 0;
+                            Object.entries(e.dataset).forEach(x => newVal += parseFloat(x[1]));
+                        }
+                        if (newVal){
+                            e.value = newVal;
+                            syncSingleTableWithForm(e.id.replace(colName, ''), colName);
+                        }
+                    })
+                }
+            })
+        }
+
         function togglePhaseCard(currentIndex) {
             let currentCard = document.getElementById('toplinePhaseCard' + currentIndex);
             if (currentCard.style.display === 'none') {
@@ -422,9 +460,11 @@
                 currentCard.style.display = '';
                 document.getElementById('planTableSlideCol').style.display = '';
                 document.getElementById('planTablePhaseHeader' + currentIndex).classList.add('shadeCell');
+                setPhaseMetrics(currentIndex);
             }
             else {
                 turnOffAllCards();
+                setPhaseMetrics(null);
             }
         }
 
@@ -558,12 +598,30 @@
             return matchingElements;
         }
 
-        function syncSingleTableWithForm(loopIndex, formName) {
+        function syncSingleTableWithForm(loopIndex, formName, tableName = 'planTable') {
             let colName = 'col' + formName;
             let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
             let currentElemId = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
             let currentElem = document.getElementById(currentElemId);
             let currentValue = (inputCheck) ? currentElem.selectize.getValue() : '$' + currentElem.value;
+            if (!inputCheck) {
+                let phaseHeaderId = tableName + 'PhaseHeader';
+                let selectedElem = document.querySelectorAll(`[id^='${phaseHeaderId}'].shadeCell`);
+                if (selectedElem.length !== 0) {
+                    let phaseId = selectedElem[0].id.replace(phaseHeaderId, '');
+                    currentElem.dataset[phaseId] = currentElem.value;
+                }
+                else {
+                    let phaseIds = getPhaseIds(tableName);
+                    let phaseVal = currentElem.value;
+                    if (document.getElementById(colName).dataset['type'] !== 'metrics') {
+                        phaseVal = phaseVal / phaseIds.length;
+                    }
+                    phaseIds.forEach(phaseId => {
+                        currentElem.dataset[phaseId] = phaseVal;
+                    })
+                }
+            }
             document.getElementById('row' + formName + loopIndex).innerHTML = currentValue;
             let curRow = document.getElementById('tr' + loopIndex);
             if (curRow) {
@@ -689,12 +747,16 @@
             trs.forEach(setTrStyleDisplay)
         }
 
-        function addPhase(phase, tableName = 'planTable') {
-            let thead = document.getElementById(tableName + 'THead');
+        function getPhaseIds(tableName) {
             let phaseHeaders = document.querySelectorAll("[id^='" + tableName + "PhaseHeader']");
-            let tHeadIds = Array.prototype.map.call(phaseHeaders, function (elem) {
+            return Array.prototype.map.call(phaseHeaders, function (elem) {
                 return parseInt(elem.id.replace('planTablePhaseHeader', ''));
             });
+        }
+
+        function addPhase(phase, tableName = 'planTable') {
+            let thead = document.getElementById(tableName + 'THead');
+            let tHeadIds = getPhaseIds(tableName);
             let minId = (tHeadIds.length !== 0) ? (Math.min.apply(Math, tHeadIds) - 1).toString() : '-1';
             let colorClass = "shadeCell" + minId.replace('-', '');
             let tableHeaders = getRowHtml(minId);
@@ -730,7 +792,7 @@
             toggleMetricsOnChange();
             cols.forEach(col => {
                 let colName = col['name'];
-                thead.innerHTML += `<th data-type="` + col['type'] + `" id="col` + colName +`">` + colName + `</th>`;
+                thead.innerHTML += `<th data-form="${col['form']}" data-type="${col['type']}" id="col${colName}">${colName}</th>`;
                 if (col['hidden']) {
                     document.getElementById('col' + colName).style.display = 'none';
                 }

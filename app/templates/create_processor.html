@@ -540,7 +540,10 @@
                                oldPage = '', newPage = '') {
             let sourceElem = $('table[id^=modalTable]')[0].id;
             let data
-            if (!sourceElem.includes('change_dictionary_order')) {
+            if (sourceElem.includes('change_dictionary_order')) {
+                removeChangeOrderSelectize();
+                data = getTableAsArray(sourceElem);
+            } else {
                 try {
                     var sendTable = $('#' + sourceElem).DataTable();
                 } catch (err) {
@@ -548,9 +551,6 @@
                 }
                 data = sendTable
                 .data().toArray();
-            } else {
-                removeChangeOrderSelectize();
-                data = getTableAsArray(sourceElem);
             }
             let sendTableName = sourceElem.replace('modalTable', '');
             let json = JSON.stringify(data);

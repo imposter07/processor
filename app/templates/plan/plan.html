@@ -29,6 +29,12 @@
             background-color: transparent;
         }
 
+        .shadeCellError {
+            background-color: rgb(214,39,40) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
         .shadeCell {
             background-color: #b3ecff !important;
             transition: all 1s;
@@ -254,9 +260,9 @@
                     phaseData += ' data-' + phaseId + '=""'
                 })
                 fromFromCols += `
-                <div class="col form-group">
+                <div class="col form-group" id="${formName}FormGroupCol">
                     <label class="control-label"
-                           for="` + inputIdHtml + `">` + formName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ') + `</label>
+                           for="` + inputIdHtml + `">` + generateDisplayColumnName(formName) + `</label>
                     ` + inputStartHtml + ` class="form-control form-control-sm"
                            id="` + inputIdHtml + `"
                            name="` + inputIdHtml + `"
@@ -275,7 +281,21 @@
             return tableHeadElems
         }
 
-        function addPartner(clickElem, oldHtml, partner = null, tableName = 'planTable') {
+        function findInQuerySelectorAll(partnerName, selectorIdVal, selectorPrefix = '') {
+            let selector = `${selectorPrefix}[id^='${selectorIdVal}']`;
+            let partnerElems = document.querySelectorAll(selector);
+            let partnerElem = Array.from(partnerElems).find(elem => {return elem.innerHTML === partnerName});
+            if (partnerElem){
+                return partnerElem.id.replace(selectorIdVal, '');
+            }
+        }
+
+        function getPartnerFormNames(tableName){
+            let tableHeadElems = getTableHeadElems(tableName);
+            return tableHeadElems.filter(col => col.dataset['form'] === 'true').map(col => col.id.replace('col', ''));
+        }
+
+        function addPartnerRow(clickElem, oldHtml, partner, tableName){
             let curTable = document.getElementById(tableName);
             let d1 = document.getElementById("accordionPlan");
             if (!(d1)) {
@@ -286,7 +306,7 @@
             loopIndex = (loopIndex.length != 0) ? (parseInt(loopIndex[loopIndex.length- 1].id.replace('accordionPartner', '')) + 1).toString() : '0'
             let tableHeadElems = getTableHeadElems(tableName);
             let tableHeaders = getRowHtml(loopIndex);
-            let partnerFormNames = tableHeadElems.filter(col => col.dataset['form'] === 'true').map(col => col.id.replace('col', ''));
+            let partnerFormNames = getPartnerFormNames(tableName);
             let partnerForm = buildFormFromCols(loopIndex, partnerFormNames);
             let partnerCard = `
                 <tr id="tr` + loopIndex + `" data-toggle="collapse"
@@ -322,25 +342,54 @@
             addDatePicker();
             editPhaseOnClick();
             sortTable();
+            return loopIndex
+        }
+
+        function addPartnerDetailsToForm(partner, loopIndex, tableName = 'planTable'){
+            let phaseElem = '';
+            if ('Phase' in partner) {
+                let phaseName = partner['Phase'];
+                let phaseIndex = findInQuerySelectorAll(phaseName, 'rowPhase')
+                phaseElem = document.getElementById(tableName + 'PhaseHeader' + phaseIndex)
+                phaseElem.click()
+            }
+            let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
+            fp.setDate([partner.start_date, partner.end_date]);
+            let partnerFormNames = getPartnerFormNames(tableName);
+            partnerFormNames.forEach((partnerFormName) => {
+                let colName = 'col' + partnerFormName;
+                let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
+                let currentElemId = (inputCheck) ? partnerFormName.toLowerCase() + 'Select' + loopIndex : partnerFormName + loopIndex;
+                let curElem = document.getElementById(currentElemId);
+                let newValue = partner[partnerFormName.toLowerCase()];
+                if (inputCheck) {
+                    curElem.selectize.addOption({
+                        text: newValue,
+                        id: newValue,
+                        value: newValue
+                    });
+                    curElem.selectize.setValue(newValue);
+                } else {
+                    curElem.value = newValue;
+                }
+            });
+            syncTableWithForm(loopIndex, partnerFormNames);
+            shadeDates(loopIndex, null, 'shadeCell' + loopIndex);
+            if (phaseElem) {
+                phaseElem.click();
+            }
+        }
+
+        function addPartner(clickElem, oldHtml, partner = null, tableName = 'planTable') {
             if (partner) {
-                let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
-                fp.setDate([partner.start_date, partner.end_date]);
-                partnerFormNames.forEach((partnerFormName) => {
-                    let colName = 'col' + partnerFormName;
-                    let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
-                    let currentElemId = (inputCheck) ? partnerFormName.toLowerCase() + 'Select' + loopIndex : partnerFormName + loopIndex;
-                    let curElem =  document.getElementById(currentElemId);
-                    let newValue = partner[partnerFormName.toLowerCase()];
-                    if (inputCheck) {
-                        curElem.selectize.addOption({text: newValue, id: newValue, value: newValue});
-                        curElem.selectize.setValue(newValue);
-                    }
-                    else {
-                        curElem.value = newValue;
-                    }
-                });
-                syncTableWithForm(loopIndex, partnerFormNames);
-                shadeDates(loopIndex, null, 'shadeCell' + loopIndex);
+                let loopIndex = findInQuerySelectorAll(partner['partner'], 'rowPartner');
+                if (!loopIndex){
+                    loopIndex = addPartnerRow(clickElem, oldHtml, partner, tableName);
+                }
+                addPartnerDetailsToForm(partner, loopIndex);
+            }
+            else {
+                addPartnerRow(clickElem, oldHtml, partner, tableName);
             }
             toggleMetrics();
         }
@@ -537,8 +586,18 @@
             });
         }
 
-        function submitToplineForm(formContinue) {
-            let formTopline = $('[id^=toplinePartner]').serializeArray();
+        function submitToplineForm(formContinue, tableName = 'planTable') {
+            let formTopline = {};
+            let phaseHeaderIdPrefix = tableName + 'PhaseHeader';
+            let phaseHeaders = document.querySelectorAll(`[id^="${phaseHeaderIdPrefix}"]`);
+            Array.prototype.map.call(phaseHeaders, function (elem) {
+                elem.click();
+                let curIdx = elem.id.replace(phaseHeaderIdPrefix, '');
+                formTopline[curIdx] = {'Phase': {}, 'Partner': {}}
+                formTopline[curIdx]['Phase'] = Object.fromEntries(new FormData(document.querySelector(`[id^=toplinePhase${curIdx}]`)));
+                formTopline[curIdx]['Partner'] =  $('[id^=toplinePartner]').serializeArray();
+                elem.click();
+            });
             saveToplinePartners(formTopline, formContinue);
         }
 
@@ -550,7 +609,7 @@
                     object_name: "{{ object_name }}",
                     object_type: "{{ title }}",
                     object_level: "{{ edit_name }}",
-                    placement_form: formTopline
+                    placement_form: JSON.stringify(formTopline)
                 },
             }).done(function (data, status) {
                 displayAlert(data['message'], data['level'])
@@ -614,7 +673,7 @@
                 else {
                     let phaseIds = getPhaseIds(tableName);
                     let phaseVal = currentElem.value;
-                    if (document.getElementById(colName).dataset['type'] !== 'metrics') {
+                    if (!document.getElementById(colName).dataset['type'].includes('metrics')) {
                         phaseVal = phaseVal / phaseIds.length;
                     }
                     phaseIds.forEach(phaseId => {
@@ -626,9 +685,9 @@
             let curRow = document.getElementById('tr' + loopIndex);
             if (curRow) {
                 if (document.getElementById('rowtotal_budget' + loopIndex).innerHTML === "$0") {
-                    document.getElementById('tr' + loopIndex).classList.add('shadeCell2');
+                    document.getElementById('tr' + loopIndex).classList.add('shadeCellError');
                 } else {
-                    document.getElementById('tr' + loopIndex).classList.remove('shadeCell2');
+                    document.getElementById('tr' + loopIndex).classList.remove('shadeCellError');
                 }
             }
             populateTotalCards();
@@ -703,6 +762,7 @@
                 }
             });
             generateTotalCards('totalCards', data);
+            toggleMetrics();
         }
 
         function sortTable() {
@@ -780,6 +840,10 @@
             turnOffAllCards();
         }
 
+        function generateDisplayColumnName(colName) {
+            return colName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ');
+        }
+
         function addTableColumns(cols, name) {
             let table = document.getElementById(name);
             table.innerHTML += `<thead id ="planTableTHead"><tr id=` + name + `Header></tr></thead>`;
@@ -792,7 +856,7 @@
             toggleMetricsOnChange();
             cols.forEach(col => {
                 let colName = col['name'];
-                thead.innerHTML += `<th data-form="${col['form']}" data-type="${col['type']}" id="col${colName}">${colName}</th>`;
+                thead.innerHTML += `<th data-form="${col['form']}" data-type="${col['type']}" id="col${colName}">${generateDisplayColumnName(colName)}</th>`;
                 if (col['hidden']) {
                     document.getElementById('col' + colName).style.display = 'none';
                 }
@@ -821,16 +885,18 @@
                     }
                     addSelectize();
                 }
-                if (col['type'] === 'metrics') {
+                if (col['type'].includes('metrics')) {
                     let selectize = document.getElementById('metricsSelectAdd').selectize;
                     selectize.addOption({
-                        text: colName,
+                        text: generateDisplayColumnName(colName),
                         id: colName,
                         value: colName
                     });
-                    let curVal = selectize.getValue();
-                    curVal.push(colName);
-                    selectize.setValue(curVal);
+                    if (col['type'] === 'default_metrics') {
+                        let curVal = selectize.getValue();
+                        curVal.push(colName);
+                        selectize.setValue(curVal);
+                    }
                 }
             });
         }

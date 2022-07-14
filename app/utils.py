@@ -2,6 +2,7 @@ import io
 import os
 import json
 from app import db
+import datetime as dt
 from app.models import Task
 from flask import current_app
 
@@ -50,3 +51,32 @@ def get_col_from_serialize_dict(data, col_name):
     col_val_keys = [x.replace('name', 'value') for x in col_keys]
     col_vals = [v for k, v in data.items() if k in col_val_keys]
     return col_vals
+
+
+def get_sd_ed_in_dict(dict_to_add, sd_ed_value):
+    date_list = sd_ed_value.split(' to ')
+    sd = date_list[0]
+    ed = date_list[1]
+    dict_to_add['start_date'] = dt.datetime.strptime(sd, '%Y-%m-%d')
+    dict_to_add['end_date'] = dt.datetime.strptime(ed, '%Y-%m-%d')
+    return dict_to_add
+
+
+def sync_new_form_data_with_database(form_dict, old_db_items, db_model,
+                                     relation_db_item, form_search_name='name'):
+    if old_db_items:
+        for p in old_db_items:
+            new_p = [x for x in form_dict if p.name == x[form_search_name]]
+            if new_p:
+                new_p = new_p[0]
+                p.set_from_form(form=new_p, current_plan=relation_db_item)
+                db.session.commit()
+                form_dict = [x for x in form_dict
+                             if p.name != x[form_search_name]]
+            else:
+                db.session.delete(p)
+    for p in form_dict:
+        new_p = db_model()
+        new_p.set_from_form(form=p, current_plan=relation_db_item)
+        db.session.add(new_p)
+        db.session.commit()

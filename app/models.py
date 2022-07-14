@@ -1395,6 +1395,12 @@ class PlanPhase(db.Model):
         }
         return form_dict
 
+    def set_from_form(self, form, current_plan):
+        self.plan_id = current_plan.id
+        self.name = form['name']
+        self.start_date = form['start_date']
+        self.end_date = form['end_date']
+
 
 class Partner(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1408,23 +1414,25 @@ class Partner(db.Model):
     placements = db.relationship('PartnerPlacements',
                                  backref='partner', lazy='dynamic')
 
-    def get_form_dict(self):
+    def get_form_dict(self, cur_phase=None):
         form_dict = {
-            'name': self.name,
+            'partner': self.name,
             'total_budget': self.total_budget,
-            'estimated_cpm': self.estimated_cpm,
-            'estimated_cpc': self.estimated_cpc,
+            'cpm': self.estimated_cpm,
+            'cpc': self.estimated_cpc,
             'start_date': datetime.strftime(self.start_date, '%Y-%m-%d'),
             'end_date': datetime.strftime(self.end_date, '%Y-%m-%d')
         }
+        if cur_phase:
+            form_dict['Phase'] = cur_phase.name
         return form_dict
 
     def set_from_form(self, form, current_plan):
         self.plan_phase_id = current_plan.id
-        self.name = form['name']
+        self.name = form['partnerSelect']
         self.total_budget = form['total_budget']
-        self.estimated_cpm = form['estimated_cpm']
-        self.estimated_cpc = form['estimated_cpc']
+        self.estimated_cpm = form['cpm']
+        self.estimated_cpc = form['cpc']
         self.start_date = form['start_date']
         self.end_date = form['end_date']
 

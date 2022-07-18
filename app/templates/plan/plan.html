@@ -260,7 +260,7 @@
                     phaseData += ' data-' + phaseId + '=""'
                 })
                 fromFromCols += `
-                <div class="col form-group" id="${formName}FormGroupCol">
+                <div class="col-4 form-group" id="${formName}FormGroupCol">
                     <label class="control-label"
                            for="` + inputIdHtml + `">` + generateDisplayColumnName(formName) + `</label>
                     ` + inputStartHtml + ` class="form-control form-control-sm"
@@ -483,6 +483,10 @@
                     let colName = col.id.replace('col', '');
                     let elems = document.querySelectorAll(`input[id^=${colName}]`);
                     elems.forEach(e => {
+                        if (e.id.replace(/\d+/g, '') !== colName ) {
+                            return;
+                        }
+                        let loopIndex = e.id.replace(colName, '');
                         let newVal = null;
                         if (currentIndex) {
                             if (e.dataset[currentIndex]) {
@@ -491,11 +495,29 @@
                         }
                         else {
                             newVal = 0;
-                            Object.entries(e.dataset).forEach(x => newVal += parseFloat(x[1]));
+                            if (!document.getElementById('col' + colName).dataset['type'].includes('metrics')) {
+                                Object.entries(e.dataset).forEach(x => newVal += parseFloat(x[1]));
+                            }
+                            else {
+                                let costElem = document.getElementById('total_budget' + loopIndex);
+                                Object.entries(costElem.dataset).forEach(x => newVal += parseFloat(x[1]));
+                                let calcVal = 0;
+                                Object.entries(costElem.dataset).forEach(x => {
+                                    let calcElem = parseFloat(e.dataset[x[0]])
+                                    let costElem = parseFloat(x[1])
+                                    calcVal += (costElem / calcElem)
+                                })
+                                newVal = newVal / calcVal;
+                                newVal = newVal.toFixed(2)
+                                /*
+                                if (colName === 'cpm') {
+                                    newVal = newVal * 1000;
+                                }*/
+                            }
                         }
                         if (newVal){
                             e.value = newVal;
-                            syncSingleTableWithForm(e.id.replace(colName, ''), colName);
+                            syncSingleTableWithForm(loopIndex, colName, tableName, true);
                         }
                     })
                 }
@@ -657,13 +679,13 @@
             return matchingElements;
         }
 
-        function syncSingleTableWithForm(loopIndex, formName, tableName = 'planTable') {
+        function syncSingleTableWithForm(loopIndex, formName, tableName = 'planTable', phaseToggle = false) {
             let colName = 'col' + formName;
             let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
             let currentElemId = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
             let currentElem = document.getElementById(currentElemId);
             let currentValue = (inputCheck) ? currentElem.selectize.getValue() : '$' + currentElem.value;
-            if (!inputCheck) {
+            if (!inputCheck && !phaseToggle) {
                 let phaseHeaderId = tableName + 'PhaseHeader';
                 let selectedElem = document.querySelectorAll(`[id^='${phaseHeaderId}'].shadeCell`);
                 if (selectedElem.length !== 0) {
@@ -814,6 +836,21 @@
             });
         }
 
+        function addDataToFormForNewPhase(phaseId) {
+            let formNames = getPartnerFormNames('planTable');
+            formNames.forEach(formName => {
+                if (document.getElementById('col' + formName).dataset['type'].includes('metrics') || formName === 'total_budget') {
+                    let elems = document.querySelectorAll(`input[id^=${formName}]`);
+                    elems.forEach(e => {
+                        if (!e.dataset[phaseId]) {
+                            let newVal = (formName === 'total_budget') ? 0 : e.dataset[phaseId - 1];
+                            e.dataset[phaseId] = newVal;
+                        }
+                    })
+                }
+            })
+        }
+
         function addPhase(phase, tableName = 'planTable') {
             let thead = document.getElementById(tableName + 'THead');
             let tHeadIds = getPhaseIds(tableName);
@@ -831,6 +868,7 @@
             document.getElementById('rowPartner' + minId).innerHTML = phase.name;
             shadeDates(minId, [phase.start_date, phase.end_date], colorClass);
             addPhaseCard(minId, phase);
+            addDataToFormForNewPhase(minId);
         }
 
         function addCurrentPhases(phases, tableName = 'planTable') {

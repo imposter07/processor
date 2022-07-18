@@ -50,8 +50,9 @@ def plan():
 @bp.route('/plan/<object_name>', methods=['GET', 'POST'])
 @login_required
 def edit_plan(object_name):
-    kwargs = Plan.get_current_plan(object_name, 'edit_plan', edit_progress=50,
-                                   edit_name='Basic')
+    kwargs = Plan().get_current_plan(object_name, 'edit_plan',
+                                     edit_progress=100,
+                                     edit_name='Basic')
     current_plan = kwargs['object']
     form = EditPlanForm(original_name=current_plan.name)
     form.set_choices()

@@ -332,3 +332,95 @@ function getMetricTableAsArray() {
     }).get();
     return metricArray
 }
+
+function getTableAsArray(tableId) {
+    let rows = document.getElementById(tableId).getElementsByTagName('tr');
+    let tableArray = []
+    for (var i = 1, row; row = rows[i]; i++) {
+        col = rows[i].children
+        row = {}
+        for (var j = 0, col; col = rows[0].cells[j]; j++) {
+            let col_name = rows[0].cells[j].textContent
+            let row_value = rows[i].cells[j].textContent
+            row[col_name] = row_value
+        }
+        tableArray.push(row)
+    }
+    return tableArray
+}
+
+function createChangeDictOrder(colData, rawData, tableName, dictColData,
+                               elem = "modal-body-table") {
+    let dictCols = JSON.parse(dictColData);
+    let dictOptions = dictCols.map(function (e) {
+        return {text: e, value: e}
+    });
+    let buttonsHtml = `<div class="text-left">
+        <button class="btn btn-primary" tabindex="0" aria-controls=${tableName} type="button" title="Shift order up"
+          onclick="shiftOrderUp('${elem}')">
+          <i class="fas fa-angle-double-up" style="color:white"></i>
+        </button>
+        <button class="btn btn-primary" tabindex="1" aria-controls=${tableName} type="button" title="Shift order down"
+          onclick="shiftOrderDown('${elem}')">
+          <i class="fas fa-angle-double-down" style="color:white"></i>
+        </button>
+      </div>`
+
+    document.getElementById(elem).innerHTML = buttonsHtml + rawData;
+    let labelColIndex = getColumnIndex(elem, '');
+    let rows = document.getElementById(elem).getElementsByTagName('tr');
+    for (var i = 3, row; row = rows[i]; i++) {
+        labelElem = rows[i].cells[labelColIndex]
+        let defaultValue = [labelElem.innerHTML];
+        labelElem.innerHTML = `<select name='auto_order_select${i}' id='auto_order_select${i}'></select>`;
+        let labelSelect = $(`select[name='auto_order_select${i}']`);
+        let labelSelectize = labelSelect.selectize({options: dictOptions,
+                                                    searchField: 'text',
+                                                    items: defaultValue,
+                                                    delimiter: '|',
+                                                    create: true,
+                                                    persist: false,
+                                                    showAddOptionOnCreate: true,
+                                                    onBlur: function() {if ($(this)[0].getValue() === '') {
+                                                        $(this)[0].setValue('mpMisc')}}
+                                                    });
+        labelSelectize[0].selectize.addOption({value:defaultValue, text:defaultValue});
+        labelSelectize[0].selectize.addItem(defaultValue);
+    }
+}
+
+function shiftOrderUp(modalElem) {
+    let labelColIndex = getColumnIndex(modalElem, '');
+    let rows = document.getElementById(modalElem).getElementsByTagName('tr');
+    for (var i = 3, row; row = rows[i]; i++) {
+        let nextValue = $(`#auto_order_select${i+1}`).val();
+        if (!nextValue) {
+            nextValue = 'mpMisc'
+        }
+        document.getElementById(`auto_order_select${i}`).selectize.addOption({value:nextValue, text:nextValue});
+        document.getElementById(`auto_order_select${i}`).selectize.setValue(nextValue, false);
+    }
+}
+
+function shiftOrderDown(modalElem) {
+    let labelColIndex = getColumnIndex(modalElem, '');
+    let rows = document.getElementById(modalElem).getElementsByTagName('tr');
+    for (var i = rows.length - 1; i > 2; i--) {
+        let prevValue = $(`#auto_order_select${i-1}`).val();
+        if (!prevValue) {
+            prevValue = 'mpMisc'
+        }
+        document.getElementById(`auto_order_select${i}`).selectize.addOption({value:prevValue, text:prevValue});
+        document.getElementById(`auto_order_select${i}`).selectize.setValue(prevValue, false);
+    }
+}
+
+function removeChangeOrderSelectize(elem = "modal-body-table") {
+    let labelColIndex = getColumnIndex(elem, '');
+    let rows = document.getElementById(elem).getElementsByTagName('tr');
+    for (var i = 3, row; row = rows[i]; i++) {
+        let value = document.getElementById(`auto_order_select${i}`).selectize.getValue();
+        let cellElem = document.getElementById(`auto_order_select${i}`).parentElement;
+        cellElem.innerHTML = value;
+    }
+}

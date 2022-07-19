@@ -1092,7 +1092,8 @@ def post_table():
                  'Uploader': '.write_uploader_file',
                  'import_config': '.write_import_config_file',
                  'raw_file_comparison': '.write_raw_file_from_tmp',
-                 'get_plan_property': '.write_plan_property'}
+                 'get_plan_property': '.write_plan_property',
+                 'change_dictionary_order': '.write_dictionary_order'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',
                       'dictionary_order']:
@@ -1120,6 +1121,7 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'Relation': '.get_relational_config',
                  'OutputData': '.get_data_tables',
                  'dictionary_order': '.get_dict_order',
+                 'change_dictionary_order': '.get_change_dict_order',
                  'raw_data': '.get_raw_data',
                  'download_raw_data': '.get_raw_data',
                  'dictionary': '.get_dictionary',
@@ -1263,6 +1265,8 @@ def get_table_return(task, table_name, proc_arg, job_name,
         data = {'html_data': table_data, 'msg': msg}
     else:
         data = df_to_html(df, table_name, job_name)
+        if job_name == '.get_change_dict_order':
+            data['dict_cols'] = json.dumps(job.result[1])
     return jsonify(data)
 
 
@@ -1295,11 +1299,14 @@ def utility_functions():
 
 def df_to_html(df, name, job_name=''):
     pd.set_option('display.max_colwidth', -1)
-    df = df.reset_index()
-    if 'index' in df.columns and job_name != '.get_import_config_file':
-        df = df[[x for x in df.columns if x != 'index'] + ['index']]
+    set_index = True
+    if 'change_dictionary_order' not in name:
+        set_index = False
+        df = df.reset_index()
+        if 'index' in df.columns and job_name != '.get_import_config_file':
+            df = df[[x for x in df.columns if x != 'index'] + ['index']]
     data = df.to_html(
-        index=False, table_id=name,
+        index=set_index, table_id=name,
         classes='table table-striped table-responsive-sm small',
         border=0)
     cols = json.dumps(df.columns.tolist())
@@ -1324,7 +1331,7 @@ def rename_duplicates(old):
 def get_placement_form(data_source):
     form = PlacementForm()
     ds_dict = data_source.get_form_dict_with_split()
-    auto_order_cols = list(rename_duplicates(ds_dict['auto_dictionary_order']))
+    auto_order_cols = list(utl.rename_duplicates(ds_dict['auto_dictionary_order']))
     ds_dict['auto_dictionary_order'] = auto_order_cols
     form.set_column_choices(data_source.id, ds_dict)
     form.full_placement_columns.data = ds_dict['full_placement_columns']

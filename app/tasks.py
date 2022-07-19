@@ -13,6 +13,7 @@ from flask import render_template
 from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
+from app.utils import rename_duplicates
 from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
@@ -577,6 +578,31 @@ def get_dict_order(processor_id, current_user_id, vk):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+def get_change_dict_order(processor_id, current_user_id, vk):
+    try:
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.dictcolumns as dctc
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk)
+        tdf = data_source.get_dict_order_df(include_index=False, include_full_name=True)
+        dict_cols = [col for col in dctc.COLS if col not in [dctc.FPN, dctc.PN]]
+        sample_size = 5
+        if len(tdf.index) > sample_size:
+            tdf = tdf.sample(sample_size)
+        tdf = tdf.T
+        tables = [tdf, dict_cols]
+        _set_task_progress(100)
+        return tables
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
 def delete_dict(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
@@ -751,6 +777,38 @@ def write_dictionary(processor_id, current_user_id, new_data, vk):
         msg_text = ('{} processor dictionary: {} was updated.'
                     ''.format(cur_processor.name, vk))
         processor_post_message(cur_processor, user_that_ran, msg_text)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+
+
+def write_dictionary_order(processor_id, current_user_id, new_data, vk):
+    try:
+        cur_processor, user_that_ran = get_processor_and_user_from_id(
+            processor_id=processor_id, current_user_id=current_user_id)
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.vmcolumns as vmc
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        _set_task_progress(0)
+        df = pd.read_json(new_data)
+        if df.empty:
+            dict_order = ''
+        else:
+            dict_order = df['NaT'].drop([0, 1]).to_list()
+            dict_order = list(rename_duplicates(dict_order))
+            dict_order = '|'.join(dict_order)
+        os.chdir(adjust_path(cur_processor.local_path))
+        matrix = vm.VendorMatrix()
+        matrix.vm_change_on_key(vk, vmc.autodicord, dict_order)
+        matrix.write()
+        msg_text = ('{} processor auto dictionary order: {} was updated.'
+                    ''.format(cur_processor.name, vk))
+        processor_post_message(cur_processor, user_that_ran, msg_text)
+        os.chdir(cur_path)
+        get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

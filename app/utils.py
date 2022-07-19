@@ -53,6 +53,21 @@ def get_col_from_serialize_dict(data, col_name):
     return col_vals
 
 
+def rename_duplicates(old):
+    seen = {}
+    for x in old:
+        if x in seen:
+            seen[x] += 1
+            new_val = '{} {}'.format(x, seen[x])
+            if new_val in old:
+                yield '{}-{}'.format(new_val, 1)
+            else:
+                yield new_val
+        else:
+            seen[x] = 0
+            yield x
+
+
 def get_sd_ed_in_dict(dict_to_add, sd_ed_value):
     date_list = sd_ed_value.split(' to ')
     sd = date_list[0]

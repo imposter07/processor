@@ -539,14 +539,20 @@
         function SendDataTable(modalTableName="modalTable", formContinue = null,
                                oldPage = '', newPage = '') {
             let sourceElem = $('table[id^=modalTable]')[0].id;
-            try {
-                var sendTable = $('#' + sourceElem).DataTable();
-            } catch (err) {
-                sendTable = $('#' + sourceElem).DataTable();
+            let data
+            if (sourceElem.includes('change_dictionary_order')) {
+                removeChangeOrderSelectize();
+                data = getTableAsArray(sourceElem);
+            } else {
+                try {
+                    var sendTable = $('#' + sourceElem).DataTable();
+                } catch (err) {
+                    sendTable = $('#' + sourceElem).DataTable();
+                }
+                data = sendTable
+                .data().toArray();
             }
             let sendTableName = sourceElem.replace('modalTable', '');
-            let data = sendTable
-                .data().toArray();
             let json = JSON.stringify(data);
             if (sendTableName === 'Vendormatrix'){
                 $('#refresh_data_sources').parent().html('' +
@@ -822,6 +828,11 @@
                 document.getElementById('rowOne').innerHTML = '';
                 let title = 'PLAN PROPERTY - ' + vendorKey;
                 appendCardAsTable(data, "planPropertyCardCol", "#rowTwo", title, true);
+            } else if (tableName === 'change_dictionary_order') {
+                show_modal_table('modalTableButton');
+                let newTableName = data['data']['name'];
+                createChangeDictOrder(data['data']['cols'], data['data']['data'],
+                    newTableName, data['dict_cols']);
             } else {
                 show_modal_table('modalTableButton');
                 let newTableName = data['data']['name'];
@@ -1208,10 +1219,10 @@
                     '<i class="fas fa-binoculars" href="#" role="button"></i>' +
                     'View' +
                     '</button>' +
-                    '<button id="_refresh_dictionary_order"' +
-                    'class="btn btn-outline-primary">' +
+                    '<button id="_refresh_change_dictionary_order"' +
+                    'class="btn btn-outline-warning">' +
                     '<i class="fas fa-sort-amount-up-alt" href="#" role="button"></i>' +
-                    'View Order' +
+                    'Change Order' +
                     '</button>' +
                     '<button id="_refresh_delete_dict"' +
                     'class="btn btn-outline-danger">' +

@@ -29,6 +29,12 @@
             background-color: transparent;
         }
 
+        .shadeCellError {
+            background-color: rgb(214,39,40) !important;
+            opacity: 0.5;
+            transition: all 1s;
+        }
+
         .shadeCell {
             background-color: #b3ecff !important;
             transition: all 1s;
@@ -127,7 +133,9 @@
                             Metrics...
                         </div>
                     </div>
-                    <div id="planTableSlideCol" class="col"
+                </div>
+                <div class="row">
+                    <div id="planTableSlideCol" class="col-xs"
                          style="display:none;">
                         <div id="planTableSlide" class="card-deck"></div>
                     </div>
@@ -232,12 +240,62 @@
             tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
             let tableHeaders = '';
             tableHeadElems.forEach(tableHeadElem => {
-                tableHeaders = tableHeaders + '<td id="row' + tableHeadElem.id.replace('col', '') + loopIndex + '"></td>'
+                tableHeaders = tableHeaders + `<td id="row${tableHeadElem.id.replace('col', '')}${loopIndex}" style="display:${tableHeadElem.style.display};"></td>`
             });
             return tableHeaders
         }
 
-        function addPartner(clickElem, oldHtml, partner = null, tableName = 'planTable') {
+        function buildFormFromCols(loopIndex, formNames, tableName = 'planTable') {
+            let fromFromCols = '';
+            formNames.forEach((formName) => {
+                let colName = 'col' + formName;
+                let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
+                let inputStartHtml = (inputCheck) ? '<select ' : '<input type="number" value="" step="any"'
+                let inputInnerHtml = (inputCheck) ? document.getElementById('colSelect' + formName).innerHTML : '';
+                let inputEndHtml = (inputCheck) ? '</select>' : '';
+                let inputIdHtml = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
+                let phaseIds = getPhaseIds(tableName);
+                let phaseData = ''
+                phaseIds.forEach(phaseId => {
+                    phaseData += ' data-' + phaseId + '=""'
+                })
+                fromFromCols += `
+                <div class="col-4 form-group" id="${formName}FormGroupCol">
+                    <label class="control-label"
+                           for="` + inputIdHtml + `">` + generateDisplayColumnName(formName) + `</label>
+                    ` + inputStartHtml + ` class="form-control form-control-sm"
+                           id="` + inputIdHtml + `"
+                           name="` + inputIdHtml + `"
+                           onchange="syncSingleTableWithForm(${loopIndex}, '${formName}')"
+                           oninput="syncSingleTableWithForm(${loopIndex}, '${formName}')"
+                           ${phaseData}>
+                    ` + inputInnerHtml + inputEndHtml + `
+                </div>`
+            });
+            return fromFromCols
+        }
+
+        function getTableHeadElems(tableName) {
+            let tableHeadElems = document.getElementById(tableName + 'Header');
+            tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
+            return tableHeadElems
+        }
+
+        function findInQuerySelectorAll(partnerName, selectorIdVal, selectorPrefix = '') {
+            let selector = `${selectorPrefix}[id^='${selectorIdVal}']`;
+            let partnerElems = document.querySelectorAll(selector);
+            let partnerElem = Array.from(partnerElems).find(elem => {return elem.innerHTML === partnerName});
+            if (partnerElem){
+                return partnerElem.id.replace(selectorIdVal, '');
+            }
+        }
+
+        function getPartnerFormNames(tableName){
+            let tableHeadElems = getTableHeadElems(tableName);
+            return tableHeadElems.filter(col => col.dataset['form'] === 'true').map(col => col.id.replace('col', ''));
+        }
+
+        function addPartnerRow(clickElem, oldHtml, partner, tableName){
             let curTable = document.getElementById(tableName);
             let d1 = document.getElementById("accordionPlan");
             if (!(d1)) {
@@ -246,24 +304,10 @@
             d1 = document.getElementById("accordionPlan");
             let loopIndex = d1.querySelectorAll(".accordion:last-child");
             loopIndex = (loopIndex.length != 0) ? (parseInt(loopIndex[loopIndex.length- 1].id.replace('accordionPartner', '')) + 1).toString() : '0'
-            let tableHeadElems = document.getElementById(tableName + 'Header');
-            tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
+            let tableHeadElems = getTableHeadElems(tableName);
             let tableHeaders = getRowHtml(loopIndex);
-            let partnerOptionHtml = document.getElementById('colSelectPartner').innerHTML;
-            let partnerFormNames = ['total_budget', 'estimated_cpm', 'estimated_cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
-            let partnerForm = ''
-            partnerFormNames.forEach((partnerFormName) => {
-                partnerForm += `
-                <div class="col form-group">
-                    <label class="control-label"
-                           for="` + partnerFormName + loopIndex + `">` + partnerFormName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ') + `</label>
-                    <input class="form-control form-control-sm"
-                           id="` + partnerFormName + loopIndex + `"
-                           name="` + partnerFormName + loopIndex + `" step="any"
-                           type="number" value=""
-                           oninput="syncTableWithForm(` + loopIndex + `)">
-                </div>`
-            });
+            let partnerFormNames = getPartnerFormNames(tableName);
+            let partnerForm = buildFormFromCols(loopIndex, partnerFormNames);
             let partnerCard = `
                 <tr id="tr` + loopIndex + `" data-toggle="collapse"
                     data-target="#collapsePartner` + loopIndex + `" class="accordion-toggle">
@@ -277,14 +321,6 @@
                         <div class="card-body">
                             <div class="accordion" id="accordionPartner` + loopIndex + `" >
                                 <form id="toplinePartner` + loopIndex + `"  class="row">
-                                    <div class="col form-group">
-                                        <label class="control-label" for="partnerSelect` + loopIndex + `">Partner</label>
-                                        <select id="partnerSelect` + loopIndex + `"
-                                                class="form-control form-control-sm"
-                                                name="name` + loopIndex + `">
-                                            ` + partnerOptionHtml + `
-                                        </select>
-                                    </div>
                                     <div class="col form-group">
                                         <label class="control-label" for="datePicker` + loopIndex + `">Dates</label>
                                         <input id="datePicker` + loopIndex + `"
@@ -306,18 +342,54 @@
             addDatePicker();
             editPhaseOnClick();
             sortTable();
+            return loopIndex
+        }
+
+        function addPartnerDetailsToForm(partner, loopIndex, tableName = 'planTable'){
+            let phaseElem = '';
+            if ('Phase' in partner) {
+                let phaseName = partner['Phase'];
+                let phaseIndex = findInQuerySelectorAll(phaseName, 'rowPhase')
+                phaseElem = document.getElementById(tableName + 'PhaseHeader' + phaseIndex)
+                phaseElem.click()
+            }
+            let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
+            fp.setDate([partner.start_date, partner.end_date]);
+            let partnerFormNames = getPartnerFormNames(tableName);
+            partnerFormNames.forEach((partnerFormName) => {
+                let colName = 'col' + partnerFormName;
+                let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
+                let currentElemId = (inputCheck) ? partnerFormName.toLowerCase() + 'Select' + loopIndex : partnerFormName + loopIndex;
+                let curElem = document.getElementById(currentElemId);
+                let newValue = partner[partnerFormName.toLowerCase()];
+                if (inputCheck) {
+                    curElem.selectize.addOption({
+                        text: newValue,
+                        id: newValue,
+                        value: newValue
+                    });
+                    curElem.selectize.setValue(newValue);
+                } else {
+                    curElem.value = newValue;
+                }
+            });
+            syncTableWithForm(loopIndex, partnerFormNames);
+            shadeDates(loopIndex, null, 'shadeCell' + loopIndex);
+            if (phaseElem) {
+                phaseElem.click();
+            }
+        }
+
+        function addPartner(clickElem, oldHtml, partner = null, tableName = 'planTable') {
             if (partner) {
-                let selectize = $('#partnerSelect' + loopIndex)[0].selectize;
-                selectize.addOption({text: partner.name, id: partner.name, value: partner.name});
-                selectize.setValue(partner.name);
-                let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
-                fp.setDate([partner.start_date, partner.end_date]);
-                partnerFormNames.forEach((partnerFormName) => {
-                    document.getElementById(partnerFormName + loopIndex).value = partner[partnerFormName]
-                });
-                document.getElementById('rowPartner' + loopIndex).innerHTML = partner.name;
-                syncTableWithForm(loopIndex);
-                shadeDates(loopIndex, null, 'shadeCell' + loopIndex);
+                let loopIndex = findInQuerySelectorAll(partner['partner'], 'rowPartner');
+                if (!loopIndex){
+                    loopIndex = addPartnerRow(clickElem, oldHtml, partner, tableName);
+                }
+                addPartnerDetailsToForm(partner, loopIndex);
+            }
+            else {
+                addPartnerRow(clickElem, oldHtml, partner, tableName);
             }
             toggleMetrics();
         }
@@ -335,7 +407,7 @@
                 document.getElementById('partnerSelectAdd').selectize.clear();
                 let partners = selectedPartners.map(function (e) {
                     let metricElem = document.getElementById('colSelectPartner').querySelector('option[value="' + e + '"]');
-                    let metrics = (metricElem === null) ? {estimated_cpc: 0, estimated_cpm: 0} : metricElem.dataset
+                    let metrics = (metricElem === null) ? {cpc: 0, cpm: 0} : metricElem.dataset
                     return Object.assign({}, {name: e, total_budget: 0,
                         start_date: "{{ object.start_date }}", end_date: "{{ object.end_date }}"},
                         metrics)
@@ -349,6 +421,8 @@
         }
 
         function addPhaseCard(loopIndex, phase = null) {
+            let formNames = ['Phase', 'total_budget'];
+            let phaseForm = buildFormFromCols(loopIndex, formNames);
             let phaseCard = `
                 <div id="toplinePhaseCard` + loopIndex + `"
                     class="card shadow outer text-center" style="display: none;">
@@ -356,14 +430,8 @@
 
                     </div>
                     <div class="card-body">
-                        <form id="toplinePhase` + loopIndex + `"  class="row">
-                            <div class="col form-group">
-                                <label class="control-label" for="phaseSelect` + loopIndex + `">Phase Name</label>
-                                <select id="phaseSelect` + loopIndex + `"
-                                        class="form-control form-control-sm"
-                                        name="name` + loopIndex + `">
-                                </select>
-                            </div>
+                        <form id="toplinePhase` + loopIndex + `"  class="">
+                            ` + phaseForm + `
                             <div class="col form-group">
                                 <label class="control-label" for="datePicker` + loopIndex + `">Dates</label>
                                 <input id="datePicker` + loopIndex + `"
@@ -408,6 +476,54 @@
             });
         }
 
+        function setPhaseMetrics(currentIndex, tableName = 'planTable') {
+            let tableHeadElems = getTableHeadElems(tableName);
+            tableHeadElems.forEach(col => {
+                if (col.dataset['form'] === 'true' && col.dataset['type'] !== 'select') {
+                    let colName = col.id.replace('col', '');
+                    let elems = document.querySelectorAll(`input[id^=${colName}]`);
+                    elems.forEach(e => {
+                        if (e.id.replace(/\d+/g, '') !== colName ) {
+                            return;
+                        }
+                        let loopIndex = e.id.replace(colName, '');
+                        let newVal = null;
+                        if (currentIndex) {
+                            if (e.dataset[currentIndex]) {
+                                newVal = e.dataset[currentIndex];
+                            }
+                        }
+                        else {
+                            newVal = 0;
+                            if (!document.getElementById('col' + colName).dataset['type'].includes('metrics')) {
+                                Object.entries(e.dataset).forEach(x => newVal += parseFloat(x[1]));
+                            }
+                            else {
+                                let costElem = document.getElementById('total_budget' + loopIndex);
+                                Object.entries(costElem.dataset).forEach(x => newVal += parseFloat(x[1]));
+                                let calcVal = 0;
+                                Object.entries(costElem.dataset).forEach(x => {
+                                    let calcElem = parseFloat(e.dataset[x[0]])
+                                    let costElem = parseFloat(x[1])
+                                    calcVal += (costElem / calcElem)
+                                })
+                                newVal = newVal / calcVal;
+                                newVal = newVal.toFixed(2)
+                                /*
+                                if (colName === 'cpm') {
+                                    newVal = newVal * 1000;
+                                }*/
+                            }
+                        }
+                        if (newVal){
+                            e.value = newVal;
+                            syncSingleTableWithForm(loopIndex, colName, tableName, true);
+                        }
+                    })
+                }
+            })
+        }
+
         function togglePhaseCard(currentIndex) {
             let currentCard = document.getElementById('toplinePhaseCard' + currentIndex);
             if (currentCard.style.display === 'none') {
@@ -415,9 +531,11 @@
                 currentCard.style.display = '';
                 document.getElementById('planTableSlideCol').style.display = '';
                 document.getElementById('planTablePhaseHeader' + currentIndex).classList.add('shadeCell');
+                setPhaseMetrics(currentIndex);
             }
             else {
                 turnOffAllCards();
+                setPhaseMetrics(null);
             }
         }
 
@@ -490,8 +608,18 @@
             });
         }
 
-        function submitToplineForm(formContinue) {
-            let formTopline = $('[id^=toplinePartner]').serializeArray();
+        function submitToplineForm(formContinue, tableName = 'planTable') {
+            let formTopline = {};
+            let phaseHeaderIdPrefix = tableName + 'PhaseHeader';
+            let phaseHeaders = document.querySelectorAll(`[id^="${phaseHeaderIdPrefix}"]`);
+            Array.prototype.map.call(phaseHeaders, function (elem) {
+                elem.click();
+                let curIdx = elem.id.replace(phaseHeaderIdPrefix, '');
+                formTopline[curIdx] = {'Phase': {}, 'Partner': {}}
+                formTopline[curIdx]['Phase'] = Object.fromEntries(new FormData(document.querySelector(`[id^=toplinePhase${curIdx}]`)));
+                formTopline[curIdx]['Partner'] =  $('[id^=toplinePartner]').serializeArray();
+                elem.click();
+            });
             saveToplinePartners(formTopline, formContinue);
         }
 
@@ -503,7 +631,7 @@
                     object_name: "{{ object_name }}",
                     object_type: "{{ title }}",
                     object_level: "{{ edit_name }}",
-                    placement_form: formTopline
+                    placement_form: JSON.stringify(formTopline)
                 },
             }).done(function (data, status) {
                 displayAlert(data['message'], data['level'])
@@ -551,18 +679,46 @@
             return matchingElements;
         }
 
-        function syncTableWithForm(loopIndex) {
-            let partnerFormNames = ['total_budget', 'estimated_cpm', 'estimated_cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
-            partnerFormNames.forEach((partnerFormName) => {
-                document.getElementById('row' + partnerFormName + loopIndex).innerHTML = "$" + document.getElementById(partnerFormName + loopIndex).value;
-            });
-            if (document.getElementById('rowtotal_budget' + loopIndex).innerHTML === "$0") {
-                document.getElementById('tr' + loopIndex).classList.add('shadeCell2');
+        function syncSingleTableWithForm(loopIndex, formName, tableName = 'planTable', phaseToggle = false) {
+            let colName = 'col' + formName;
+            let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
+            let currentElemId = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
+            let currentElem = document.getElementById(currentElemId);
+            let currentValue = (inputCheck) ? currentElem.selectize.getValue() : '$' + currentElem.value;
+            if (!inputCheck && !phaseToggle) {
+                let phaseHeaderId = tableName + 'PhaseHeader';
+                let selectedElem = document.querySelectorAll(`[id^='${phaseHeaderId}'].shadeCell`);
+                if (selectedElem.length !== 0) {
+                    let phaseId = selectedElem[0].id.replace(phaseHeaderId, '');
+                    currentElem.dataset[phaseId] = currentElem.value;
+                }
+                else {
+                    let phaseIds = getPhaseIds(tableName);
+                    let phaseVal = currentElem.value;
+                    if (!document.getElementById(colName).dataset['type'].includes('metrics')) {
+                        phaseVal = phaseVal / phaseIds.length;
+                    }
+                    phaseIds.forEach(phaseId => {
+                        currentElem.dataset[phaseId] = phaseVal;
+                    })
+                }
             }
-            else {
-                document.getElementById('tr' + loopIndex).classList.remove('shadeCell2');
+            document.getElementById('row' + formName + loopIndex).innerHTML = currentValue;
+            let curRow = document.getElementById('tr' + loopIndex);
+            if (curRow) {
+                if (document.getElementById('rowtotal_budget' + loopIndex).innerHTML === "$0") {
+                    document.getElementById('tr' + loopIndex).classList.add('shadeCellError');
+                } else {
+                    document.getElementById('tr' + loopIndex).classList.remove('shadeCellError');
+                }
             }
             populateTotalCards();
+        }
+
+        function syncTableWithForm(loopIndex, formNames) {
+            formNames.forEach((formName) => {
+                syncSingleTableWithForm(loopIndex, formName);
+            });
         }
 
         function formatNumber(currentNumber) {
@@ -577,8 +733,8 @@
             });
             let partnerFormNames = [
                 ['', 'total_budget', 1],
-                ['estimated_cpm', 'Impressions', 0],
-                ['estimated_cpc', 'Clicks', 0],
+                ['cpm', 'Impressions', 0],
+                ['cpc', 'Clicks', 0],
                 ['cplpv', 'Landing Page', 0],
                 ['cpbc', 'Button Clicks', 0],
                 ['cpv', 'Views', 0],
@@ -628,6 +784,7 @@
                 }
             });
             generateTotalCards('totalCards', data);
+            toggleMetrics();
         }
 
         function sortTable() {
@@ -672,12 +829,31 @@
             trs.forEach(setTrStyleDisplay)
         }
 
-        function addPhase(phase, tableName = 'planTable') {
-            let thead = document.getElementById(tableName + 'THead');
+        function getPhaseIds(tableName) {
             let phaseHeaders = document.querySelectorAll("[id^='" + tableName + "PhaseHeader']");
-            let tHeadIds = Array.prototype.map.call(phaseHeaders, function (elem) {
+            return Array.prototype.map.call(phaseHeaders, function (elem) {
                 return parseInt(elem.id.replace('planTablePhaseHeader', ''));
             });
+        }
+
+        function addDataToFormForNewPhase(phaseId) {
+            let formNames = getPartnerFormNames('planTable');
+            formNames.forEach(formName => {
+                if (document.getElementById('col' + formName).dataset['type'].includes('metrics') || formName === 'total_budget') {
+                    let elems = document.querySelectorAll(`input[id^=${formName}]`);
+                    elems.forEach(e => {
+                        if (!e.dataset[phaseId]) {
+                            let newVal = (formName === 'total_budget') ? 0 : e.dataset[phaseId - 1];
+                            e.dataset[phaseId] = newVal;
+                        }
+                    })
+                }
+            })
+        }
+
+        function addPhase(phase, tableName = 'planTable') {
+            let thead = document.getElementById(tableName + 'THead');
+            let tHeadIds = getPhaseIds(tableName);
             let minId = (tHeadIds.length !== 0) ? (Math.min.apply(Math, tHeadIds) - 1).toString() : '-1';
             let colorClass = "shadeCell" + minId.replace('-', '');
             let tableHeaders = getRowHtml(minId);
@@ -692,6 +868,7 @@
             document.getElementById('rowPartner' + minId).innerHTML = phase.name;
             shadeDates(minId, [phase.start_date, phase.end_date], colorClass);
             addPhaseCard(minId, phase);
+            addDataToFormForNewPhase(minId);
         }
 
         function addCurrentPhases(phases, tableName = 'planTable') {
@@ -699,6 +876,10 @@
                 addPhase(phase, tableName);
             });
             turnOffAllCards();
+        }
+
+        function generateDisplayColumnName(colName) {
+            return colName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ');
         }
 
         function addTableColumns(cols, name) {
@@ -713,39 +894,47 @@
             toggleMetricsOnChange();
             cols.forEach(col => {
                 let colName = col['name'];
-                thead.innerHTML += `<th id="col` + colName +`">` + colName + `</th>`;
+                thead.innerHTML += `<th data-form="${col['form']}" data-type="${col['type']}" id="col${colName}">${generateDisplayColumnName(colName)}</th>`;
+                if (col['hidden']) {
+                    document.getElementById('col' + colName).style.display = 'none';
+                }
                 if (col['type'] === 'select') {
                     let selectName = 'colSelect' + colName;
                     let colElem = document.getElementById('col' + colName);
                     colElem.innerHTML += `<select id="` + selectName + `" hidden=''></select>`;
                     let colSelectElem = document.getElementById(selectName);
                     col['values'].forEach(val => {
+                        let optionData = '';
+                        Object.entries(val).forEach(([k,v]) => {
+                            optionData += `data-` + k + `="` + v +`" `;
+                        })
                         colSelectElem.innerHTML += `
-                            <option data-estimated_cpm="` + val['eCPM'] + `"
-                                    data-estimated_cpc="` + val['eCPC'] + `"
-                                    data-cplpv="` + val['CPLPV'] + `"
-                                    data-cpbc="` + val['CPBC'] + `"
-                                    data-CPV="` + val['CPV'] + `"
-                                    data-CPCV="` + val['CPCV'] + `"
-                                    value="` + val['name'] + `">` + val['name'] + `</option>`;
+                            <option ` + optionData + `
+                                    value="` + val[colName] + `">` + val[colName] + `</option>`;
                     })
-                    document.getElementById('selectAddPartnerPlaceholder').innerHTML = `
-                        <select id="partnerSelectAdd" multiple="" class="width100 form-control">
-                            <option value="">Select Partners To Add...</option>
+                    if (col['add_select_box']) {
+                        let placeHolderName = 'selectAdd' + colName + 'Placeholder';
+                        let addBoxName = colName.toLowerCase() + 'SelectAdd';
+                        document.getElementById(placeHolderName).innerHTML = `
+                        <select id="` + addBoxName + `" multiple="" class="width100 form-control">
+                            <option value="">Select `+ colName + `s To Add...</option>
                         </select>`;
-                    document.getElementById('partnerSelectAdd').innerHTML += document.getElementById('colSelectPartner').innerHTML;
+                        document.getElementById(addBoxName).innerHTML += document.getElementById(selectName).innerHTML;
+                    }
                     addSelectize();
                 }
-                if (col['type'] === 'metrics') {
+                if (col['type'].includes('metrics')) {
                     let selectize = document.getElementById('metricsSelectAdd').selectize;
                     selectize.addOption({
-                        text: colName,
+                        text: generateDisplayColumnName(colName),
                         id: colName,
                         value: colName
                     });
-                    let curVal = selectize.getValue();
-                    curVal.push(colName);
-                    selectize.setValue(curVal);
+                    if (col['type'] === 'default_metrics') {
+                        let curVal = selectize.getValue();
+                        curVal.push(colName);
+                        selectize.setValue(curVal);
+                    }
                 }
             });
         }

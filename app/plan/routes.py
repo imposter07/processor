@@ -1,3 +1,4 @@
+import json
 from app import db
 import numpy as np
 import pandas as pd
@@ -49,8 +50,9 @@ def plan():
 @bp.route('/plan/<object_name>', methods=['GET', 'POST'])
 @login_required
 def edit_plan(object_name):
-    kwargs = Plan.get_current_plan(object_name, 'edit_plan', edit_progress=50,
-                                   edit_name='Basic')
+    kwargs = Plan().get_current_plan(object_name, 'edit_plan',
+                                     edit_progress=100,
+                                     edit_name='Basic')
     current_plan = kwargs['object']
     form = EditPlanForm(original_name=current_plan.name)
     form.set_choices()
@@ -126,15 +128,18 @@ def topline(object_name):
 def get_topline():
     cur_plan = Plan.query.filter_by(
         name=request.form['object_name']).first_or_404()
-    partners = Partner.query.filter(
-        Partner.plan_phase_id.in_([x.id for x in cur_plan.phases])).all()
-    partners = [x.get_form_dict() for x in partners]
+    partners = []
+    for phase in cur_plan.phases:
+        partners.extend(
+            [x.get_form_dict(phase)
+             for x in Partner.query.filter_by(plan_phase_id=phase.id)])
     a = ProcessorAnalysis.query.filter_by(
-        processor_id=23, key='database_cache', parameter='vendorname').first()
+        processor_id=23, key='database_cache',
+        parameter='vendorname|vendortypename').first()
     df = pd.read_json(a.data)
     df = df[df['impressions'] > 0].sort_values('impressions', ascending=False)
-    df['eCPM'] = (df['netcost'] / (df['impressions'] / 1000)).round(2)
-    df['eCPC'] = (df['netcost'] / df['clicks']).round(2)
+    df['cpm'] = (df['netcost'] / (df['impressions'] / 1000)).round(2)
+    df['cpc'] = (df['netcost'] / df['clicks']).round(2)
     df['cplpv'] = df['CPLPV'].round(2)
     df['Landing Page'] = df['landingpage']
     df['cpbc'] = df['CPBC'].round(2)
@@ -145,26 +150,49 @@ def get_topline():
     df['cpcv'] = (df['netcost'] / df['videoviews100']).round(2)
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.fillna(0)
-    df = df.rename(columns={'vendorname': 'name'})
+    df = df[['vendorname', 'vendortypename', 'cpm', 'cpc',
+             'cplpv', 'cpbc', 'cpv', 'cpcv']]
+    df = df.rename(columns={
+        'vendorname': 'Partner', 'vendortypename': 'partner_type'})
     partner_list = df.to_dict(orient='records')
     sd = cur_plan.start_date
     ed = cur_plan.end_date
     weeks = [sd + dt.timedelta(days=x)
              for i, x in enumerate(range((ed-sd).days)) if i % 7 == 0]
     weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
-    metric_cols = ['estimated_cpm', 'Impressions', 'estimated_cpc', 'Clicks',
-                   'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
-                   'cpv', 'Video Views 100', 'cpcv']
-    col_list = (['partner_type', 'Partner', 'total_budget'] + weeks_str +
-                metric_cols)
+    form_cols = ['total_budget', 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
+    def_metric_cols = ['cpm', 'Impressions', 'cpc', 'Clicks']
+    metric_cols = def_metric_cols + [
+        'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
+        'cpv', 'Video Views 100', 'cpcv']
+    col_list = (['partner_type', 'Partner', 'total_budget', 'Phase'] +
+                weeks_str + metric_cols)
     cols = []
     for x in col_list:
-        cur_col = {'name': x, 'type': ''}
+        cur_col = {'name': x, 'type': '', 'add_select_box': False,
+                   'hidden': False, 'header': False, 'form': False}
         if x == 'Partner':
             cur_col['type'] = 'select'
             cur_col['values'] = partner_list
+            cur_col['add_select_box'] = True
+            cur_col['form'] = True
+        if x == 'partner_type':
+            cur_col['type'] = 'select'
+            cur_col['form'] = True
+            cur_col['values'] = pd.DataFrame(
+                df['partner_type'].unique()).rename(
+                    columns={0: 'partner_type'}).to_dict(orient='records')
+        if x == 'Phase':
+            cur_col['type'] = 'select'
+            cur_col['values'] = [{'Phase': x} for x in ['Launch', 'Pre-Launch']]
+            cur_col['hidden'] = True
+            cur_col['header'] = True
         if x in metric_cols:
             cur_col['type'] = 'metrics'
+            if x in def_metric_cols:
+                cur_col['type'] = 'default_metrics'
+        if x in form_cols:
+            cur_col['form'] = True
         cols.append(cur_col)
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
     return jsonify({'data': {'partners': partners,
@@ -176,42 +204,45 @@ def get_topline():
 def save_topline():
     obj_name = request.form['object_name']
     cur_plan = Plan.query.filter_by(name=obj_name).first_or_404()
-    data = request.form.to_dict()
+    data = json.loads(request.form['placement_form'])
     topline_list = []
-    num_partners = max([v.split('name')[1] for k, v in data.items() if
-                        'name' in v and 'name' in k])
-    for x in range(int(num_partners) + 1):
-        tl_dict = {}
-        for col in ['name', 'dates', 'total_budget', 'estimated_cpm',
-                    'estimated_cpc']:
-            col_name = '{}{}'.format(col, x)
-            new_data = utl.get_col_from_serialize_dict(data, col_name)[0]
-            if col == 'dates':
-                date_list = new_data.split(' to ')
-                sd = date_list[0]
-                ed = date_list[1]
-                tl_dict['start_date'] = dt.datetime.strptime(sd, '%Y-%m-%d')
-                tl_dict['end_date'] = dt.datetime.strptime(ed, '%Y-%m-%d')
-            else:
-                tl_dict[col] = new_data
-        topline_list.append(tl_dict)
-    old_part = Partner.query.filter(
-        Partner.plan_phase_id.in_([x.id for x in cur_plan.phases])).all()
-    if old_part:
-        for p in old_part:
-            new_p = [x for x in topline_list if p.name == x['name']]
-            if new_p:
-                new_p = new_p[0]
-                p.set_from_form(form=new_p, current_plan=cur_plan)
-                db.session.commit()
-                topline_list = [x for x in topline_list if p.name != x['name']]
-            else:
-                db.session.delete(p)
-    for p in topline_list:
-        new_p = Partner()
-        new_p.set_from_form(form=p, current_plan=cur_plan)
-        db.session.add(new_p)
-        db.session.commit()
+    phase_list = []
+    for phase_idx in data:
+        phase = data[phase_idx]
+        phase_data = phase['Phase']
+        phase_dict = {'name': phase_data['phaseSelect' + phase_idx],
+                      'total_budget': phase_data['total_budget' + phase_idx]}
+        phase_dict = utl.get_sd_ed_in_dict(
+            phase_dict, phase_data['dates' + phase_idx])
+        phase_list.append(phase_dict)
+    old_phase = PlanPhase.query.filter_by(plan_id=cur_plan.id).all()
+    utl.sync_new_form_data_with_database(
+        form_dict=phase_list, old_db_items=old_phase, db_model=PlanPhase,
+        relation_db_item=cur_plan)
+    for phase_idx in data:
+        phase_name = data[phase_idx]['Phase']['phaseSelect' + phase_idx]
+        cur_phase = PlanPhase.query.filter_by(name=phase_name,
+                                              plan_id=cur_plan.id).first()
+        partner_data = data[phase_idx]['Partner']
+        num_partners = len([x for x in partner_data
+                            if 'total_budget' in x['name']])
+        for x in range(int(num_partners)):
+            tl_dict = {}
+            for col in ['partner_typeSelect', 'partnerSelect',
+                        'total_budget', 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv',
+                        'cpcv', 'dates']:
+                col_name = '{}{}'.format(col, x)
+                new_data = [x['value'] for x in partner_data
+                            if x['name'] == col_name][0]
+                if col == 'dates':
+                    tl_dict = utl.get_sd_ed_in_dict(tl_dict, new_data)
+                else:
+                    tl_dict[col] = new_data
+            topline_list.append(tl_dict)
+        old_part = Partner.query.filter_by(plan_phase_id=cur_phase.id).all()
+        utl.sync_new_form_data_with_database(
+            form_dict=topline_list, old_db_items=old_part, db_model=Partner,
+            relation_db_item=cur_phase, form_search_name='partnerSelect')
     return jsonify({'message': 'This data source {} was saved!'.format(
         obj_name), 'level': 'success'})
 

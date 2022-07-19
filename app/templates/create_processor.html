@@ -797,8 +797,16 @@
         function getTableComplete(tableName, pond, vendorKey, data){
             if ((tableName === 'OutputDataFullOutput') ||
                 (tableName === 'download_raw_data') ||
-                (tableName === 'OutputDataSOW')) {
-                let mimeType = tableName === 'OutputDataSOW' ? 'application/pdf' : 'text/csv'
+                (tableName === 'OutputDataSOW') ||
+                (tableName === 'OutputDataTopline')
+            ) {
+                let mimeType = 'text/csv'
+                if (tableName === 'OutputDataSOW') {
+                    mimeType = 'application/pdf'
+                }
+                else if (tableName === 'OutputDataTopline') {
+                    mimeType = 'application/xls'
+                }
                 let blob = new Blob([data], {type: mimeType});
                 pond.addFile(blob);
                 let link = document.createElement('a');

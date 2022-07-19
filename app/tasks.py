@@ -502,7 +502,7 @@ def get_file_in_memory(tables, file_name='raw.csv'):
         data = zipfile.ZipInfo(file_name)
         data.date_time = time.localtime(time.time())[:6]
         data.compress_type = zipfile.ZIP_DEFLATED
-        if file_type == '.pdf':
+        if file_type == '.pdf' or file_type == '.xls':
             f.write(tables, arcname=file_name)
         else:
             f.writestr(data, data=tables.to_csv())
@@ -3438,10 +3438,11 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                 for k, v in f.items():
                     if v:
                         if k == 'eventdate':
-                            sd = datetime.strptime(v[0],
-                                '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
-                            ed = datetime.strptime(v[1],
-                                '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
+                            date_format_str = '%Y-%m-%dT%H:%M:%S.%fZ'
+                            sd = datetime.strptime(
+                                v[0], date_format_str).strftime('%Y-%m-%d')
+                            ed = datetime.strptime(
+                                v[1], date_format_str).strftime('%Y-%m-%d')
                             w = (" AND (event.{0} BETWEEN '{1}' AND '{2}' "
                                  "OR event.{0} IS NULL)".format(k, sd, ed))
                         else:
@@ -4593,6 +4594,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 processor_id, current_user_id, fix_id), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
+
 def get_request_table(processor_id, current_user_id, fix_id):
     try:
         cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
@@ -4700,11 +4702,11 @@ def get_sow(plan_id, current_user_id):
 
         camp_ttl = net_media + ag_fee + float(cur_sow.ad_serving) + programm
         styles = getSampleStyleSheet()
-        styleN = styles["BodyText"]
+        style_n = styles["BodyText"]
         last_row = Paragraph(
             ('<b>Total Due To Liquid: Billed upon campaign commencement. '
              'Payment terms are net 30 days.</b>'),
-            styleN)
+            style_n)
 
         data2 = [
             ["", ""],
@@ -4746,6 +4748,48 @@ def get_sow(plan_id, current_user_id):
         os.remove(file_name)
         _set_task_progress(100)
         return [pdf_file]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                plan_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_topline(plan_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        import datetime as dt
+        cur_plan = Plan.query.get(plan_id)
+        file_name = 'topline_{}.xls'.format(cur_plan.id)
+        writer = pd.ExcelWriter(file_name)
+        for phase in cur_plan.phases:
+            df = pd.DataFrame([x.get_form_dict() for x in phase.partners])
+            sd = cur_plan.start_date
+            ed = cur_plan.end_date
+            weeks = [sd + dt.timedelta(days=x)
+                     for i, x in enumerate(range((ed - sd).days)) if i % 7 == 0]
+            for week in weeks:
+                week_str = dt.datetime.strftime(week, '%Y-%m-%d')
+                cal_start = week
+                cal_end = week + dt.timedelta(days=6)
+                df['start_check'] = np.where(cal_end >= pd.to_datetime(
+                    df['start_date']).dt.date, True, False)
+                df['end_check'] = np.where(cal_start <= pd.to_datetime(
+                    df['end_date']).dt.date, True, False)
+                df[week_str] = df['start_check'] & df['end_check']
+                for col in [('cpm', 'impressions'), ('cpc', 'clicks')]:
+                    thousand = 1
+                    if col[0] == 'cpm':
+                        thousand = 1000
+                    df[col[1]] = (df['total_budget'] / df[col[0]]) * thousand
+                    df[col[1]] = df[col[1]].astype(int)
+            df.to_excel(writer, sheet_name=phase.name)
+        writer.save()
+        excel_file = get_file_in_memory(file_name, file_name='topline.xls')
+        os.remove(file_name)
+        _set_task_progress(100)
+        return [excel_file]
     except:
         _set_task_progress(100)
         app.logger.error(

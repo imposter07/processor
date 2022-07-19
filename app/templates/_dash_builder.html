@@ -907,7 +907,7 @@
                 let curElem = document.getElementById(elem);
                 curElem.innerHTML += `
                     <div id="totalCard` + d['name'] + `" class="card mb-auto shadow-lg">
-                    <h3 class="text-muted small">` + d['name'] + `</h3>
+                    <h3 class="text-muted small">` + d['name'].toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ') + `</h3>
                     <h5 id="totalCardValue` + d['name'] + `" class="text-large" style="text-align:center">
                     ` + d['current_value'] + `</h5>
                     <div class="card-footer">

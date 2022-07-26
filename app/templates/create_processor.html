@@ -1499,6 +1499,13 @@
             });
         }
 
+        function removeSpecialChars() {
+            $('input[id$=name]').on('blur', function() {
+                forbiddenChars = /[#&$^@*!%]/g
+                this.value = this.value.replace(forbiddenChars, '')
+            })
+        }
+
         $(document).ready(function(){
             $('input[id*="unresolved_relations"]').each(function(index){
                 if (($(this)[0].value === '0') || ($(this)[0].value === '')
@@ -1567,6 +1574,8 @@
                 getAutoNote()
             } else if ("{{ edit_name }}" === "Plan") {
                 getPlan()
+            } else if ("{{ edit_name }}" === 'Import') {
+                removeSpecialChars()
             }
         })
     </script>

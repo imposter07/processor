@@ -333,16 +333,18 @@ function getMetricTableAsArray() {
     return metricArray
 }
 
-function getTableAsArray(tableId) {
+function getTableAsArray(tableId, cols=[]) {
     let rows = document.getElementById(tableId).getElementsByTagName('tr');
     let tableArray = []
     for (var i = 1, row; row = rows[i]; i++) {
         col = rows[i].children
         row = {}
         for (var j = 0, col; col = rows[0].cells[j]; j++) {
+            if ((cols.length === 0) || (cols.includes(rows[0].cells[j].innerHTML))) {
             let col_name = rows[0].cells[j].textContent
             let row_value = rows[i].cells[j].textContent
             row[col_name] = row_value
+            }
         }
         tableArray.push(row)
     }

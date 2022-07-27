@@ -37,188 +37,211 @@
             overflow: auto;
         }
     </style>
+    <nav>
     <div class="row">
         <div class="col-md-12">
             <div class="card-header">
-                <div class="row" id="navRow">
-                    <div class="btn-group btn-group-sm btn-block" role="group">
-                        <button id="getAllCharts"
-                                class="btn btn-outline-primary"><i
-                                class="fas fa-chart-bar" href="#" role="button"
-                                aria-hidden="true"></i>Get All Charts
-                        </button>
-                    </div>
+                <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                    <a class="nav-link active" id="nav-dash-tab" data-toggle="tab" href="#nav-dash" role="tab" aria-controls="nav-dash" aria-selected="true">
+                        <h4><i class="fas fa-solid fa-chart-column btn btn-secondary" style="float:right;" aria-hidden="true"></i></h4>
+                    </a>
+                    <a class="nav-link" id="nav-pacing-tab" data-toggle="tab" href="#nav-pacing" role="tab" aria-controls="nav-pacing" aria-selected="false"
+                        onclick="setTimeout(getMetrics, 1000, '#pacingMetrics', generatePacingTable, ['vendorname', 'campaignname'], ['netcost'], []);">
+                        <h4><i class="fas fa-solid fa-table-cells btn btn-secondary" style="float:right;" aria-hidden="true"></i></h4>
+                    </a>
                 </div>
-                <div class="row" id="filterRow" hidden="">
-                    <div class="col mb-3">
-                        <select id="campaignnameSelect" multiple=""
-                                class="form-control form-control-sm">
-                            <option value="">Campaign</option>
-                        </select>
-                    </div>
-                    <div class="col mb-3">
-                        <select id="vendornameSelect" multiple=""
-                                class="form-control form-control-sm">
-                            <option value="">Vendor</option>
-                        </select>
-                    </div>
-                    <div class="col mb-3">
-                        <select id="countrynameSelect" multiple=""
-                                class="form-control form-control-sm">
-                            <option value="">Country</option>
-                        </select>
-                    </div>
-                    <div class="col mb-3">
-                        <select id="environmentnameSelect" multiple=""
-                                class="form-control form-control-sm">
-                            <option value="">Environment</option>
-                        </select>
-                    </div>
-                    <div class="col mb-3">
-                        <select id="kpinameSelect" multiple=""
-                                class="form-control form-control-sm">
-                            <option value="">KPI</option>
-                        </select>
-                    </div>
-                    <div class="col mb-3">
-                        <div class="row">
-                            <input id="datePicker"
-                                   class="custom-select custom-select-sm
-                                          flatpickr flatpickr-input active"
-                                   type="text" placeholder="Date"
-                                   data-id="range"
-                                   readonly="readonly" data-input>
+            </div>
+        </div>
+    </div>
+    </nav>
+    <div class="tab-content" id="nav-dash-tabContent">
+        <div class="tab-pane fade show active" id="nav-dash"
+             role="tabpanel" aria-labelledby="nav-dash-tab">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card-header">
+                        <div class="row" id="navRow">
+                            <div class="btn-group btn-group-sm btn-block" role="group">
+                                <button id="getAllCharts"
+                                        class="btn btn-outline-primary"><i
+                                        class="fas fa-chart-bar" href="#" role="button"
+                                        aria-hidden="true"></i>Get All Charts
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row" id="filterRow" hidden="">
+                            <div class="col mb-3">
+                                <select id="campaignnameSelect" multiple=""
+                                        class="form-control form-control-sm">
+                                    <option value="">Campaign</option>
+                                </select>
+                            </div>
+                            <div class="col mb-3">
+                                <select id="vendornameSelect" multiple=""
+                                        class="form-control form-control-sm">
+                                    <option value="">Vendor</option>
+                                </select>
+                            </div>
+                            <div class="col mb-3">
+                                <select id="countrynameSelect" multiple=""
+                                        class="form-control form-control-sm">
+                                    <option value="">Country</option>
+                                </select>
+                            </div>
+                            <div class="col mb-3">
+                                <select id="environmentnameSelect" multiple=""
+                                        class="form-control form-control-sm">
+                                    <option value="">Environment</option>
+                                </select>
+                            </div>
+                            <div class="col mb-3">
+                                <select id="kpinameSelect" multiple=""
+                                        class="form-control form-control-sm">
+                                    <option value="">KPI</option>
+                                </select>
+                            </div>
+                            <div class="col mb-3">
+                                <div class="row">
+                                    <input id="datePicker"
+                                           class="custom-select custom-select-sm
+                                                  flatpickr flatpickr-input active"
+                                           type="text" placeholder="Date"
+                                           data-id="range"
+                                           readonly="readonly" data-input>
+                                </div>
+                            </div>
+                            <div class="col mb-3">
+                                <button id="applyFilter" type="button"
+                                        class="btn btn-block btn-outline-primary btn-sm">
+                                    Apply Filter
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div class="col mb-3">
-                        <button id="applyFilter" type="button"
-                                class="btn btn-block btn-outline-primary btn-sm">
-                            Apply Filter
-                        </button>
+                </div>
+            </div>
+
+            <br>
+            <div class="row">
+                <div class="col-md-12 h-50">
+                    <div class="card-deck container-fluid text-center">
+                        <div id="totalMetricsProgress" class='widget'></div>
+                        <div id="totalMetrics" class="row w-100"></div>
+                    </div>
+                </div>
+            </div>
+
+            <br>
+            <div class="row">
+                <div class="col-md-3 h-50">
+                    <div class="card-header">
+                        <h7 class="mb-3">Delivery</h7>
+                        <select id="deliveryMetricsSelect"
+                                class="form-control form-control-sm">
+                            <option>Select Campaign</option>
+                        </select>
+                    </div>
+                    <div class="card container-fluid shadow outer">
+                        <div id="deliveryMetricsProgress" class='widget'></div>
+                        <div id="deliveryMetrics" style="height:250px;"></div>
+                    </div>
+                </div>
+                <div class="col-md-9 h-50">
+                    <div class="card-header">
+                        <h7 class="mb-3">Daily</h7>
+                        <select id="dailyMetricsSelect" class="form-control form-control-sm">
+                            <option>Select Metric</option>
+                        </select>
+                    </div>
+                    <div class="card container-fluid shadow outer">
+                        <div id="dailyMetricsProgress" class='widget'></div>
+                        <div id="dailyMetrics"></div>
+                    </div>
+                </div>
+            </div>
+            <br>
+            <div class="row" id="thirdRow" hidden="">
+                <div class="col-md-6 h-50">
+                    <div class="card-header">
+                        <h7 class="mb-3">Partner</h7>
+                        <select id="partnerMetricsSelect"
+                                class="form-control form-control-sm">
+                            <option>Select Metric</option>
+                        </select>
+                    </div>
+                    <div class="card container-fluid shadow outer">
+                        <div id="partnerMetricsProgress" class='widget'></div>
+                        <div id="partnerMetrics"></div>
+                    </div>
+                </div>
+                <div class="col-md-6 h-50">
+                    <div class="card-header">
+                        <h7 class="mb-3">Country</h7>
+                        <select id="countryMetricsSelect"
+                                class="form-control form-control-sm">
+                            <option>Select Metric</option>
+                        </select>
+                    </div>
+                    <div class="card container-fluid shadow outer">
+                        <div id="countryMetricsProgress" class='widget'></div>
+                        <div id="countryMetrics"></div>
+                    </div>
+                </div>
+            </div><br>
+            <div class="row" id="fourthRow" hidden="">
+                <div class="col-md-4 h-50">
+                    <div class="card-header">
+                        <h7 class="mb-3">Campaign</h7>
+                        <select id="campaignMetricsSelect"
+                                class="form-control form-control-sm">
+                            <option>Select Metric</option>
+                        </select>
+                    </div>
+                    <div class="card container-fluid shadow outer">
+                        <div id="campaignMetricsProgress" class='widget'></div>
+                        <div id="campaignMetrics"></div>
+                    </div>
+                </div>
+                <div class="col-md-4 h-50">
+                    <div class="card-header">
+                        <h7 class="mb-3">Device</h7>
+                        <select id="environmentMetricsSelect"
+                                class="form-control form-control-sm">
+                            <option>Select Metric</option>
+                        </select>
+                    </div>
+                    <div class="card container-fluid shadow outer">
+                        <div id="environmentMetricsProgress" class='widget'></div>
+                        <div id="environmentMetrics"></div>
+                    </div>
+                </div>
+                <div class="col-md-4 h-50">
+                    <div class="card-header">
+                        <h7 class="mb-3">KPI</h7>
+                        <select id="kpiMetricsSelect"
+                                class="form-control form-control-sm">
+                            <option>Select Metric</option>
+                        </select>
+                    </div>
+                    <div class="card container-fluid shadow outer">
+                        <div id="kpiMetricsProgress" class='widget'></div>
+                        <div id="kpiMetrics"></div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <br>
-    <div class="row">
-        <div class="col-md-12 h-50">
-            <div class="card-deck container-fluid text-center">
-                <div id="totalMetricsProgress" class='widget'></div>
-                <div id="totalMetrics" class="row w-100"></div>
-            </div>
-        </div>
-    </div>
-
-    <br>
-    <div class="row">
-        <div class="col-md-3 h-50">
-            <div class="card-header">
-                <h7 class="mb-3">Delivery</h7>
-                <select id="deliveryMetricsSelect"
-                        class="form-control form-control-sm">
-                    <option>Select Campaign</option>
-                </select>
-            </div>
-            <div class="card container-fluid shadow outer">
-                <div id="deliveryMetricsProgress" class='widget'></div>
-                <div id="deliveryMetrics" style="height:250px;"></div>
-            </div>
-        </div>
-        <div class="col-md-9 h-50">
-            <div class="card-header">
-                <h7 class="mb-3">Daily</h7>
-                <select id="dailyMetricsSelect" class="form-control form-control-sm">
-                    <option>Select Metric</option>
-                </select>
-            </div>
-            <div class="card container-fluid shadow outer">
-                <div id="dailyMetricsProgress" class='widget'></div>
-                <div id="dailyMetrics"></div>
-            </div>
-        </div>
-    </div>
-    <br>
-    <div class="row" id="thirdRow" hidden="">
-        <div class="col-md-6 h-50">
-            <div class="card-header">
-                <h7 class="mb-3">Partner</h7>
-                <select id="partnerMetricsSelect"
-                        class="form-control form-control-sm">
-                    <option>Select Metric</option>
-                </select>
-            </div>
-            <div class="card container-fluid shadow outer">
-                <div id="partnerMetricsProgress" class='widget'></div>
-                <div id="partnerMetrics"></div>
-            </div>
-        </div>
-        <div class="col-md-6 h-50">
-            <div class="card-header">
-                <h7 class="mb-3">Country</h7>
-                <select id="countryMetricsSelect"
-                        class="form-control form-control-sm">
-                    <option>Select Metric</option>
-                </select>
-            </div>
-            <div class="card container-fluid shadow outer">
-                <div id="countryMetricsProgress" class='widget'></div>
-                <div id="countryMetrics"></div>
-            </div>
-        </div>
-    </div><br>
-    <div class="row" id="fourthRow" hidden="">
-        <div class="col-md-4 h-50">
-            <div class="card-header">
-                <h7 class="mb-3">Campaign</h7>
-                <select id="campaignMetricsSelect"
-                        class="form-control form-control-sm">
-                    <option>Select Metric</option>
-                </select>
-            </div>
-            <div class="card container-fluid shadow outer">
-                <div id="campaignMetricsProgress" class='widget'></div>
-                <div id="campaignMetrics"></div>
-            </div>
-        </div>
-        <div class="col-md-4 h-50">
-            <div class="card-header">
-                <h7 class="mb-3">Device</h7>
-                <select id="environmentMetricsSelect"
-                        class="form-control form-control-sm">
-                    <option>Select Metric</option>
-                </select>
-            </div>
-            <div class="card container-fluid shadow outer">
-                <div id="environmentMetricsProgress" class='widget'></div>
-                <div id="environmentMetrics"></div>
-            </div>
-        </div>
-        <div class="col-md-4 h-50">
-            <div class="card-header">
-                <h7 class="mb-3">KPI</h7>
-                <select id="kpiMetricsSelect"
-                        class="form-control form-control-sm">
-                    <option>Select Metric</option>
-                </select>
-            </div>
-            <div class="card container-fluid shadow outer">
-                <div id="kpiMetricsProgress" class='widget'></div>
-                <div id="kpiMetrics"></div>
-            </div>
-        </div>
+        {% include 'pacing.html' %}
     </div>
 
     <script>
         function getAllCharts(filterDict, clickElem=null, oldHtml=null,
                               allCharts=false) {
             let metrics = ['kpi']
-            getMetrics('#totalMetrics', generateTotalCards, 'mpProduct Name',
+            getMetrics('#totalMetrics', generateTotalCards, ['mpProduct Name'],
                  metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
-            getMetrics('#dailyMetrics', generateAreaChart, 'eventdate',
+            getMetrics('#dailyMetrics', generateAreaChart, ['eventdate'],
                 metrics, filterDict);
-            getMetrics('#deliveryMetrics', generateProgressBars, 'vendorname',
+            getMetrics('#deliveryMetrics', generateProgressBars, ['vendorname'],
                 ['netcost', 'plannednetcost'], filterDict);
             if (allCharts) {
                 getSecondaryCharts(filterDict, clickElem)
@@ -231,15 +254,15 @@
             $('#thirdRow').removeAttr('hidden')
             $('#fourthRow').removeAttr('hidden')
             $('#filterRow').removeAttr('hidden')
-            getMetrics('#partnerMetrics', generateBarChart, 'vendorname',
+            getMetrics('#partnerMetrics', generateBarChart, ['vendorname'],
                 metrics, filterDict, null, null, null, null, addSelect);
-            getMetrics('#countryMetrics', generateBarChart, 'countryname',
+            getMetrics('#countryMetrics', generateBarChart, ['countryname'],
                 metrics, filterDict, null, null, null, null, addSelect);
-            getMetrics('#campaignMetrics', generateLollipopChart, 'campaignname',
+            getMetrics('#campaignMetrics', generateLollipopChart, ['campaignname'],
                 metrics, filterDict, null, null, null, null, addSelect);
-            getMetrics('#environmentMetrics', generateLollipopChart, 'environmentname',
+            getMetrics('#environmentMetrics', generateLollipopChart, ['environmentname'],
                 metrics, filterDict, null, null, null, null, addSelect)
-            getMetrics('#kpiMetrics', generateLollipopChart, 'kpiname',
+            getMetrics('#kpiMetrics', generateLollipopChart, ['kpiname'],
                 metrics, filterDict, null, null, null, null, addSelect)
         }
 

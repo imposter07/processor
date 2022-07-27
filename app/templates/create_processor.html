@@ -514,6 +514,18 @@
                     SendDataTable('modalTable', form_continue, 'plan', 'accounts');
                 }
                 else {
+                    if ("{{ edit_name }}" === "Import") {
+                        let unnamedImports = false
+                        $('input[id$=name]').each(function(index, elem) {
+                            if (elem.value === '') {
+                                displayAlert('All API cards must be named before saving.', 'danger')
+                                unnamedImports = true
+                            }
+                        })
+                        if (unnamedImports) {
+                            return;
+                        }
+                    }
                     document.getElementById("base_form_id").submit();
                 }
             }
@@ -973,6 +985,17 @@
         }
         $(document).ready(function() {
             $('button[id^="load"]').click(function() {
+                if ("{{ edit_name }}" === 'Import') {
+                    let unnamedImports = false
+                    $('input[id$=name]').each(function(index, elem) {
+                        if (elem.value === '') {
+                            unnamedImports = true
+                        }
+                    })
+                    if (unnamedImports) {
+                        return;
+                    }
+                }
                 if (document.getElementById('base_form_id').checkValidity()) {
                     animateBar();
                     let elem = $('#' + this.id)

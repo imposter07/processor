@@ -515,14 +515,9 @@
                 }
                 else {
                     if ("{{ edit_name }}" === "Import") {
-                        let unnamedImports = false
-                        $('input[id$=name]').each(function(index, elem) {
-                            if (elem.value === '') {
-                                displayAlert('All API cards must be named before saving.', 'danger')
-                                unnamedImports = true
-                            }
-                        })
+                        let unnamedImports = emptyVendorKeyNameCheck()
                         if (unnamedImports) {
+                            displayAlert('All API cards must be named before saving.', 'danger')
                             return;
                         }
                     }
@@ -986,12 +981,7 @@
         $(document).ready(function() {
             $('button[id^="load"]').click(function() {
                 if ("{{ edit_name }}" === 'Import') {
-                    let unnamedImports = false
-                    $('input[id$=name]').each(function(index, elem) {
-                        if (elem.value === '') {
-                            unnamedImports = true
-                        }
-                    })
+                    let unnamedImports = emptyVendorKeyNameCheck()
                     if (unnamedImports) {
                         return;
                     }
@@ -1527,6 +1517,16 @@
                 forbiddenChars = /[#&$^@*!%]/g
                 this.value = this.value.replace(forbiddenChars, '')
             })
+        }
+
+        function emptyVendorKeyNameCheck() {
+           let unnamedImports = false
+           $('input[id$=name]').each(function(index, elem) {
+               if (elem.value === '') {
+                   unnamedImports = true
+               }
+           })
+           return unnamedImports
         }
 
         $(document).ready(function(){

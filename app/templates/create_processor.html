@@ -514,6 +514,13 @@
                     SendDataTable('modalTable', form_continue, 'plan', 'accounts');
                 }
                 else {
+                    if ("{{ edit_name }}" === "Import") {
+                        let unnamedImports = emptyVendorKeyNameCheck()
+                        if (unnamedImports) {
+                            displayAlert('All API cards must be named before saving.', 'danger')
+                            return;
+                        }
+                    }
                     document.getElementById("base_form_id").submit();
                 }
             }
@@ -993,6 +1000,12 @@
         }
         $(document).ready(function() {
             $('button[id^="load"]').click(function() {
+                if ("{{ edit_name }}" === 'Import') {
+                    let unnamedImports = emptyVendorKeyNameCheck()
+                    if (unnamedImports) {
+                        return;
+                    }
+                }
                 if (document.getElementById('base_form_id').checkValidity()) {
                     animateBar();
                     let elem = $('#' + this.id)
@@ -1520,6 +1533,23 @@
             });
         }
 
+        function removeSpecialChars() {
+            $('input[id$=name]').on('blur', function() {
+                forbiddenChars = /[#&$^@*!%]/g
+                this.value = this.value.replace(forbiddenChars, '')
+            })
+        }
+
+        function emptyVendorKeyNameCheck() {
+           let unnamedImports = false
+           $('input[id$=name]').each(function(index, elem) {
+               if (elem.value === '') {
+                   unnamedImports = true
+               }
+           })
+           return unnamedImports
+        }
+
         $(document).ready(function(){
             $('input[id*="unresolved_relations"]').each(function(index){
                 if (($(this)[0].value === '0') || ($(this)[0].value === '')
@@ -1588,6 +1618,8 @@
                 getAutoNote()
             } else if ("{{ edit_name }}" === "Plan") {
                 getPlan()
+            } else if ("{{ edit_name }}" === 'Import') {
+                removeSpecialChars()
             }
         })
     </script>

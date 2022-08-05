@@ -1411,6 +1411,7 @@ class Partner(db.Model):
     estimated_cpc = db.Column(db.Numeric)
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
+    partner_type = db.Column(db.String(128))
     placements = db.relationship('PartnerPlacements',
                                  backref='partner', lazy='dynamic')
 

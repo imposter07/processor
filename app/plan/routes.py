@@ -256,6 +256,10 @@ def edit_sow(object_name):
     cur_plan = kwargs['object']
     kwargs['form'] = form
     current_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
+    if not current_sow:
+        current_sow = Sow(plan_id=cur_plan.id)
+        db.session.add(current_sow)
+        db.session.commit()
     if request.method == 'POST':
         form.validate()
         if not current_sow:

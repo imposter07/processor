@@ -4657,50 +4657,37 @@ def get_sow(plan_id, current_user_id):
         c.drawString(100, t_pos - 100, "Flight dates: {} - {}".format(
             cur_sow.start_date.strftime("%m/%d/%Y"),
             cur_sow.end_date.strftime("%m/%d/%Y")))
-
-        data1 = [
-            ["Description", "Total Net Dollars"],
-            ["Amazon", '${:0,.2f}'.format(1212.16)],
-            ["Verizon", '${:0,.2f}'.format(0)],
-            ["Samsung", '${:0,.2f}'.format(1234.89)],
-            ["The Trade Desk", '${:0,.2f}'.format(12900)],
-            ["Xbox", '${:0,.2f}'.format(13987.40)]
-        ]
-
-        data = [
-            ["Amazon", 1212.16],
-            ["Verizon", 0],
-            ["Samsung", 1234.89],
-            ["The Trade Desk", 12900],
-            ["Xbox", 13987.40]
-        ]
-
-        data_tab = pd.DataFrame(data,
-                                columns=['Description', 'Total Net Dollars'])
-        net_media = sum(data_tab['Total Net Dollars'])
-
-        v_digital = ["Xbox", "xbox", "Amazon", "amazon"]
-        v_programm = ["The Trade Desk", "TTD"]
-
-        def vendor_cat(row):
-            if row[0] in v_digital:
-                return 'Digital'
-            elif row[0] in v_programm:
-                return 'Programmatic'
-            else:
-                return 'Traditional'
-
-        data_tab['Vendor'] = data_tab.apply(vendor_cat, axis=1)
-
-        sum_by_cat = data_tab.groupby('Vendor')['Total Net Dollars'].sum()
+        data = []
+        for cur_phase in cur_plan.phases:
+            cur_partners = cur_phase.partners.all()
+            new_data = [
+                {'Description': p.name, 'Total Net Dollars': p.total_budget,
+                 'Vendor': p.partner_type} for p in cur_partners]
+            data.extend(new_data)
+        df = pd.DataFrame(data)
+        df['Vendor'] = df['Vendor'].fillna('Digital')
+        df = df.groupby(['Description', 'Vendor'])[
+            'Total Net Dollars'].sum().reset_index()
+        data1 = df[['Description', 'Total Net Dollars']].to_dict(
+            orient='records')
+        data1 = [[x['Description'], '${:0,.2f}'.format(x['Total Net Dollars'])]
+                 for x in data1]
+        data1.insert(0, ['Description', 'Total Net Dollars'])
+        df['Total Net Dollars'] = df['Total Net Dollars'].astype(float)
+        net_media = df['Total Net Dollars'].sum()
+        sum_by_cat = df.groupby('Vendor')['Total Net Dollars'].sum()
         sum_by_cat.reset_index(name='Total Net Dollars')
-
-        digital = sum_by_cat[0] * 0.075
-        programm = sum_by_cat[1] * 0.125
-        trad = sum_by_cat[2] * 0.045
+        digital = 0
+        program = 0
+        trad = 0
+        if 'Digital' in sum_by_cat:
+            digital = sum_by_cat['Digital'] * 0.075
+        if 'Programmatic' in sum_by_cat:
+            program = sum_by_cat['Programmatic'] * 0.125
+        if 'Traditional' in sum_by_cat:
+            trad = sum_by_cat['Traditional'] * 0.045
         ag_fee = digital + trad
-
-        camp_ttl = net_media + ag_fee + float(cur_sow.ad_serving) + programm
+        camp_ttl = net_media + ag_fee + float(cur_sow.ad_serving) + program
         styles = getSampleStyleSheet()
         style_n = styles["BodyText"]
         last_row = Paragraph(
@@ -4713,7 +4700,7 @@ def get_sow(plan_id, current_user_id):
             ["Net Media", '${:0,.2f}'.format(net_media)],
             ["Agency Fees", '${:0,.2f}'.format(ag_fee)],
             ["Adserving Fees", '${:0,.2f}'.format(cur_sow.ad_serving)],
-            ["Programmatic Agency Fees", '${:0,.2f}'.format(programm)],
+            ["Programmatic Agency Fees", '${:0,.2f}'.format(program)],
             ["", ""],
             ["Campaign Total", '${:0,.2f}'.format(camp_ttl)],
             [last_row, '${:0,.2f}'.format(camp_ttl)]

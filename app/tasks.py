@@ -220,6 +220,8 @@ def run_processor(processor_id, current_user_id, run_args):
         copy_processor_local(old_file_path, copy_back=True)
         if 'analyze' in run_args:
             os.chdir(cur_path)
+            get_processor_sources(processor_id, current_user_id)
+            os.chdir(cur_path)
             update_analysis_in_db(processor_id, current_user_id)
             update_automatic_requests(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))

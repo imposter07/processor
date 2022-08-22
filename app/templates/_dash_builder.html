@@ -945,6 +945,9 @@
                     let newPercent = data['percent'];
                     chart.update(parseInt(newPercent))
                     if (!forceReturn && 'data' in data) {
+                        if (createVisualFunction === generatePacingTable) {
+                            xCol = data['send_cols']
+                        }
                         getMetricsComplete(chart, data['data'], xCol, yCol,
                             createVisualFunction, filterDict, addSelect, elem);
                         turnOffRadialProgress(elem, downloadingProgress, oldHtml, clickElem);
@@ -957,7 +960,9 @@
     function getMetricsComplete(chart, data, xCol, yCol, createVisualFunction,
         filterDict, addSelect, elem) {
         chart.update(100);
-        if (Array.isArray(data) && data.length) {
+        if ((Array.isArray(data) && data.length) ||
+            (createVisualFunction === generatePacingTable &&
+             'data' in data['data'])) {
             yCol = (yCol.includes('kpi')) ? (
                 Object.keys(data[0]).filter(function (e) {
                     return e !== 'index' && e !== xCol
@@ -1001,7 +1006,7 @@
                 object_type: "{{ title }}",
                 object_level: "{{ edit_name }}",
                 elem: elem,
-                x_col: xCol,
+                x_col: xCol.join('|'),
                 y_col: yCol.join('|'),
                 filter_dict: JSON.stringify(filterDict),
                 dashboard_id: dashboardId,
@@ -1034,6 +1039,166 @@
                 chart, downloadingProgress, procId, forceReturn, xCol, yCol,
                 createVisualFunction, filterDict, addSelect, elem)
         }
+    }
+
+    function addEdit(tableID, cols, buttonID) {
+      var rows = document.getElementById(tableID).getElementsByTagName('tr');
+      colIndices = [];
+      for (var j = 0, col; col = rows[0].cells[j]; j++) {
+        if (cols.includes(rows[0].cells[j].innerHTML)) {
+          colIndices.push(j);
+        }
+      }
+      for (var i = 0; i < colIndices.length; i++) {
+          for (var j = 1, row; row = rows[j]; j++) {
+            rows[j].cells[colIndices[i]].setAttribute("contenteditable", "true")
+            rows[j].cells[colIndices[i]].setAttribute("spellcheck", "false")
+          }
+      }
+      cols = cols.join("','")
+      cols = "['" +  cols + "']"
+      functionString = "overWritePlannedwPacing('" + tableID + "', " + cols + ")"
+      var saveElem = document.getElementById(buttonID)
+      saveElem.setAttribute("onclick", functionString);
+      $('td').blur(function () {
+          $('#' + buttonID).removeAttr('disabled');
+          $('#' + buttonID).attr("class", "btn btn-success")
+      });
+    }
+
+    function overWritePlannedwPacing(tableID, cols) {
+        tableName = 'dictionaryvendorkeyPlan___Net'
+        SendDataTable(tableName, formContinue = null,
+                      oldPage = '', newPage = '', modal = false, cols = cols,
+                      saveButton = 'pacingTableSaveButton')
+    }
+
+    function getProgBars(tableName, progCol, paceCol, startCol) {
+      var rows = document.getElementById(tableName).getElementsByTagName('tr');
+      rows[0].setAttribute('style', 'text-align: left')
+      progColInd = 0;
+      paceColInd = 0;
+      startColInd = 0;
+      for (var j = 0, col; col = rows[0].cells[j]; j++) {
+        if (rows[0].cells[j].innerHTML === progCol) {
+          progColInd = j;
+        }
+        if (rows[0].cells[j].innerHTML === paceCol) {
+          paceColInd = j;
+        }
+        if (rows[0].cells[j].innerHTML === startCol) {
+          startColInd = j;
+        }
+      }
+      for (var i = 1, row; row = rows[i]; i++) {
+        if (window.getComputedStyle) {
+            style = window.getComputedStyle(rows[i].cells[progColInd]);
+        } else {
+            style = rows[i].cells[progColInd].currentStyle;
+        }
+        backgroundColor = style.backgroundColor
+        rows[i].cells[progColInd].style.height = "100%"
+        rows[i].cells[progColInd].style.border = "1px solid #dee2e6"
+        delv = rows[i].cells[progColInd].innerHTML;
+        pace = rows[i].cells[paceColInd].innerHTML;
+        delv = delv.slice(0, -1)
+        pace = pace.slice(0, -1)
+        delv = parseInt(delv)
+        pace = parseInt(pace)
+        today = today = new Date();
+        sd = new Date(rows[i].cells[startColInd].innerHTML);
+		if (pace > 100){
+            pace = 100
+        }
+        tooltip = "Delivery: " + delv + "% \nExpected Delivery: "
+                            + pace + "%"
+        getTooltip(tooltip, rows[i].cells[progColInd])
+        if ((delv > 105) || ((delv / pace) > 1.15)){
+            delvColor = "#dc3545cc"
+            }
+        else {
+            delvColor = "#0d6efdcc"
+        }
+        if (sd >= today && delv <= 2) {
+            rows[i].cells[progColInd].style.background = "linear-gradient(to right, " + delvColor + " 2%, "
+          + "#ffc107cc 2% 4%, "
+          + backgroundColor + " 4%)";
+        }
+        else if (sd >= today && delv > 2) {
+            rows[i].cells[progColInd].style.background = "linear-gradient(to right, #ffc107cc 2%, "
+          + delvColor + " 2% " + delv + "%, "
+          + backgroundColor + " " + delv + "%)";
+        }
+        else if (pace >= 98 && delv >= 98) {
+            rows[i].cells[progColInd].style.background = "linear-gradient(to right,  "  + delvColor + " 98%, "
+          + "#ffc107cc 98%)";
+        }
+        else if (pace >= 98 && delv < 98) {
+            rows[i].cells[progColInd].style.background = "linear-gradient(to right, "  + delvColor + " "
+          + delv + "%, "
+          + backgroundColor + " " + delv + "% " + "98%, "
+          + "#ffc107cc 98%)";
+        }
+        else if (pace < 98 && delv >= 98) {
+            rows[i].cells[progColInd].style.background = "linear-gradient(to right, "  + delvColor + " "
+          + pace + "%, "
+          + "#ffc107cc " + pace + "% " + (pace + 2) + "%, "
+          + delvColor + " "+ (pace + 2) + "%)";
+        }
+        else if (Math.abs(pace - delv) <= 2 ) {
+            rows[i].cells[progColInd].style.background = "linear-gradient(to right, "  + delvColor + " "
+          + delv + "%, "
+          + "#ffc107cc " + delv + "% " + (delv + 2) + "%, "
+                + backgroundColor + " " + (delv + 2) + "%)";
+        }
+        else if (pace < delv) {
+            rows[i].cells[progColInd].style.background = "linear-gradient(to right, "  + delvColor + " "
+          + pace + "%, "
+          + "#ffc107cc " + pace + "% " + (pace + 2) + "%, "
+          + delvColor + " " + (pace + 2) + "% " + delv + "%, "
+                + backgroundColor + " " + delv + "%)";
+        }
+        else if (pace > delv) {
+          rows[i].cells[progColInd].style.background = "linear-gradient(to right,  "  + delvColor + " "
+            + delv + "%, "
+            + backgroundColor + " " + delv + "% " + pace + "%, "
+            + "#ffc107cc " + pace + "% " + (pace + 2) + "%, "
+            + backgroundColor + " " + (pace + 2) + "%)";
+        }
+      }
+    }
+
+    function getTooltip(content, cell){
+        cell.setAttribute("class", "dropdown-item")
+        cell.setAttribute("data-toggle", "hover")
+        cell.setAttribute("data-placement", "bottom")
+        cell.setAttribute("title", content)
+        cell.style.height = "100%"
+    }
+
+    function hideColumn(tableName, colName) {
+      var rows = document.getElementById(tableName).getElementsByTagName('tr')
+      var colInd = 0
+      for (var j = 0, col; col = rows[0].cells[j]; j++) {
+        if (rows[0].cells[j].innerHTML === colName) {
+          colInd = j;
+        }
+      }
+      for (var i = 0, row; row = rows[i]; i++) {
+        rows[i].cells[colInd].style.display = "none"
+      }
+    }
+
+    function generatePacingTable(elem, data, xCol, yCol) {
+        elemID = elem.replace('#', '');
+        elem = document.getElementById(elemID)
+        elem.innerHTML += data['data']['data']
+        elem.style.height = "100%"
+        cols = xCol + [, 'Planned Net Cost', 'Uncapped']
+        cols = cols.split(",");
+        hideColumn(elemID, "% Through Campaign")
+        addEdit(elemID, cols, 'pacingTableSaveButton')
+        getProgBars(elemID, "Delivery", "% Through Campaign", "Start Date")
     }
 
     function radialProgress(selector) {

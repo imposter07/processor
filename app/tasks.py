@@ -742,7 +742,8 @@ def get_dictionary(processor_id, current_user_id, vk):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def write_dictionary(processor_id, current_user_id, new_data, vk):
+def write_dictionary(processor_id, current_user_id, new_data, vk,
+                     object_level):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
@@ -771,6 +772,9 @@ def write_dictionary(processor_id, current_user_id, new_data, vk):
             df = df.drop('index', axis=1)
         df = df.replace('NaN', '')
         if vk == vm.plan_key:
+            if object_level == 'Page':
+                plan_dimensions = data_source.p[vmc.fullplacename]
+                df[dctc.FPN] = df[plan_dimensions].agg('_'.join, axis=1)
             add_cols = [x for x in df.columns if x not in dctc.PCOLS]
             df = df[dctc.PCOLS + add_cols]
         else:
@@ -3603,6 +3607,100 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
                 processor_id, current_user_id, parameter),
             exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
+                                 dimensions=None, metrics=None, filter_dict=None):
+    try:
+        _set_task_progress(0)
+        import processor.reporting.analyze as az
+        import processor.reporting.dictionary as dct
+        import processor.reporting.dictcolumns as dctc
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.expcolumns as exc
+        import processor.reporting.utils as utl
+        import processor.reporting.export as export
+        cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
+        os.chdir(cur_proc.local_path)
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source('Plan Net')
+        dic = dct.Dict(data_source.p[vmc.filenamedict])
+        pdf = pd.DataFrame(dic.data_dict)
+        plan_cols = data_source.p[vmc.fullplacename]
+        df_cols = [x for x in plan_cols if x not in dimensions]
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.delivery_comp_col).first()
+        if analysis and analysis.data:
+            adf = pd.DataFrame(analysis.data)
+            adf_cols = adf.columns.to_list()
+            adf_cols.remove(dctc.PNC)
+            pdf_cols = plan_cols + [dctc.PNC, dctc.UNC]
+            pdf = pdf[pdf_cols].merge(adf[adf_cols], how='outer', on=plan_cols)
+        final_columns = df_cols + ['Start Date', 'End Date', vmc.cost,
+                                   dctc.PNC, dctc.UNC, 'Delivery',
+                                         'Projected Full Delivery']
+        pdf = pdf[final_columns]
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.delivery_col,
+            parameter=az.Analyze.over_delivery_col).first()
+        if analysis and analysis.data:
+            adf = pd.DataFrame(analysis.data)
+            pdf = pdf.merge(
+                adf[plan_cols], on=plan_cols, how='left', indicator=True)
+            pdf['Projected Full Delivery'] = [
+                'Over Delivered' if pdf['_merge'][x] == 'both'
+                else pdf['Projected Full Delivery'][x]for x in pdf.index]
+            pdf = pdf.drop(columns=['_merge'])
+        proc_end = str(cur_proc.end_date)
+        proc_start = str(cur_proc.start_date)
+        pdf['Start Date'] = pdf['Start Date'].replace('0', proc_start)
+        pdf['Start Date'] = pdf['Start Date'].replace('', proc_start)
+        pdf['End Date'] = pdf['End Date'].replace('0', proc_end)
+        pdf['End Date'] = pdf['End Date'].replace('', proc_end)
+        pdf['Start Date'] = pdf['Start Date'].replace(
+            [np.inf, -np.inf], np.nan).fillna(proc_start)
+        pdf['End Date'] = pdf['End Date'].replace(
+            [np.inf, -np.inf], np.nan).fillna(proc_end)
+        pdf['Start Date'] = pdf['Start Date'].apply(
+            lambda x: utl.string_to_date(x))
+        pdf['End Date'] = pdf['End Date'].apply(
+            lambda x: utl.string_to_date(x))
+        pdf['% Through Campaign'] = ((pd.Timestamp.today() - pdf['Start Date']
+                                      ) / (pdf['End Date'] - pdf['Start Date'])
+                                     * 100).round(2)
+        pdf['% Through Campaign'] = pdf['% Through Campaign'].replace(
+            [np.inf, -np.inf], np.nan).fillna(0)
+        pdf['% Through Campaign'] = pdf['% Through Campaign'].astype(str) + '%'
+        pdf[dctc.PNC] = pdf[dctc.PNC].replace(
+            [np.inf, -np.inf], np.nan).fillna(0.0)
+        pdf[vmc.cost] = pdf[vmc.cost].replace(
+            [np.inf, -np.inf], np.nan).fillna(0.0)
+        pdf[dctc.PNC] = utl.data_to_type(
+            pd.DataFrame(pdf[dctc.PNC]), float_col=[dctc.PNC])[dctc.PNC]
+        pdf[vmc.cost] = utl.data_to_type(
+            pd.DataFrame(pdf[vmc.cost]), float_col=[vmc.cost])[vmc.cost]
+        pdf[dctc.PNC] = pdf[dctc.PNC].round(2)
+        pdf[vmc.cost] = pdf[vmc.cost].round(2)
+        pdf[dctc.PNC] = '$' + pdf[dctc.PNC].round(2).astype(str)
+        pdf[vmc.cost] = '$' + pdf[vmc.cost].round(2).astype(str)
+        pdf['Delivery'] = pdf['Delivery'].replace(
+            [np.inf, -np.inf], np.nan).fillna("0%")
+        pdf = pdf.fillna("")
+        if parameter:
+            pdf = get_file_in_memory(pdf)
+        _set_task_progress(100)
+        return [pdf, plan_cols]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Parameter {}'.format(
+                processor_id, current_user_id, parameter),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{
+            'Result': 'DATA WAS UNABLE TO BE LOADED. Pacing Table only '
+                      'available when planned spends are based on Vendor,'
+                      ' Campaign, Country/Region, and or Environment'}]), []]
 
 
 def create_processor_request(processor_id, current_user_id, fix_type,

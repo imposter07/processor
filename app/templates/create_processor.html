@@ -543,38 +543,55 @@
                  window.location.reload(true)
              }
         }
-        function SendDataTable(modalTableName="modalTable", formContinue = null,
-                               oldPage = '', newPage = '') {
-            let sourceElem = $('table[id^=modalTable]')[0].id;
-            let data
-            if (sourceElem.includes('change_dictionary_order')) {
-                removeChangeOrderSelectize();
-                data = getTableAsArray(sourceElem);
-            } else {
-                try {
-                    var sendTable = $('#' + sourceElem).DataTable();
-                } catch (err) {
-                    sendTable = $('#' + sourceElem).DataTable();
+        function SendDataTable(tableName="modalTable", formContinue = null,
+                               oldPage = '', newPage = '', modal = true, cols = [],
+                               saveButton = '') {
+            if (modal) {
+                let sourceElem = $('table[id^=modalTable]')[0].id;
+                if (sourceElem.includes('change_dictionary_order')) {
+                    removeChangeOrderSelectize();
+                    data = getTableAsArray(sourceElem, cols);
+                    var json = JSON.stringify(data);
+                    var sendTableName = sourceElem.replace('modalTable', '');
                 }
-                data = sendTable
-                .data().toArray();
+                else {
+                    try {
+                        var sendTable = $('#' + sourceElem).DataTable();
+                    } catch (err) {
+                        sendTable = $('#' + sourceElem).DataTable();
+                    }
+                    var sendTableName = sourceElem.replace('modalTable', '');
+                    data = sendTable
+                        .data().toArray();
+                    var json = JSON.stringify(data);
+                    if (sendTableName === 'Vendormatrix'){
+                        $('#refresh_data_sources').parent().html('' +
+                            '<button class="btn btn-primary btn-block" type="button" disabled>' +
+                              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                              'Loading...' +
+                            '</button>');
+                        $('#refresh_imports').parent().html('' +
+                            '<button class="btn btn-primary btn-block" type="button" disabled>' +
+                              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
+                              'Loading...' +
+                            '</button>');
+                    }
+                }
             }
-            let sendTableName = sourceElem.replace('modalTable', '');
-            let json = JSON.stringify(data);
-            if (sendTableName === 'Vendormatrix'){
-                $('#refresh_data_sources').parent().html('' +
-                    '<button class="btn btn-primary btn-block" type="button" disabled>' +
-                      '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                      'Loading...' +
-                    '</button>');
-                $('#refresh_imports').parent().html('' +
-                    '<button class="btn btn-primary btn-block" type="button" disabled>' +
-                      '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                      'Loading...' +
-                    '</button>');
+            else {
+                tableID = 'Pacing Table'
+                var sendTableName = tableName;
+                data = getTableAsArray(tableID, cols);
+                var json = JSON.stringify(data);
             }
-            let saveBtnElem = $('#' + modalTableName + 'SaveButton');
-            let oldHtml = saveBtnElem.parent().parent().html();
+            if (saveButton === '') {
+                var saveBtnElem = $('#' + tableName + 'SaveButton');
+                var oldHtml = saveBtnElem.parent().parent().html();
+            }
+            else {
+                var saveBtnElem = $('#' + saveButton);
+                var oldHtml = saveBtnElem.parent().html();
+            }
             saveBtnElem.parent().html('' +
                     '<button id="loadingBtnModal" class="btn btn-success btn-lg btn-block" type="button" disabled>' +
                       '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
@@ -594,7 +611,7 @@
                         reloadPage();
                     }
                     else {
-                        $('#' + modalTableName).modal('hide');
+                        $('#' + tableName).modal('hide');
                         displayAlert(data['message'], data['level']);
                         $('#loadingBtnModal').replaceWith(oldHtml);
                     }
@@ -804,6 +821,7 @@
         function getTableComplete(tableName, pond, vendorKey, data){
             if ((tableName === 'OutputDataFullOutput') ||
                 (tableName === 'download_raw_data') ||
+                (tableName === 'download_pacing_data') ||
                 (tableName === 'OutputDataSOW') ||
                 (tableName === 'OutputDataTopline')
             ) {
@@ -820,6 +838,8 @@
                 link.href = window.URL.createObjectURL(blob);
                 link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey + '.' + mimeType.split('/')[1];
                 link.click();
+                elem = document.getElementById('downloadBarPond')
+                elem.parentElement.remove()
             } else if (tableName === 'raw_file_comparison') {
                 parseRawComp(data);
             } else if (tableName === 'request_table') {
@@ -1029,7 +1049,8 @@
                     '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
                     'Loading...' +
                     '</button>');
-                if (tableName === 'download_raw_data') {
+                if (tableName === 'download_raw_data' ||
+                    tableName === 'download_pacing_data') {
                     var refreshPond = setDownloadBar($("#loadingBtn").parent(), $(this).text());
                 } else {
                     var refreshPond = setDownloadBar($("#loadingBtn").parent(), $(this).text(), false);

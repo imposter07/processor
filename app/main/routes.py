@@ -542,7 +542,11 @@ def get_task_progress():
                 job = task.get_rq_job()
                 if job and job.result:
                     df = job.result[0]
-                    data['data'] = df.reset_index().to_dict(orient='records')
+                    if 'get_processor_pacing_metrics' in str(job):
+                        data['data'] = df_to_html(df, 'Pacing Table')
+                        data['send_cols'] = job.result[1]
+                    else:
+                        data['data'] = df.reset_index().to_dict(orient='records')
     else:
         task = cur_obj.get_task_in_progress(name=job_name)
     if task:
@@ -1101,6 +1105,8 @@ def post_table():
         msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
         return jsonify({'data': 'success', 'message': msg, 'level': 'warning'})
     job_name = arg_trans[table_name]
+    if job_name == '.write_dictionary':
+        proc_arg['object_level'] = request.form['object_level']
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
     if table_name in ['Vendormatrix', 'Uploader']:
@@ -1113,7 +1119,11 @@ def translate_table_name_to_job(table_name, proc_arg):
         if base_name in table_name:
             proc_arg['parameter'] = table_name.replace(base_name, '')
             table_name = base_name
-    if table_name == 'download_raw_data':
+    if table_name == 'download_pacing_data':
+        proc_arg['dimensions'] = ['vendorname', 'campaignname']
+        proc_arg['filter_dict'] = []
+        proc_arg['metrics'] = ['netcost']
+    if table_name in ['download_raw_data', 'download_pacing_data']:
         proc_arg['parameter'] = 'Download'
     arg_trans = {'Translate': '.get_translation_dict',
                  'Vendormatrix': '.get_vendormatrix',
@@ -1124,6 +1134,7 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'change_dictionary_order': '.get_change_dict_order',
                  'raw_data': '.get_raw_data',
                  'download_raw_data': '.get_raw_data',
+                 'download_pacing_data': '.get_processor_pacing_metrics',
                  'dictionary': '.get_dictionary',
                  'delete_dict': '.delete_dict',
                  'rate_card': '.get_rate_card',
@@ -3256,6 +3267,7 @@ def get_metrics():
     else:
         if 'filter_col' in request.form:
             dimensions += request.form['filter_col'].split('|')
+        dimensions = request.form['x_col'].split('|')
         metrics = request.form['y_col'].split('|')
     proc_arg = {'running_user': cur_user.id,
                 'dimensions': dimensions,
@@ -3275,6 +3287,8 @@ def get_metrics():
         job_name = '.get_processor_total_metrics'
         proc_arg = {x: proc_arg[x] for x in proc_arg
                     if x in ['running_user', 'filter_dict']}
+    elif request.form['elem'] == '#pacingMetrics':
+        job_name = '.get_processor_pacing_metrics'
     elif request.form['elem'] in ['#dash_placeholderMetrics',
                                   '#oldFilePlotMetrics', '#newFilePlotMetrics',
                                   '#deltaFilePlotMetrics']:

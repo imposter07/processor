@@ -45,6 +45,7 @@
     </nav>
     {% if view_selector %}
         <div class="form-group">
+            <label for="viewSelector"></label>
             <select class="form-control" id="viewSelector">
                 {% for view_select in view_selector %}
                     <option {% if view_select['active'] == True %} selected{% endif %}
@@ -626,19 +627,23 @@
 
         function getCompletedTask(tableName, procId = null, task = null, pond = 'None',
                                   vendorKey = 'None', fixId = 'None') {
-            $.post('/get_completed_task',
-                {
-                    object_type: "{{ title }}",
-                    object_name: "{{ object_name }}",
-                    object_level: "{{ edit_name }}",
-                    task_name: tableName,
-                    object_id: procId,
-                    task: task,
-                    table: tableName,
-                    fix_id: fixId,
-                    vendorkey: vendorKey
-                }).done(function (data, status) {
-                    getTableComplete(tableName, pond, vendorKey, data);
+            let data = {
+                object_type: "{{ title }}",
+                object_name: "{{ object_name }}",
+                object_level: "{{ edit_name }}",
+                task_name: tableName,
+                object_id: procId,
+                task: task,
+                table: tableName,
+                fix_id: fixId,
+                vendorkey: vendorKey
+            }
+            let formData = convertDictToFormData(data);
+            fetch('/get_completed_task', {
+                method: 'POST',
+                body: formData
+            }).then((data) => {
+                getTableComplete(tableName, pond, vendorKey, data);
             });
         }
 
@@ -818,6 +823,74 @@
                 elem.innerHTML += button
             }
         }
+
+        function s2ab(s) {
+            var buf = new ArrayBuffer(s.length);
+            var view = new Uint8Array(buf);
+            for (var i = 0; i != s.length; ++i) view[i] = s.charCodeAt(i) & 0xFF;
+            return buf;
+        }
+
+        function s2ab(s) {
+            var buf = new ArrayBuffer(s.length);
+            var view = new Uint8Array(buf);
+            for (var i = 0; i != s.length; ++i) view[i] = s.charCodeAt(i) & 0xFF;
+            return buf;
+        }
+
+        function downloadTableResponse(tableName, pond, vendorKey, data) {
+            data.blob().then((data) => {
+                let mimeType = 'text/csv';
+                let extension = '.csv';
+                if (tableName === 'OutputDataSOW') {
+                    mimeType = 'application/pdf';
+                    extension = '.pdf';
+                } else if (tableName === 'OutputDataTopline') {
+                    mimeType = 'application/vnd.ms-excel';
+                    extension = '.xlsx';
+                }
+                let blob = new Blob([data], {type: mimeType});
+                pond.addFile(blob);
+                let link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey + extension;
+                link.click();
+                let elem = document.getElementById('downloadBarPond');
+                elem.parentElement.remove();
+            })
+        }
+
+        function parseTableResponse(tableName, pond, vendorKey, data) {
+            data.json().then((data) => {
+                if (tableName === 'raw_file_comparison') {
+                    parseRawComp(data);
+                } else if (tableName === 'request_table') {
+                    element = document.getElementById(data['html_data']['data']['name'])
+                    element.innerHTML += data['msg']
+                    element.innerHTML += data['html_data']['data']['data']
+                    addCollapse(element, data['html_data']['data']['name'])
+                } else if (tableName === 'check_processor_plan') {
+                    appendMessage(data, 'planCheckCardCol', 'rowZero', 'Plan Check');
+                } else if (tableName === 'apply_processor_plan') {
+                    appendCardAsTable(data, "newPlanResultsCardCol", "#rowOne", 'NEW PLAN RESULTS', false);
+                } else if (tableName === 'get_plan_property') {
+                    document.getElementById('rowOne').innerHTML = '';
+                    let title = 'PLAN PROPERTY - ' + vendorKey;
+                    appendCardAsTable(data, "planPropertyCardCol", "#rowTwo", title, true);
+                } else if (tableName === 'change_dictionary_order') {
+                    show_modal_table('modalTableButton');
+                    let newTableName = data['data']['name'];
+                    createChangeDictOrder(data['data']['cols'], data['data']['data'],
+                        newTableName, data['dict_cols']);
+                } else {
+                    show_modal_table('modalTableButton');
+                    let newTableName = data['data']['name'];
+                    createTable(data['data']['cols'], data['data']['data'],
+                        newTableName);
+                }
+            })
+        }
+
         function getTableComplete(tableName, pond, vendorKey, data){
             if ((tableName === 'OutputDataFullOutput') ||
                 (tableName === 'download_raw_data') ||
@@ -825,46 +898,10 @@
                 (tableName === 'OutputDataSOW') ||
                 (tableName === 'OutputDataTopline')
             ) {
-                let mimeType = 'text/csv'
-                if (tableName === 'OutputDataSOW') {
-                    mimeType = 'application/pdf'
-                }
-                else if (tableName === 'OutputDataTopline') {
-                    mimeType = 'application/xls'
-                }
-                let blob = new Blob([data], {type: mimeType});
-                pond.addFile(blob);
-                let link = document.createElement('a');
-                link.href = window.URL.createObjectURL(blob);
-                link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey + '.' + mimeType.split('/')[1];
-                link.click();
-                elem = document.getElementById('downloadBarPond')
-                elem.parentElement.remove()
-            } else if (tableName === 'raw_file_comparison') {
-                parseRawComp(data);
-            } else if (tableName === 'request_table') {
-                element = document.getElementById(data['html_data']['data']['name'])
-                element.innerHTML += data['msg']
-                element.innerHTML += data['html_data']['data']['data']
-                addCollapse(element, data['html_data']['data']['name'])
-            } else if (tableName === 'check_processor_plan') {
-                appendMessage(data, 'planCheckCardCol', 'rowZero', 'Plan Check');
-            } else if (tableName === 'apply_processor_plan') {
-                appendCardAsTable(data, "newPlanResultsCardCol", "#rowOne", 'NEW PLAN RESULTS', false);
-            } else if (tableName === 'get_plan_property') {
-                document.getElementById('rowOne').innerHTML = '';
-                let title = 'PLAN PROPERTY - ' + vendorKey;
-                appendCardAsTable(data, "planPropertyCardCol", "#rowTwo", title, true);
-            } else if (tableName === 'change_dictionary_order') {
-                show_modal_table('modalTableButton');
-                let newTableName = data['data']['name'];
-                createChangeDictOrder(data['data']['cols'], data['data']['data'],
-                    newTableName, data['dict_cols']);
-            } else {
-                show_modal_table('modalTableButton');
-                let newTableName = data['data']['name'];
-                createTable(data['data']['cols'], data['data']['data'],
-                    newTableName);
+                downloadTableResponse(tableName, pond, vendorKey, data);
+            }
+            else {
+                parseTableResponse(tableName, pond, vendorKey, data);
             }
         }
 
@@ -887,39 +924,49 @@
             refreshButtons()
         }
 
-        function getTable(tableName, clickElem, oldHtml, vendorKey='None',
+        function convertDictToFormData(data) {
+            const formData = new FormData();
+            for (const name in data) {
+                formData.append(name, data[name]);
+            }
+            return formData
+        }
+
+        async function getTable(tableName, clickElem, oldHtml, vendorKey='None',
                           pond='None', progress=true, fixId='None', forceReturn=false){
             let uploaderType = ("{{ title }}" === "Uploader") ? "{{uploader_type}}" : "None";
-            $.ajax({
-                type: "POST",
-                url: "/get_table",
-                data: {
-                    table: tableName,
-                    object_name: "{{ object_name }}",
-                    object_type:  "{{ title }}",
-                    object_level: "{{ edit_name }}",
-                    uploader_type: uploaderType,
-                    vendorkey: vendorKey,
-                    fix_id: fixId,
-                    force_return: forceReturn
-                },
-            }).done(function(data, status) {
+            let data = {
+                table: tableName,
+                object_name: "{{ object_name }}",
+                object_type: "{{ title }}",
+                object_level: "{{ edit_name }}",
+                uploader_type: uploaderType,
+                vendorkey: vendorKey,
+                fix_id: fixId,
+                force_return: forceReturn
+            }
+            let formData = convertDictToFormData(data);
+            fetch('/get_table', {
+              method: 'POST',
+              body: formData,
+            }).then(response => response.json()).then((data) => {
                 if (forceReturn) {
                     getTableComplete(tableName, pond, vendorKey, data);
-                }
-                else {
+                } else {
                     downloadingProgress = getTaskProgress(tableName, false, downloadingProgress,
                         null, data['task'], forceReturn, pond, vendorKey, oldHtml, clickElem,
                         fixId);
                 }
-            }).fail(function(jqXHR, textStatus ) {
-                console.log("Request failed: " + textStatus);
+                if (forceReturn) {
+                    turnOffProgress(downloadingProgress, oldHtml, clickElem);
+                }
+            }).catch(error => {
+                console.log("Request failed: " + error);
                 let downloadProgress = $('#downloadProgress');
                 downloadProgress.attr("style", "width: 100%");
                 window.location.reload(true)
-            }).always(function(){
                 if (forceReturn) {
-                    turnOffProgress(downloadingProgress, oldHtml, clickElem)
+                    turnOffProgress(downloadingProgress, oldHtml, clickElem);
                 }
             });
             let downloadingProgress = null;

@@ -1247,8 +1247,8 @@ def get_table_return(task, table_name, proc_arg, job_name,
             file_name = 'sow.pdf'
             mime_type = 'application/pdf'
         elif table_name == 'Topline':
-            file_name = 'topline.xls'
-            mime_type = 'application/xls'
+            file_name = 'topline.xlsx'
+            mime_type = 'data:application/vnd.ms-excel'
         else:
             file_name = 'raw.csv'
             mime_type = 'application/pdf'

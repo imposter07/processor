@@ -504,7 +504,7 @@ def get_file_in_memory(tables, file_name='raw.csv'):
         data = zipfile.ZipInfo(file_name)
         data.date_time = time.localtime(time.time())[:6]
         data.compress_type = zipfile.ZIP_DEFLATED
-        if file_type == '.pdf' or file_type == '.xls':
+        if file_type == '.pdf' or file_type == '.xls' or file_type == '.xlsx':
             f.write(tables, arcname=file_name)
         else:
             f.writestr(data, data=tables.to_csv())
@@ -588,7 +588,8 @@ def get_change_dict_order(processor_id, current_user_id, vk):
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
-        tdf = data_source.get_dict_order_df(include_index=False, include_full_name=True)
+        tdf = data_source.get_dict_order_df(include_index=False,
+                                            include_full_name=True)
         dict_cols = [col for col in dctc.COLS if col not in [dctc.FPN, dctc.PN]]
         sample_size = 5
         if len(tdf.index) > sample_size:
@@ -602,7 +603,7 @@ def get_change_dict_order(processor_id, current_user_id, vk):
         app.logger.error(
             'Unhandled exception - Processor {} User {} VK {}'.format(
                 processor_id, current_user_id, vk), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]), []]
 
 
 def delete_dict(processor_id, current_user_id, vk):
@@ -698,9 +699,12 @@ def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
             data_source = matrix.get_data_source(vk)
         utl.dir_check(utl.raw_path)
         if mem_file:
+            tmp_suffix = ''
+            if not new_name:
+                tmp_suffix = 'TMP'
             new_data.seek(0)
             file_name = data_source.p[vmc.filename_true].replace(
-                file_type, 'TMP{}'.format(file_type))
+                file_type, '{}{}'.format(tmp_suffix, file_type))
             with open(file_name, 'wb') as f:
                 shutil.copyfileobj(new_data, f, length=131072)
         else:
@@ -743,7 +747,7 @@ def get_dictionary(processor_id, current_user_id, vk):
 
 
 def write_dictionary(processor_id, current_user_id, new_data, vk,
-                     object_level):
+                     object_level=None):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
@@ -4360,8 +4364,9 @@ def get_project_numbers(processor_id, current_user_id):
                 db.session.commit()
                 new_processor.projects.append(new_project)
                 db.session.commit()
-        pn_max.max_number = max(ndf.index)
-        db.session.commit()
+        if not ndf.empty:
+            pn_max.max_number = max(ndf.index)
+            db.session.commit()
         _set_task_progress(100)
         return [df]
     except:
@@ -4848,7 +4853,7 @@ def get_topline(plan_id, current_user_id):
         _set_task_progress(0)
         import datetime as dt
         cur_plan = Plan.query.get(plan_id)
-        file_name = 'topline_{}.xls'.format(cur_plan.id)
+        file_name = 'topline_{}.xlsx'.format(cur_plan.id)
         writer = pd.ExcelWriter(file_name)
         for phase in cur_plan.phases:
             df = pd.DataFrame([x.get_form_dict() for x in phase.partners])
@@ -4873,7 +4878,7 @@ def get_topline(plan_id, current_user_id):
                     df[col[1]] = df[col[1]].astype(int)
             df.to_excel(writer, sheet_name=phase.name)
         writer.save()
-        excel_file = get_file_in_memory(file_name, file_name='topline.xls')
+        excel_file = get_file_in_memory(file_name, file_name='topline.xlsx')
         os.remove(file_name)
         _set_task_progress(100)
         return [excel_file]

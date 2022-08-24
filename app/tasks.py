@@ -4876,7 +4876,27 @@ def get_topline(plan_id, current_user_id):
                         thousand = 1000
                     df[col[1]] = (df['total_budget'] / df[col[0]]) * thousand
                     df[col[1]] = df[col[1]].astype(int)
-            df.to_excel(writer, sheet_name=phase.name)
+            week_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
+            col_order = ['partner', 'total_budget'] + week_str + [
+                'impressions', 'cpm', 'clicks', 'cpc']
+            df = df[col_order]
+            for col in ['total_budget', 'cpm', 'cpc']:
+                df.loc[:, col] = df[col].apply(lambda x: '${:,.2f}'.format(x))
+            df.columns = [' '.join(x.split('_')).upper() for x in df.columns]
+            import matplotlib.colors as mcolors
+            color_map = [
+                (31, 119, 180), (174, 199, 232), (255, 187, 120),
+                (152, 223, 138),
+                (255, 152, 150), (197, 176, 213), (196, 156, 148),
+                (247, 182, 210),
+                (199, 199, 199), (219, 219, 141)]
+            color_map = [mcolors.rgb2hex([y / 255 for y in x]) for x in
+                         color_map]
+            styled = df.style.apply(
+                lambda x: ['background-color: {}; opacity:.5;'.format(
+                    color_map[int(x.name) % 10]) if _ == True else '' for i, _
+                           in x.iteritems()], axis=1)
+            styled.to_excel(writer, sheet_name=phase.name, index=False)
         writer.save()
         excel_file = get_file_in_memory(file_name, file_name='topline.xlsx')
         os.remove(file_name)

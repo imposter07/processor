@@ -1907,7 +1907,9 @@ def get_plan_kwargs(object_name, request_flow=True):
         form_title='PLAN', form_description=(
             'Upload current media plan and view properties of the plan.'))
     kwargs['form'] = ProcessorPlanForm()
-    kwargs['form'].plan_properties.data = Processor.get_plan_properties()
+    plan_properties = [x for x in Processor.get_plan_properties()
+                       if x != 'Package Capping']
+    kwargs['form'].plan_properties.data = plan_properties
     return kwargs
 
 
@@ -2076,7 +2078,10 @@ def edit_processor_finish(object_name):
             if u:
                 u.follow_processor(cur_proc)
                 db.session.commit()
-        cur_proc.user_id = form.owner.data.id
+        if form.owner.data:
+            cur_proc.user_id = form.owner.data.id
+        else:
+            cur_proc.user_id = current_user.id
         db.session.commit()
         if form.form_continue.data == 'continue':
             msg_text = 'Sending request and attempting to build processor: {}' \

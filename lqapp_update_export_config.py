@@ -37,5 +37,3 @@ for cur_proc in processors:
     print('running updaate...{}'.format(cur_proc.name))
     main('--update all --noprocess')
     print('run complete. {}'.format(cur_proc.name))
-
-

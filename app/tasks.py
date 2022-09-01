@@ -2883,7 +2883,7 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
             base_path = create_local_path(cur_obj)
             mp_file = os.path.join(base_path, 'mediaplan.csv')
             df = pd.read_csv(mp_file)
-            pack_col = dctc.PKD.replace('mp', '')
+            pack_col = dctc.PKD
             df = df.groupby([pack_col])[dctc.PNC].sum().reset_index()
             df = df[~df[pack_col].isin(['0', 0, 'None'])]
             df = df.rename(columns={dctc.PNC: 'Net Cost (Capped)'})
@@ -3792,8 +3792,10 @@ def update_automatic_requests(processor_id, current_user_id):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.utils as utl
         import processor.reporting.analyze as az
         import processor.reporting.vmcolumns as vmc
+        import processor.reporting.dictcolumns as dctc
         fix_type = az.Analyze.unknown_col
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_processor.id, key=fix_type).first()
@@ -3950,11 +3952,10 @@ def update_automatic_requests(processor_id, current_user_id):
             processor_id=cur_processor.id, key=fix_type).first()
         if analysis.data:
             df = pd.DataFrame(analysis.data)
-            undefined = (df['mpVendor'] + ' - ' +
-                         df['mpPackage Description'] + ' - '
-                         + df['mpPlacement Date']).to_list()
-            msg = ('{} {}\n\n'.format(analysis.message, ', '
-                                      .join(undefined)))
+            df = utl.data_to_type(df, str_col=[dctc.VEN, dctc.PKD, dctc.PD])
+            undefined = (df[dctc.VEN] + ' - ' + df[dctc.PKD] + ' - ' +
+                         df[dctc.PD]).to_list()
+            msg = ('{} {}\n\n'.format(analysis.message, ', '.join(undefined)))
             update_single_auto_request(processor_id, current_user_id,
                                        fix_type=fix_type,
                                        fix_description=msg,

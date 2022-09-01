@@ -223,6 +223,7 @@ def run_processor(processor_id, current_user_id, run_args):
             get_processor_sources(processor_id, current_user_id)
             os.chdir(cur_path)
             update_analysis_in_db(processor_id, current_user_id)
+            os.chdir(cur_path)
             update_automatic_requests(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(proc=processor_to_run, usr=user_that_ran,

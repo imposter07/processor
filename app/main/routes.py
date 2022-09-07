@@ -188,10 +188,11 @@ def parse_filter_dict_from_clients(processors, seven_days_ago):
             cur_list = cur_filter[0][filt_name]
             if filt_name == 'project':
                 cur_list = [x.split('_')[0] for x in cur_list]
-            user_list = [
-                db_model.query.filter(
-                    getattr(db_model, db_attr) == x).first().id for x in
-                cur_list]
+            user_list = []
+            for x in cur_list:
+                query = db_model.query.filter(getattr(db_model, db_attr) == x)
+                if query and query.first():
+                    user_list.append(query.first().id)
             if filt_name == 'client':
                 processors = [
                     x for x in processors if
@@ -1822,10 +1823,14 @@ def request_processor():
 @bp.route('/processor/<object_name>/edit/request', methods=['GET', 'POST'])
 @login_required
 def edit_request_processor(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_request_processor',
-                                   edit_progress=25, edit_name='Basic',
-                                   buttons='ProcessorRequest')
+    form_description = """
+    General descriptive data about a processor.
+    This is essentially metadata, such as processor name and client name.
+    """
+    kwargs = get_current_processor(
+        object_name, current_page='edit_request_processor', edit_progress=25,
+        edit_name='Basic', buttons='ProcessorRequest', form_title='BASIC',
+        form_description=form_description)
     processor_to_edit = kwargs['processor']
     form = EditProcessorRequestForm(processor_to_edit.name)
     form.set_choices()
@@ -1851,7 +1856,7 @@ def edit_request_processor(object_name):
         db.session.add(post)
         db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_account',
+            return redirect(url_for('main.edit_processor_plan',
                                     object_name=processor_to_edit.name))
         else:
             return redirect(url_for('main.edit_request_processor',
@@ -1917,6 +1922,13 @@ def get_plan_kwargs(object_name, request_flow=True):
 @login_required
 def edit_processor_plan(object_name):
     kwargs = get_plan_kwargs(object_name, request_flow=True)
+    form = kwargs['form']
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            next_page = 'main.edit_processor_account'
+        else:
+            next_page = 'main.edit_processor_plan'
+        return redirect(url_for(next_page, object_name=object_name))
     return render_template('create_processor.html', **kwargs)
 
 
@@ -1944,10 +1956,14 @@ def edit_processor_account(object_name):
         return render_template('create_processor.html', **kwargs)
     for act in form.accounts:
         if act.delete.data:
+            kwargs = dict(
+                account_id=act.account_id.data,
+                campaign_id=act.campaign_id.data,
+                username=act.username.data,
+                password=act.password.data)
+            kwargs = {k: v if v else None for k, v in kwargs.items()}
             act = Account.query.filter_by(
-                key=act.key.data, account_id=act.account_id.data,
-                campaign_id=act.campaign_id.data, username=act.username.data,
-                password=act.password.data, processor_id=cur_proc.id).first()
+                key=act.key.data, processor_id=cur_proc.id, **kwargs).first()
             if act:
                 db.session.delete(act)
                 db.session.commit()

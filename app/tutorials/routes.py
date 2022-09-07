@@ -8,6 +8,13 @@ from app.tutorials.forms import TutorialUploadForm, TutorialContinueForm
 from app.models import Tutorial, TutorialStage, User
 
 
+@bp.route('/tutorial', methods=['GET', 'POST'])
+@login_required
+def tutorial():
+    kwargs = {}
+    return render_template('tutorials/tutorials.html', **kwargs)
+
+
 @bp.route('/tutorial/edit', methods=['GET', 'POST'])
 @login_required
 def edit_tutorial():

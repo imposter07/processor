@@ -1335,6 +1335,9 @@ class Plan(db.Model):
             kwargs['posts'] = posts.items
             kwargs['next_url'] = next_url
             kwargs['prev_url'] = prev_url
+        else:
+            kwargs['object'] = Plan()
+            kwargs['object_name'] = ''
         return kwargs
 
     def get_url(self):

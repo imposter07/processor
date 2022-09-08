@@ -175,13 +175,13 @@
             })
             let vendorKey = $('#rawFileBody').data('vk');
             getMetrics('#newFilePlotMetrics', chartFunction(),
-                selectedText, metrics,
+                [selectedText], metrics,
                 filterDict, "", 250, null, null, null, null, vendorKey);
             getMetrics('#oldFilePlotMetrics', chartFunction(),
-                selectedText, metrics,
+                [selectedText], metrics,
                 filterDict, "", 250, null, null, null, null, vendorKey);
             getMetrics('#deltaFilePlotMetrics', chartFunction(),
-                selectedText, metrics,
+                [selectedText], metrics,
                 filterDict, "", 250, null, null, null, null, vendorKey);
         });
     }

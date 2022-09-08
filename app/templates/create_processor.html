@@ -465,7 +465,7 @@
     <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
 
     <script type="text/javascript" src="{{ url_for('static', filename='bootstrap-dark/darkModeHelper.js') }}"></script>
-
+    <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
     <script>
         $(document).ready(function() {
             var duplicationType = '#duplication_type'
@@ -922,14 +922,6 @@
             downloadProgress.attr("style", "width: 100%");
             unanimateBar(downloadID);
             refreshButtons()
-        }
-
-        function convertDictToFormData(data) {
-            const formData = new FormData();
-            for (const name in data) {
-                formData.append(name, data[name]);
-            }
-            return formData
         }
 
         async function getTable(tableName, clickElem, oldHtml, vendorKey='None',

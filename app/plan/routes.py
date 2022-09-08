@@ -6,12 +6,13 @@ import datetime as dt
 import app.utils as utl
 from flask_babel import _
 from app.plan import bp
+from datetime import datetime
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
     CreateSowForm
 from app.models import Client, Product, Campaign, Plan, Post, Partner, \
-    ProcessorAnalysis, PlanPhase, Sow
+    ProcessorAnalysis, PlanPhase, Sow, Processor
 
 
 @bp.route('/plan', methods=['GET', 'POST'])
@@ -46,6 +47,26 @@ def plan():
         db.session.add(post)
         db.session.commit()
     return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/create_plan_from_processor', methods=['GET', 'POST'])
+@login_required
+def create_plan_from_processor():
+    cur_processor = Processor.query.get(request.form['processor_id'])
+    cur_plans = cur_processor.plans.all()
+    if cur_plans:
+        cur_plan = cur_plans[0]
+        plan_url = url_for('plan.edit_plan', object_name=cur_plan.name)
+    else:
+        new_plan = Plan(
+            name=cur_processor.name, description=cur_processor.description,
+            start_date=cur_processor.start_date, end_date=cur_processor.end_date,
+            user_id=current_user.id, created_at=datetime.utcnow(),
+            campaign_id=cur_processor.campaign.id)
+        db.session.add(new_plan)
+        db.session.commit()
+        plan_url = url_for('plan.edit_plan', object_name=new_plan.name)
+    return jsonify({'url': plan_url})
 
 
 @bp.route('/plan/<object_name>', methods=['GET', 'POST'])
@@ -87,7 +108,7 @@ def edit_plan(object_name):
             db.session.add(phase)
             db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('plan.edit_plan',
+            return redirect(url_for('plan.topline',
                                     object_name=current_plan.name))
         else:
             return redirect(url_for('plan.edit_plan',

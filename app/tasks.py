@@ -3615,7 +3615,8 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
 
 
 def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
-                                 dimensions=None, metrics=None, filter_dict=None):
+                                 dimensions=None, metrics=None,
+                                 filter_dict=None):
     try:
         _set_task_progress(0)
         import processor.reporting.analyze as az

@@ -246,9 +246,9 @@ def save_topline():
         cur_phase = PlanPhase.query.filter_by(name=phase_name,
                                               plan_id=cur_plan.id).first()
         partner_data = data[phase_idx]['Partner']
-        num_partners = len([x for x in partner_data
-                            if 'total_budget' in x['name']])
-        for x in range(int(num_partners)):
+        part_num_list = [int(x['name'].replace('total_budget', ''))
+                         for x in partner_data if 'total_budget' in x['name']]
+        for x in part_num_list:
             tl_dict = {}
             for col in ['partner_typeSelect', 'partnerSelect',
                         'total_budget', 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv',

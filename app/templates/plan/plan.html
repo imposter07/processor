@@ -330,6 +330,14 @@
                                                data-id="range" name="dates` + loopIndex + `"
                                                readonly="readonly" data-input>
                                     </div>
+                                    <div class="col-4 form-group">
+                                        <label class="control-label" for="deletePartner` + loopIndex + `">DELETE</label>
+                                        <button id="deletePartner` + loopIndex + `" onclick="deletePartner(` + loopIndex + `);"
+                                                class="btn btn-block btn-outline-danger text-left" type="button" href="">
+                                            <i class="fas fa-trash" role="button" aria-hidden="true"></i>
+                                            DELETE PARTNER
+                                        </button>
+                                    </div>
                                     ` + partnerForm + `
                                 </form>
                             </div>
@@ -378,6 +386,12 @@
             if (phaseElem) {
                 phaseElem.click();
             }
+        }
+
+        function deletePartner(loopIndex) {
+            document.getElementById('tr' + loopIndex).remove();
+            document.getElementById('trHidden' + loopIndex).remove();
+            populateTotalCards();
         }
 
         function addPartner(clickElem, oldHtml, partner = null, tableName = 'planTable') {
@@ -599,7 +613,6 @@
             let selector = '[id^=datePicker]';
             $(selector).flatpickr({
                 mode: "range",
-                inline: true
             });
             $(selector).change(function () {
                 let loopIndex = this.id.replace('datePicker', '');
@@ -744,25 +757,28 @@
                 return {name: e[1], numeric_value: 0, current_value: 0, msg: '', change: ''}
             })
             if (table) {
-                for (let i = 0; i < (table.rows.length - 1); i += 2) {
-                    let partnerNum = i / 2;
-                    let partnerCost =  parseFloat(document.getElementById('rowtotal_budget' + partnerNum).innerHTML.replace('$', ''));
-                    partnerFormNames.forEach(partnerFormName => {
-                        let costPerName =  partnerFormName[0];
-                        let summableName = partnerFormName[1];
-                        let targetColName = partnerFormName[partnerFormName[2]];
-                        let rowValue = parseFloat(document.getElementById('row' + targetColName + partnerNum).innerHTML.replace('$', ''));
-                        let idx = data.findIndex(x => x.name === summableName);
-                        if (costPerName !== '') {
-                            rowValue = partnerCost / rowValue;
-                            if (summableName === 'Impressions') {
-                                rowValue = rowValue * 1000;
+                let rowPartners = document.querySelectorAll("[id^='rowPartner']");
+                rowPartners.forEach(rowPartner => {
+                    let partnerNum = rowPartner.id.replace('rowPartner', '');
+                    if (partnerNum[0] !== '-') {
+                        let partnerCost = parseFloat(document.getElementById('rowtotal_budget' + partnerNum).innerHTML.replace('$', ''));
+                        partnerFormNames.forEach(partnerFormName => {
+                            let costPerName = partnerFormName[0];
+                            let summableName = partnerFormName[1];
+                            let targetColName = partnerFormName[partnerFormName[2]];
+                            let rowValue = parseFloat(document.getElementById('row' + targetColName + partnerNum).innerHTML.replace('$', ''));
+                            let idx = data.findIndex(x => x.name === summableName);
+                            if (costPerName !== '') {
+                                rowValue = partnerCost / rowValue;
+                                if (summableName === 'Impressions') {
+                                    rowValue = rowValue * 1000;
+                                }
+                                document.getElementById('row' + summableName + partnerNum).innerHTML = formatNumber(rowValue);
                             }
-                            document.getElementById('row' + summableName + partnerNum).innerHTML = formatNumber(rowValue);
-                        }
-                        data[idx]['numeric_value'] += rowValue;
-                    });
-                }
+                            data[idx]['numeric_value'] += rowValue;
+                        });
+                    }
+                })
             }
             let idxSumCost = data.findIndex(x => x.name === 'total_budget');
             let sumCost = data[idxSumCost]['numeric_value'];
@@ -962,11 +978,11 @@
         }
 
         $(document).ready(function () {
-        {% if edit_name == 'Topline' %}
-            getToplineTable();
-            addPartnerOnClick();
-            addPhaseOnClick();
-        {% endif %}
+            {% if edit_name == 'Topline' %}
+                getToplineTable();
+                addPartnerOnClick();
+                addPhaseOnClick();
+            {% endif %}
         });
 
     </script>

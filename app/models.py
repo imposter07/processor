@@ -1421,15 +1421,24 @@ class Partner(db.Model):
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
     partner_type = db.Column(db.String(128))
+    cplpv = db.Column(db.Numeric)
+    cpbc = db.Column(db.Numeric)
+    cpv = db.Column(db.Numeric)
+    cpcv = db.Column(db.Numeric)
     placements = db.relationship('PartnerPlacements',
                                  backref='partner', lazy='dynamic')
 
     def get_form_dict(self, cur_phase=None):
         form_dict = {
+            'partner_type': self.partner_type,
             'partner': self.name,
             'total_budget': self.total_budget,
             'cpm': self.estimated_cpm,
             'cpc': self.estimated_cpc,
+            'cplpv': self.cplpv,
+            'cpbc': self.cpbc,
+            'cpv': self.cpv,
+            'cpcv': self.cpcv,
             'start_date': datetime.strftime(self.start_date, '%Y-%m-%d'),
             'end_date': datetime.strftime(self.end_date, '%Y-%m-%d')
         }
@@ -1440,9 +1449,14 @@ class Partner(db.Model):
     def set_from_form(self, form, current_plan):
         self.plan_phase_id = current_plan.id
         self.name = form['partnerSelect']
+        self.partner_type = form['partner_typeSelect']
         self.total_budget = form['total_budget']
         self.estimated_cpm = form['cpm']
         self.estimated_cpc = form['cpc']
+        self.cplpv = form['cplpv']
+        self.cpbc = form['cpbc']
+        self.cpv = form['cpv']
+        self.cpcv = form['cpcv']
         self.start_date = form['start_date']
         self.end_date = form['end_date']
 

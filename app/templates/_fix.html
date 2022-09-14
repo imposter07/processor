@@ -92,7 +92,6 @@
             {% endwith %}
         </div>
     </div>
-</div>
 <script>
     $(document).ready(function () {
         let tableName = "request_table-{{ fix.fix_type }}";
@@ -127,10 +126,11 @@
             <h5>
                 <a href="{{ url_for('main.edit_processor_view_fix',
                 object_name=fix.processor.name, fix_id=fix.id) }}">
-                    {{ fix.fix_type }}
+                    {{ fix.fix_description }}
                 </a>
             </h5>
         </p>
+        </div>
     </div>
-</div>
 {% endif %}
+</div>

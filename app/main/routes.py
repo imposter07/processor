@@ -160,6 +160,7 @@ def get_open_processor_requests():
             for k, v in d.items():
                 if k == "processors":
                     processors = processors.filter(Processor.name.in_(v))
+    print(processors.all())
     processor_html = render_template('all_open_requests.html',
                                      processors=processors.all())
     return jsonify({'items': processor_html})

@@ -753,6 +753,7 @@
                 }
             });
         });
+
         function displayAlert(message, level) {
             let alertPlaceholderId = '#alertPlaceholder'
             if ($(alertPlaceholderId).length === 0) {
@@ -768,6 +769,7 @@
                 '  </button>')
             alertPlaceholder.fadeIn('slow');
         }
+
         function runObject(runType, clickElem=null, oldHtml=null, modalElem=null) {
             $.ajax({
                 type: "POST",
@@ -794,6 +796,7 @@
                 }
             });
         }
+
         $(document).ready(function() {
             $('a[id^="editTable"]').click(function () {
                 let tableName = this.id.replace('editTable', '');
@@ -809,7 +812,6 @@
             });
         });
 
-
         function addCollapse(elem, tableID){
             var rows = elem.getElementsByTagName('tr');
             button = `<button class="btn btn-secondary btn-block mt-auto  bi bi-chevron-up collapsed"
@@ -822,20 +824,6 @@
                 }
                 elem.innerHTML += button
             }
-        }
-
-        function s2ab(s) {
-            var buf = new ArrayBuffer(s.length);
-            var view = new Uint8Array(buf);
-            for (var i = 0; i != s.length; ++i) view[i] = s.charCodeAt(i) & 0xFF;
-            return buf;
-        }
-
-        function s2ab(s) {
-            var buf = new ArrayBuffer(s.length);
-            var view = new Uint8Array(buf);
-            for (var i = 0; i != s.length; ++i) view[i] = s.charCodeAt(i) & 0xFF;
-            return buf;
         }
 
         function downloadTableResponse(tableName, pond, vendorKey, data) {
@@ -956,7 +944,7 @@
                 console.log("Request failed: " + error);
                 let downloadProgress = $('#downloadProgress');
                 downloadProgress.attr("style", "width: 100%");
-                window.location.reload(true)
+                window.location.reload(true);
                 if (forceReturn) {
                     turnOffProgress(downloadingProgress, oldHtml, clickElem);
                 }

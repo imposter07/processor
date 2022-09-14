@@ -35,5 +35,5 @@ for cur_proc in processors:
         except OSError as e:
             print('os error {} {}'.format(fn, e))
     print('running updaate...{}'.format(cur_proc.name))
-    main('--update all --noprocess')
+    main('--update all --noprocess --nolog')
     print('run complete. {}'.format(cur_proc.name))

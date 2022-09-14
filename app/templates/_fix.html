@@ -66,7 +66,7 @@
         <p class="card-text"  style="margin: 0 auto;">
             <h6>{{ fix.fix_type }}</h6>
             <br>
-            <div id="request_table-{{ fix.fix_type }}" style="th {text-align: left;}">
+            <div id="request_table-{{ fix.fix_type }}">
             </div>
             <br>
             <div id="downloadProgressBaseClass" class="progress">
@@ -95,14 +95,14 @@
 </div>
 <script>
     $(document).ready(function () {
-        tableName = "request_table-{{ fix.fix_type }}"
-        fixType = "{{ fix.fix_type }}"
-        elem = document.getElementById(tableName)
-        oldHTML = elem.html
-        getTable('request_table', elem, oldHTML, vendorKey='None',
-                  pond='None', progress=true, fixId=fixType, forceReturn=true)
+        let tableName = "request_table-{{ fix.fix_type }}";
+        let fixType = "{{ fix.fix_type }}";
+        let elem = document.getElementById(tableName);
+        let oldHTML = elem.html;
+        getTable('request_table', elem, oldHTML, 'None', 'None', true, fixType);
         animateBar();
     });
+
     $(document).ready(function () {
         $('button[id^="quickFix"]').unbind().click(function () {
             let dropdownButton = "#" + $(this)[0].id;
@@ -112,11 +112,12 @@
                 `<span class="spinner-grow spinner-grow-sm" role="status"
                       aria-hidden="true"></span> Loading...`
             );
-            let fixId = this.id.replace('quickFix', '')
-            setDownloadBar(this, this.textContent, false)
+            let fixId = this.id.replace('quickFix', '');
+            setDownloadBar(this, this.textContent, false);
             getTable('quick_fix', dropdownButton, oldHtml, 'None', 'None', false, fixId);
         });
     });
+
 </script>
 
 {% else %}

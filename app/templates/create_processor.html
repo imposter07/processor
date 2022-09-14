@@ -989,6 +989,9 @@
                     "pre; font-family: Consolas;'>")  + "</p>";
             $('#logModal > div:nth-child(1) > div:nth-child(1) > div:nth-child(2)'
             )[0].innerHTML = htmlLog;
+            $('#logModal .modal-body').attr('style', 'overflow-x:auto')
+            $('#logModal p:contains("ERROR]")').css('color', 'red')
+            $('#logModal p:contains("WARNING]")').css('color', 'orange')
         }
         function getLog(clickElem, oldHtml){
             $.post('/get_log',

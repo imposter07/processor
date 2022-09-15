@@ -2,6 +2,7 @@ import io
 import os
 import json
 from app import db
+import pandas as pd
 import datetime as dt
 from app.models import Task
 from flask import current_app
@@ -28,7 +29,10 @@ def get_file_in_memory_from_request(current_request, current_key):
     return mem, file_name, file_type
 
 
-def parse_upload_file_request(current_request):
+def parse_upload_file_request(current_request, object_name=None):
+    msg = 'Attempting to parse object {} with request: {}'.format(
+            object_name, current_request)
+    current_app.logger.info(msg)
     current_form = current_request.form.to_dict()
     current_key = list(current_form.keys())[0]
     current_form = json.loads(current_form[current_key])
@@ -95,3 +99,8 @@ def sync_new_form_data_with_database(form_dict, old_db_items, db_model,
         new_p.set_from_form(form=p, current_plan=relation_db_item)
         db.session.add(new_p)
         db.session.commit()
+
+
+def convert_file_to_df(current_file):
+    df = pd.read_csv(current_file)
+    return df

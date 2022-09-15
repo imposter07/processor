@@ -160,7 +160,6 @@ def get_open_processor_requests():
             for k, v in d.items():
                 if k == "processors":
                     processors = processors.filter(Processor.name.in_(v))
-    print(processors.all())
     processor_html = render_template('all_open_requests.html',
                                      processors=processors.all())
     return jsonify({'items': processor_html})
@@ -548,7 +547,8 @@ def get_task_progress():
                         data['data'] = df_to_html(df, 'Pacing Table')
                         data['send_cols'] = job.result[1]
                     else:
-                        data['data'] = df.reset_index().to_dict(orient='records')
+                        data['data'] = df.reset_index().to_dict(
+                            orient='records')
     else:
         task = cur_obj.get_task_in_progress(name=job_name)
     if task:
@@ -909,7 +909,7 @@ def add_df_to_processor_dict(form_import, processor_dicts):
     for fi in form_import:
         if ('raw_file' in fi and fi['raw_file']
                 and '{"data":"success' not in fi['raw_file']):
-            df = convert_file_to_df(fi['raw_file'])
+            df = utl.convert_file_to_df(fi['raw_file'])
             new_dict = [x for x in processor_dicts
                         if x[vmc.vendorkey] == fi['vendor_key']][0]
             processor_dicts = [x for x in processor_dicts
@@ -944,17 +944,12 @@ def set_processor_imports_in_db(processor_id, form_imports):
     return processor_dicts
 
 
-def convert_file_to_df(current_file):
-    df = pd.read_csv(current_file)
-    return df
-
-
 @bp.route('/processor/<object_name>/edit/import/upload_file',
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_import_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
-        utl.parse_upload_file_request(request)
+        utl.parse_upload_file_request(request, object_name)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
@@ -1265,7 +1260,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])
             if 'vk' in proc_arg and job_name not in [
-                '.check_processor_plan' '.apply_processor_plan']:
+                    '.check_processor_plan' '.apply_processor_plan']:
                 table_name = '{}vendorkey{}'.format(
                     table_name, request.form['vendorkey'].replace(' ', '___'))
     table_name = "modalTable{}".format(table_name)
@@ -1344,7 +1339,8 @@ def rename_duplicates(old):
 def get_placement_form(data_source):
     form = PlacementForm()
     ds_dict = data_source.get_form_dict_with_split()
-    auto_order_cols = list(utl.rename_duplicates(ds_dict['auto_dictionary_order']))
+    auto_order_cols = list(
+        utl.rename_duplicates(ds_dict['auto_dictionary_order']))
     ds_dict['auto_dictionary_order'] = auto_order_cols
     form.set_column_choices(data_source.id, ds_dict)
     form.full_placement_columns.data = ds_dict['full_placement_columns']
@@ -1515,7 +1511,7 @@ def get_datasource_raw_columns(obj_name, datasource_name):
 @login_required
 def edit_processor_clean_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
-        utl.parse_upload_file_request(request)
+        utl.parse_upload_file_request(request, object_name)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
@@ -1887,7 +1883,7 @@ def edit_request_processor(object_name):
 @login_required
 def edit_processor_plan_upload_file(object_name):
     current_key, object_name, object_form, object_level =\
-        utl.parse_upload_file_request(request)
+        utl.parse_upload_file_request(request, object_name)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
@@ -2161,7 +2157,7 @@ def edit_processor_request_fix(object_name):
 @login_required
 def edit_processor_request_fix_upload_file(object_name):
     current_key, object_name, object_form, object_level =\
-        utl.parse_upload_file_request(request)
+        utl.parse_upload_file_request(request, object_name)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     fix_type = [x['value'] for x in object_form if x['name'] == 'fix_type'][0]
     mem, file_name, file_type = \
@@ -2896,7 +2892,7 @@ def uploader_page(object_name):
 @login_required
 def edit_uploader_upload_file(object_name):
     current_key, object_name, object_form, object_level =\
-        utl.parse_upload_file_request(request)
+        utl.parse_upload_file_request(request, object_name)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
@@ -2983,7 +2979,7 @@ def set_uploader_relations_in_db(uploader_id, form_relations,
 
 def uploader_name_file_upload(object_name):
     current_key, object_name, object_form, object_level =\
-        utl.parse_upload_file_request(request)
+        utl.parse_upload_file_request(request, object_name)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     up_obj = UploaderObjects.query.filter_by(
         uploader_id=cur_up.id, object_level=object_level).first()
@@ -3135,7 +3131,7 @@ def edit_uploader_creative(object_name):
 @login_required
 def uploader_file_upload(object_name):
     current_key, object_name, object_form, object_level =\
-        utl.parse_upload_file_request(request)
+        utl.parse_upload_file_request(request, object_name)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, 'creative_file')

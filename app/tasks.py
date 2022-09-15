@@ -1387,7 +1387,7 @@ def get_uploader_relation_values_from_position(rel_pos, df, vk, object_level,
     new_values = [x for x in new_values
                   if x not in df['column_value'].unique().tolist()]
     cdf = pd.DataFrame(new_values, columns=['column_value'])
-    cdf['column_name'] = '|'.join([col for x in rel_pos])
+    cdf['column_name'] = '|'.join([col for _ in rel_pos])
     cdf['impacted_column_name'] = vk
     if vk in ['campaign_name', 'adset_name', 'ad_name']:
         impacted_new_value = cdf['column_value'].str.replace('|', '_')
@@ -3645,7 +3645,7 @@ def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
             pdf = pdf[pdf_cols].merge(adf[adf_cols], how='outer', on=plan_cols)
         final_columns = df_cols + ['Start Date', 'End Date', vmc.cost,
                                    dctc.PNC, dctc.UNC, 'Delivery',
-                                         'Projected Full Delivery']
+                                   'Projected Full Delivery']
         pdf = pdf[final_columns]
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_proc.id, key=az.Analyze.delivery_col,

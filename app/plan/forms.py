@@ -68,14 +68,8 @@ class CreateSowForm(FlaskForm):
     start_date = DateField('Start date', validators=[DataRequired()])
     end_date = DateField('End date', validators=[DataRequired()])
     client_name = StringField('Client name', validators=[DataRequired()])
-    campaign = StringField('Campaign', validators=[DataRequired()])
     address = StringField('Liquid address', validators=[DataRequired()])
     phone = StringField('Liquid phone', validators=[DataRequired()])
     fax = StringField('Liquid fax', validators=[DataRequired()])
-    total_project_budget = DecimalField('Total budget',
-                                        validators=[DataRequired()])
     ad_serving = DecimalField('Ad serving cost', validators=[DataRequired()])
-    vendor = SelectMultipleField('Vendors', choices=['Facebook', 'Samsung',
-                                                     'The Trade Desk', 'TikTok',
-                                                     'DCM'])
     form_continue = HiddenField('form_continue')

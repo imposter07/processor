@@ -120,7 +120,7 @@ def processor_post_message(proc, usr, text, run_complete=False,
                                object_name=object_name)
 
 
-def copy_file(old_file, new_file, attempt=1):
+def copy_file(old_file, new_file, attempt=1, max_attempts=100):
     try:
         shutil.copy(old_file, new_file)
     except PermissionError as e:
@@ -128,16 +128,17 @@ def copy_file(old_file, new_file, attempt=1):
                            '{}'.format(old_file, e))
     except OSError as e:
         attempt += 1
-        if attempt > 100:
+        if attempt > max_attempts:
             app.logger.warning(
-                'Exceeded after 100 attempts not copying {} '
-                '{}'.format(old_file, e))
+                'Exceeded after {} attempts not copying {} '
+                '{}'.format(max_attempts, old_file, e))
         else:
             app.logger.warning('Attempt {}: could not copy {} due to OSError '
                                'retrying in 60s: {}'.format(attempt, old_file,
                                                             e))
             time.sleep(60)
-            copy_file(old_file, new_file, attempt=attempt)
+            copy_file(old_file, new_file, attempt=attempt,
+                      max_attempts=max_attempts)
 
 
 def copy_processor_local(file_path, copy_back=False):
@@ -692,9 +693,9 @@ def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
             data_source.p[vmc.filename_true])[1]
         if file_type != current_file_type:
             idx = matrix.vm_df[matrix.vm_df[vmc.vendorkey] == vk].index
-            new_name = data_source.p[vmc.filename].replace(
+            new_value = data_source.p[vmc.filename].replace(
                 current_file_type, file_type)
-            matrix.vm_change(index=idx, col=vmc.filename, new_value=new_name)
+            matrix.vm_change(index=idx, col=vmc.filename, new_value=new_value)
             matrix.write()
             matrix = vm.VendorMatrix()
             data_source = matrix.get_data_source(vk)
@@ -4557,7 +4558,7 @@ def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):
         file_type = os.path.splitext(file_name)[1]
         tmp_file_name = data_source.p[vmc.filename_true].replace(
             file_type, 'TMP{}'.format(file_type))
-        copy_file(tmp_file_name, file_name)
+        copy_file(tmp_file_name, file_name, max_attempts=10)
         _set_task_progress(100)
         return True
     except:

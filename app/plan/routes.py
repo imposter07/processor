@@ -300,7 +300,6 @@ def edit_sow(object_name):
         current_sow.address = form.address.data
         current_sow.phone = form.phone.data
         current_sow.fax = form.fax.data
-        current_sow.total_project_budget = form.total_project_budget.data
         current_sow.ad_serving = form.ad_serving.data
         db.session.commit()
         creation_text = 'SOW was edited.'
@@ -318,10 +317,17 @@ def edit_sow(object_name):
         form.start_date.data = current_sow.start_date
         form.end_date.data = current_sow.end_date
         form.client_name.data = current_sow.client_name
-        form.campaign.data = current_sow.campaign
         form.address.data = current_sow.address
         form.phone.data = current_sow.phone
         form.fax.data = current_sow.fax
-        form.total_project_budget.data = current_sow.total_project_budget
         form.ad_serving.data = current_sow.ad_serving
+    return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/plan/<object_name>/plan_details', methods=['GET', 'POST'])
+@login_required
+def plan_details(object_name):
+    kwargs = Plan().get_current_plan(
+        object_name, 'edit_plan', edit_progress=100, edit_name='Plan Details')
+    kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)

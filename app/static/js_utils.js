@@ -6,3 +6,17 @@ function convertDictToFormData(data) {
     return formData
 }
 
+function makeRequest(url, method, data, responseFunction,
+                     responseType = 'json') {
+    let formData = convertDictToFormData(data);
+    fetch(url, {
+        method: method,
+        body: formData
+    }).then((data) => {
+        if (responseType === 'json') {
+            data.json().then((data) => {
+                responseFunction(data);
+            });
+        }
+    });
+}

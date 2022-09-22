@@ -205,6 +205,7 @@ def get_topline():
                 df['partner_type'].unique()).rename(
                     columns={0: 'partner_type'}).to_dict(orient='records')
         if x == 'Phase':
+
             cur_col['type'] = 'select'
             cur_col['values'] = [{'Phase': x} for x in ['Launch', 'Pre-Launch']]
             cur_col['hidden'] = True
@@ -331,3 +332,15 @@ def plan_details(object_name):
         object_name, 'edit_plan', edit_progress=100, edit_name='Plan Details')
     kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/get_plan_rule', methods=['GET', 'POST'])
+@login_required
+def get_plan_rule():
+    col_list = ['name', 'order', 'type', 'rule_info']
+    cols = []
+    for x in col_list:
+        cur_col = {'name': x, 'type': '', 'add_select_box': False,
+                   'hidden': False, 'header': False, 'form': False}
+        cols.append(cur_col)
+    return jsonify({'data': {'cols': cols}})

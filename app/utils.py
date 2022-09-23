@@ -4,8 +4,8 @@ import json
 from app import db
 import pandas as pd
 import datetime as dt
-from app.models import Task
-from flask import current_app
+from app.models import Task, Processor, User, Campaign, Project, Client, Product
+from flask import current_app, render_template
 
 
 def launch_task(cur_class, name, description, running_user, task_class_args,
@@ -104,3 +104,110 @@ def sync_new_form_data_with_database(form_dict, old_db_items, db_model,
 def convert_file_to_df(current_file):
     df = pd.read_csv(current_file)
     return df
+
+
+def parse_filter_dict_from_clients(processors, seven_days_ago, current_request):
+    current_filters = json.loads(current_request.form['filter_dict'])
+    filter_types = [
+        ('username', User, 'username', Processor.user_id),
+        ('campaign', Campaign, 'name', Processor.campaign_id),
+        ('processor', Processor, 'name', Processor.id),
+        ('project', Project, 'project_number', Processor.projects),
+        ('client', Client, 'name', ''),
+        ('product', Product, 'name', '')]
+    live = [x for x in current_filters if 'live' in x.keys()]
+    if live and live[0]['live']:
+        processors = processors.filter(
+            Processor.end_date > seven_days_ago.date())
+    for filter_type in filter_types:
+        filt_name = filter_type[0]
+        db_model = filter_type[1]
+        db_attr = filter_type[2]
+        proc_rel = filter_type[3]
+        cur_filter = [x for x in current_filters if filt_name in x.keys()]
+        if cur_filter and cur_filter[0][filt_name] and processors:
+            cur_list = cur_filter[0][filt_name]
+            if filt_name == 'project':
+                cur_list = [x.split('_')[0] for x in cur_list]
+            user_list = []
+            for x in cur_list:
+                query = db_model.query.filter(getattr(db_model, db_attr) == x)
+                if query and query.first():
+                    user_list.append(query.first().id)
+            if filt_name == 'client':
+                processors = [
+                    x for x in processors if
+                    x.campaign.product.client_id in user_list]
+            elif filt_name == 'product':
+                processors = [
+                    x for x in processors if
+                    x.campaign.product_id in user_list]
+            elif filt_name == 'project':
+                processors = [x for x in processors
+                              if any(e in [y.id for y in x.projects]
+                                     for e in user_list)]
+            else:
+                processors = processors.filter(proc_rel.in_(user_list))
+    return processors
+
+
+def get_processor_user_map(processors):
+    new_list = group_sql_to_dict(processors, group_by='user_id')
+    new_list = list(new_list.values())
+    new_list.sort(key=len, reverse=True)
+    for u in new_list:
+        cu = u[0].user
+        """
+        cu.ppd = '{0:.0f}'.format(cu.posts.filter(
+            Post.timestamp > seven_days_ago.date()).count() / 7)
+        """
+        if cu.id in [3, 5, 7, 9, 10, 11, 51, 63, 66, 76, 88, 93]:
+            cu.data = True
+        else:
+            cu.data = False
+        for p in u:
+            """
+            p.ppd = '{0:.0f}'.format(p.posts.filter(
+                Post.timestamp > seven_days_ago.date()).count() / 7)
+            """
+            cu.live = 0
+            cu.upcoming = 0
+            cu.completed = 0
+            if p.start_date and p.start_date > dt.datetime.today().date():
+                p.status = 'Upcoming'
+                cu.upcoming += 1
+            elif p.end_date and p.end_date < dt.datetime.today().date():
+                p.status = 'Completed'
+                cu.completed += 1
+            elif not p.end_date or not p.start_date:
+                cu.status = 'Missing start/end date'
+            else:
+                cu.live += 1
+                p.status = 'Live'
+    current_users = User.query.order_by(User.username).all()
+    projects = Project.query.order_by(Project.project_name).all()
+    processor_html = render_template('processor_user_map.html',
+                                     processors=new_list,
+                                     current_users=current_users,
+                                     project_numbers=projects)
+    return processor_html
+
+
+def get_processor_client_directory(processors):
+    new_dict = {}
+    for x in processors:
+        client = x.campaign.product.client
+        product = x.campaign.product
+        campaign = x.campaign
+        if client not in new_dict:
+            new_dict[client] = {}
+        if product not in new_dict[client]:
+            new_dict[client][product] = {}
+        if campaign not in new_dict[client][product]:
+            new_dict[client][product][campaign] = []
+        new_dict[client][product][campaign].append(x)
+    new_dict = {key: new_dict[key] for
+                key in sorted(new_dict.keys(), key=lambda y: y.name)}
+    clients_html = render_template('_client_directory.html',
+                                   client_dict=new_dict)
+    return clients_html

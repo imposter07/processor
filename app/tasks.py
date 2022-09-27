@@ -2642,7 +2642,7 @@ def set_plan_as_datasource(processor_id, current_user_id, base_matrix):
             copy_file(mp_path, os.path.join(raw_path, 'mediaplan.csv'))
             vm_path = os.path.join(base_path, 'config', 'Vendormatrix.csv')
             if os.path.exists(vm_path):
-                os.chdir(adjust_path(cur_obj.local_path))
+                os.chdir(adjust_path(base_path))
                 matrix = vm.VendorMatrix()
                 vm_df = matrix.vm_df
                 if vmc.api_mp_key not in vm_df[vmc.vendorkey].values:
@@ -2720,6 +2720,9 @@ def add_plan_fess_to_processor(processor_id, current_user_id):
             return False
         df = pd.read_csv(mp_path)
         serving_cols = ['Ad Serving Type', 'Ad Serving Rate', 'Reporting Fee']
+        for col in serving_cols:
+            if col not in df.columns:
+                df[col] = 0
         sdf = df.groupby(serving_cols).size().reset_index()[serving_cols]
         sdf = sdf.rename(
             columns={'Ad Serving Type': Rates.type_name.name,
@@ -2885,7 +2888,9 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
             base_path = create_local_path(cur_obj)
             mp_file = os.path.join(base_path, 'mediaplan.csv')
             df = pd.read_csv(mp_file)
-            pack_col = dctc.PKD
+            pack_col = dctc.PKD.replace('mp', '')
+            if pack_col not in df.columns:
+                return False
             df = df.groupby([pack_col])[dctc.PNC].sum().reset_index()
             df = df[~df[pack_col].isin(['0', 0, 'None'])]
             df = df.rename(columns={dctc.PNC: 'Net Cost (Capped)'})

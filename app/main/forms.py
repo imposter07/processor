@@ -315,10 +315,6 @@ class AccountForm(FlaskForm):
     key = SelectField(
         'Account Type', choices=[(x, x) for x in vmc.api_keys])
     account_id = StringField('Account ID')
-    username = StringField('Username',
-                           description='Only include if shared login.')
-    password = StringField('Password',
-                           description='Only include if shared login.')
     campaign_id = StringField('Campaign ID or Name')
     delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
 

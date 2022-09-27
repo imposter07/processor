@@ -31,7 +31,6 @@ from app.models import User, Post, Message, Notification, Processor, \
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
-import uploader.upload.creator as cre
 
 
 @bp.before_app_request
@@ -1653,24 +1652,6 @@ def edit_processor(object_name):
     return render_template('create_processor.html',  **kwargs)
 
 
-def convert_media_plan_to_df(current_file):
-    mp = cre.MediaPlan(current_file)
-    return mp.df
-
-
-def check_and_add_media_plan(media_plan_data, processor_to_edit,
-                             object_type=Processor):
-    if media_plan_data:
-        df = convert_media_plan_to_df(media_plan_data)
-        msg_text = ('Attempting to save media plan for processor: {}'
-                    ''.format(processor_to_edit.name))
-        processor_to_edit.launch_task(
-            '.save_media_plan', _(msg_text),
-            running_user=current_user.id,
-            media_plan=df, object_type=object_type)
-        db.session.commit()
-
-
 @bp.route('/request_processor', methods=['GET', 'POST'])
 @login_required
 def request_processor():
@@ -1781,7 +1762,8 @@ def edit_processor_plan_upload_file(object_name):
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
-    check_and_add_media_plan(mem, cur_proc, object_type=Processor)
+    utl.check_and_add_media_plan(mem, cur_proc, object_type=Processor,
+                                 current_user=current_user)
     return jsonify({'data': 'success: {}'.format(cur_proc.name)})
 
 
@@ -1793,6 +1775,14 @@ def edit_processor_plan_normal_upload_file(object_name):
 
 
 def get_plan_kwargs(object_name, request_flow=True):
+    form_description = """
+    Upload current media plan and view properties of the plan.
+    The file should have type '.xlsx'.  
+    There should be a tab in the file called 'Media Plan'.  
+    The column names in the tab 'Media Plan' should be on row 3.  
+    It will specifically look for columns titled 'Partner Name' 
+    and 'Campaign Phase (If Needed) '
+    """
     if request_flow:
         buttons = 'ProcessorRequest'
     else:
@@ -1800,8 +1790,7 @@ def get_plan_kwargs(object_name, request_flow=True):
     kwargs = get_current_processor(
         object_name, current_page='edit_processor_plan', edit_progress=50,
         edit_name='Plan', buttons=buttons,
-        form_title='PLAN', form_description=(
-            'Upload current media plan and view properties of the plan.'))
+        form_title='PLAN', form_description=form_description)
     kwargs['form'] = ProcessorPlanForm()
     plan_properties = [x for x in Processor.get_plan_properties()
                        if x != 'Package Capping']
@@ -1833,10 +1822,19 @@ def edit_processor_plan_normal(object_name):
 @bp.route('/processor/<object_name>/edit/accounts', methods=['GET', 'POST'])
 @login_required
 def edit_processor_account(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_account',
-                                   edit_progress=50, edit_name='Accounts',
-                                   buttons='ProcessorRequest')
+    form_description = """
+    The accounts to create an API for so the processor can automatically pull 
+    data.
+    Add an account with 'Add Account' and fill in the card.
+    The values for each Account Type differ.
+    You can view exactly what to place in each by clicking the Question Mark
+    on the left hand side of your screen.  
+    Then select 'How do I add a new API to the processor?'
+    """
+    kwargs = get_current_processor(
+        object_name, current_page='edit_processor_account',
+        edit_progress=50, edit_name='Accounts', buttons='ProcessorRequest',
+        form_title='ACCOUNTS', form_description=form_description)
     cur_proc = kwargs['processor']
     accounts = GeneralAccountForm().set_accounts(Account, cur_proc)
     form = GeneralAccountForm(accounts=accounts)
@@ -1849,9 +1847,7 @@ def edit_processor_account(object_name):
         if act.delete.data:
             kwargs = dict(
                 account_id=act.account_id.data,
-                campaign_id=act.campaign_id.data,
-                username=act.username.data,
-                password=act.password.data)
+                campaign_id=act.campaign_id.data)
             kwargs = {k: v if v else None for k, v in kwargs.items()}
             act = Account.query.filter_by(
                 key=act.key.data, processor_id=cur_proc.id, **kwargs).first()
@@ -2073,7 +2069,7 @@ def edit_processor_request_fix_upload_file(object_name):
             running_user=current_user.id, new_data=mem,
             vk=ds.vendor_key, mem_file=True, file_type=file_type)
     elif fix_type == 'Update Plan':
-        check_and_add_media_plan(mem, cur_proc)
+        utl.check_and_add_media_plan(mem, cur_proc, current_user=current_user)
     elif fix_type == 'Spend Cap':
         msg_text = 'Adding new spend cap'
         cur_proc.launch_task(
@@ -2691,8 +2687,9 @@ def create_uploader():
                     uploader_id=new_uploader.id)
         db.session.add(post)
         db.session.commit()
-        check_and_add_media_plan(form.media_plan.data, new_uploader,
-                                 object_type=Uploader)
+        utl.check_and_add_media_plan(
+            form.media_plan.data, new_uploader, object_type=Uploader,
+            current_user=current_user)
         if form.media_plan.data:
             new_uploader.media_plan = True
             db.session.commit()
@@ -2790,7 +2787,8 @@ def edit_uploader_upload_file(object_name):
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
-    check_and_add_media_plan(mem, cur_up, object_type=Uploader)
+    utl.check_and_add_media_plan(mem, cur_up, object_type=Uploader,
+                                 current_user=current_user)
     cur_up.media_plan = True
     db.session.commit()
     return jsonify({'data': 'success: {}'.format(cur_up.name)})

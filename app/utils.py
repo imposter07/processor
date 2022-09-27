@@ -6,6 +6,8 @@ import pandas as pd
 import datetime as dt
 from app.models import Task, Processor, User, Campaign, Project, Client, Product
 from flask import current_app, render_template
+from flask_babel import _
+import uploader.upload.creator as cre
 
 
 def launch_task(cur_class, name, description, running_user, task_class_args,
@@ -211,3 +213,23 @@ def get_processor_client_directory(processors):
     clients_html = render_template('_client_directory.html',
                                    client_dict=new_dict)
     return clients_html
+
+
+def convert_media_plan_to_df(current_file):
+    mp = cre.MediaPlan(current_file)
+    return mp.df
+
+
+def check_and_add_media_plan(media_plan_data, processor_to_edit,
+                             object_type=Processor, current_user=None):
+    if media_plan_data:
+        if not current_user:
+            current_user = User.query.get(processor_to_edit.user_id)
+        df = convert_media_plan_to_df(media_plan_data)
+        msg_text = ('Attempting to save media plan for processor: {}'
+                    ''.format(processor_to_edit.name))
+        processor_to_edit.launch_task(
+            '.save_media_plan', _(msg_text),
+            running_user=current_user.id,
+            media_plan=df, object_type=object_type)
+        db.session.commit()

@@ -845,9 +845,7 @@ class Account(db.Model):
         form_dict = {
             'key': self.key,
             'account_id': self.account_id,
-            'campaign_id': self.campaign_id,
-            'username': self.username,
-            'password': self.password
+            'campaign_id': self.campaign_id
         }
         return form_dict
 
@@ -856,8 +854,6 @@ class Account(db.Model):
         self.key = form['key']
         self.account_id = form['account_id']
         self.campaign_id = form['campaign_id']
-        self.username = form['username']
-        self.password = form['password']
 
     def get_dict_for_processor(self, name, start_date):
         proc_dict = {

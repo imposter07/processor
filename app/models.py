@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from datetime import time as datetime_time
 from hashlib import md5
 from flask import current_app, url_for, request
-from flask_login import UserMixin
+from flask_login import UserMixin, current_user
 from flask_babel import _, get_locale
 import processor.reporting.vmcolumns as vmc
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -636,7 +636,8 @@ class Processor(db.Model):
     def get_notes(self):
         return self.notes.order_by(Notes.created_at.desc()).all()
 
-    def get_current_buttons(self):
+    @staticmethod
+    def get_current_buttons():
         buttons = [{'Basic': 'main.edit_processor'},
                    {'Import': 'main.edit_processor_import'},
                    {'Clean': 'main.edit_processor_clean'},
@@ -647,6 +648,192 @@ class Processor(db.Model):
     def get_plan_properties():
         return ['Add Account Types', 'Plan Net', 'Package Capping',
                 'Plan As Datasource', 'Add Fees']
+
+    def get_plan_kwargs(self, object_name, request_flow=True, cur_form=None):
+        form_description = """
+        Upload current media plan and view properties of the plan.
+        The file should have type '.xlsx'.  
+        There should be a tab in the file called 'Media Plan'.  
+        The column names in the tab 'Media Plan' should be on row 3.  
+        It will specifically look for columns titled 'Partner Name' 
+        and 'Campaign Phase (If Needed) '
+        """
+        if request_flow:
+            buttons = 'ProcessorRequest'
+        else:
+            buttons = 'Processor'
+        kwargs = self.get_current_processor(
+            object_name, current_page='edit_processor_plan', edit_progress=50,
+            edit_name='Plan', buttons=buttons,
+            form_title='PLAN', form_description=form_description)
+        kwargs['form'] = cur_form
+        plan_properties = [x for x in Processor.get_plan_properties()
+                           if x != 'Package Capping']
+        kwargs['form'].plan_properties.data = plan_properties
+        return kwargs
+
+    def get_current_processor(
+            self, object_name, current_page, edit_progress=0,
+            edit_name='Page', buttons=None, fix_id=None, note_id=None,
+            form_title=None, form_description=None):
+        cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
+        cur_user = User.query.filter_by(id=current_user.id).first_or_404()
+        posts, next_url, prev_url = Post().get_posts_for_objects(
+            cur_obj=cur_proc, fix_id=fix_id, current_page=current_page,
+            object_name='processor', note_id=note_id)
+        api_imports = {0: {'All': 'import'}}
+        for idx, (k, v) in enumerate(vmc.api_translation.items()):
+            api_imports[idx + 1] = {k: v}
+        run_links = self.get_processor_run_links()
+        edit_links = self.get_processor_edit_links()
+        output_links = self.get_processor_output_links()
+        request_links = self.get_processor_request_links(cur_proc.name)
+        walk = Walkthrough().get_walk_questions(edit_name)
+        args = dict(object=cur_proc, processor=cur_proc,
+                    posts=posts.items, title=_('Processor'),
+                    object_name=cur_proc.name, user=cur_user,
+                    edit_progress=edit_progress, edit_name=edit_name,
+                    api_imports=api_imports,
+                    object_function_call={'object_name': cur_proc.name},
+                    run_links=run_links, edit_links=edit_links,
+                    output_links=output_links, request_links=request_links,
+                    next_url=next_url, prev_url=prev_url,
+                    walkthrough=walk, form_title=form_title,
+                    form_description=form_description)
+        args['buttons'] = self.get_navigation_buttons(buttons)
+        return args
+
+    @staticmethod
+    def get_processor_run_links():
+        run_links = {}
+        for idx, run_arg in enumerate(
+                (('full', 'Runs all processor modes from import to export.'),
+                 ('import', 'Runs api import. A modal will '
+                            'popup specifying a specific API or all.'),
+                 ('basic', 'Runs regular processor that cleans all data '
+                           'and generates Raw Data Output.'),
+                 ('export', 'Runs export to database and tableau refresh.'),
+                 ('update',
+                  'RARELY NEEDED - Runs processor update on vendormatrix '
+                  'and dictionaries based on code changes.'))):
+            run_link = dict(title=run_arg[0].capitalize(),
+                            tooltip=run_arg[1])
+            run_links[idx] = run_link
+        return run_links
+
+    @staticmethod
+    def get_processor_edit_links():
+        edit_links = {}
+        edits = (
+            ('Vendormatrix',
+             'Directly edit the vendormatrix. '
+             'This is the config file for all datasources.'),
+            ('Translate',
+             'Directly edit the translation config. This config '
+             'file changes a dictionary value into another.'),
+            ('Constant',
+             'Directly edit the constant config. This config file '
+             'sets a dictionary value for all dictionaries in '
+             'the processor instance.'),
+            ('Relation',
+             'Directly edit relation config. This config file '
+             'specifies relations between dictionary values. '))
+        for idx, edit_file in enumerate(edits):
+            edit_links[idx] = dict(title=edit_file[0],
+                                   nest=[], tooltip=edit_file[1])
+            if edit_file[0] == 'Relation':
+                edit_links[idx]['nest'] = ['Campaign', 'Targeting', 'Creative',
+                                           'Vendor', 'Country', 'Serving',
+                                           'Copy']
+        return edit_links
+
+    @staticmethod
+    def get_processor_output_links():
+        output_links = {}
+        for idx, out_file in enumerate(
+                (('FullOutput', 'Downloads the Raw Data Output.'),
+                 ('Vendor', 'View modal table of data grouped by Vendor'),
+                 ('Target', 'View modal table of data grouped by Target'),
+                 ('Creative', 'View modal table of data grouped by Creative'),
+                 ('Copy', 'View modal table of data grouped by Copy'),
+                 ('BuyModel', 'View modal table of data grouped by BuyModel'))):
+            output_links[idx] = dict(title=out_file[0], nest=[],
+                                     tooltip=out_file[1])
+        return output_links
+
+    @staticmethod
+    def get_processor_request_links(object_name):
+        run_links = {
+            0: {'title': 'View Initial Request',
+                'href': url_for('main.edit_request_processor',
+                                object_name=object_name),
+                'tooltip': 'View/Edits the initial request that made this '
+                           'processor instance. This will not change '
+                           'anything unless the processor is rebuilt.'},
+            1: {'title': 'Request Data Fix',
+                'href': url_for('main.edit_processor_request_fix',
+                                object_name=object_name),
+                'tooltip': 'Request a fix for the current processor data '
+                           'set, including changing values, adding'
+                           ' files etc.'},
+            2: {'title': 'Request Duplication',
+                'href': url_for('main.edit_processor_duplication',
+                                object_name=object_name),
+                'tooltip': 'Duplicates current processor instance based on'
+                           ' date to use new instance going forward.'},
+            3: {'title': 'Request Dashboard',
+                'href': url_for('main.processor_dashboard_create',
+                                object_name=object_name),
+                'tooltip': 'Create a dashboard in the app that queries the'
+                           ' database based on this processor instance.'}
+        }
+        return run_links
+
+    @staticmethod
+    def get_navigation_buttons(buttons=None):
+        if buttons == 'ProcessorRequest':
+            buttons = [{'Basic': 'main.edit_request_processor'},
+                       {'Plan': 'main.edit_processor_plan'},
+                       {'Accounts': 'main.edit_processor_account'},
+                       {'Fees': 'main.edit_processor_fees'},
+                       {'Conversions': 'main.edit_processor_conversions'},
+                       {'Finish': 'main.edit_processor_finish'}]
+        elif buttons == 'ProcessorRequestFix':
+            buttons = [{'New Fix': 'main.edit_processor_request_fix'},
+                       {'Submit Fixes': 'main.edit_processor_submit_fix'},
+                       {'All Fixes': 'main.edit_processor_all_fix'}]
+        elif buttons == 'ProcessorNote':
+            buttons = [{'New Note': 'main.edit_processor_note'},
+                       {'All Notes': 'main.edit_processor_all_notes'},
+                       {'Automatic Notes': 'main.edit_processor_auto_notes'}]
+        elif buttons == 'ProcessorDuplicate':
+            buttons = [{'Duplicate': 'main.edit_processor_duplication'}]
+        elif buttons == 'ProcessorDashboard':
+            buttons = [{'Create': 'main.processor_dashboard_create'},
+                       {'View All': 'main.processor_dashboard_all'}]
+        elif buttons == 'UploaderDCM':
+            buttons = [{'Basic': 'main.edit_uploader'},
+                       {'Campaign': 'main.edit_uploader_campaign_dcm'},
+                       {'Adset': 'main.edit_uploader_adset_dcm'},
+                       {'Ad': 'main.edit_uploader_ad_dcm'}]
+        elif buttons == 'UploaderFacebook':
+            buttons = [{'Basic': 'main.edit_uploader'},
+                       {'Campaign': 'main.edit_uploader_campaign'},
+                       {'Adset': 'main.edit_uploader_adset'},
+                       {'Creative': 'main.edit_uploader_creative'},
+                       {'Ad': 'main.edit_uploader_ad'}]
+        elif buttons == 'UploaderAdwords':
+            buttons = [{'Basic': 'main.edit_uploader'},
+                       {'Campaign': 'main.edit_uploader_campaign_aw'},
+                       {'Adset': 'main.edit_uploader_adset_aw'},
+                       {'Ad': 'main.edit_uploader_ad_aw'}]
+        else:
+            buttons = [{'Basic': 'main.edit_processor'},
+                       {'Plan': 'main.edit_processor_plan_normal'},
+                       {'Import': 'main.edit_processor_import'},
+                       {'Clean': 'main.edit_processor_clean'},
+                       {'Export': 'main.edit_processor_export'}]
+        return buttons
 
 
 class TaskScheduler(db.Model):
@@ -1262,6 +1449,31 @@ class Walkthrough(db.Model):
     title = db.Column(db.Text)
     walkthrough_slides = db.relationship(
         'WalkthroughSlide', backref='walkthrough', lazy='dynamic')
+
+    @staticmethod
+    def generate_slide_dict(text, show_me='', data=''):
+        slide = {'text': text}
+        if show_me:
+            slide['show_me'] = show_me
+        if data:
+            slide['data'] = data
+        return slide
+
+    def get_walk_questions(self, edit_name):
+        w = []
+        all_walk = Walkthrough.query.filter_by(edit_name=edit_name).all()
+        if all_walk:
+            for walk in all_walk:
+                walk_slides = walk.walkthrough_slides.order_by(
+                    WalkthroughSlide.slide_number)
+                w.append({'title': walk.title,
+                          'slides': [
+                              self.generate_slide_dict(x.slide_text,
+                                                       x.show_me_element,
+                                                       x.get_data())
+                              for x in walk_slides]})
+        return w
+
 
 
 class WalkthroughSlide(db.Model):

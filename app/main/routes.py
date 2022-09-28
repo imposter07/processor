@@ -27,7 +27,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project,\
-    Notes, Tutorial, Walkthrough, TutorialStage, WalkthroughSlide, Task, Plan
+    Notes, Tutorial, TutorialStage, Task, Plan
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -549,54 +549,8 @@ def export_posts():
 @bp.route('/processor')
 @login_required
 def processor():
-    kwargs = get_current_processor('Base Processor', 'processor')
+    kwargs = Processor().get_current_processor('Base Processor', 'processor')
     return render_template('processor.html', **kwargs)
-
-
-def get_navigation_buttons(buttons=None):
-    if buttons == 'ProcessorRequest':
-        buttons = [{'Basic': 'main.edit_request_processor'},
-                   {'Plan': 'main.edit_processor_plan'},
-                   {'Accounts': 'main.edit_processor_account'},
-                   {'Fees': 'main.edit_processor_fees'},
-                   {'Conversions': 'main.edit_processor_conversions'},
-                   {'Finish': 'main.edit_processor_finish'}]
-    elif buttons == 'ProcessorRequestFix':
-        buttons = [{'New Fix': 'main.edit_processor_request_fix'},
-                   {'Submit Fixes': 'main.edit_processor_submit_fix'},
-                   {'All Fixes': 'main.edit_processor_all_fix'}]
-    elif buttons == 'ProcessorNote':
-        buttons = [{'New Note': 'main.edit_processor_note'},
-                   {'All Notes': 'main.edit_processor_all_notes'},
-                   {'Automatic Notes': 'main.edit_processor_auto_notes'}]
-    elif buttons == 'ProcessorDuplicate':
-        buttons = [{'Duplicate': 'main.edit_processor_duplication'}]
-    elif buttons == 'ProcessorDashboard':
-        buttons = [{'Create': 'main.processor_dashboard_create'},
-                   {'View All': 'main.processor_dashboard_all'}]
-    elif buttons == 'UploaderDCM':
-        buttons = [{'Basic': 'main.edit_uploader'},
-                   {'Campaign': 'main.edit_uploader_campaign_dcm'},
-                   {'Adset': 'main.edit_uploader_adset_dcm'},
-                   {'Ad': 'main.edit_uploader_ad_dcm'}]
-    elif buttons == 'UploaderFacebook':
-        buttons = [{'Basic': 'main.edit_uploader'},
-                   {'Campaign': 'main.edit_uploader_campaign'},
-                   {'Adset': 'main.edit_uploader_adset'},
-                   {'Creative': 'main.edit_uploader_creative'},
-                   {'Ad': 'main.edit_uploader_ad'}]
-    elif buttons == 'UploaderAdwords':
-        buttons = [{'Basic': 'main.edit_uploader'},
-                   {'Campaign': 'main.edit_uploader_campaign_aw'},
-                   {'Adset': 'main.edit_uploader_adset_aw'},
-                   {'Ad': 'main.edit_uploader_ad_aw'}]
-    else:
-        buttons = [{'Basic': 'main.edit_processor'},
-                   {'Plan': 'main.edit_processor_plan_normal'},
-                   {'Import': 'main.edit_processor_import'},
-                   {'Clean': 'main.edit_processor_clean'},
-                   {'Export': 'main.edit_processor_export'}]
-    return buttons
 
 
 @bp.route('/create_processor', methods=['GET', 'POST'])
@@ -641,161 +595,8 @@ def create_processor():
             return redirect(url_for('main.processor'))
     return render_template('create_processor.html', user=cur_user,
                            title=_('Processor'), form=form, edit_progress="25",
-                           edit_name='Basic', buttons=get_navigation_buttons())
-
-
-def get_processor_run_links():
-    run_links = {}
-    for idx, run_arg in enumerate(
-            (('full', 'Runs all processor modes from import to export.'),
-             ('import', 'Runs api import. A modal will '
-                        'popup specifying a specific API or all.'),
-             ('basic', 'Runs regular processor that cleans all data '
-                       'and generates Raw Data Output.'),
-             ('export', 'Runs export to database and tableau refresh.'),
-             ('update', 'RARELY NEEDED - Runs processor update on vendormatrix '
-                        'and dictionaries based on code changes.'))):
-        run_link = dict(title=run_arg[0].capitalize(),
-                        tooltip=run_arg[1])
-        run_links[idx] = run_link
-    return run_links
-
-
-def get_processor_edit_links():
-    edit_links = {}
-    for idx, edit_file in enumerate(
-            (('Vendormatrix', 'Directly edit the vendormatrix. '
-                              'This is the config file for all datasources.'),
-             ('Translate', 'Directly edit the translation config. This config '
-                           'file changes a dictionary value into another.'),
-             ('Constant', 'Directly edit the constant config. This config file '
-                          'sets a dictionary value for all dictionaries in '
-                          'the processor instance.'),
-             ('Relation', 'Directly edit relation config. This config file '
-                          'specifies relations between dictionary values. '))):
-        edit_links[idx] = dict(title=edit_file[0],
-                               nest=[], tooltip=edit_file[1])
-        if edit_file[0] == 'Relation':
-            edit_links[idx]['nest'] = ['Campaign', 'Targeting', 'Creative',
-                                       'Vendor', 'Country', 'Serving', 'Copy']
-    return edit_links
-
-
-def get_processor_output_links():
-    output_links = {}
-    for idx, out_file in enumerate(
-            (('FullOutput', 'Downloads the Raw Data Output.'),
-             ('Vendor', 'View modal table of data grouped by Vendor'),
-             ('Target', 'View modal table of data grouped by Target'),
-             ('Creative', 'View modal table of data grouped by Creative'),
-             ('Copy', 'View modal table of data grouped by Copy'),
-             ('BuyModel', 'View modal table of data grouped by BuyModel'))):
-        output_links[idx] = dict(title=out_file[0], nest=[],
-                                 tooltip=out_file[1])
-    return output_links
-
-
-def get_processor_request_links(object_name):
-    run_links = {0: {'title': 'View Initial Request',
-                     'href': url_for('main.edit_request_processor',
-                                     object_name=object_name),
-                     'tooltip': 'View/Edits the initial request that made this '
-                                'processor instance. This will not change '
-                                'anything unless the processor is rebuilt.'},
-                 1: {'title': 'Request Data Fix',
-                     'href': url_for('main.edit_processor_request_fix',
-                                     object_name=object_name),
-                     'tooltip': 'Request a fix for the current processor data '
-                                'set, including changing values, adding'
-                                ' files etc.'},
-                 2: {'title': 'Request Duplication',
-                     'href': url_for('main.edit_processor_duplication',
-                                     object_name=object_name),
-                     'tooltip': 'Duplicates current processor instance based on'
-                                ' date to use new instance going forward.'},
-                 3: {'title': 'Request Dashboard',
-                     'href': url_for('main.processor_dashboard_create',
-                                     object_name=object_name),
-                     'tooltip': 'Create a dashboard in the app that queries the'
-                                ' database based on this processor instance.'}
-                 }
-    return run_links
-
-
-def get_posts_for_objects(cur_obj, fix_id, current_page, object_name,
-                          note_id=None):
-    page = request.args.get('page', 1, type=int)
-    post_filter = {'{}_id'.format(object_name): cur_obj.id}
-    if fix_id:
-        post_filter['request_id'] = fix_id
-    if note_id:
-        post_filter['note_id'] = note_id
-    query = Post.query
-    for attr, value in post_filter.items():
-        query = query.filter(getattr(Post, attr) == value)
-    posts = (query.
-             order_by(Post.timestamp.desc()).
-             paginate(page, 5, False))
-    next_url = url_for('main.' + current_page, page=posts.next_num,
-                       object_name=cur_obj.name) if posts.has_next else None
-    prev_url = url_for('main.' + current_page, page=posts.prev_num,
-                       object_name=cur_obj.name) if posts.has_prev else None
-    return posts, next_url, prev_url
-
-
-def generate_slide_dict(text, show_me='', data=''):
-    slide = {'text': text}
-    if show_me:
-        slide['show_me'] = show_me
-    if data:
-        slide['data'] = data
-    return slide
-
-
-def get_walk_questions(edit_name):
-    w = []
-    all_walk = Walkthrough.query.filter_by(edit_name=edit_name).all()
-    if all_walk:
-        for walk in all_walk:
-            walk_slides = walk.walkthrough_slides.order_by(
-                WalkthroughSlide.slide_number)
-            w.append({'title': walk.title,
-                      'slides': [
-                          generate_slide_dict(x.slide_text, x.show_me_element,
-                                              x.get_data())
-                          for x in walk_slides]})
-    return w
-
-
-def get_current_processor(object_name, current_page, edit_progress=0,
-                          edit_name='Page', buttons=None, fix_id=None,
-                          note_id=None, form_title=None, form_description=None):
-    cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
-    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    posts, next_url, prev_url = get_posts_for_objects(
-        cur_obj=cur_proc, fix_id=fix_id, current_page=current_page,
-        object_name='processor', note_id=note_id)
-    api_imports = {0: {'All': 'import'}}
-    for idx, (k, v) in enumerate(vmc.api_translation.items()):
-        api_imports[idx + 1] = {k: v}
-    run_links = get_processor_run_links()
-    edit_links = get_processor_edit_links()
-    output_links = get_processor_output_links()
-    request_links = get_processor_request_links(cur_proc.name)
-    walk = get_walk_questions(edit_name)
-    args = dict(object=cur_proc, processor=cur_proc,
-                posts=posts.items, title=_('Processor'),
-                object_name=cur_proc.name, user=cur_user,
-                edit_progress=edit_progress, edit_name=edit_name,
-                api_imports=api_imports,
-                object_function_call={'object_name': cur_proc.name},
-                run_links=run_links, edit_links=edit_links,
-                output_links=output_links, request_links=request_links,
-                next_url=next_url, prev_url=prev_url,
-                walkthrough=walk, form_title=form_title,
-                form_description=form_description)
-    args['buttons'] = get_navigation_buttons(buttons)
-    return args
+                           edit_name='Basic',
+                           buttons=Processor().get_navigation_buttons())
 
 
 def add_df_to_processor_dict(form_import, processor_dicts):
@@ -878,8 +679,8 @@ def edit_processor_import_upload_file(object_name):
 @bp.route('/processor/<object_name>/edit/import', methods=['GET', 'POST'])
 @login_required
 def edit_processor_import(object_name):
-    kwargs = get_current_processor(object_name, 'edit_processor_import',
-                                   50, 'Import')
+    kwargs = Processor().get_current_processor(
+        object_name, 'edit_processor_import', 50, 'Import')
     cur_proc = kwargs['processor']
     apis = ImportForm().set_apis(ProcessorDatasources, kwargs['processor'])
     form = ImportForm(apis=apis)
@@ -1425,8 +1226,9 @@ def edit_processor_clean_upload_file(object_name):
 @bp.route('/processor/<object_name>/edit/clean', methods=['GET', 'POST'])
 @login_required
 def edit_processor_clean(object_name):
-    kwargs = get_current_processor(object_name, 'edit_processor_clean',
-                                   edit_progress=75, edit_name='Clean')
+    kwargs = Processor().get_current_processor(
+        object_name, 'edit_processor_clean', edit_progress=75,
+        edit_name='Clean')
     cur_proc = kwargs['processor']
     form = ProcessorCleanForm()
     form.set_vendor_key_choices(current_processor_id=cur_proc.id)
@@ -1445,9 +1247,9 @@ def cancel_schedule(scheduled_task):
 @bp.route('/processor/<object_name>/edit/export', methods=['GET', 'POST'])
 @login_required
 def edit_processor_export(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_export',
-                                   edit_progress=100, edit_name='Export')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_export',
+        edit_progress=100, edit_name='Export')
     cur_proc = kwargs['processor']
     form = ProcessorExportForm()
     sched = TaskScheduler.query.filter_by(processor_id=cur_proc.id).first()
@@ -1492,8 +1294,8 @@ def edit_processor_export(object_name):
 @bp.route('/processor/<object_name>')
 @login_required
 def processor_page(object_name):
-    kwargs = get_current_processor(object_name, 'processor_page',
-                                   edit_progress=100, edit_name='Page')
+    kwargs = Processor().get_current_processor(
+        object_name, 'processor_page', edit_progress=100, edit_name='Page')
     if not kwargs['object'].local_path:
         return redirect(url_for('main.edit_request_processor',
                                 object_name=object_name))
@@ -1584,8 +1386,8 @@ def run_object():
 @bp.route('/processor/<object_name>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_processor(object_name):
-    kwargs = get_current_processor(object_name, 'edit_processor',
-                                   edit_progress=25, edit_name='Basic')
+    kwargs = Processor().get_current_processor(
+        object_name, 'edit_processor', edit_progress=25, edit_name='Basic')
     processor_to_edit = kwargs['processor']
     form = EditProcessorForm(processor_to_edit.name)
     form.set_choices()
@@ -1686,10 +1488,10 @@ def request_processor():
                                     object_name=new_processor.name))
         else:
             return redirect(url_for('main.processor'))
+    buttons = Processor().get_navigation_buttons('ProcessorRequest')
     return render_template('create_processor.html', user=cur_user,
                            title=_('Processor'), form=form, edit_progress="25",
-                           edit_name='Basic',
-                           buttons=get_navigation_buttons('ProcessorRequest'))
+                           edit_name='Basic', buttons=buttons)
 
 
 @bp.route('/processor/<object_name>/edit/request', methods=['GET', 'POST'])
@@ -1699,7 +1501,7 @@ def edit_request_processor(object_name):
     General descriptive data about a processor.
     This is essentially metadata, such as processor name and client name.
     """
-    kwargs = get_current_processor(
+    kwargs = Processor().get_current_processor(
         object_name, current_page='edit_request_processor', edit_progress=25,
         edit_name='Basic', buttons='ProcessorRequest', form_title='BASIC',
         form_description=form_description)
@@ -1774,34 +1576,11 @@ def edit_processor_plan_normal_upload_file(object_name):
     return edit_processor_plan_upload_file(object_name)
 
 
-def get_plan_kwargs(object_name, request_flow=True):
-    form_description = """
-    Upload current media plan and view properties of the plan.
-    The file should have type '.xlsx'.  
-    There should be a tab in the file called 'Media Plan'.  
-    The column names in the tab 'Media Plan' should be on row 3.  
-    It will specifically look for columns titled 'Partner Name' 
-    and 'Campaign Phase (If Needed) '
-    """
-    if request_flow:
-        buttons = 'ProcessorRequest'
-    else:
-        buttons = 'Processor'
-    kwargs = get_current_processor(
-        object_name, current_page='edit_processor_plan', edit_progress=50,
-        edit_name='Plan', buttons=buttons,
-        form_title='PLAN', form_description=form_description)
-    kwargs['form'] = ProcessorPlanForm()
-    plan_properties = [x for x in Processor.get_plan_properties()
-                       if x != 'Package Capping']
-    kwargs['form'].plan_properties.data = plan_properties
-    return kwargs
-
-
 @bp.route('/processor/<object_name>/edit/plan')
 @login_required
 def edit_processor_plan(object_name):
-    kwargs = get_plan_kwargs(object_name, request_flow=True)
+    kwargs = Processor().get_plan_kwargs(
+        object_name, request_flow=True, cur_form=ProcessorPlanForm())
     form = kwargs['form']
     if request.method == 'POST':
         if form.form_continue.data == 'continue':
@@ -1815,7 +1594,8 @@ def edit_processor_plan(object_name):
 @bp.route('/processor/<object_name>/edit/plan_normal')
 @login_required
 def edit_processor_plan_normal(object_name):
-    kwargs = get_plan_kwargs(object_name, request_flow=False)
+    kwargs = Processor().get_plan_kwargs(
+        object_name, request_flow=False, cur_form=ProcessorPlanForm())
     return render_template('create_processor.html', **kwargs)
 
 
@@ -1831,7 +1611,7 @@ def edit_processor_account(object_name):
     on the left hand side of your screen.  
     Then select 'How do I add a new API to the processor?'
     """
-    kwargs = get_current_processor(
+    kwargs = Processor().get_current_processor(
         object_name, current_page='edit_processor_account',
         edit_progress=50, edit_name='Accounts', buttons='ProcessorRequest',
         form_title='ACCOUNTS', form_description=form_description)
@@ -1875,10 +1655,9 @@ def edit_processor_account(object_name):
 @bp.route('/processor/<object_name>/edit/fees', methods=['GET', 'POST'])
 @login_required
 def edit_processor_fees(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_fees',
-                                   edit_progress=75, edit_name='Fees',
-                                   buttons='ProcessorRequest')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_fees', edit_progress=75,
+        edit_name='Fees', buttons='ProcessorRequest')
     cur_proc = kwargs['processor']
     form = FeeForm()
     if request.method == 'POST':
@@ -1920,10 +1699,9 @@ def edit_processor_fees(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_conversions(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_conversions',
-                                   edit_progress=75, edit_name='Conversions',
-                                   buttons='ProcessorRequest')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_conversions',
+        edit_progress=75, edit_name='Conversions', buttons='ProcessorRequest')
     cur_proc = kwargs['processor']
     conversions = GeneralConversionForm().set_conversions(Conversion, cur_proc)
     form = GeneralConversionForm(conversions=conversions)
@@ -1964,10 +1742,9 @@ def edit_processor_conversions(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_finish(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_finish',
-                                   edit_progress=100, edit_name='Finish',
-                                   buttons='ProcessorRequest')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_finish', edit_progress=100,
+        edit_name='Finish', buttons='ProcessorRequest')
     cur_proc = kwargs['processor']
     form = ProcessorRequestFinishForm()
     form.set_user_choices()
@@ -2005,10 +1782,9 @@ def edit_processor_finish(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_request_fix(object_name):
-    kwargs = get_current_processor(object_name=object_name,
-                                   current_page='edit_processor_request_fix',
-                                   edit_progress=33, edit_name='New Fix',
-                                   buttons='ProcessorRequestFix')
+    kwargs = Processor().get_current_processor(
+        object_name=object_name, current_page='edit_processor_request_fix',
+        edit_progress=33, edit_name='New Fix', buttons='ProcessorRequestFix')
     cur_proc = kwargs['processor']
     form = ProcessorFixForm()
     form.set_vendor_key_choices(current_processor_id=cur_proc.id)
@@ -2083,10 +1859,10 @@ def edit_processor_request_fix_upload_file(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_submit_fix(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_submit_fix',
-                                   edit_progress=66, edit_name='Submit Fixes',
-                                   buttons='ProcessorRequestFix')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_submit_fix',
+        edit_progress=66, edit_name='Submit Fixes',
+        buttons='ProcessorRequestFix')
     cur_proc = kwargs['processor']
     fixes = cur_proc.get_open_requests()
     form = ProcessorContinueForm()
@@ -2119,10 +1895,9 @@ def edit_processor_submit_fix(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_all_fix(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_all_fix',
-                                   edit_progress=100, edit_name='All Fixes',
-                                   buttons='ProcessorRequestFix')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_all_fix',
+        edit_progress=100, edit_name='All Fixes', buttons='ProcessorRequestFix')
     cur_proc = kwargs['processor']
     fixes = cur_proc.get_all_requests()
     form = ProcessorContinueForm()
@@ -2183,11 +1958,9 @@ def unresolve_fix(fix_id):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_view_fix(object_name, fix_id):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_view_fix',
-                                   edit_progress=100, edit_name='View Fixes',
-                                   buttons='ProcessorRequestFix',
-                                   fix_id=fix_id)
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_view_fix', edit_progress=100,
+        edit_name='View Fixes', buttons='ProcessorRequestFix', fix_id=fix_id)
     cur_proc = kwargs['processor']
     fixes = Requests.query.filter_by(id=fix_id).all()
     form = ProcessorRequestCommentForm()
@@ -2218,10 +1991,9 @@ def edit_processor_view_fix(object_name, fix_id):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_note(object_name):
-    kwargs = get_current_processor(object_name=object_name,
-                                   current_page='edit_processor_note',
-                                   edit_progress=33, edit_name='New Note',
-                                   buttons='ProcessorNote')
+    kwargs = Processor().get_current_processor(
+        object_name=object_name, current_page='edit_processor_note',
+        edit_progress=33, edit_name='New Note', buttons='ProcessorNote')
     cur_proc = kwargs['processor']
     form = ProcessorNoteForm()
     kwargs['form'] = form
@@ -2254,10 +2026,9 @@ def edit_processor_note(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_all_notes(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_all_notes',
-                                   edit_progress=100, edit_name='All Notes',
-                                   buttons='ProcessorNote')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_all_notes', edit_progress=100,
+        edit_name='All Notes', buttons='ProcessorNote')
     cur_proc = kwargs['processor']
     all_notes = cur_proc.get_notes()
     form = ProcessorContinueForm()
@@ -2277,10 +2048,9 @@ def edit_processor_all_notes(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_view_note(object_name, note_id):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_note_fix',
-                                   edit_progress=100, edit_name='View Notes',
-                                   buttons='ProcessorNote', note_id=note_id)
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_note_fix', edit_progress=100,
+        edit_name='View Notes', buttons='ProcessorNote', note_id=note_id)
     cur_proc = kwargs['processor']
     all_notes = Notes.query.filter_by(id=note_id).all()
     form = ProcessorRequestCommentForm()
@@ -2349,7 +2119,7 @@ def open_note(note_id):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_auto_notes(object_name):
-    kwargs = get_current_processor(
+    kwargs = Processor().get_current_processor(
         object_name,  current_page='edit_processor_auto_notes',
         edit_progress=100,  edit_name='Automatic Notes',
         buttons='ProcessorNote')
@@ -2748,14 +2518,14 @@ def get_current_uploader(object_name, current_page, edit_progress=0,
                          uploader_type='Facebook'):
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    posts, next_url, prev_url = get_posts_for_objects(
+    posts, next_url, prev_url = Post().get_posts_for_objects(
         cur_obj=cur_up, fix_id=fix_id, current_page=current_page,
         object_name='uploader')
     run_links = get_uploader_run_links()
     edit_links = get_uploader_edit_links()
     request_links = get_uploader_request_links(cur_up.name)
     view_selector = get_uploader_view_selector(uploader_type)
-    nav_buttons = get_navigation_buttons(buttons + uploader_type)
+    nav_buttons = Processor().get_navigation_buttons(buttons + uploader_type)
     args = {'object': cur_up, 'posts': posts.items, 'title': _('Uploader'),
             'object_name': cur_up.name, 'user': cur_user,
             'edit_progress': edit_progress, 'edit_name': edit_name,
@@ -3146,10 +2916,9 @@ def app_help():
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_duplication(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_duplication',
-                                   edit_progress=100, edit_name='Duplicate',
-                                   buttons='ProcessorDuplicate')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_duplication',
+        edit_progress=100, edit_name='Duplicate', buttons='ProcessorDuplicate')
     cur_proc = kwargs['processor']
     form = ProcessorDuplicateForm()
     kwargs['form'] = form
@@ -3225,10 +2994,9 @@ def get_metrics():
 @bp.route('/processor/<object_name>/dashboard', methods=['GET', 'POST'])
 @login_required
 def edit_processor_dashboard(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_dashboard',
-                                   edit_progress=100, edit_name='Dashboard',
-                                   buttons='ProcessorDashboard')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_dashboard', edit_progress=100,
+        edit_name='Dashboard', buttons='ProcessorDashboard')
     return render_template('dashboard.html', **kwargs)
 
 
@@ -3262,10 +3030,9 @@ def set_dashboard_filters_in_db(object_id, form_dicts,
           methods=['GET', 'POST'])
 @login_required
 def processor_dashboard_create(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='processor_dashboard_create',
-                                   edit_progress=50, edit_name='Create',
-                                   buttons='ProcessorDashboard')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='processor_dashboard_create',
+        edit_progress=50, edit_name='Create', buttons='ProcessorDashboard')
     cur_proc = kwargs['processor']
     form = ProcessorDashboardForm()
     kwargs['form'] = form
@@ -3302,10 +3069,9 @@ def processor_dashboard_create(object_name):
 @bp.route('/processor/<object_name>/dashboard/all', methods=['GET', 'POST'])
 @login_required
 def processor_dashboard_all(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='processor_dashboard_all',
-                                   edit_progress=100, edit_name='View All',
-                                   buttons='ProcessorDashboard')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='processor_dashboard_all', edit_progress=100,
+        edit_name='View All', buttons='ProcessorDashboard')
     cur_proc = kwargs['processor']
     dashboards = cur_proc.get_all_dashboards()
     for dash in dashboards:
@@ -3328,10 +3094,9 @@ def processor_dashboard_all(object_name):
           methods=['GET', 'POST'])
 @login_required
 def processor_dashboard_view(object_name, dashboard_id):
-    kwargs = get_current_processor(object_name,
-                                   current_page='processor_dashboard_all',
-                                   edit_progress=100, edit_name='View Dash',
-                                   buttons='ProcessorDashboard')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='processor_dashboard_all', edit_progress=100,
+        edit_name='View Dash', buttons='ProcessorDashboard')
     dashboard = Dashboard.query.filter_by(id=dashboard_id).all()
     for dash in dashboard:
         static_filters = ProcessorDashboardForm().set_filters(
@@ -3479,10 +3244,9 @@ def processor_change_project_number():
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_duplication_from_another(object_name):
-    kwargs = get_current_processor(object_name,
-                                   current_page='edit_processor_duplication',
-                                   edit_progress=100, edit_name='Duplicate',
-                                   buttons='ProcessorDuplicate')
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_duplication',
+        edit_progress=100, edit_name='Duplicate',  buttons='ProcessorDuplicate')
     cur_proc = kwargs['processor']
     form = ProcessorDuplicateAnotherForm()
     form.new_proc.data = cur_proc.id

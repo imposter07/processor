@@ -278,13 +278,13 @@ function createMetricTable(colData, rawData, tableName,
     $(document).ready(function () {
         modalElem = $("#activeMetricModal .modal-body")
         modalElem.html(`<div class="form-group row justify-content-center align-items-center">
-                          <div class="col-md-4">
+                          <div class="col-md-6" style="word-break: break-word">
                             <label for="metric_name_select">Metric Name</label>
                             <select name='metric_name_select' id='metric_name_select'></select>
                           </div>
                         </div>
                         <div class="form-group row justify-content-center align-items-center">
-                          <div class="col-md-4">
+                          <div class="col-md-6" style="word-break: break-word">
                             <label for="metric_value_select">Metric Value</label>
                             <select name='metric_value_select' id='metric_value_select' multiple></select>
                           </div>
@@ -308,7 +308,7 @@ function createMetricTable(colData, rawData, tableName,
         var rows = document.getElementById(elem).getElementsByTagName('tr');
         rows[0].setAttribute('style',"text-align: left");
         for (var i = 1, row; row = rows[i]; i++) {
-            rows[i].setAttribute("style", "word-break:break-all")
+            rows[i].setAttribute("style", "word-break:break-word")
             nameElem = rows[i].cells[nameColIndex]
             nameElem.onclick = function() {onMetricClick(this, vmcOptions);}
 

@@ -504,15 +504,18 @@
         }
         function SubmitForm(form_continue, elemId) {
             document.getElementById(elemId).setAttribute("value", form_continue);
-            let validForm = document.getElementById('base_form_id').reportValidity()
+            let validForm = document.getElementById('base_form_id').reportValidity();
             if (validForm) {
                 if ("{{ edit_name }}" === "Clean") {
-                    submitCleanForm(form_continue)}
+                    submitCleanForm(form_continue);
+                }
                 else if ("{{ edit_name }}" === "Topline") {
                     submitToplineForm(form_continue);
                 }
                 else if ("{{ edit_name }}" === "Plan") {
-                    SendDataTable('modalTable', form_continue, 'plan', 'accounts');
+                    let curPage = window.location.pathname.split("/").pop();
+                    let nextPage = curPage.includes('normal') ? 'import' : 'accounts';
+                    SendDataTable('modalTable', form_continue, curPage, nextPage);
                 }
                 else {
                     if ("{{ edit_name }}" === "Import") {
@@ -536,6 +539,7 @@
                 }
             }
         }
+
         function reloadPage(){
              try {
                  $('#listTabs').find('li.active')[0].children[0].click();
@@ -544,11 +548,21 @@
                  window.location.reload(true)
              }
         }
+
         function SendDataTable(tableName="modalTable", formContinue = null,
                                oldPage = '', newPage = '', modal = true, cols = [],
                                saveButton = '') {
             if (modal) {
-                let sourceElem = $('table[id^=modalTable]')[0].id;
+                let sourceElem = document.getElementById('table[id^=modalTable]');
+                if (!(sourceElem)) {
+                    if (newPage) {
+                        completeSave({'message': 'Saved!', 'level': 'success'},
+                            formContinue, oldPage, newPage);
+                    }
+                    else {
+                        return false
+                    }
+                }
                 if (sourceElem.includes('change_dictionary_order')) {
                     removeChangeOrderSelectize();
                     data = getTableAsArray(sourceElem, cols);
@@ -1419,9 +1433,9 @@
             }).fail(function (jqXHR, textStatus) {
 
             }).always(function () {
-                $('#loadingBtn').remove()
-                $('#loadRefresh').show()
-                unanimateBar()
+                $('#loadingBtn').remove();
+                $('#loadRefresh').show();
+                unanimateBar();
             });
         }
         function getDatasourceTable(){

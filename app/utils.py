@@ -216,8 +216,14 @@ def get_processor_client_directory(processors):
 
 
 def convert_media_plan_to_df(current_file):
-    mp = cre.MediaPlan(current_file)
-    return mp.df
+    df = pd.DataFrame()
+    try:
+        mp = cre.MediaPlan(current_file)
+        df = mp.df
+    except KeyError as e:
+        msg = 'Try again with correct columns file was missing: {}'.format(e)
+        current_app.logger.warning(msg)
+    return df
 
 
 def check_and_add_media_plan(media_plan_data, processor_to_edit,

@@ -2692,6 +2692,7 @@ def add_account_types(processor_id, current_user_id):
             if partner in api_dict.keys():
                 api_key = api_dict[partner]
                 if api_key not in acts:
+                    acts.append(api_key)
                     new_act = cur_act_model()
                     new_act.key = api_key
                     new_act.processor_id = processor_id

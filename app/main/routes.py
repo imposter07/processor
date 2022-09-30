@@ -1626,11 +1626,14 @@ def edit_processor_account(object_name):
     for act in form.accounts:
         if act.delete.data:
             kwargs = dict(
+                processor_id=cur_proc.id,
+                key=act.key.data,
                 account_id=act.account_id.data,
                 campaign_id=act.campaign_id.data)
-            kwargs = {k: v if v else None for k, v in kwargs.items()}
-            act = Account.query.filter_by(
-                key=act.key.data, processor_id=cur_proc.id, **kwargs).first()
+            act = Account.query.filter_by(**kwargs).first()
+            if not act:
+                kwargs = {k: v if v else None for k, v in kwargs.items()}
+                act = Account.query.filter_by(**kwargs).first()
             if act:
                 db.session.delete(act)
                 db.session.commit()

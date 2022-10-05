@@ -1582,6 +1582,9 @@
                 forbiddenChars = /[#&$^@*!%]/g
                 this.value = this.value.replace(forbiddenChars, '')
             })
+            $('input[id*=account]').on('blur', function() {
+                this.value = this.value.replace(/^\s+|\s+$/g, '')
+            })
         }
 
         function emptyVendorKeyNameCheck() {

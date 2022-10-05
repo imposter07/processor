@@ -3615,18 +3615,19 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
     except:
         _set_task_progress(100)
         app.logger.error(
-            'Unhandled exception - Processor {} User {} Parameter {}'.format(
-                processor_id, current_user_id, parameter),
+            'Unhandled exception - Processor {} User {} Parameter {}'
+            'Filter Dict {}'.format(
+                processor_id, current_user_id, parameter, filter_dict),
             exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
 def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
-                                 dimensions=None, metrics=None,
-                                 filter_dict=None):
+                                 dimensions=None, metrics=None, filter_dict=None):
     try:
         _set_task_progress(0)
         import processor.reporting.analyze as az
+        import processor.reporting.calc as cal
         import processor.reporting.dictionary as dct
         import processor.reporting.dictcolumns as dctc
         import processor.reporting.vendormatrix as vm
@@ -3644,76 +3645,215 @@ def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
         df_cols = [x for x in plan_cols if x not in dimensions]
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_proc.id, key=az.Analyze.delivery_comp_col).first()
+        final_columns = df_cols + [dctc.SD, dctc.ED, vmc.cost,
+                                   dctc.PNC, dctc.UNC, 'Delivery',
+                                   'Projected Full Delivery',
+                                   '% Through Campaign', vmc.AD_COST]
+        adf = pd.DataFrame(columns=final_columns)
         if analysis and analysis.data:
             adf = pd.DataFrame(analysis.data)
             adf_cols = adf.columns.to_list()
-            adf_cols.remove(dctc.PNC)
-            pdf_cols = plan_cols + [dctc.PNC, dctc.UNC]
-            pdf = pdf[pdf_cols].merge(adf[adf_cols], how='outer', on=plan_cols)
-        final_columns = df_cols + ['Start Date', 'End Date', vmc.cost,
-                                   dctc.PNC, dctc.UNC, 'Delivery',
-                                   'Projected Full Delivery']
-        pdf = pdf[final_columns]
-        analysis = ProcessorAnalysis.query.filter_by(
-            processor_id=cur_proc.id, key=az.Analyze.delivery_col,
-            parameter=az.Analyze.over_delivery_col).first()
-        if analysis and analysis.data:
-            adf = pd.DataFrame(analysis.data)
-            pdf = pdf.merge(
-                adf[plan_cols], on=plan_cols, how='left', indicator=True)
-            pdf['Projected Full Delivery'] = [
-                'Over Delivered' if pdf['_merge'][x] == 'both'
-                else pdf['Projected Full Delivery'][x]for x in pdf.index]
-            pdf = pdf.drop(columns=['_merge'])
-        proc_end = str(cur_proc.end_date)
-        proc_start = str(cur_proc.start_date)
-        pdf['Start Date'] = pdf['Start Date'].replace('0', proc_start)
-        pdf['Start Date'] = pdf['Start Date'].replace('', proc_start)
-        pdf['End Date'] = pdf['End Date'].replace('0', proc_end)
-        pdf['End Date'] = pdf['End Date'].replace('', proc_end)
-        pdf['Start Date'] = pdf['Start Date'].replace(
-            [np.inf, -np.inf], np.nan).fillna(proc_start)
-        pdf['End Date'] = pdf['End Date'].replace(
-            [np.inf, -np.inf], np.nan).fillna(proc_end)
-        pdf['Start Date'] = pdf['Start Date'].apply(
-            lambda x: utl.string_to_date(x))
-        pdf['End Date'] = pdf['End Date'].apply(
-            lambda x: utl.string_to_date(x))
-        pdf['% Through Campaign'] = ((pd.Timestamp.today() - pdf['Start Date']
-                                      ) / (pdf['End Date'] - pdf['Start Date'])
-                                     * 100).round(2)
-        pdf['% Through Campaign'] = pdf['% Through Campaign'].replace(
-            [np.inf, -np.inf], np.nan).fillna(0)
-        pdf['% Through Campaign'] = pdf['% Through Campaign'].astype(str) + '%'
-        pdf[dctc.PNC] = pdf[dctc.PNC].replace(
+            if not pdf.empty:
+                adf_cols.remove(dctc.PNC)
+                pdf_cols = plan_cols + [dctc.PNC, dctc.UNC]
+                adf = pdf[pdf_cols].merge(adf[adf_cols], how='outer', on=plan_cols)
+            else:
+                adf[dctc.UNC] = ""
+        adf = adf[final_columns]
+        adf[dctc.PNC] = adf[dctc.PNC].replace(
             [np.inf, -np.inf], np.nan).fillna(0.0)
-        pdf[vmc.cost] = pdf[vmc.cost].replace(
-            [np.inf, -np.inf], np.nan).fillna(0.0)
-        pdf[dctc.PNC] = utl.data_to_type(
-            pd.DataFrame(pdf[dctc.PNC]), float_col=[dctc.PNC])[dctc.PNC]
-        pdf[vmc.cost] = utl.data_to_type(
-            pd.DataFrame(pdf[vmc.cost]), float_col=[vmc.cost])[vmc.cost]
-        pdf[dctc.PNC] = pdf[dctc.PNC].round(2)
-        pdf[vmc.cost] = pdf[vmc.cost].round(2)
-        pdf[dctc.PNC] = '$' + pdf[dctc.PNC].round(2).astype(str)
-        pdf[vmc.cost] = '$' + pdf[vmc.cost].round(2).astype(str)
-        pdf['Delivery'] = pdf['Delivery'].replace(
-            [np.inf, -np.inf], np.nan).fillna("0%")
-        pdf = pdf.fillna("")
+        adf[dctc.PNC] = utl.data_to_type(
+            pd.DataFrame(adf[dctc.PNC]), float_col=[dctc.PNC])[dctc.PNC]
+        adf[dctc.PNC] = adf[dctc.PNC].round(2)
+        adf[dctc.PNC] = '$' + adf[dctc.PNC].astype(str)
+        adf = adf.fillna("")
         if parameter:
-            pdf = get_file_in_memory(pdf)
+            adf = get_file_in_memory(adf)
         _set_task_progress(100)
-        return [pdf, plan_cols]
+        return [adf, plan_cols]
     except:
         _set_task_progress(100)
         app.logger.error(
-            'Unhandled exception - Processor {} User {} Parameter {}'.format(
-                processor_id, current_user_id, parameter),
+            'Unhandled exception - Processor {} User {} Parameter {} Metrics {}'
+            ' Filter Dict {}'.format(
+                processor_id, current_user_id, parameter, metrics, filter_dict),
             exc_info=sys.exc_info())
         return [pd.DataFrame([{
             'Result': 'DATA WAS UNABLE TO BE LOADED. Pacing Table only '
                       'available when planned spends are based on Vendor,'
                       ' Campaign, Country/Region, and or Environment'}]), []]
+
+
+def get_daily_pacing(processor_id, current_user_id, parameter=None,
+                     dimensions=None, metrics=None, filter_dict=None):
+    try:
+        _set_task_progress(0)
+        import processor.reporting.calc as cal
+        import processor.reporting.analyze as az
+        import processor.reporting.utils as utl
+        import processor.reporting.dictcolumns as dctc
+        import processor.reporting.dictionary as dct
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.vmcolumns as vmc
+        cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
+        os.chdir(cur_proc.local_path)
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source('Plan Net')
+        plan_cols = data_source.p[vmc.fullplacename]
+        daily_analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.daily_delivery_col).first()
+        daily_analysis = daily_analysis.data
+        daily_dfs = []
+        sort_ascending = [True for _ in plan_cols]
+        sort_ascending.append(False)
+        for analysis in daily_analysis:
+            adf = pd.DataFrame(analysis)
+            adf = adf.sort_values(
+                plan_cols + [vmc.date], ascending=sort_ascending)
+            daily_dfs.append(adf)
+        _set_task_progress(100)
+        return [daily_dfs, plan_cols]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Parameter {} '
+            'Dimensions {} Metrics {}  Filter Dict {}'.format(
+                processor_id, current_user_id, dimensions, parameter, metrics,
+                filter_dict),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{
+            'Result': 'DATA WAS UNABLE TO BE LOADED. Pacing Table only '
+                      'available when planned spends are based on Vendor,'
+                      ' Campaign, Country/Region, and or Environment'}]), []]
+
+
+def get_pacing_alert_count(processor_id, current_user_id, parameter=None,
+                           dimensions=None, metrics=None, filter_dict=None):
+    try:
+        _set_task_progress(0)
+        import processor.reporting.analyze as az
+        count = 0
+        cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
+        os.chdir(cur_proc.local_path)
+        over_delivery = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.delivery_col,
+            parameter=az.Analyze.over_delivery_col).first()
+        if over_delivery:
+            df = pd.DataFrame(over_delivery.data)
+            count += len(df.index)
+        daily_over_pacing = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.daily_pacing_alert,
+            parameter=az.Analyze.over_daily_pace).first()
+        if daily_over_pacing:
+            df = pd.DataFrame(daily_over_pacing.data)
+            count += len(df.index)
+        daily_under_pacing = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.daily_pacing_alert,
+            parameter=az.Analyze.under_daily_pace).first()
+        if daily_under_pacing:
+            df = pd.DataFrame(daily_under_pacing.data)
+            count += len(df.index)
+        adserving_alerts = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.adserving_alert).first()
+        if adserving_alerts:
+            df = pd.DataFrame(adserving_alerts.data)
+            count += len(df.index)
+        _set_task_progress(100)
+        df = pd.DataFrame(data={'count': [count]})
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Parameter {} '
+            'Dimensions {} Metrics {}  Filter Dict {}'.format(
+                processor_id, current_user_id, dimensions, parameter, metrics,
+                filter_dict),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]), []]
+
+
+def get_pacing_alerts(processor_id, current_user_id, parameter=None,
+                      dimensions=None, metrics=None, filter_dict=None):
+    try:
+        _set_task_progress(0)
+        import processor.reporting.analyze as az
+        import processor.reporting.vendormatrix as vm
+        import processor.reporting.vmcolumns as vmc
+        rdf = pd.DataFrame(columns=['msg'])
+        cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
+        os.chdir(cur_proc.local_path)
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source('Plan Net')
+        plan_cols = data_source.p[vmc.fullplacename]
+        over_delivery = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.delivery_col,
+            parameter=az.Analyze.over_delivery_col).first()
+        if over_delivery:
+            df = pd.DataFrame(over_delivery.data)
+            for index, row in df.iterrows():
+                breakouts = []
+                val = row["Delivery"]
+                for col in plan_cols:
+                    breakouts.append(row[col])
+                breakout = ' '.join(breakouts)
+                msg = ('Over delivered on {0} by: {1}. TURN OFF SPEND.'
+                       ).format(breakout, val)
+                rdf.loc[len(rdf.index)] = [msg]
+        daily_over_pacing = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.daily_pacing_alert,
+            parameter=az.Analyze.over_daily_pace).first()
+        if daily_over_pacing:
+            df = pd.DataFrame(daily_over_pacing.data)
+            for index, row in df.iterrows():
+                breakouts = []
+                val = row['Day Pacing']
+                for col in plan_cols:
+                    breakouts.append(row[col])
+                breakout = ' '.join(breakouts)
+                msg = ('Yesterday\'s spend for {0} was OVER daily pacing goal '
+                       'by: {1}.').format(breakout, val)
+                rdf.loc[len(rdf.index)] = [msg]
+        daily_under_pacing = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.daily_pacing_alert,
+            parameter=az.Analyze.under_daily_pace).first()
+        if daily_under_pacing:
+            df = pd.DataFrame(daily_under_pacing.data)
+            for index, row in df.iterrows():
+                breakouts = []
+                val = row['Day Pacing']
+                for col in plan_cols:
+                    breakouts.append(row[col])
+                breakout = ' '.join(breakouts)
+                msg = ('Yesterday\'s spend for {0} was UNDER daily pacing goal '
+                       'by: {1}.').format(breakout, val)
+                rdf.loc[len(rdf.index)] = [msg]
+        adserving_alerts = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.adserving_alert).first()
+        if adserving_alerts:
+            df = pd.DataFrame(adserving_alerts.data)
+            for index, row in df.iterrows():
+                breakouts = []
+                val = row[vmc.AD_COST]
+                for col in plan_cols:
+                    breakouts.append(row[col])
+                breakout = ' '.join(breakouts)
+                msg = ('Adserving cost significantly OVER for {0}: {1} \n '
+                       'Double check Serving/Ad Rate in processor. If correct, '
+                       'PAUSE CAMPAIGN. CHECK TRACKERS. Else, adjust '
+                       'model/rates in processor.'
+                       ).format(breakout, val)
+                rdf.loc[len(rdf.index)] = [msg]
+        _set_task_progress(100)
+        return [rdf]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Parameter {} '
+            'Dimensions {} Metrics {}  Filter Dict {}'.format(
+                processor_id, current_user_id, dimensions, parameter, metrics,
+                filter_dict),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]), []]
 
 
 def create_processor_request(processor_id, current_user_id, fix_type,
@@ -4670,10 +4810,10 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                                 df.loc[idx, 'RULE_6_QUERY'] = x[dctc.VEN]
                             else:
                                 df.loc[idx, 'RULE_6_METRIC'] = (
-                                        df.loc[idx, 'RULE_6_QUERY'][idx[0]] + 
+                                        df.loc[idx, 'RULE_6_QUERY'][idx[0]] +
                                         '::' + x['Metric'])
                                 df.loc[idx, 'RULE_6_QUERY'] = (
-                                        df.loc[idx, 'RULE_6_QUERY'][idx[0]] + 
+                                        df.loc[idx, 'RULE_6_QUERY'][idx[0]] +
                                         ',' + [dctc.VEN])
                 else:
                     unavail_msg = ('QUICK FIX UNAVAILABLE. '

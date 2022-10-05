@@ -945,8 +945,9 @@
                     let newPercent = data['percent'];
                     chart.update(parseInt(newPercent))
                     if (!forceReturn && 'data' in data) {
-                        if (createVisualFunction === generatePacingTable) {
-                            xCol = data['send_cols']
+                        if (createVisualFunction === generatePacingTable ||
+                            createVisualFunction === generateDailyPacing) {
+                            xCol = data['plan_cols']
                         }
                         getMetricsComplete(chart, data['data'], xCol, yCol,
                             createVisualFunction, filterDict, addSelect, elem);
@@ -961,7 +962,8 @@
         filterDict, addSelect, elem) {
         chart.update(100);
         if ((Array.isArray(data) && data.length) ||
-            (createVisualFunction === generatePacingTable &&
+            ((createVisualFunction === generatePacingTable ||
+             createVisualFunction === generateDailyPacing) &&
              'data' in data['data'])) {
             yCol = (yCol.includes('kpi')) ? (
                 Object.keys(data[0]).filter(function (e) {
@@ -1042,163 +1044,273 @@
     }
 
     function addEdit(tableID, cols, buttonID) {
-      var rows = document.getElementById(tableID).getElementsByTagName('tr');
-      colIndices = [];
-      for (var j = 0, col; col = rows[0].cells[j]; j++) {
-        if (cols.includes(rows[0].cells[j].innerHTML)) {
-          colIndices.push(j);
+        const rows = document.getElementById(tableID).getElementsByTagName('tr');
+        const colIndices = [];
+        for (let j = 0, col; col = rows[0].cells[j]; j++) {
+            if (cols.includes(rows[0].cells[j].innerHTML)) {
+              colIndices.push(j);
+            }
         }
-      }
-      for (var i = 0; i < colIndices.length; i++) {
-          for (var j = 1, row; row = rows[j]; j++) {
-            rows[j].cells[colIndices[i]].setAttribute("contenteditable", "true")
-            rows[j].cells[colIndices[i]].setAttribute("spellcheck", "false")
-          }
-      }
-      cols = cols.join("','")
-      cols = "['" +  cols + "']"
-      functionString = "overWritePlannedwPacing('" + tableID + "', " + cols + ")"
-      var saveElem = document.getElementById(buttonID)
-      saveElem.setAttribute("onclick", functionString);
-      $('td').blur(function () {
-          $('#' + buttonID).removeAttr('disabled');
-          $('#' + buttonID).attr("class", "btn btn-success")
-      });
+        for (let i = 0; i < colIndices.length; i++) {
+            for (let j = 1, row; row = rows[j]; j++) {
+                rows[j].cells[colIndices[i]].setAttribute("contenteditable", "true");
+                rows[j].cells[colIndices[i]].setAttribute("spellcheck", "false");
+            }
+        }
+        cols = cols.join("','");
+        cols = "['" +  cols + "']";
+        const functionString = "overWritePlannedwPacing('" + tableID + "', " + cols + ")";
+        const saveElem = document.getElementById(buttonID);
+        saveElem.setAttribute("onclick", functionString);
+        $('td').blur(function () {
+            $('#' + buttonID).removeAttr('disabled');
+            $('#' + buttonID).attr("class", "btn btn-success");
+        });
     }
 
     function overWritePlannedwPacing(tableID, cols) {
-        tableName = 'dictionaryvendorkeyPlan___Net'
+        const tableName = 'dictionaryvendorkeyPlan___Net';
         SendDataTable(tableName, formContinue = null,
                       oldPage = '', newPage = '', modal = false, cols = cols,
                       saveButton = 'pacingTableSaveButton')
     }
 
     function getProgBars(tableName, progCol, paceCol, startCol) {
-      var rows = document.getElementById(tableName).getElementsByTagName('tr');
-      rows[0].setAttribute('style', 'text-align: left')
-      progColInd = 0;
-      paceColInd = 0;
-      startColInd = 0;
-      for (var j = 0, col; col = rows[0].cells[j]; j++) {
-        if (rows[0].cells[j].innerHTML === progCol) {
-          progColInd = j;
-        }
-        if (rows[0].cells[j].innerHTML === paceCol) {
-          paceColInd = j;
-        }
-        if (rows[0].cells[j].innerHTML === startCol) {
-          startColInd = j;
-        }
-      }
-      for (var i = 1, row; row = rows[i]; i++) {
-        if (window.getComputedStyle) {
-            style = window.getComputedStyle(rows[i].cells[progColInd]);
-        } else {
-            style = rows[i].cells[progColInd].currentStyle;
-        }
-        backgroundColor = style.backgroundColor
-        rows[i].cells[progColInd].style.height = "100%"
-        rows[i].cells[progColInd].style.border = "1px solid #dee2e6"
-        delv = rows[i].cells[progColInd].innerHTML;
-        pace = rows[i].cells[paceColInd].innerHTML;
-        delv = delv.slice(0, -1)
-        pace = pace.slice(0, -1)
-        delv = parseInt(delv)
-        pace = parseInt(pace)
-        today = today = new Date();
-        sd = new Date(rows[i].cells[startColInd].innerHTML);
-		if (pace > 100){
-            pace = 100
-        }
-        tooltip = "Delivery: " + delv + "% \nExpected Delivery: "
-                            + pace + "%"
-        getTooltip(tooltip, rows[i].cells[progColInd])
-        if ((delv > 105) || ((delv / pace) > 1.15)){
-            delvColor = "#dc3545cc"
+        const rows = document.getElementById(tableName).getElementsByTagName('tr');
+        let progColInd = 0;
+        let paceColInd = 0;
+        let startColInd = 0;
+        for (let j = 0, col; col = rows[0].cells[j]; j++) {
+            if (rows[0].cells[j].innerHTML === progCol) {
+                progColInd = j;
             }
-        else {
-            delvColor = "#0d6efdcc"
+            if (rows[0].cells[j].innerHTML === paceCol) {
+                paceColInd = j;
+            }
+            if (rows[0].cells[j].innerHTML === startCol) {
+                startColInd = j;
+            }
         }
-        if (sd >= today && delv <= 2) {
-            rows[i].cells[progColInd].style.background = "linear-gradient(to right, " + delvColor + " 2%, "
-          + "#ffc107cc 2% 4%, "
-          + backgroundColor + " 4%)";
+        let style, backgroundColor, delv, pace, today, sd, tooltip, delvColor;
+        for (let i = 1, row; row = rows[i]; i++) {
+            if (window.getComputedStyle) {
+                style = window.getComputedStyle(row.cells[progColInd]);
+            } else {
+                style = row.cells[progColInd].currentStyle;
+            }
+            backgroundColor = style.backgroundColor;
+            row.cells[progColInd].style.height = "100%";
+            row.cells[progColInd].style.border = "1px solid #dee2e6";
+            row.id = "tr" + String(i - 1);
+            delv = row.cells[progColInd].innerHTML;
+            pace = row.cells[paceColInd].innerHTML;
+            delv = delv.slice(0, -1);
+            pace = pace.slice(0, -1);
+            delv = parseInt(delv);
+            pace = parseInt(pace);
+            today = today = new Date();
+            sd = new Date(row.cells[startColInd].innerHTML);
+            if (pace > 100) {
+                pace = 100;
+            }
+            tooltip = "Delivery: " + delv + "% \nExpected Delivery: "
+                + pace + "%";
+            getTooltip(tooltip, row.cells[progColInd]);
+            if ((delv > 105) || ((delv / pace) > 1.15)) {
+                delvColor = "#dc3545cc";
+            } else {
+                delvColor = "#0d6efdcc";
+            }
+            if (sd >= today && delv <= 2) {
+                row.cells[progColInd].style.background = "linear-gradient(to right, " + delvColor + " 2%, "
+                    + "#ffc107cc 2% 4%, "
+                    + backgroundColor + " 4%)";
+            } else if (sd >= today && delv > 2) {
+                row.cells[progColInd].style.background = "linear-gradient(to right, #ffc107cc 2%, "
+                    + delvColor + " 2% " + delv + "%, "
+                    + backgroundColor + " " + delv + "%)";
+            } else if (pace >= 98 && delv >= 98) {
+                row.cells[progColInd].style.background = "linear-gradient(to right,  " + delvColor + " 98%, "
+                    + "#ffc107cc 98%)";
+            } else if (pace >= 98 && delv < 98) {
+                row.cells[progColInd].style.background = "linear-gradient(to right, " + delvColor + " "
+                    + delv + "%, "
+                    + backgroundColor + " " + delv + "% " + "98%, "
+                    + "#ffc107cc 98%)";
+            } else if (pace < 98 && delv >= 98) {
+                row.cells[progColInd].style.background = "linear-gradient(to right, " + delvColor + " "
+                    + pace + "%, "
+                    + "#ffc107cc " + pace + "% " + (pace + 2) + "%, "
+                    + delvColor + " " + (pace + 2) + "%)";
+            } else if (Math.abs(pace - delv) <= 2) {
+                row.cells[progColInd].style.background = "linear-gradient(to right, " + delvColor + " "
+                    + delv + "%, "
+                    + "#ffc107cc " + delv + "% " + (delv + 2) + "%, "
+                    + backgroundColor + " " + (delv + 2) + "%)";
+            } else if (pace < delv) {
+                row.cells[progColInd].style.background = "linear-gradient(to right, " + delvColor + " "
+                    + pace + "%, "
+                    + "#ffc107cc " + pace + "% " + (pace + 2) + "%, "
+                    + delvColor + " " + (pace + 2) + "% " + delv + "%, "
+                    + backgroundColor + " " + delv + "%)";
+            } else if (pace > delv) {
+                row.cells[progColInd].style.background = "linear-gradient(to right,  " + delvColor + " "
+                    + delv + "%, "
+                    + backgroundColor + " " + delv + "% " + pace + "%, "
+                    + "#ffc107cc " + pace + "% " + (pace + 2) + "%, "
+                    + backgroundColor + " " + (pace + 2) + "%)";
+            }
         }
-        else if (sd >= today && delv > 2) {
-            rows[i].cells[progColInd].style.background = "linear-gradient(to right, #ffc107cc 2%, "
-          + delvColor + " 2% " + delv + "%, "
-          + backgroundColor + " " + delv + "%)";
-        }
-        else if (pace >= 98 && delv >= 98) {
-            rows[i].cells[progColInd].style.background = "linear-gradient(to right,  "  + delvColor + " 98%, "
-          + "#ffc107cc 98%)";
-        }
-        else if (pace >= 98 && delv < 98) {
-            rows[i].cells[progColInd].style.background = "linear-gradient(to right, "  + delvColor + " "
-          + delv + "%, "
-          + backgroundColor + " " + delv + "% " + "98%, "
-          + "#ffc107cc 98%)";
-        }
-        else if (pace < 98 && delv >= 98) {
-            rows[i].cells[progColInd].style.background = "linear-gradient(to right, "  + delvColor + " "
-          + pace + "%, "
-          + "#ffc107cc " + pace + "% " + (pace + 2) + "%, "
-          + delvColor + " "+ (pace + 2) + "%)";
-        }
-        else if (Math.abs(pace - delv) <= 2 ) {
-            rows[i].cells[progColInd].style.background = "linear-gradient(to right, "  + delvColor + " "
-          + delv + "%, "
-          + "#ffc107cc " + delv + "% " + (delv + 2) + "%, "
-                + backgroundColor + " " + (delv + 2) + "%)";
-        }
-        else if (pace < delv) {
-            rows[i].cells[progColInd].style.background = "linear-gradient(to right, "  + delvColor + " "
-          + pace + "%, "
-          + "#ffc107cc " + pace + "% " + (pace + 2) + "%, "
-          + delvColor + " " + (pace + 2) + "% " + delv + "%, "
-                + backgroundColor + " " + delv + "%)";
-        }
-        else if (pace > delv) {
-          rows[i].cells[progColInd].style.background = "linear-gradient(to right,  "  + delvColor + " "
-            + delv + "%, "
-            + backgroundColor + " " + delv + "% " + pace + "%, "
-            + "#ffc107cc " + pace + "% " + (pace + 2) + "%, "
-            + backgroundColor + " " + (pace + 2) + "%)";
-        }
-      }
     }
 
     function getTooltip(content, cell){
-        cell.setAttribute("class", "dropdown-item")
-        cell.setAttribute("data-toggle", "hover")
-        cell.setAttribute("data-placement", "bottom")
-        cell.setAttribute("title", content)
+        cell.setAttribute("class", "dropdown-item");
+        cell.setAttribute("data-toggle", "hover");
+        cell.setAttribute("data-placement", "bottom");
+        cell.setAttribute("title", content);
         cell.style.height = "100%"
     }
 
-    function hideColumn(tableName, colName) {
-      var rows = document.getElementById(tableName).getElementsByTagName('tr')
-      var colInd = 0
-      for (var j = 0, col; col = rows[0].cells[j]; j++) {
-        if (rows[0].cells[j].innerHTML === colName) {
-          colInd = j;
+    function addAccordianSetup(tableName) {
+        const rows = document.getElementById(tableName).getElementsByTagName('tr');
+        for (let i = 1, row; row = rows[i]; i++) {
+            let expandButtonHTML = `<button class="btn btn-primary btn-sm fa-solid fa-chevron-up collapsed"
+                data-target="#collapseRow` + (i-1) + `" data-toggle="collapse"
+                aria-expanded="False" type="button" style="color:white">
+                </button>`;
+            let expandCell = rows[i].insertCell(-1);
+            expandCell.innerHTML = expandButtonHTML;
         }
-      }
-      for (var i = 0, row; row = rows[i]; i++) {
-        rows[i].cells[colInd].style.display = "none"
-      }
+    }
+
+    function hideColumn(tableName, colName) {
+        const rows = document.getElementById(tableName).getElementsByTagName('tr');
+        let colInd = 0;
+        for (let j = 0, col; col = rows[0].cells[j]; j++) {
+            if (rows[0].cells[j].innerHTML === colName) {
+                colInd = j;
+            }
+        }
+        for (let i = 0, row; row = rows[i]; i++) {
+            rows[i].cells[colInd].style.display = "none";
+        }
     }
 
     function generatePacingTable(elem, data, xCol, yCol) {
-        elemID = elem.replace('#', '');
-        elem = document.getElementById(elemID)
-        elem.innerHTML += data['data']['data']
-        elem.style.height = "100%"
-        cols = xCol + [, 'Planned Net Cost', 'Uncapped']
+        const elemID = elem.replace('#', '');
+        elem = document.getElementById(elemID);
+        elem.innerHTML += data['data']['data'];
+        elem.style.height = "100%";
+        let cols = xCol + [, 'Planned Net Cost', 'Uncapped'];
         cols = cols.split(",");
-        hideColumn(elemID, "% Through Campaign")
-        addEdit(elemID, cols, 'pacingTableSaveButton')
-        getProgBars(elemID, "Delivery", "% Through Campaign", "Start Date")
+        addEdit(elemID, cols, 'pacingTableSaveButton');
+        getProgBars(elemID, "Delivery", "% Through Campaign", "Start Date");
+        hideColumn(elemID, "% Through Campaign");
+        addAccordianSetup(elemID);
+        dailyPacingProg = `
+            <div id="dailyPacingProgressContainer" class="card container-fluid shadow outer d-flex">
+                <div>Daily Pacing Accordians:</div>
+                <div id="dailyPacingProgress" class="ml-auto" style="height:50px; width:100px;"></div>
+            </div>`;
+        elem.parentNode.insertAdjacentHTML('afterend', dailyPacingProg);
+        getMetrics('#dailyPacing', generateDailyPacing, xCol, ['netcost'], []);
+    }
+
+    function addSort(tableName, bodyName) {
+        const headerId = 'pacingHeader';
+        const rows = document.getElementById(tableName).getElementsByTagName('tr');
+        rows[0].parentNode.id = headerId;
+        sortTable(bodyName, headerId)
+    }
+
+    function addConditionalArrows(tableName, colName, threshold) {
+        const rows = document.getElementById(tableName).getElementsByTagName('tr');
+        let colInd = 0;
+        rows[0].id = 'thHidden';
+        for (let j = 0, col; col = rows[0].cells[j]; j++) {
+            if (rows[0].cells[j].innerHTML === colName) {
+              colInd = j;
+            }
+            rows[0].cells[j].id = 'thHidden'
+        }
+        let icon;
+        for (let i = 1, row; row = rows[i]; i++) {
+            row.id = tableName + 'trHidden' + i;
+            let val = rows[i].cells[colInd].innerHTML;
+            val = parseFloat(val)
+            if (Math.abs(val) > parseFloat(threshold)) {
+                if (val > 0) {
+                    icon = `<i>  </i><i class="fa-solid fa-arrow-up" style="color: #00C851"></i>`;
+                }
+                if (val < 0) {
+                    icon = `<i>  </i><i class="fa-solid fa-arrow-down" style="color: #ff4444"></i>`;
+                }
+                let iconCell = rows[i].cells[colInd]
+                iconCell.innerHTML += icon
+            }
+        }
+    }
+
+    function generateDailyPacing(elem, data, xCol, yCol) {
+        const table = document.getElementById('Pacing Table');
+        const body = table.getElementsByTagName('tbody');
+        const rows = table.querySelectorAll('[id*="tr"]');
+        const tableHeadElems = Array.from(table.getElementsByTagName('th'));
+        body[0].id = 'accordianPacing';
+        for (let i = 0, row; row = rows[i]; i++) {
+            for (let j = 0, datum; datum = data[j]; j++) {
+                let dailyBreakout = datum['data']['name'];
+                let rowBreakouts = [];
+                for (let k = 0; k < xCol.length; k++) {
+                    rowBreakouts.push(row.cells[k].innerHTML);
+                }
+                let rowBreakout = rowBreakouts.join("_");
+                rowBreakout = rowBreakout.replace(/[^a-zA-Z0-9 ]/g, '');
+                rowBreakout = rowBreakout.replace(/\s/g, '');
+                if (rowBreakout === dailyBreakout) {
+                    hiddenElemHTML = `
+                        <tr id="trHidden` + i + `">
+                            <td class="hiddenRow" colspan="` + tableHeadElems.length + `">
+                            <div  id="collapseRow` + i + `" class="collapse"
+                                 aria-labelledby="heading` + i + `"
+                                 data-parent="#accordianPacing">
+                                <div class="card-body" style="height:300px !important; overflow-y: scroll !important">
+                                    <div class="accordion" id="accordianRow` + i + `">`
+                        + data[j]['data']['data'] +
+                        `</div>
+                                </div>
+                            </div>
+                            </td>
+                        </tr>`;
+                    row.insertAdjacentHTML('afterend', hiddenElemHTML);
+                    addConditionalArrows('accordianRow' + i, 'Day Pacing', 20);
+                    for (let k = 0; k < xCol.length; k++) {
+                        hideColumn(rowBreakout, xCol[k]);
+                    }
+                    break;
+                }
+            }
+        }
+        addSort('pacingMetrics', 'accordianPacing');
+        const elemID = elem.replace('#', '');
+        const progElem = document.getElementById(elemID + "ProgressContainer");
+        progElem.remove();
+    }
+
+    function generateAlertCount(elem, data, xCol, yCol) {
+        const elemID = elem.replace('#', '');
+        elem = document.getElementById(elemID);
+        elem.innerHTML = data[0]['count'];
+    }
+
+    function generateAlerts(elem, data, xCol, yCol) {
+        const alertElem = document.getElementById("pacingAlerts");
+        let alertHtml;
+        for (let i = 0, datum; datum = data[i]; i++) {
+            alertHtml = `<div class="alert alert-danger" role="alert" style="white-space: pre-line">`
+                + datum['msg'] + `</div>`;
+            alertElem.innerHTML += alertHtml;
+        }
     }
 
     function radialProgress(selector) {

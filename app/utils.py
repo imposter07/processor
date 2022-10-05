@@ -1,6 +1,7 @@
 import io
 import os
 import json
+import re
 from app import db
 import pandas as pd
 import datetime as dt
@@ -239,3 +240,9 @@ def check_and_add_media_plan(media_plan_data, processor_to_edit,
             running_user=current_user.id,
             media_plan=df, object_type=object_type)
         db.session.commit()
+
+
+def remove_special_characters(string):
+    result = re.sub(r'[^a-zA-Z0-9 ]', '', string)
+    result = re.sub(r'\s', '', result)
+    return result

@@ -337,6 +337,9 @@ function getTableAsArray(tableId, cols=[]) {
     let rows = document.getElementById(tableId).getElementsByTagName('tr');
     let tableArray = []
     for (var i = 1, row; row = rows[i]; i++) {
+        if (row.id.includes("Hidden")) {
+            continue
+        }
         col = rows[i].children
         row = {}
         for (var j = 0, col; col = rows[0].cells[j]; j++) {

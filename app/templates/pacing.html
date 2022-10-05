@@ -1,24 +1,84 @@
+<style>
+    .table .card-deck {
+        overflow-x: scroll;
+    }
+
+    .card {
+        min-width: 100px;
+    }
+
+    th, td {
+        min-width: 25px;
+    }
+
+    .hiddenRow {
+        padding: 0 !important;
+    }
+
+    th:not(#thHidden) {
+        cursor: pointer;
+    }
+
+    th {
+        text-align: left;
+    }
+
+    td[contenteditable="true"]:hover {
+        background-color: lightsteelblue !important;
+    }
+
+    .fa-chevron-up {
+      transition: transform 0.3s ease-in-out;
+    }
+    .fa-chevron-up.collapsed {
+      transform: rotate(180deg);
+    }
+</style>
 <div class="tab-pane fade" id="nav-pacing"
      role="tabpanel" aria-labelledby="nav-home-tab">
     <br>
-    <div class="row">
+    <div class="col-md-12 h-50">
+        <div id="pacingAlertsProgress" style="height:50px; width:100px;" hidden></div>
+        <div id="pacingAlerts"></div>
+    </div>
+    <br>
         <div class="col-md-12 h-50">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h7 class="mb-3">Pacing</h7>
-                <button class="btn btn-primary float-right" id="_refresh_download_pacing_data" type="button">
-                    <i class="fa-solid fa-download" style="color:white" aria-hidden="true"></i>
-                </button>
+                <div class="col">
+                    <h7 class="mb-3">Pacing</h7>
+                </div>
+                <div class="col">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text"><i
+                                    class="fa-solid fa-magnifying-glass"
+                                    href="#"
+                                    role="button"></i></span>
+                        </div>
+                        <input id="tableSearchInput" type="text"
+                               class="form-control"
+                               placeholder="Search"
+                               aria-label="Username"
+                               aria-describedby="basic-addon1"
+                               onkeyup="searchTable('#pacingMetrics')">
+                    </div>
+                </div>
+                <div class="col">
+                    <button class="btn btn-primary float-right" id="_refresh_download_pacing_data" type="button">
+                        <i class="fa-solid fa-download" style="color:white" aria-hidden="true"></i>
+                    </button>
+                </div>
             </div>
             <div class="card container-fluid shadow outer">
                 <div id="pacingMetricsProgress" style="height:50px; width:100px;"></div>
-                <div id="pacingMetrics" style="height:325px; spellcheck='false'"></div>
+                <div id="pacingMetrics" style="height:325px;" spellcheck='false'"></div>
             </div>
             <div class="card-footer d-flex">
                 <button type="button" class="btn btn-secondary" id="pacingTableSaveButton"
                 disabled>Save Planned Spends</button>
                 <small class="ml-auto">*Pacing metrics and visuals updated after runs.
-                    Start Dates based on when spend started. End Dates on VendorMatrix
-                    (or Basic Tab when empty).</small>
+                    Start and End Dates based on uploaded Media Plan where available. Else based on VendorMatrix.
+                </small>
             </div>
         </div>
     </div>

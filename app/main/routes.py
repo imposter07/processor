@@ -31,6 +31,7 @@ from app.models import User, Post, Message, Notification, Processor, \
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
+import processor.reporting.calc as cal
 
 
 @bp.before_app_request
@@ -435,12 +436,26 @@ def get_task_progress():
             if 'table' not in request.form:
                 job = task.get_rq_job()
                 if job and job.result:
-                    df = job.result[0]
+                    dfs = job.result[0]
                     if 'get_processor_pacing_metrics' in str(job):
-                        data['data'] = df_to_html(df, 'Pacing Table')
-                        data['send_cols'] = job.result[1]
+                        data['data'] = df_to_html(dfs, 'Pacing Table')
+                        data['plan_cols'] = job.result[1]
+                    elif 'get_daily_pacing' in str(job):
+                        plan_cols = job.result[1]
+                        final_cols = plan_cols + [
+                            vmc.date, cal.NCF, 'Daily Spend Goal', 'Day Pacing']
+                        html_dfs = []
+                        for df in dfs:
+                            row_names = [str(df[x].iloc[0]) for x in plan_cols]
+                            row_names = ''.join(row_names)
+                            row_names = utl.remove_special_characters(row_names)
+                            df = df[final_cols]
+                            df = df_to_html(df, row_names)
+                            html_dfs.append(df)
+                        data['data'] = html_dfs
+                        data['plan_cols'] = plan_cols
                     else:
-                        data['data'] = df.reset_index().to_dict(
+                        data['data'] = dfs.reset_index().to_dict(
                             orient='records')
     else:
         task = cur_obj.get_task_in_progress(name=job_name)
@@ -2971,6 +2986,12 @@ def get_metrics():
                     if x in ['running_user', 'filter_dict']}
     elif request.form['elem'] == '#pacingMetrics':
         job_name = '.get_processor_pacing_metrics'
+    elif request.form['elem'] == '#dailyPacing':
+        job_name = '.get_daily_pacing'
+    elif request.form['elem'] == '#pacingAlertCount':
+        job_name = '.get_pacing_alert_count'
+    elif request.form['elem'] == '#pacingAlerts':
+        job_name = '.get_pacing_alerts'
     elif request.form['elem'] in ['#dash_placeholderMetrics',
                                   '#oldFilePlotMetrics', '#newFilePlotMetrics',
                                   '#deltaFilePlotMetrics']:

@@ -188,7 +188,7 @@
                                            placeholder="Search"
                                            aria-label="Username"
                                            aria-describedby="basic-addon1"
-                                           onkeyup="searchTable()">
+                                           onkeyup="searchTable('#planTable')">
                                 </div>
                             </div>
                         </div>
@@ -356,7 +356,7 @@
             addSelectize();
             addDatePicker();
             editPhaseOnClick();
-            sortTable();
+            sortTable('accordionPlan', 'planTableHeader');
             return loopIndex
         }
 
@@ -810,47 +810,6 @@
             toggleMetrics();
         }
 
-        function sortTable() {
-            const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
-            const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
-                    v1 !== '' && v2 !== '' && !isNaN(v1.replace('$','')) && !isNaN(v2.replace('$','')) ? v1.replace('$','') - v2.replace('$','') : v1.toString().localeCompare(v2)
-            )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
-            document.getElementById('planTableHeader').innerHTML = document.getElementById('planTableHeader').innerHTML;
-            document.querySelectorAll('th').forEach(th => th.addEventListener('click', (() => {
-                const table = document.getElementById('accordionPlan');
-                let sortArrow = th.getElementsByClassName('fas');
-                if (sortArrow.length > 0) {
-                    let downArrow = sortArrow[0].classList.contains('fa-arrow-down');
-                    let arrowReplace = (downArrow) ? ['down', 'up'] : ['up', 'down'];
-                    sortArrow[0].className = sortArrow[0].className.replace(arrowReplace[0], arrowReplace[1]);
-                } else {
-                    th.innerHTML += `<i class="fas fa-arrow-down" href="#" role="button"></i>`;
-                }
-                Array.from(table.querySelectorAll('.accordion-toggle'))
-                    .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
-                    .forEach(function(tr) {
-                        let loopIndex = tr.id.replace('tr', '');
-                        let hiddenElem = document.getElementById('trHidden' + loopIndex);
-                        hiddenElem.remove();
-                        table.appendChild(tr);
-                        table.appendChild(hiddenElem);
-                    });
-            })));
-        }
-
-        function searchTable() {
-            const trs = document.querySelectorAll('#accordionPlan tr:not(.header)')
-            const filter = document.querySelector('#tableSearchInput').value
-            const regex = new RegExp(filter, 'i')
-            const isFoundInTds = td => regex.test(td.innerHTML)
-            const isFound = childrenArr => childrenArr.some(isFoundInTds)
-            const setTrStyleDisplay = ({style, children}) => {
-                style.display = isFound([
-                    ...children // <-- All columns
-                ]) ? '' : 'none'
-            }
-            trs.forEach(setTrStyleDisplay)
-        }
 
         function getPhaseIds(tableName) {
             let phaseHeaders = document.querySelectorAll("[id^='" + tableName + "PhaseHeader']");

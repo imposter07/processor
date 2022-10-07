@@ -922,7 +922,7 @@
             });
         }
 
-        function createToplineTable(data) {
+        function createToplineTable(data, kwargs) {
             addTableColumns(data['data']['cols'], 'planTable');
             addCurrentPhases(data['data']['phases']);
             addCurrentPartners(data['data']['partners']);
@@ -931,7 +931,7 @@
             addDatePicker();
         }
 
-        function getPlanRuleComplete(data) {
+        function getPlanRuleComplete(data, kwargs) {
             addTableColumns(data['data']['cols'], 'rulesTable');
         }
 

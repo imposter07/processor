@@ -7,7 +7,7 @@ function convertDictToFormData(data) {
 }
 
 function makeRequest(url, method, data, responseFunction,
-                     responseType = 'json') {
+                     responseType = 'json', kwargs = {}) {
     let formData = convertDictToFormData(data);
     fetch(url, {
         method: method,
@@ -15,7 +15,7 @@ function makeRequest(url, method, data, responseFunction,
     }).then((data) => {
         if (responseType === 'json') {
             data.json().then((data) => {
-                responseFunction(data);
+                responseFunction(data, kwargs);
             });
         }
     });

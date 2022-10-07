@@ -137,7 +137,12 @@
                 let checkType = key.split('|')[1].replace(/\s/g, '');
                 elem.append('<tr id="' + idName + '"><td>' + checkType + '</td></tr>');
                 let newElem = $('#' + idName);
+                let newRow = false;
                 Object.keys(data[key]).forEach(function (newKey) {
+                    if (!newRow && newKey === 'Old'){
+                        let cellName = idName + 'New';
+                        newElem.append('<td id=' + cellName + '></td>');
+                    }
                     let cellName = idName + newKey;
                     newElem.append('<td id=' + cellName + '>' +
                         data[key][newKey][1] + '</td>');
@@ -145,6 +150,7 @@
                     $('#' + cellName).animate({
                         backgroundColor: color
                     }, 500);
+                    newRow = newKey === 'New';
                 });
             }, 500 * index);
         });

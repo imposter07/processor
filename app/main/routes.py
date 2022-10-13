@@ -22,12 +22,12 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
     PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm,\
     ProcessorNoteForm, ProcessorAutoAnalysisForm, WalkthroughUploadForm,\
-    ProcessorPlanForm
+    ProcessorPlanForm, UploadTestForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project,\
-    Notes, Tutorial, TutorialStage, Task, Plan
+    Notes, Tutorial, TutorialStage, Task, Plan, Walkthrough
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -256,17 +256,6 @@ def processor_change_owner():
     return jsonify({'data': 'success', 'message': msg, 'level': lvl})
 
 
-def get_client_view_selector(current_view='Clients'):
-    view_selector = [{'view': 'Clients', 'active': False,
-                      'value': 'main.clients'},
-                     {'view': 'Project Numbers', 'active': False,
-                      'value': 'main.project_numbers'}]
-    for v in view_selector:
-        if v['view'] == current_view:
-            v['active'] = True
-    return view_selector
-
-
 @bp.route('/clients')
 @login_required
 def clients():
@@ -276,7 +265,7 @@ def clients():
     current_campaigns = Campaign.query.order_by(Campaign.name).all()
     current_processors = Processor.query.order_by(Processor.name).all()
     current_projects = Project.query.order_by(Project.project_name).all()
-    view_selector = get_client_view_selector('Clients')
+    view_selector = Client.get_client_view_selector('Clients')
     return render_template('clients.html', title=_('Clients'),
                            clients=current_clients,
                            current_users=current_users,
@@ -295,7 +284,7 @@ def project_numbers():
     current_products = Product.query.order_by(Product.name).all()
     current_campaigns = Campaign.query.order_by(Campaign.name).all()
     current_processors = Processor.query.order_by(Processor.name).all()
-    view_selector = get_client_view_selector('Project Numbers')
+    view_selector = Client.get_client_view_selector('Project Numbers')
     return render_template('clients.html', title=_('Project Numbers'),
                            clients=current_clients,
                            current_users=current_users,
@@ -1673,9 +1662,16 @@ def edit_processor_account(object_name):
 @bp.route('/processor/<object_name>/edit/fees', methods=['GET', 'POST'])
 @login_required
 def edit_processor_fees(object_name):
+    form_description = """
+    Configure the adserving, reporting and agency fees used by the processor.
+    Adserving rates by type can be edited and saved using 'View Rate Card'.
+    Old rate cards can be selected and used from the dropdown.
+    Note Digital and Traditional Agency Fees should be provided as decimal.
+    """
     kwargs = Processor().get_current_processor(
         object_name, current_page='edit_processor_fees', edit_progress=75,
-        edit_name='Fees', buttons='ProcessorRequest')
+        edit_name='Fees', buttons='ProcessorRequest',
+        form_title='FEES', form_description=form_description)
     cur_proc = kwargs['processor']
     form = FeeForm()
     if request.method == 'POST':
@@ -1717,9 +1713,14 @@ def edit_processor_fees(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_conversions(object_name):
+    form_description = """
+    The conversions for this campaign.  This page maps conversions to 
+    the name they will appear in the processor output.  
+    """
     kwargs = Processor().get_current_processor(
         object_name, current_page='edit_processor_conversions',
-        edit_progress=75, edit_name='Conversions', buttons='ProcessorRequest')
+        edit_progress=75, edit_name='Conversions', buttons='ProcessorRequest',
+        form_title='FEES', form_description=form_description)
     cur_proc = kwargs['processor']
     conversions = GeneralConversionForm().set_conversions(Conversion, cur_proc)
     form = GeneralConversionForm(conversions=conversions)
@@ -1760,9 +1761,15 @@ def edit_processor_conversions(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_finish(object_name):
+    form_description = """
+    The final step in processor creation.  Add relevant people to the processor
+    to receive notifications on the data.  Note you must press 
+    'Save & Continue' on this tab to finish the request and build the processor.
+    """
     kwargs = Processor().get_current_processor(
         object_name, current_page='edit_processor_finish', edit_progress=100,
-        edit_name='Finish', buttons='ProcessorRequest')
+        edit_name='Finish', buttons='ProcessorRequest', form_title='FINISH',
+        form_description=form_description)
     cur_proc = kwargs['processor']
     form = ProcessorRequestFinishForm()
     form.set_user_choices()
@@ -2927,7 +2934,9 @@ def app_help():
                                      'Tutorial Complete!'])).order_by(
         TutorialStage.tutorial_level)
     ts = utl.group_sql_to_dict(ts, group_by='header')
-    return render_template('help.html', title=_('Help'), tutorial_stages=ts)
+    walk = Walkthrough().get_walk_questions('')
+    return render_template('help.html', title=_('Help'), tutorial_stages=ts,
+                           walkthrough=walk)
 
 
 @bp.route('/processor/<object_name>/edit/duplicate',
@@ -3311,4 +3320,23 @@ def edit_walkthrough_upload_file():
         '.update_walkthrough', _(msg_text),
         running_user=current_user.id, new_data=mem)
     db.session.commit()
+    return jsonify({'data': 'success'})
+
+
+@bp.route('/upload_test', methods=['GET', 'POST'])
+@login_required
+def upload_test():
+    current_form = UploadTestForm()
+    cur_user = User.query.get(current_user.id)
+    return render_template('upload_test.html', form=current_form,
+                           test_list=[1, 2, 3], cur_user=cur_user)
+
+
+@bp.route('/upload_test/upload_file', methods=['GET', 'POST'])
+@login_required
+def upload_test_upload_file():
+    current_key, object_name, object_form, object_level =\
+        utl.parse_upload_file_request(request)
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
     return jsonify({'data': 'success'})

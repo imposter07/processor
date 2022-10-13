@@ -2468,8 +2468,9 @@ def build_processor_from_request(processor_id, current_user_id):
             progress['set_planned_net'] = 'Success!'
         _set_task_progress(75)
         os.chdir(cur_path)
-        result = run_processor(processor_id, current_user_id,
-                               '--api all --ftp all --dbi all --exp all --tab')
+        result = run_processor(
+            processor_id, current_user_id,
+            run_args='--api all --ftp all --dbi all --exp all --tab --analyze')
         if result:
             progress['run_processor'] = 'Success!'
         _set_task_progress(88)
@@ -3623,7 +3624,8 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
 
 
 def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
-                                 dimensions=None, metrics=None, filter_dict=None):
+                                 dimensions=None, metrics=None,
+                                 filter_dict=None):
     try:
         _set_task_progress(0)
         import processor.reporting.analyze as az
@@ -3656,7 +3658,8 @@ def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
             if not pdf.empty:
                 adf_cols.remove(dctc.PNC)
                 pdf_cols = plan_cols + [dctc.PNC, dctc.UNC]
-                adf = pdf[pdf_cols].merge(adf[adf_cols], how='outer', on=plan_cols)
+                adf = pdf[pdf_cols].merge(adf[adf_cols], how='outer',
+                                          on=plan_cols)
             else:
                 adf[dctc.UNC] = ""
         adf = adf[final_columns]

@@ -75,12 +75,15 @@
         }
     }
     function collapseSide() {
+        console.log('collapse tutorial')
         $('#collapseSide').click()
     }
-     $(document).ready(function () {
-         displayInitialMessage();
-         answerButtonClicked();
-         checkDisableContinue();
-         collapseSide();
+     document.addEventListener("DOMContentLoaded", function() {
+         if (!(window.location.href.includes('help'))) {
+             displayInitialMessage();
+             answerButtonClicked();
+             checkDisableContinue();
+             collapseSide();
+         }
      });
 </script>

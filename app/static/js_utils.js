@@ -21,14 +21,14 @@ function makeRequest(url, method, data, responseFunction,
     });
 }
 
-function searchTable(tableName) {
-    const trs = document.querySelectorAll(tableName + ' tr:not(.header)')
-    const filter = document.querySelector('#tableSearchInput').value
-    const regex = new RegExp(filter, 'i')
-    const isThInChildren = child => child.tagName === 'TH'
-    const isTh = childrenArr => childrenArr.some(isThInChildren)
-    const isFoundInTds = td => regex.test(td.innerHTML)
-    const isFound = childrenArr => childrenArr.some(isFoundInTds)
+function searchTable(tableName, selector = ' tr:not(.header)') {
+    const trs = document.querySelectorAll(tableName + selector);
+    const filter = document.querySelector('#tableSearchInput').value;
+    const regex = new RegExp(filter, 'i');
+    const isThInChildren = child => child.tagName === 'TH';
+    const isTh = childrenArr => childrenArr.some(isThInChildren);
+    const isFoundInTds = td => regex.test(td.innerHTML);
+    const isFound = childrenArr => childrenArr.some(isFoundInTds);
     const setTrStyleDisplay = ({style, children}) => {
         style.display = (isFound([
             ...children // <-- All columns
@@ -36,7 +36,7 @@ function searchTable(tableName) {
             ...children // <-- All columns
         ])) ? '' : 'none'
     }
-    trs.forEach(setTrStyleDisplay)
+    trs.forEach(setTrStyleDisplay);
 }
 
 function sortTable(bodyName, tableHeaderId) {
@@ -55,7 +55,7 @@ function sortTable(bodyName, tableHeaderId) {
         } else {
             th.innerHTML += `<i class="fas fa-arrow-down" href="#" role="button"></i>`;
         }
-        Array.from(table.querySelectorAll("[id*='tr']:not([id*='trHidden']"))
+        Array.from(table.querySelectorAll("[id*='tr']:not([id*='trHidden'])"))
             .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
             .forEach(function(tr) {
                 let loopIndex = tr.id.replace('tr', '');

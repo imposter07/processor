@@ -1,0 +1,14 @@
+{% if cur_user %}
+    HELLO {{ cur_user.username }} YOUR EMAIL IS {{ cur_user.email }}
+{% endif %}
+
+{% if test_list %}
+    {% for x in test_list %}
+        {{ x }}
+    {% endfor %}
+{% endif %}
+
+{% if form %}
+    {% include '_form.html' %}
+{% endif %}
+<script src="{{ url_for('static', filename='js_utils.js') }}"></script>

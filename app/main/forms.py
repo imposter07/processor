@@ -315,7 +315,11 @@ class AccountForm(FlaskForm):
     key = SelectField(
         'Account Type', choices=[(x, x) for x in vmc.api_keys])
     account_id = StringField('Account ID')
-    campaign_id = StringField('Campaign ID or Name')
+    campaign_id = StringField(
+        'Campaign ID or Name',
+        description='For many accounts this value is optional. '
+                    ' Double check your account in the walkthrough '
+                    '(question mark on left sidebar next to comments).')
     delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
 
 
@@ -704,3 +708,8 @@ class ProcessorAutoAnalysisForm(FlaskForm):
 
 class WalkthroughUploadForm(FlaskForm):
     new_file = FileField(_l('New File'))
+
+
+class UploadTestForm(FlaskForm):
+    new_file = FileField(_l('New File'))
+    submit_form = SubmitField(_l('SUBMIT BUTTON'))

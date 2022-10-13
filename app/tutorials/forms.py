@@ -5,7 +5,8 @@ from flask_babel import lazy_gettext as _l
 
 class TutorialUploadForm(FlaskForm):
     tutorial_select = SelectField(
-        _l('Tutorial Select'), choices=[(x, x) for x in ['Processor Basic']])
+        _l('Tutorial Select'),
+        choices=[(x, x) for x in ['Processor Basic', 'Processor - Hands On']])
     new_file = FileField(_l('New File'))
 
 

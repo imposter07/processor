@@ -399,6 +399,17 @@ class Client(db.Model):
             client_check = self.check()
         return client_check
 
+    @staticmethod
+    def get_client_view_selector(current_view='Clients'):
+        view_selector = [{'view': 'Clients', 'active': False,
+                          'value': 'main.clients'},
+                         {'view': 'Project Numbers', 'active': False,
+                          'value': 'main.project_numbers'}]
+        for v in view_selector:
+            if v['view'] == current_view:
+                v['active'] = True
+        return view_selector
+
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1194,7 +1205,8 @@ class Uploader(db.Model):
     def get_url(self):
         return url_for('main.uploader_page', object_name=self.name)
 
-    def get_current_buttons(self):
+    @staticmethod
+    def get_current_buttons():
         buttons = [{'Basic': 'main.edit_uploader'},
                    {'Campaign': 'main.edit_uploader_campaign'},
                    {'Adset': 'main.edit_uploader_adset'},
@@ -1461,7 +1473,10 @@ class Walkthrough(db.Model):
 
     def get_walk_questions(self, edit_name):
         w = []
-        all_walk = Walkthrough.query.filter_by(edit_name=edit_name).all()
+        if not edit_name:
+            all_walk = Walkthrough.query.all()
+        else:
+            all_walk = Walkthrough.query.filter_by(edit_name=edit_name).all()
         if all_walk:
             for walk in all_walk:
                 walk_slides = walk.walkthrough_slides.order_by(
@@ -1473,7 +1488,6 @@ class Walkthrough(db.Model):
                                                        x.get_data())
                               for x in walk_slides]})
         return w
-
 
 
 class WalkthroughSlide(db.Model):

@@ -399,8 +399,15 @@
     {% if form_title %}
         <div class="card-header">
         <h4 class="text-capitalize font-weight-bolder text-center text-muted">{{ form_title }}</h4>
+            <a class="nav-link" id="nav-profile-tab" data-toggle="tab"
+               href="#nav-profile" role="tab"
+               aria-controls="nav-profile"
+               aria-selected="false">
+                <h4><i class="fas fa-question-circle btn btn-secondary"
+                       style="float:right;"></i></h4>
+            </a>
         {% if form_description %}
-            <h6 class="card-subtitle mb-2 text-muted text-center">{{ form_description }}</h6>
+            <h6 class="card-subtitle mb-2 text-muted text-center">{{ form_description }}  Click the question mark for more help.</h6>
         {% endif %}
         </div>
     {% endif %}
@@ -596,6 +603,9 @@
                     data = getTableAsArray(sourceElem, cols);
                     jsonData = JSON.stringify(data);
                     sendTableName = sourceElem.replace('modalTable', '');
+                } else if (sourceElem.includes('apply_processor_plan')) {
+                    completeSave({'message': 'Saved!', 'level': 'success'},
+                        formContinue, oldPage, newPage);
                 }
                 else {
                     try {

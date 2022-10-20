@@ -1,6 +1,6 @@
 <div class="card shadow outer">
     <div class="card-header">
-        <h5 class="text-muted font-weight-bolder">
+        <h5 class="text-muted">
             <a href="{{ processor.get_url() }}">
             {{ processor.name }}
         </a>
@@ -8,12 +8,12 @@
                 <a class="btn btn-outline-primary btn-sm rounded-pill"
                    href="{{ url_for('main.follow_processor',
                    object_name=processor.name) }}"
-                style="float: right;">Follow</a>
+                style="float: right; opacity:.8;">Follow</a>
              {% else %}
                 <a class="btn btn-primary btn-sm rounded-pill"
                    href="{{ url_for('main.unfollow_processor',
                    object_name=processor.name) }}"
-                style="float: right;">Following</a>
+                style="float: right; opacity:.8;">Following</a>
             {% endif %}
         </h5>
         <h6 class="card-subtitle mb-2 text-muted">{{ processor.campaign.product.client.name}} - {{ processor.campaign.product.name}}</h6>
@@ -32,7 +32,7 @@
                            aria-controls="nav-plinks{{ processor.id }}"
                            aria-selected="true">
                             <h4><i class="fas fa-bars btn btn-info"
-                                   style="float:right;"></i></h4>
+                                   style="float:right; opacity:.8;"></i></h4>
                         </a>
                         <a class="nav-link"
                            id="nav-appgraph-tab{{ processor.id }}"
@@ -42,7 +42,7 @@
                            aria-controls="nav-appgraph{{ processor.id }}"
                            aria-selected="false">
                             <h4><i class="fas fa-chart-bar btn btn-info"
-                                   style="float:right;"></i></h4>
+                                   style="float:right; opacity:.8;"></i></h4>
                         </a>
                         <a class="nav-link"
                            id="nav-tableau-tab{{ processor.id }}"
@@ -51,7 +51,7 @@
                            aria-controls="nav-tableau{{ processor.id }}"
                            aria-selected="false">
                             <h4><i class="fas fa-table btn btn-info"
-                                   style="float:right;"></i></h4>
+                                   style="float:right; opacity:.8;"></i></h4>
                         </a>
                     </div>
                 </nav>

@@ -1430,6 +1430,12 @@ class Tutorial(db.Model):
         total_stages = self.tutorial_stage.all()
         return total_stages
 
+    def tutorial_completed(self, tutorial_user):
+        last_stage = len(self.tutorial_stage.all())
+        user_complete = tutorial_user.tutorial_stages_completed.filter_by(
+            tutorial_level=last_stage-1, tutorial_id=self.id).first()
+        return user_complete
+
 
 class TutorialStage(db.Model):
     id = db.Column(db.Integer, primary_key=True)

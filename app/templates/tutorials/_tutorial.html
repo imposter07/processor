@@ -46,17 +46,18 @@
 </div>
 <script>
     function displayInitialMessage(){
-        if ("{{ tutorial_stage.alert}}" && !("{{ tutorial_stage.question}}")) {
-            displayAlert("{{ tutorial_stage.alert|safe }}", "{{ tutorial_stage.alert_level|safe }}")
+        if (`{{ tutorial_stage.alert}}` && !(`{{ tutorial_stage.question}}`)) {
+            displayAlert(`{{ tutorial_stage.alert|safe }}`, `{{ tutorial_stage.alert_level|safe }}`)
         }
     }
+
     function answerButtonClicked(){
         $('button[id*="answer"]').unbind('click').click(function () {
             $('#alertPlaceholder').alert('close')
             let answerNum = parseInt($(this)[0].id.split('answer')[1]);
             let correctAnswer = parseInt("{{ tutorial_stage.correct_answer }}")
             if (answerNum === correctAnswer) {
-                displayAlert("{{ tutorial_stage.alert|safe }}", "success")
+                displayAlert(`{{ tutorial_stage.alert|safe }}`, "success")
                 toggleContinue(false);
                 return true
             }
@@ -66,16 +67,18 @@
             }
         })
     }
+
     function toggleContinue(disabled=true){
         $("#loadContinue").prop("disabled", disabled);
     }
+
     function checkDisableContinue(){
-        if ("{{ tutorial_stage.question}}") {
+        if (`{{ tutorial_stage.question}}`) {
             toggleContinue(true);
         }
     }
+
     function collapseSide() {
-        console.log('collapse tutorial')
         $('#collapseSide').click()
     }
      document.addEventListener("DOMContentLoaded", function() {

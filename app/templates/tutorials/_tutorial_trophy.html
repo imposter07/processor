@@ -6,7 +6,12 @@
         right: 0;
     }
 </style>
-
-{% if trophy_user.tutorial_stages_completed.all()|length >= 28 %}
-    <i class="fas fa-trophy"></i>
+{% if cur_tutorial %}
+    {% if cur_tutorial.tutorial_completed(trophy_user) %}
+        <i class="fas fa-trophy"></i>
+    {% endif %}
+{% else %}
+    {% if trophy_user.tutorial_stages_completed.all()|length >= 31 %}
+        <i class="fas fa-trophy"></i>
+    {% endif %}
 {% endif %}

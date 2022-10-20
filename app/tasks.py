@@ -587,9 +587,17 @@ def get_change_dict_order(processor_id, current_user_id, vk):
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.vendormatrix as vm
         import processor.reporting.dictcolumns as dctc
+        import processor.reporting.vmcolumns as vmc
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
+        if not os.path.exists(data_source.p[vmc.filename_true]):
+            if vmc.api_raw_key in data_source.key:
+                msg = 'NO DATA - ADD THE RAW FILE.'
+            else:
+                msg = 'NO DATA - CHECK THE API CONNECTION AND RUN PROCESSOR.'
+            _set_task_progress(100)
+            return [pd.DataFrame([{'Result': msg}]), []]
         tdf = data_source.get_dict_order_df(include_index=False,
                                             include_full_name=True)
         dict_cols = [col for col in dctc.COLS if col not in [dctc.FPN, dctc.PN]]
@@ -4122,45 +4130,47 @@ def update_automatic_requests(processor_id, current_user_id):
         fix_type = az.Analyze.missing_ad_rate
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_processor.id, key=fix_type).first()
-        if analysis.data:
-            df = pd.DataFrame(analysis.data)
-            undefined = (df['mpServing'] + ' - ' +
-                         df['mpAd Model'] + ' - '
-                         + df['mpAd Rate']).to_list()
-            msg = ('{} {}\n\n'.format(analysis.message, ', '
-                                      .join(undefined)))
-            update_single_auto_request(processor_id, current_user_id,
-                                       fix_type=fix_type,
-                                       fix_description=msg,
-                                       undefined=undefined)
-        else:
-            undefined = []
-            msg = '{}'.format(analysis.message)
-            update_single_auto_request(processor_id, current_user_id,
-                                       fix_type=fix_type,
-                                       fix_description=msg,
-                                       undefined=undefined)
+        if analysis:
+            if analysis.data:
+                df = pd.DataFrame(analysis.data)
+                undefined = (df['mpServing'] + ' - ' +
+                             df['mpAd Model'] + ' - '
+                             + df['mpAd Rate']).to_list()
+                msg = ('{} {}\n\n'.format(analysis.message, ', '
+                                          .join(undefined)))
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
+            else:
+                undefined = []
+                msg = '{}'.format(analysis.message)
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
         fix_type = az.Analyze.missing_serving
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_processor.id, key=fix_type).first()
-        if analysis.data:
-            df = pd.DataFrame(analysis.data)
-            undefined = (df['Vendor Key'] + ' - ' +
-                         df['mpPlacement Name'] + ' - '
-                         + df['mpServing']).to_list()
-            msg = ('{} {}\n\n'.format(analysis.message, ', '
-                                      .join(undefined)))
-            update_single_auto_request(processor_id, current_user_id,
-                                       fix_type=fix_type,
-                                       fix_description=msg,
-                                       undefined=undefined)
-        else:
-            undefined = []
-            msg = '{}'.format(analysis.message)
-            update_single_auto_request(processor_id, current_user_id,
-                                       fix_type=fix_type,
-                                       fix_description=msg,
-                                       undefined=undefined)
+        if analysis:
+            if analysis.data:
+                df = pd.DataFrame(analysis.data)
+                undefined = (df['Vendor Key'] + ' - ' +
+                             df['mpPlacement Name'] + ' - '
+                             + df['mpServing']).to_list()
+                msg = ('{} {}\n\n'.format(analysis.message, ', '
+                                          .join(undefined)))
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
+            else:
+                undefined = []
+                msg = '{}'.format(analysis.message)
+                update_single_auto_request(processor_id, current_user_id,
+                                           fix_type=fix_type,
+                                           fix_description=msg,
+                                           undefined=undefined)
         _set_task_progress(100)
         return True
     except:
@@ -4707,7 +4717,8 @@ def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):
         file_type = os.path.splitext(file_name)[1]
         tmp_file_name = data_source.p[vmc.filename_true].replace(
             file_type, 'TMP{}'.format(file_type))
-        copy_file(tmp_file_name, file_name, max_attempts=10)
+        if os.path.exists(tmp_file_name):
+            copy_file(tmp_file_name, file_name, max_attempts=10)
         _set_task_progress(100)
         return True
     except:

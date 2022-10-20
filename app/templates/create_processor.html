@@ -3,17 +3,17 @@
     <div id="alertContainer">
     <div id="alertPlaceholder"></div>
     </div>
-    <h2 class="text-muted font-weight-bolder">{{ _('{} - {}'.format(title, object_name)) }}</h2>
+    <h2 class="">{{ _('{} - {}'.format(title, object_name)) }}</h2>
     <div class="progress mx-auto" style="height: 20px; width: 50%;">
         <div id="progressBar"
-             class="progress-bar progress-bar-striped bg-info"
-             role="progressbar" style="width:{{ edit_progress }}%;"
+             class="progress-bar progress-bar-striped bg-primary"
+             role="progressbar" style="width:{{ edit_progress }}%; opacity: 0.5;"
              aria-valuenow={{ edit_progress }} aria-valuemin="0"
              aria-valuemax="100">{{ edit_name }}</div>
     </div><br>
     <nav aria-label="...">
         <ul id='listTabs' class="pagination pagination justify-content-center">
-            <li class="page-item{% if not form %} page-item disabled{% endif %}">
+            <li style="opacity: 0.8;" class="page-item{% if not form %} page-item disabled{% endif %}">
                 <button id=loadRefresh type="submit" class="page-link" href=""
                         onclick="SubmitForm('', 'form_continue')">
                     <i class="fas fa-sync-alt" href="#" role="button"></i>
@@ -22,7 +22,7 @@
             </li>
             {% for button in buttons %}
                 {% for button_name, button_link in button.items() %}
-                    <li class="page-item{% if edit_name == button_name %} active{% endif %}
+                    <li style="opacity: 0.8;" class="page-item{% if edit_name == button_name %} active{% endif %}
                       {% if not object_function_call %} disabled{% endif %}">
                             <a class="page-link"
                                href="{% if object_function_call %}
@@ -33,7 +33,7 @@
                     </li>
                 {% endfor %}
             {% endfor %}
-            <li class="page-item{% if not form %} page-item disabled{% endif %}"
+            <li style="opacity: 0.8;" class="page-item{% if not form %} page-item disabled{% endif %}"
                 value="continue">
                 <button id="loadContinue" type="submit" class="page-link"
                         name="continue" onclick="SubmitForm('continue', 'form_continue')">
@@ -398,16 +398,17 @@
 {% block app_content %}
     {% if form_title %}
         <div class="card-header">
-        <h4 class="text-capitalize font-weight-bolder text-center text-muted">{{ form_title }}</h4>
+        <h5 class="text-capitalize text-center text-muted">{{ form_title }}
             <a class="nav-link" id="nav-profile-tab" data-toggle="tab"
                href="#nav-profile" role="tab"
                aria-controls="nav-profile"
                aria-selected="false">
-                <h4><i class="fas fa-question-circle btn btn-secondary"
-                       style="float:right;"></i></h4>
+                    <i class="fas fa-question-circle btn btn-secondary"
+                       style="float:right;"></i>
             </a>
+        </h5>
         {% if form_description %}
-            <h6 class="card-subtitle mb-2 text-muted text-center">{{ form_description }}  Click the question mark for more help.</h6>
+            <h6 class="card-subtitle mb-2 text-muted">{{ form_description }}  Click the question mark for more help.</h6>
         {% endif %}
         </div>
     {% endif %}
@@ -1167,7 +1168,7 @@
             });
         });
         function appendMetricTable(dashForm, divId, rowNum, title, asDataTable=true){
-            let tableName = dashForm['data']['name']
+            let tableName = dashForm['data']['name'];
             $(rowNum).append('' +
                 '<div class="col">' +
                 '<div id="' + divId + '" class="card">' +

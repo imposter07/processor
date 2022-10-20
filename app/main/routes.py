@@ -683,8 +683,13 @@ def edit_processor_import_upload_file(object_name):
 @bp.route('/processor/<object_name>/edit/import', methods=['GET', 'POST'])
 @login_required
 def edit_processor_import(object_name):
+    form_description = """
+    Add new, or edit existing data sources for this processor.  New data sources
+    may be added with 'Add API'.
+    """
     kwargs = Processor().get_current_processor(
-        object_name, 'edit_processor_import', 50, 'Import')
+        object_name, 'edit_processor_import', 50, 'Import', form_title='IMPORT',
+        form_description=form_description)
     cur_proc = kwargs['processor']
     apis = ImportForm().set_apis(ProcessorDatasources, kwargs['processor'])
     form = ImportForm(apis=apis)
@@ -1230,9 +1235,14 @@ def edit_processor_clean_upload_file(object_name):
 @bp.route('/processor/<object_name>/edit/clean', methods=['GET', 'POST'])
 @login_required
 def edit_processor_clean(object_name):
+    form_description = """
+    Configure the properties of each data source to properly clean it.  
+    Select the data source using the dropdown.  
+    """
     kwargs = Processor().get_current_processor(
         object_name, 'edit_processor_clean', edit_progress=75,
-        edit_name='Clean')
+        edit_name='Clean', form_title='CLEAN',
+        form_description=form_description)
     cur_proc = kwargs['processor']
     form = ProcessorCleanForm()
     form.set_vendor_key_choices(current_processor_id=cur_proc.id)
@@ -1251,9 +1261,13 @@ def cancel_schedule(scheduled_task):
 @bp.route('/processor/<object_name>/edit/export', methods=['GET', 'POST'])
 @login_required
 def edit_processor_export(object_name):
+    form_description = """
+    Configure the schedule for this processor to run.
+    """
     kwargs = Processor().get_current_processor(
         object_name, current_page='edit_processor_export',
-        edit_progress=100, edit_name='Export')
+        edit_progress=100, edit_name='Export', form_title='EXPORT',
+        form_description=form_description)
     cur_proc = kwargs['processor']
     form = ProcessorExportForm()
     sched = TaskScheduler.query.filter_by(processor_id=cur_proc.id).first()
@@ -1390,8 +1404,13 @@ def run_object():
 @bp.route('/processor/<object_name>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_processor(object_name):
+    form_description = """
+    General descriptive data about a processor.
+    This is essentially metadata, such as processor name and client name.
+    """
     kwargs = Processor().get_current_processor(
-        object_name, 'edit_processor', edit_progress=25, edit_name='Basic')
+        object_name, 'edit_processor', edit_progress=25, edit_name='Basic',
+        form_title='BASIC', form_description=form_description)
     processor_to_edit = kwargs['processor']
     form = EditProcessorForm(processor_to_edit.name)
     form.set_choices()
@@ -1720,7 +1739,7 @@ def edit_processor_conversions(object_name):
     kwargs = Processor().get_current_processor(
         object_name, current_page='edit_processor_conversions',
         edit_progress=75, edit_name='Conversions', buttons='ProcessorRequest',
-        form_title='FEES', form_description=form_description)
+        form_title='CONVERSIONS', form_description=form_description)
     cur_proc = kwargs['processor']
     conversions = GeneralConversionForm().set_conversions(Conversion, cur_proc)
     form = GeneralConversionForm(conversions=conversions)
@@ -2928,11 +2947,12 @@ def edit_uploader_ad_aw(object_name):
 @bp.route('/help')
 @login_required
 def app_help():
+    skip_slides = ['Data Processor Basic Tutorial', 'Tutorial Complete!',
+                   'Data Processor Tutorial 2 Electric Boogaloo']
     ts = TutorialStage.query.filter(
-        TutorialStage.sub_header != 'Question', TutorialStage.tutorial_id == 1,
-        TutorialStage.header.notin_(['Data Processor Basic Tutorial',
-                                     'Tutorial Complete!'])).order_by(
-        TutorialStage.tutorial_level)
+        TutorialStage.sub_header != 'Question',
+        TutorialStage.header.notin_(skip_slides)).order_by(
+        TutorialStage.id)
     ts = utl.group_sql_to_dict(ts, group_by='header')
     walk = Walkthrough().get_walk_questions('')
     return render_template('help.html', title=_('Help'), tutorial_stages=ts,

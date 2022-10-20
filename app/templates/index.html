@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
 {% block app_header %}
-    <h1 class="text-muted font-weight-bolder">{{ _('Hi, %(username)s!', username=current_user.username) }}</h1>
+    <h1 class="">{{ _('Hi, %(username)s!', username=current_user.username) }}</h1>
+    <h6 class="card-subtitle mb-2 text-muted">
+        Welcome to lqadata.com.  If you are new please check
+        <a href="https://lqadata.com/help">help page</a> for more info!</h6>
 {% endblock %}
 
 {% block vertical_navbar %}
@@ -56,7 +59,7 @@
 <div class="card shadow outer">
     <div class="card-header">
         <h3>Live Processors<i class="fas fa-chart-bar btn btn-info"
-                              style="float:right;"></i></h3>
+                              style="float:right; opacity:.8;"></i></h3>
         <h6 class="card-subtitle mb-2 text-muted">Processor instances that
             are
             currently live. On your homepage you can follow more to have
@@ -79,7 +82,7 @@
     <div class="col">
         <div class="card shadow outer">
             <div class="card-header">
-                <h3>Open Requests<i class="fas fa-tasks btn btn-danger" style="float:right;"></i></h3>
+                <h3>Open Requests<i class="fas fa-tasks btn btn-danger" style="float:right; opacity:.8;"></i></h3>
                 <h6 class="card-subtitle mb-2 text-muted">Requests that have not been completed - generated automatically and by reporting QA.  Every instance would ideally have 0 open requests.</h6>
             </div>
             <div class="card-body">
@@ -90,7 +93,7 @@
     <div class="col">
         <div class="card shadow outer">
             <div class="card-header">
-                <h3>Available Tutorials<i class="fas fa-graduation-cap btn btn-success" style="float:right;"></i></h3>
+                <h3>Available Tutorials<i class="fas fa-graduation-cap btn btn-success" style="float:right; opacity:.8;"></i></h3>
                 <h6 class="card-subtitle mb-2 text-muted">In-app tutorials to help understand more at Liquid.</h6>
             </div>
             <div class="card-body">

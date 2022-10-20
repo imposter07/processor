@@ -2,8 +2,10 @@
     <div class="card-header">
         <h5>
             <a href="{{ tutorial.get_url() }}">{{ tutorial.name }} - {{ tutorial.get_stages()|length }} Total Levels</a>
-            {% with trophy_user=user %}
-                {% include'tutorials/_tutorial_trophy.html' %}
+            {% with cur_tutorial=tutorial %}
+                {% with trophy_user=user %}
+                        {% include'tutorials/_tutorial_trophy.html' %}
+                {% endwith %}
             {% endwith %}
         </h5>
             <h6 class="card-subtitle mb-2 text-muted">{{ tutorial.description }}</h6>
@@ -11,7 +13,7 @@
             <div class="progress mx-auto">
                 <div id="progressBar"
                      class="progress-bar progress-bar-striped bg-success"
-                     role="progressbar" style="width:{{ progress }}%;"
+                     role="progressbar" style="width:{{ progress }}%; opacity:.8;"
                      aria-valuenow={{ progress }} aria-valuemin="0"
                      aria-valuemax="100">{{ progress }}% Completed
                 </div>

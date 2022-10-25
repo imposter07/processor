@@ -940,7 +940,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
             df = pd.DataFrame([{'Result': 'AN UNEXPECTED ERROR OCCURRED.'}])
     if (table_name in ['SOW', 'Topline']) or (
             'parameter' in proc_arg and (
-            proc_arg['parameter'] == 'FullOutput' or
+            proc_arg['parameter'] == 'RawDataOutput' or
             proc_arg['parameter'] == 'Download')):
         z = zipfile.ZipFile(df)
         if table_name == 'SOW':

@@ -519,7 +519,10 @@ def get_data_tables(processor_id, current_user_id, parameter=None,
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.calc as cal
         import processor.reporting.utils as utl
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.dictcolumns as dctc
         if not cur_processor.local_path:
             _set_task_progress(100)
             return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
@@ -527,19 +530,27 @@ def get_data_tables(processor_id, current_user_id, parameter=None,
                                  'Raw Data Output.csv')
         _set_task_progress(15)
         tables = utl.import_read_csv(file_name)
+        tables = tables.fillna('None')
         _set_task_progress(30)
         if not metrics:
-            metrics = ['Impressions', 'Clicks', 'Net Cost', 'Planned Net Cost',
-                       'Net Cost Final']
-        param_translate = {
-            'Vendor': ['mpCampaign', 'mpVendor', 'Vendor Key'],
-            'Target': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpTargeting'],
-            'Creative': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpCreative'],
-            'Copy': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpCopy'],
-            'BuyModel': ['mpCampaign', 'mpVendor', 'Vendor Key', 'mpBuy Model',
-                         'mpBuy Rate', 'mpPlacement Date'],
-            'FullOutput': []
-        }
+            metrics = [vmc.impressions, vmc.clicks, vmc.cost, dctc.PNC, cal.NCF,
+                       vmc.AD_COST, cal.TOTAL_COST]
+        base_param = [dctc.CAM, dctc.VEN]
+        param_translate = {}
+        params = [vmc.output_file, vmc.vendorkey, dctc.VEN, dctc.TAR, dctc.CRE,
+                  dctc.COP, dctc.BM, dctc.SRV]
+        for param in params:
+            key = param.replace('mp', '').replace(' ', '').replace('.csv', '')
+            cols = base_param
+            if param not in base_param:
+                cols = cols + [param]
+            if param == dctc.BM:
+                cols = cols + [dctc.BR, dctc.PD]
+            if param == dctc.SRV:
+                cols = cols + [dctc.AM, dctc.AR]
+            if param == vmc.output_file:
+                cols = []
+            param_translate[key] = cols
         if parameter:
             parameter = param_translate[parameter]
         elif dimensions:

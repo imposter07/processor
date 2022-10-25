@@ -10,8 +10,9 @@ from datetime import time as datetime_time
 from hashlib import md5
 from flask import current_app, url_for, request
 from flask_login import UserMixin, current_user
-from flask_babel import _, get_locale
+from flask_babel import _
 import processor.reporting.vmcolumns as vmc
+import processor.reporting.dictcolumns as dctc
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login
 from app.search import add_to_index, remove_from_index, query_index
@@ -761,15 +762,14 @@ class Processor(db.Model):
     @staticmethod
     def get_processor_output_links():
         output_links = {}
-        for idx, out_file in enumerate(
-                (('FullOutput', 'Downloads the Raw Data Output.'),
-                 ('Vendor', 'View modal table of data grouped by Vendor'),
-                 ('Target', 'View modal table of data grouped by Target'),
-                 ('Creative', 'View modal table of data grouped by Creative'),
-                 ('Copy', 'View modal table of data grouped by Copy'),
-                 ('BuyModel', 'View modal table of data grouped by BuyModel'))):
-            output_links[idx] = dict(title=out_file[0], nest=[],
-                                     tooltip=out_file[1])
+        cols = [vmc.output_file, vmc.vendorkey, dctc.VEN, dctc.TAR, dctc.CRE,
+                dctc.COP, dctc.BM, dctc.SRV]
+        for idx, col in enumerate(cols):
+            title = col.replace('mp', '').replace('.csv', '').replace(' ', '')
+            tooltip = 'View modal table of data grouped by {}.'.format(col)
+            if col == vmc.output_file:
+                tooltip = 'Downloads the {}'.format(col)
+            output_links[idx] = dict(title=title, nest=[], tooltip=tooltip)
         return output_links
 
     @staticmethod

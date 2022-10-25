@@ -931,8 +931,19 @@
             addDatePicker();
         }
 
-        function getPlanRuleComplete(data, kwargs) {
-            addTableColumns(data['data']['cols'], 'rulesTable');
+        function addRow() {
+
+        }
+
+        function addRowData(rows) {
+            rows.forEach(partner => {
+                addPartner('', '', partner);
+            });
+        }
+
+        function createLiquidTable(data, kwargs) {
+            addTableColumns(data['data']['cols'], data['data']['name']);
+
         }
 
         document.addEventListener("DOMContentLoaded", function() {
@@ -946,7 +957,7 @@
                 addPartnerOnClick();
                 addPhaseOnClick();
             {% elif edit_name == 'Plan Details' %}
-                makeRequest('/get_plan_rule', 'POST', data, getPlanRuleComplete);
+                makeRequest('/get_plan_rule', 'POST', data, createLiquidTable);
             {% endif %}
         });
 

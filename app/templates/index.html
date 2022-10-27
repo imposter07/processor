@@ -4,7 +4,24 @@
     <h1 class="">{{ _('Hi, %(username)s!', username=current_user.username) }}</h1>
     <h6 class="card-subtitle mb-2 text-muted">
         Welcome to lqadata.com.  If you are new please check
-        <a href="https://lqadata.com/help">help page</a> for more info!</h6>
+        <a href="https://lqadata.com/help">help page</a> for more info!
+        {% set count = namespace(value=0) %}
+        {% for cur_tutorial in tutorials %}
+            {% if cur_tutorial.tutorial_completed(current_user) %}
+                {% set count.value = count.value + 1 %}
+            {% endif %}
+        {% endfor %}
+        You have completed <span  class="font-weight-bold">{{ count.value }} tutorials.</span>
+        {% if count.value == 2 %}
+            <span class="text-success">You are a true inspiration to us all!</span >
+        {%  elif count.value == 1 %}
+            <span class="text-warning">It would be cooler if that number was 2.  But hey you tried!</span>
+        {% else %}
+            <span class="text-danger">Unfortunately for you, however, you are trophyless.
+            Without guidance, without the strength of tutorials...
+            You are fated, it seems, to obscurity.</span>
+        {% endif %}
+    </h6>
 {% endblock %}
 
 {% block vertical_navbar %}

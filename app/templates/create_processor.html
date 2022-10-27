@@ -475,12 +475,13 @@
     <script type="text/javascript" src="{{ url_for('static', filename='bootstrap-dark/darkModeHelper.js') }}"></script>
     <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
     <script>
-        $(document).ready(function() {
-            var duplicationType = '#duplication_type'
-            if ($(duplicationType.length)){
+        function checkDuplicationType() {
+            let duplicationType = document.getElementById('duplication_type');
+            if (duplicationType.length) {
                 checkHideElem('#duplication_type');
             }
-        });
+        }
+
         function addFilePond() {
             FilePond.registerPlugin(
                 FilePondPluginImagePreview,
@@ -501,6 +502,7 @@
                 }
             });
         }
+
         function addFilePondMeta() {
             const ponds = document.querySelectorAll('.filepond--root');
             ponds.forEach((pond) => {
@@ -510,6 +512,7 @@
                 });
             });
         }
+
         function SubmitForm(form_continue, elemId) {
             document.getElementById(elemId).setAttribute("value", form_continue);
             let validForm = document.getElementById('base_form_id').reportValidity();
@@ -838,20 +841,18 @@
             });
         }
 
-        $(document).ready(function() {
-            $('a[id^="editTable"]').click(function () {
-                let tableName = this.id.replace('editTable', '');
-                let dropdownButton = "#" + $(this).parents()[2].children[0].id;
-                $(dropdownButton).prop("disabled", true);
-                let oldHtml = $(dropdownButton).html();
-                $(dropdownButton).html(
-                    `<span id="loadingBtn" class="spinner-grow spinner-grow-sm" role="status"
+        function editTableOnClick() {
+            let tableName = this.id.replace('editTable', '');
+            let dropdownButton = "#" + $(this).parents()[2].children[0].id;
+            $(dropdownButton).prop("disabled", true);
+            let oldHtml = $(dropdownButton).html();
+            $(dropdownButton).html(
+                `<span id="loadingBtn" class="spinner-grow spinner-grow-sm" role="status"
                       aria-hidden="true"></span> Loading...`
-                  );
-                let pond = setDownloadBar(this, this.textContent);
-                getTable(tableName, dropdownButton, oldHtml, 'None', pond)
-            });
-        });
+            );
+            let pond = setDownloadBar(this, this.textContent);
+            getTable(tableName, dropdownButton, oldHtml, 'None', pond);
+        }
 
         function addCollapse(elem, tableID){
             var rows = elem.getElementsByTagName('tr');
@@ -1089,6 +1090,7 @@
                 }
             });
         });
+
         function loadingBtn(elem, currentStyle){
           $(elem).parent().html('' +
             '<button id="loadingBtn" class="btn btn-primary btn-block"' +
@@ -1097,6 +1099,7 @@
               'Loading...' +
             '</button>');
         }
+
         function refreshButtons() {
             $('input[id*="refresh_"], button[id*="refresh_"]').unbind('click').click(function () {
                 let tableName = $(this)[0].id.split('refresh_')[1];
@@ -1672,30 +1675,35 @@
             $('[data-toggle="hover"]').popover({trigger: "hover"})
         }
 
-        function loadJS(){
-            addFilePond()
-            addFilePondMeta()
-            addSelectize()
-            refreshButtons()
-            changeDataSource()
-            changeAutoNote()
-            getSelectedDashboard()
-            addPopovers()
-            addWalkthrough()
+        function loadJS() {
+            addFilePond();
+            addFilePondMeta();
+            addSelectize();
+            refreshButtons();
+            changeDataSource();
+            changeAutoNote();
+            getSelectedDashboard();
+            addPopovers();
+            addWalkthrough();
+            addOnClickEvent('a[id^="editTable"]', editTableOnClick);
         }
 
-        $(document).ready(function(){
-            loadJS()
+        document.addEventListener("DOMContentLoaded", function() {
+            loadJS();
             if ("{{ edit_name }}" === "Clean") {
-                getDatasourceTable()
+                getDatasourceTable();
             } else if ("{{ edit_name }}" === "Automatic Notes") {
-                getAutoNote()
+                getAutoNote();
             } else if ("{{ edit_name }}" === "Plan") {
                 getPlan()
             } else if ("{{ edit_name }}" === 'Import') {
-                removeSpecialChars()
+                removeSpecialChars();
             }
-        })
+            if ("{{ title }}" === "Uploader") {
+                checkDuplicationType();
+            }
+        });
+
     </script>
     {% include "_dash_builder.html" %}
     {% include "_table_builder.html" %}

@@ -66,3 +66,9 @@ function sortTable(bodyName, tableHeaderId) {
             });
     })));
 }
+
+function addOnClickEvent(elemSelector, clickFunction) {
+    for (let elm of document.querySelectorAll(elemSelector)) {
+        elm.onclick = clickFunction;
+    }
+}

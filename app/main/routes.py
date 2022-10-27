@@ -651,6 +651,8 @@ def edit_processor_import_upload_file(object_name):
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
+    if file_type not in ['.xlsx', '.csv']:
+        return jsonify({'data': 'failed: {}'.format(cur_proc.name)})
     search_dict = {}
     for col in ['account_id', 'start_date', 'api_fields', 'key',
                 'account_filter', 'name']:

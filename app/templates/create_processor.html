@@ -1609,11 +1609,12 @@
 
         function removeSpecialChars() {
             $('input[id$=name]').on('blur', function() {
-                forbiddenChars = /[#&$^@*!%]/g
+                const forbiddenChars = /[#&$^@*!%/]/g;
                 this.value = this.value.replace(forbiddenChars, '')
             })
             $('input[id*=account]').on('blur', function() {
-                this.value = this.value.replace(/^\s+|\s+$/g, '')
+                const spaces = /^\s+|\s+$/g;
+                this.value = this.value.replace(spaces, '')
             })
         }
 
@@ -1697,6 +1698,8 @@
             } else if ("{{ edit_name }}" === "Plan") {
                 getPlan()
             } else if ("{{ edit_name }}" === 'Import') {
+                removeSpecialChars();
+            } else if ("{{ edit_name }}" === 'Accounts') {
                 removeSpecialChars();
             }
             if ("{{ title }}" === "Uploader") {

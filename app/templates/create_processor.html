@@ -742,6 +742,7 @@
             }, 2500);
             return downloadingProgress
         }
+
         function setDownloadBar(currentElement, textContent, pond = true) {
             let oldDownload = document.getElementById('downloadProgressBaseClass')
             if (oldDownload) {
@@ -779,24 +780,17 @@
                 return pondElem
             }
         }
-        $(document).ready(function() {
-            $('a[id^="runObject"]').click(function () {
-                let runType = this.id.replace('runObject', '');
-                if (runType === 'Import') {
-                    show_modal_table('importRunButton');
-                }
-                else {
-                    let dropdownButton = "#" + $(this).parents()[2].children[0].id;
-                    $(dropdownButton).prop("disabled", true);
-                    let oldHtml = $(dropdownButton).html();
-                    $(dropdownButton).html(
-                        `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
-                            role="status" aria-hidden="true"></span> Loading...`
-                    );
-                    runObject(runType, dropdownButton, oldHtml)
-                }
-            });
-        });
+
+        function runObjectOnClick() {
+            let runType = this.id.replace('runObject', '');
+            if (runType === 'Import') {
+                show_modal_table('importRunButton');
+            }
+            else {
+                loadingBtn(this, this.style, this.className);
+                runObject(runType, this.id);
+            }
+        }
 
         function displayAlert(message, level) {
             let alertPlaceholderId = '#alertPlaceholder'
@@ -814,44 +808,38 @@
             alertPlaceholder.fadeIn('slow');
         }
 
+        function runObjectResponse(data, kwargs) {
+            let modalElem = kwargs['modalElem'];
+            let clickElem = kwargs['clickElem'];
+            displayAlert(data['message'], data['level']);
+            if (clickElem) {
+                addElemRemoveLoadingBtn(clickElem);
+                unanimateBar();
+            }
+            if (modalElem) {
+                $('#' + modalElem).modal('hide');
+            }
+        }
+
         function runObject(runType, clickElem=null, oldHtml=null, modalElem=null) {
-            $.ajax({
-                type: "POST",
-                url: "/run_object",
-                data: {
-                    run_type: runType,
-                    object_name: "{{ object_name }}",
-                    object_type:  "{{ title }}",
-                    object_level: "{{ edit_name }}",
-                },
-            }).done(function(data, status) {
-                displayAlert(data['message'], data['level'])
-            }).fail(function(jqXHR, textStatus ) {
-                console.log("Request failed: " + textStatus);
-            }).always(function(){
-                if (clickElem){
-                    $(clickElem).prop("disabled", false);
-                    $(clickElem).html(oldHtml);
-                    $('#loadingBtn').replaceWith(oldHtml);
-                    unanimateBar();
-                }
-                if (modalElem){
-                    $('#' + modalElem).modal('hide');
-                }
-            });
+            let kwargs = {
+                'clickElem': clickElem,
+                'modalElem': modalElem
+            }
+            let requestData = {
+                run_type: runType,
+                object_name: "{{ object_name }}",
+                object_type: "{{ title }}",
+                object_level: "{{ edit_name }}"
+            }
+            makeRequest('/run_object', 'POST', requestData, runObjectResponse, 'json', kwargs);
         }
 
         function editTableOnClick() {
             let tableName = this.id.replace('editTable', '');
-            let dropdownButton = "#" + $(this).parents()[2].children[0].id;
-            $(dropdownButton).prop("disabled", true);
-            let oldHtml = $(dropdownButton).html();
-            $(dropdownButton).html(
-                `<span id="loadingBtn" class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-            );
+            loadingBtn(this, this.style, this.className);
             let pond = setDownloadBar(this, this.textContent);
-            getTable(tableName, dropdownButton, oldHtml, 'None', pond);
+            getTable(tableName, this.id, 'None', 'None', pond);
         }
 
         function addCollapse(elem, tableID){
@@ -935,27 +923,28 @@
             }
         }
 
-        function turnOffProgress(downloadingProgress, oldHtml, clickElem){
-            $(clickElem).prop("disabled", false);
-            $(clickElem).html(oldHtml);
-            $('#loadingBtn').replaceWith(oldHtml);
+        function addElemRemoveLoadingBtn(elemId) {
+            if (elemId) {
+                document.getElementById('loadingBtn').remove();
+                let elem = document.getElementById(elemId);
+                elem.style.display = '';
+            }
+        }
+
+        function turnOffProgress(downloadingProgress, oldHtml, clickElem) {
+            addElemRemoveLoadingBtn(clickElem);
             unanimateBar();
             clearInterval(downloadingProgress);
             downloadingProgress = null;
-            if (typeof clickElem.id != 'undefined') {
-                var downloadID = 'downloadProgress' + clickElem.id
-            }
-            else {
-                var downloadID = 'downloadProgress'
-            }
-            let downloadProgress = $("#" + downloadID);
-            downloadProgress.attr("style", "width: 100%");
+            let downloadID = (typeof clickElem.id != 'undefined') ? 'downloadProgress' + clickElem.id : 'downloadProgress';
+            let downloadElem = document.getElementById(downloadID);
+            downloadElem.style.width = '100%';
             unanimateBar(downloadID);
-            refreshButtons()
+            refreshButtons();
         }
 
         async function getTable(tableName, clickElem, oldHtml, vendorKey='None',
-                          pond='None', progress=true, fixId='None', forceReturn=false){
+                          pond='None', progress=true, fixId='None', forceReturn=false) {
             let uploaderType = ("{{ title }}" === "Uploader") ? "{{uploader_type}}" : "None";
             let data = {
                 table: tableName,
@@ -998,20 +987,15 @@
                         pond, vendorKey, oldHtml, clickElem, fixId);
             }
         }
-        $(document).ready(function() {
-            $('button[id^="getLog"]').click(function () {
-                let dropdownButton = "#" + $(this)[0].id;
-                $(dropdownButton).prop("disabled", true);
-                let oldHtml = $(dropdownButton).html();
-                $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-                  );
-                animateBar();
-                getLog(dropdownButton, oldHtml);
-            });
-        });
-        function parseLog(data){
+
+        function getLogOnClick() {
+            loadingBtn(this, this.style, this.className);
+            animateBar();
+            getLog(this.id);
+        }
+
+        function parseLog(data, kwargs) {
+            let clickElem = kwargs['clickElem'];
             let logFile = JSON.parse(data['data']);
             let htmlLog = "<p align=\"left\" style='white-space: pre; " +
                 "font-family: Consolas;'>" +
@@ -1022,39 +1006,33 @@
             $('#logModal .modal-body').attr('style', 'overflow-x:auto')
             $('#logModal p:contains("ERROR]")').css('color', 'red')
             $('#logModal p:contains("WARNING]")').css('color', 'orange')
-        }
-        function getLog(clickElem, oldHtml){
-            $.post('/get_log',
-                {
-                    object_type: "{{ title }}",
-                    object_name:  "{{ object_name }}"
-            }).done(function(data, status) {
+            if (clickElem) {
                 show_modal_table('logModalButton');
-                parseLog(data);
-            }).fail(function(jqXHR, textStatus ) {
-                console.log("Request failed: " + textStatus);
-            }).always(function(){
-                $(clickElem).prop("disabled", false);
-                $(clickElem).html(oldHtml);
-                unanimateBar();
-            });
+                addElemRemoveLoadingBtn(clickElem);
+            }
         }
+
+        function getLog(clickElem) {
+            let requestData = {
+                object_type: "{{ title }}",
+                object_name: "{{ object_name }}"
+            }
+            let kwargs = {'clickElem': clickElem}
+            makeRequest('/get_log', 'POST', requestData, parseLog, 'json', kwargs);
+        }
+
         var logRefresh = null;
         $('#logModal').on({
             'shown.bs.modal': function () {
                 logRefresh = setInterval(function () {
-                    $.post('/get_log',
-                        {
-                            object_type: "{{ title }}",
-                            object_name:  "{{ object_name }}"
-                        }).done(function (data, status) {
-                        parseLog(data);
-                    });
-                }, 30000)},
-            'hidden.bs.modal': function(){
+                    getLog('');
+                }, 30000)
+            },
+            'hidden.bs.modal': function () {
                 clearInterval(logRefresh);
             }
         });
+
         $(document).ready(function() {
             $('.list-group-item-linkable').on('click', function () {
                 // same window/tab:
@@ -1062,42 +1040,28 @@
                 window.location.href = $(this).attr('href');
             });
         });
-        function animateBar(){
-          let d = document.getElementById("progressBar");
-          d.className += " progress-bar-animated";
-        }
-        function unanimateBar(barId = "progressBar"){
-          let d = document.getElementById(barId);
-          d.className = d.className.replace( /(?:^|\s)progress-bar-animated(?!\S)/g , '' );
-        }
-        $(document).ready(function() {
-            $('button[id^="load"]').click(function() {
-                if ("{{ edit_name }}" === 'Import') {
-                    let unnamedImports = emptyVendorKeyNameCheck()
-                    if (unnamedImports) {
-                        return;
-                    }
-                }
-                if (document.getElementById('base_form_id').checkValidity()) {
-                    animateBar();
-                    let elem = $('#' + this.id)
-                    elem.hide()
-                    elem.parent().append(
-                        '<a class="page-link" id="loadingBtn" disabled>' +
-                        '<span class="spinner-grow spinner-grow-sm" disabled' +
-                        'role="status" aria-hidden="true"></span> Loading...</a>'
-                    );
-                }
-            });
-        });
 
-        function loadingBtn(elem, currentStyle){
-          $(elem).parent().html('' +
-            '<button id="loadingBtn" class="btn btn-primary btn-block"' +
-                'style="' + currentStyle + '"type="button" disabled>' +
-              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-              'Loading...' +
-            '</button>');
+        function animateBar(){
+            let d = document.getElementById("progressBar");
+            d.className += " progress-bar-animated";
+        }
+
+        function unanimateBar(barId = "progressBar"){
+            let d = document.getElementById(barId);
+            d.className = d.className.replace( /(?:^|\s)progress-bar-animated(?!\S)/g , '' );
+        }
+
+        function loadButtonOnClick() {
+            if ("{{ edit_name }}" === 'Import') {
+                let unnamedImports = emptyVendorKeyNameCheck();
+                if (unnamedImports) {
+                    return;
+                }
+            }
+            if (document.getElementById('base_form_id').checkValidity()) {
+                animateBar();
+                loadingBtn(this, this.style, this.className);
+            }
         }
 
         function refreshButtons() {
@@ -1133,6 +1097,7 @@
                 animateBar();
             });
         }
+
         $(document).ready(function () {
             $('#modalTable').on('hidden.bs.modal', function () {
                 if (['Import', 'Campaign', 'Adset', 'Ad'].includes(
@@ -1149,6 +1114,7 @@
                 }
             })
         });
+
         $(document).ready(function() {
             $('#modalTable').on('shown.bs.modal', function () {
                 $($.fn.dataTable.tables(true)).DataTable()
@@ -1156,6 +1122,7 @@
                     .fixedColumns().relayout();
             })
         });
+
         $(document).ready(function() {
             $('#data_source').on('change', function(e){
                 let selectedText = this.options[e.target.selectedIndex].text;
@@ -1170,6 +1137,7 @@
                 },(2 * 1000));
             });
         });
+
         function appendMetricTable(dashForm, divId, rowNum, title, asDataTable=true){
             let tableName = dashForm['data']['name'];
             $(rowNum).append('' +
@@ -1189,6 +1157,7 @@
                 document.getElementById(tableName + 'Elem').innerHTML += dashForm['data']['data']
             }
         }
+
         function appendCardAsTable(dashForm, divId, rowNum, title, asDataTable=true){
             let tableName = dashForm['data']['name'];
             $(rowNum).append('' +
@@ -1663,7 +1632,7 @@
         $(document).ready(function() {
             $('#name_create_type').on('change', function(e){
                 SubmitForm('', 'form_continue');
-                loadingBtn($(this).parent(), '');
+                loadingBtn(this, '');
             });
         });
         $(document).ready(function() {
@@ -1677,6 +1646,10 @@
         }
 
         function loadJS() {
+            addOnClickEvent('a[id^="editTable"]', editTableOnClick);
+            addOnClickEvent('a[id^="runObject"]', runObjectOnClick);
+            addOnClickEvent('button[id^="getLog"]', getLogOnClick);
+            addOnClickEvent('button[id^="load"]', loadButtonOnClick);
             addFilePond();
             addFilePondMeta();
             addSelectize();
@@ -1686,7 +1659,6 @@
             getSelectedDashboard();
             addPopovers();
             addWalkthrough();
-            addOnClickEvent('a[id^="editTable"]', editTableOnClick);
         }
 
         document.addEventListener("DOMContentLoaded", function() {
@@ -1696,7 +1668,7 @@
             } else if ("{{ edit_name }}" === "Automatic Notes") {
                 getAutoNote();
             } else if ("{{ edit_name }}" === "Plan") {
-                getPlan()
+                getPlan();
             } else if ("{{ edit_name }}" === 'Import') {
                 removeSpecialChars();
             } else if ("{{ edit_name }}" === 'Accounts') {

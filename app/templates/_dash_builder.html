@@ -1426,7 +1426,8 @@
             $(elemId).parent().hide()
             $(elemId).parent().parent().append(
                 '<div><div id="loadingBtn"></div></div>')
-            loadingBtn('#loadingBtn', '')
+            let loadingBtnElem = document.getElementById('loadingBtn');
+            loadingBtn(loadingBtnElem, '');
             $.ajax({
                 type: "POST",
                 url: "/get_metrics",

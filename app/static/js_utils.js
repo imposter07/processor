@@ -72,3 +72,13 @@ function addOnClickEvent(elemSelector, clickFunction) {
         elm.onclick = clickFunction;
     }
 }
+
+function loadingBtn(elem, currentStyle, btnClass="btn btn-primary btn-block") {
+    elem.style.display = 'none';
+    elem.insertAdjacentHTML('beforebegin', `
+        <button id="loadingBtn" class="${btnClass}"
+            style="${currentStyle}" type="button" disabled>
+          <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+          Loading...
+        </button>`);
+}

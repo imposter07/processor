@@ -521,7 +521,7 @@
                     submitCleanForm(form_continue);
                 }
                 else if ("{{ edit_name }}" === "Topline") {
-                    submitToplineForm(form_continue);
+                    submitToplineForm(form_continue, "{{ edit_name }}");
                 }
                 else if ("{{ edit_name }}" === "Plan") {
                     let curPage = window.location.pathname.split("/").pop();

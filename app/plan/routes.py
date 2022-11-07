@@ -217,8 +217,12 @@ def get_topline():
             cur_col['form'] = True
         cols.append(cur_col)
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
-    return jsonify({'data': {'partners': partners,
-                             'cols': cols, 'phases': phases}})
+    return jsonify({'data': {'rows': partners,
+                             'rows_name': 'Partner',
+                             'cols': cols,
+                             'top_rows': phases,
+                             'top_rows_name': 'Phase',
+                             'totals': True}})
 
 
 @bp.route('/save_topline', methods=['GET', 'POST'])

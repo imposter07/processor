@@ -67,9 +67,14 @@ function sortTable(bodyName, tableHeaderId) {
     })));
 }
 
-function addOnClickEvent(elemSelector, clickFunction) {
+function addOnClickEvent(elemSelector, clickFunction, type = 'click') {
     for (let elm of document.querySelectorAll(elemSelector)) {
-        elm.onclick = clickFunction;
+        if (type === 'click') {
+            elm.onclick = clickFunction;
+        }
+        else if (type === 'change') {
+            elm.onchange = clickFunction;
+        }
     }
 }
 

@@ -715,8 +715,8 @@
                                     vendorKey, fixId);
                             }
                         }
-                        if (typeof clickElem.id != 'undefined') {
-                            var downloadID = '#downloadProgress' + clickElem.id
+                        if (clickElem.indexOf('request_table-') !== -1) {
+                            var downloadID = '#downloadProgress' + clickElem
                         }
                         else {
                             var downloadID = '#downloadProgress'
@@ -932,11 +932,15 @@
         }
 
         function turnOffProgress(downloadingProgress, oldHtml, clickElem) {
-            addElemRemoveLoadingBtn(clickElem);
+            if (oldHtml !== 'None') {
+                $(clickElem).html(oldHtml);
+            } else {
+                addElemRemoveLoadingBtn(clickElem);
+            }
             unanimateBar();
             clearInterval(downloadingProgress);
             downloadingProgress = null;
-            let downloadID = (typeof clickElem.id != 'undefined') ? 'downloadProgress' + clickElem.id : 'downloadProgress';
+            let downloadID = (clickElem.indexOf('request_table-') !== -1) ? 'downloadProgress' + clickElem : 'downloadProgress';
             let downloadElem = document.getElementById(downloadID);
             downloadElem.style.width = '100%';
             unanimateBar(downloadID);
@@ -1071,29 +1075,23 @@
                     var vendorKey = $('#' + tableName)[0].value;
                 } else if ("{{ edit_name }}" === 'Clean') {
                     vendorKey = $('#data_source_clean').val();
-                }
-                else {
+                } else {
                     try {
                         vendorKey = $(this).parent().parent()[0].elements[0].value;
                     } catch (err) {
                         vendorKey = 'None';
                     }
                 }
-                let oldHtml = $(this).parent().html();
+                let oldHtml = 'None'
                 let currentStyle = $(this).attr('style');
-                $(this).parent().html('' +
-                    '<button id="loadingBtn" class="btn btn-primary btn-block"' +
-                    'style="' + currentStyle + '"type="button" disabled>' +
-                    '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                    'Loading...' +
-                    '</button>');
+                loadingBtn(this.parentElement, currentStyle);
                 if (tableName === 'download_raw_data' ||
                     tableName === 'download_pacing_data') {
                     var refreshPond = setDownloadBar($("#loadingBtn").parent(), $(this).text());
                 } else {
                     var refreshPond = setDownloadBar($("#loadingBtn").parent(), $(this).text(), false);
                 }
-                getTable(tableName, $(this).parent(), oldHtml, vendorKey, refreshPond);
+                getTable(tableName, this.parentElement.id, oldHtml, vendorKey, refreshPond);
                 animateBar();
             });
         }
@@ -1254,14 +1252,14 @@
                     '<div class="col text-center">' +
                     '<div class="card">' +
                     '<h5 class="card-header font-weight-bold text-primary">DICTIONARY</h5>' +
-                    '<div class="btn-group btn-group-sm btn-block" role="group">' +
+                    '<div id="refresh_dictionary_buttons" class="btn-group btn-group-sm btn-block" role="group">' +
                     '<button id="_refresh_dictionary"' +
-                    'class="btn btn-outline-success">' +
+                    'class="btn btn-outline-success" type="button">' +
                     '<i class="fas fa-binoculars" href="#" role="button"></i>' +
                     'View' +
                     '</button>' +
                     '<button id="_refresh_delete_dict"' +
-                    'class="btn btn-outline-danger">' +
+                    'class="btn btn-outline-danger" type="button">' +
                     '<i class="fas fa-trash" href="#" role="button"></i>' +
                     'Delete' +
                     '</button>' +
@@ -1273,14 +1271,14 @@
                     '<div class="col text-center">' +
                     '<div class="card">' +
                     '<h5 class="card-header font-weight-bold text-primary">RAW FILE</h5>' +
-                    '<div class="btn-group btn-group-sm btn-block" role="group">' +
+                    '<div id="refresh_raw_buttons" class="btn-group btn-group-sm btn-block" role="group">' +
                     '<button id="_refresh_raw_data"' +
-                    'class="btn btn-outline-success">' +
+                    'class="btn btn-outline-success" type="button">' +
                     '<i class="fas fa-binoculars" href="#" role="button"></i>' +
                     'View' +
                     '</button>' +
                     '<button id="_refresh_download_raw_data"' +
-                    'class="btn btn-outline-primary">' +
+                    'class="btn btn-outline-primary" type="button">' +
                     '<i class="fas fa-download" href="#" role="button"></i>' +
                     'Download' +
                     '</button>' +
@@ -1290,19 +1288,19 @@
                     '<div class="col text-center">' +
                     '<div class="card">' +
                     '<h5 class="card-header font-weight-bold text-primary">DICTIONARY</h5>' +
-                    '<div class="btn-group btn-group-sm btn-block" role="group">' +
+                    '<div id="refresh_dictionary_buttons" class="btn-group btn-group-sm btn-block" role="group">' +
                     '<button id="_refresh_dictionary"' +
-                    'class="btn btn-outline-success">' +
+                    'class="btn btn-outline-success" type="button">' +
                     '<i class="fas fa-binoculars" href="#" role="button"></i>' +
                     'View' +
                     '</button>' +
                     '<button id="_refresh_change_dictionary_order"' +
-                    'class="btn btn-outline-warning">' +
+                    'class="btn btn-outline-warning" type="button">' +
                     '<i class="fas fa-sort-amount-up-alt" href="#" role="button"></i>' +
                     'Change Order' +
                     '</button>' +
                     '<button id="_refresh_delete_dict"' +
-                    'class="btn btn-outline-danger">' +
+                    'class="btn btn-outline-danger" type="button">' +
                     '<i class="fas fa-trash" href="#" role="button"></i>' +
                     'Delete' +
                     '</button>' +

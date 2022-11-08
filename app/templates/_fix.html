@@ -97,7 +97,7 @@
         let fixType = "{{ fix.fix_type }}";
         let elem = document.getElementById(tableName);
         let oldHTML = elem.html;
-        getTable('request_table', elem, oldHTML, 'None', 'None', true, fixType);
+        getTable('request_table', tableName, oldHTML, 'None', 'None', true, fixType);
         animateBar();
     });
 

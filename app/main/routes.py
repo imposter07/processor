@@ -2957,8 +2957,10 @@ def app_help():
         TutorialStage.id)
     ts = utl.group_sql_to_dict(ts, group_by='header')
     walk = Walkthrough().get_walk_questions('')
+    tutorials = Tutorial.query.all()
     return render_template('help.html', title=_('Help'), tutorial_stages=ts,
-                           walkthrough=walk)
+                           walkthrough=walk, tutorials=tutorials,
+                           user=current_user)
 
 
 @bp.route('/processor/<object_name>/edit/duplicate',

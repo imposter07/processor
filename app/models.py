@@ -1419,6 +1419,10 @@ class Tutorial(db.Model):
         return url_for('tutorials.get_tutorial', tutorial_name=self.name,
                        tutorial_level=0)
 
+    @staticmethod
+    def get_tutorial_homepage_url():
+        return url_for('tutorials.tutorial')
+
     def get_progress(self, user_id):
         cu = User.query.get(user_id)
         total_stages = len(self.tutorial_stage.all())

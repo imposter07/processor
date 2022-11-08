@@ -11,13 +11,13 @@
                 {% set count.value = count.value + 1 %}
             {% endif %}
         {% endfor %}
-        You have completed <span  class="font-weight-bold">{{ count.value }} tutorials.</span>
+        You have completed <a href="{{ tutorials[0].get_tutorial_homepage_url() }}"><span class="font-weight-bold">{{ count.value }} tutorials.</span></a>
         {% if count.value == 2 %}
-            <span class="text-success">You are a true inspiration to us all!</span >
+            <span class="text-success font-weight-bold">You are a true inspiration to us all!</span >
         {%  elif count.value == 1 %}
-            <span class="text-warning">It would be cooler if that number was 2.  But hey you tried!</span>
+            <span class="text-warning font-weight-bold">It would be cooler if that number was 2.  But hey you tried!</span>
         {% else %}
-            <span class="text-danger">Unfortunately for you, however, you are trophyless.
+            <span class="text-danger font-weight-bold">Unfortunately for you, however, you are trophyless.
             Without guidance, without the strength of tutorials...
             You are fated, it seems, to obscurity.</span>
         {% endif %}
@@ -107,19 +107,7 @@
             </div>
         </div>
     </div>
-    <div class="col">
-        <div class="card shadow outer">
-            <div class="card-header">
-                <h3>Available Tutorials<i class="fas fa-graduation-cap btn btn-success" style="float:right; opacity:.8;"></i></h3>
-                <h6 class="card-subtitle mb-2 text-muted">In-app tutorials to help understand more at Liquid.</h6>
-            </div>
-            <div class="card-body">
-                {% for tutorial in tutorials %}
-                    {% include 'tutorials/tutorial_card.html' %}
-                {% endfor %}
-            </div>
-        </div>
-    </div>
+    {% include 'tutorials/tutorial_available.html' %}
 </div>
 <br><br>
 <div id="carousel" class="carousel slide" data-ride="carousel">

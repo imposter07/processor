@@ -11,6 +11,7 @@
              aria-valuenow={{ edit_progress }} aria-valuemin="0"
              aria-valuemax="100">{{ edit_name }}</div>
     </div><br>
+    {% if buttons %}
     <nav aria-label="...">
         <ul id='listTabs' class="pagination pagination justify-content-center">
             <li style="opacity: 0.8;" class="page-item{% if not form %} page-item disabled{% endif %}">
@@ -43,6 +44,7 @@
             </li>
         </ul>
     </nav>
+    {% endif %}
     {% if view_selector %}
         <div class="form-group">
             <label for="viewSelector"></label>
@@ -1065,6 +1067,8 @@
             if (document.getElementById('base_form_id').checkValidity()) {
                 animateBar();
                 loadingBtn(this, this.style, this.className);
+                let cont = (this.id.replace('load', '') === 'Continue') ? 'continue' : '';
+                SubmitForm(cont, 'form_continue');
             }
         }
 

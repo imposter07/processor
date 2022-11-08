@@ -1,6 +1,40 @@
+<style>
+    .fa-star {
+        color: goldenrod;
+    }
+</style>
 {% extends "create_processor.html" %}
+{% block vertical_navbar %}
+    {% include 'tutorials/tutorial_available.html' %}
+    {% include 'walkthrough.html' %}
+{% endblock %}
 {% block app_content_2 %}
     {% if tutorial_stage %}
         {% include 'tutorials/_tutorial.html' %}
+    {% endif %}
+    {% if tutorial_progress %}
+        {% for star in tutorial_progress %}
+            <br>
+            <div class="card shadow outer">
+                <div class="card-header text-xl-center">
+                    {% for n in range(star) %}
+                        <i class="fa-solid fa-star fa-2xl"></i>
+                    {% endfor %}
+                </div>
+                <br><br>
+                <div class="card-body text-center">
+                    <div class="row">
+                        {% for cur_user in tutorial_progress[star] %}
+                            <div class="col">
+                                <h6>{{ cur_user['user'].username }}</h6>
+                                <img src="{{ cur_user['user'].avatar(40) }}"
+                                     alt="user-image">
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        <br><br>
     {% endif %}
 {% endblock %}

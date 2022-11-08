@@ -1,3 +1,4 @@
+import math
 from app import db
 import app.utils as utl
 from flask_babel import _
@@ -11,7 +12,25 @@ from app.models import Tutorial, TutorialStage, User
 @bp.route('/tutorial', methods=['GET', 'POST'])
 @login_required
 def tutorial():
-    kwargs = {}
+    form_description = """
+    Users ranked by tutorial completion.  If you feel you deserve to be ranked
+    higher, there's a chance doing more tutorials will help.
+    """
+    u = User.query.all()
+    t = Tutorial.query.all()
+    star_dict = {x + 1: [] for x in reversed(range(5))}
+    for cu in u:
+        if cu.password_hash:
+            progress = 0
+            for ct in t:
+                progress += ct.get_progress(cu.id)
+            idx = math.ceil(progress / 50) + 1
+            user_dict = {'user': cu, 'progress': progress}
+            star_dict[idx].append(user_dict)
+    kwargs = dict(tutorial_progress=star_dict, title='Tutorial',
+                  object_name='User Progress', form_title='TUTORIAL PROGRESS',
+                  form_description=form_description, tutorials=t,
+                  user=current_user)
     return render_template('tutorials/tutorials.html', **kwargs)
 
 
@@ -44,6 +63,7 @@ def edit_tutorial_upload_file():
           methods=['GET', 'POST'])
 @login_required
 def get_tutorial(tutorial_name, tutorial_level=0):
+    all_tutorials = Tutorial.query.all()
     cur_tutorial = Tutorial.query.filter_by(name=tutorial_name).first_or_404()
     tutorial_stage = TutorialStage.query.filter_by(
         tutorial_id=cur_tutorial.id,
@@ -61,8 +81,8 @@ def get_tutorial(tutorial_name, tutorial_level=0):
         buttons[-1:-1] = ['...']
     buttons = [{'lvl {}'.format(x): 'tutorials.get_tutorial'} for x in buttons]
     kwargs = dict(object_name=cur_tutorial.name, title='Tutorial',
-                  tutorial_stage=tutorial_stage,
-                  edit_name='lvl {}'.format(tutorial_level),
+                  tutorial_stage=tutorial_stage, tutorials=all_tutorials,
+                  edit_name='lvl {}'.format(tutorial_level), user=current_user,
                   form=form, edit_progress=edit_progress, buttons=buttons,
                   object_function_call={'tutorial_name': tutorial_name,
                                         'tutorial_level': tutorial_level})

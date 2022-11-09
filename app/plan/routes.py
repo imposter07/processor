@@ -148,8 +148,8 @@ def topline(object_name):
 @bp.route('/get_topline', methods=['GET', 'POST'])
 @login_required
 def get_topline():
-    cur_plan = Plan.query.filter_by(
-        name=request.form['object_name']).first_or_404()
+    obj_name = request.form['object_name']
+    cur_plan = Plan.query.filter_by(name=obj_name).first_or_404()
     partners = []
     for phase in cur_plan.phases:
         partners.extend(
@@ -217,12 +217,13 @@ def get_topline():
             cur_col['form'] = True
         cols.append(cur_col)
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
-    return jsonify({'data': {'rows': partners,
-                             'rows_name': 'Partner',
-                             'cols': cols,
-                             'top_rows': phases,
-                             'top_rows_name': 'Phase',
-                             'totals': True}})
+    description = 'Plan details broken out by partner.'
+    data = {
+        'rows': partners, 'rows_name': 'Partner', 'cols': cols,
+        'top_rows': phases, 'top_rows_name': 'Phase', 'totals': True,
+        'title': 'Plan Table - {}'.format(obj_name),
+        'description': description, 'columns_toggle': True, 'accordion': True}
+    return jsonify({'data': data})
 
 
 @bp.route('/save_topline', methods=['GET', 'POST'])
@@ -342,9 +343,11 @@ def plan_details(object_name):
 def get_plan_rule():
     name = 'rulesTable'
     col_list = ['name', 'order', 'type', 'rule_info']
+    rows = [{x: '{} value'.format(x) for x in col_list}]
     cols = []
     for x in col_list:
         cur_col = {'name': x, 'type': '', 'add_select_box': False,
                    'hidden': False, 'header': False, 'form': False}
         cols.append(cur_col)
-    return jsonify({'data': {'cols': cols, 'name': name}})
+    data = {'cols': cols, 'name': name, 'rows': rows}
+    return jsonify({'data': data})

@@ -87,3 +87,8 @@ function loadingBtn(elem, currentStyle, btnClass="btn btn-primary btn-block") {
           Loading...
         </button>`);
 }
+
+function existsInJson(jsonData, jsonKey) {
+    return (jsonData.hasOwnProperty(jsonKey)) ? jsonData[jsonKey] : ''
+}
+

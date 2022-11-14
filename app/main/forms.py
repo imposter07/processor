@@ -92,7 +92,8 @@ class APIForm(FlaskForm):
     start_date = DateField('Start Date', format='%Y-%m-%d')
     account_filter = StringField('Filter')
     api_fields = StringField('API Fields')
-    refresh_import_config = SubmitField('Edit Config File')
+    refresh_import_config = SubmitField('Edit Config File',
+                                        render_kw={'type': 'button'})
     raw_file = FileField('Raw File')
     delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
 

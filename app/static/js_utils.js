@@ -7,7 +7,8 @@ function convertDictToFormData(data) {
 }
 
 function makeRequest(url, method, data, responseFunction,
-                     responseType = 'json', kwargs = {}) {
+                     responseType = 'json', kwargs = {},
+                     errorFunction = '') {
     let formData = convertDictToFormData(data);
     fetch(url, {
         method: method,
@@ -17,6 +18,11 @@ function makeRequest(url, method, data, responseFunction,
             data.json().then((data) => {
                 responseFunction(data, kwargs);
             });
+        }
+    }).catch(error => {
+        console.log("Request failed: " + error);
+        if (errorFunction) {
+            errorFunction(error, kwargs);
         }
     });
 }
@@ -69,12 +75,11 @@ function sortTable(bodyName, tableHeaderId) {
 
 function addOnClickEvent(elemSelector, clickFunction, type = 'click') {
     for (let elm of document.querySelectorAll(elemSelector)) {
-        if (type === 'click') {
-            elm.onclick = clickFunction;
-        }
-        else if (type === 'change') {
-            elm.onchange = clickFunction;
-        }
+        elm.removeEventListener(type, clickFunction);
+        elm.addEventListener(type, function(e) {
+            e.preventDefault();
+        });
+        elm.addEventListener(type, clickFunction);
     }
 }
 

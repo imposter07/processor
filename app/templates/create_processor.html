@@ -746,7 +746,7 @@
         }
 
         function setDownloadBar(currentElement, textContent, pond = true) {
-            let oldDownload = document.getElementById('downloadProgressBaseClass')
+            let oldDownload = document.getElementById('downloadProgressBaseClass');
             if (oldDownload) {
                 oldDownload.remove();
             }
@@ -946,7 +946,40 @@
             let downloadElem = document.getElementById(downloadID);
             downloadElem.style.width = '100%';
             unanimateBar(downloadID);
-            refreshButtons();
+        }
+
+        function getTableResponse(data, kwargs) {
+            let forceReturn = kwargs['forceReturn'];
+            let tableName = kwargs['tableName'];
+            let pond = kwargs['pond'];
+            let vendorKey = kwargs['vendorKey'];
+            let oldHtml = kwargs['oldHtml'];
+            let clickElem = kwargs['clickElem'];
+            let fixId = kwargs['fixId'];
+            let downloadingProgress = kwargs['downloadingProgress'];
+            if (forceReturn) {
+                getTableComplete(tableName, pond, vendorKey, data);
+            } else {
+                downloadingProgress = getTaskProgress(tableName, false, downloadingProgress,
+                    null, data['task'], forceReturn, pond, vendorKey, oldHtml, clickElem,
+                    fixId);
+            }
+            if (forceReturn) {
+                turnOffProgress(downloadingProgress, oldHtml, clickElem);
+            }
+        }
+
+        function getTableError(error, kwargs) {
+            let forceReturn = kwargs['forceReturn'];
+            let downloadingProgress = kwargs['downloadingProgress'];
+            let oldHtml = kwargs['oldHtml'];
+            let clickElem = kwargs['clickElem'];
+            let downloadProgress = document.getElementById('downloadProgress');
+            downloadProgress.style.width = '100%';
+            // window.location.reload(true);
+            if (forceReturn) {
+                turnOffProgress(downloadingProgress, oldHtml, clickElem);
+            }
         }
 
         async function getTable(tableName, clickElem, oldHtml, vendorKey='None',
@@ -962,36 +995,24 @@
                 fix_id: fixId,
                 force_return: forceReturn
             }
-            let formData = convertDictToFormData(data);
-            fetch('/get_table', {
-              method: 'POST',
-              body: formData,
-            }).then(response => response.json()).then((data) => {
-                if (forceReturn) {
-                    getTableComplete(tableName, pond, vendorKey, data);
-                } else {
-                    downloadingProgress = getTaskProgress(tableName, false, downloadingProgress,
-                        null, data['task'], forceReturn, pond, vendorKey, oldHtml, clickElem,
-                        fixId);
-                }
-                if (forceReturn) {
-                    turnOffProgress(downloadingProgress, oldHtml, clickElem);
-                }
-            }).catch(error => {
-                console.log("Request failed: " + error);
-                let downloadProgress = $('#downloadProgress');
-                downloadProgress.attr("style", "width: 100%");
-                window.location.reload(true);
-                if (forceReturn) {
-                    turnOffProgress(downloadingProgress, oldHtml, clickElem);
-                }
-            });
             let downloadingProgress = null;
             if (progress && forceReturn) {
                 downloadingProgress = getTaskProgress(tableName, false,
-                        downloadingProgress, null, null, forceReturn,
-                        pond, vendorKey, oldHtml, clickElem, fixId);
+                    downloadingProgress, null, null, forceReturn,
+                    pond, vendorKey, oldHtml, clickElem, fixId);
             }
+            let kwargs = {
+                'forceReturn': forceReturn,
+                'tableName': tableName,
+                'pond': pond,
+                'vendorKey': vendorKey,
+                'oldHtml': oldHtml,
+                'clickElem': clickElem,
+                'fixId': fixId,
+                'downloadingProgress': downloadingProgress
+            }
+            makeRequest('/get_table', 'POST', data, getTableResponse, 'json',
+                kwargs, getTableError);
         }
 
         function getLogOnClick() {
@@ -1072,32 +1093,19 @@
             }
         }
 
-        function refreshButtons() {
-            $('input[id*="refresh_"], button[id*="refresh_"]').unbind('click').click(function () {
-                let tableName = $(this)[0].id.split('refresh_')[1];
-                if (tableName === 'rate_card') {
-                    var vendorKey = $('#' + tableName)[0].value;
-                } else if ("{{ edit_name }}" === 'Clean') {
-                    vendorKey = $('#data_source_clean').val();
-                } else {
-                    try {
-                        vendorKey = $(this).parent().parent()[0].elements[0].value;
-                    } catch (err) {
-                        vendorKey = 'None';
-                    }
-                }
-                let oldHtml = 'None'
-                let currentStyle = $(this).attr('style');
-                loadingBtn(this.parentElement, currentStyle);
-                if (tableName === 'download_raw_data' ||
-                    tableName === 'download_pacing_data') {
-                    var refreshPond = setDownloadBar($("#loadingBtn").parent(), $(this).text());
-                } else {
-                    var refreshPond = setDownloadBar($("#loadingBtn").parent(), $(this).text(), false);
-                }
-                getTable(tableName, this.parentElement.id, oldHtml, vendorKey, refreshPond);
-                animateBar();
-            });
+        function refreshButtonsOnClick() {
+            let refreshId = 'refresh_';
+            let tableName = this.id.split(refreshId)[1];
+            let vendorKeyId = this.id.split(refreshId)[0] + 'vendor_key';
+            vendorKeyId = (tableName === 'rate_card') ? tableName : vendorKeyId;
+            vendorKeyId = ("{{ edit_name }}" === 'Clean') ? 'data_source_clean': vendorKeyId;
+            let vendorKeyElem = document.getElementById(vendorKeyId);
+            let vendorKey = (vendorKeyElem) ? vendorKeyElem.value : 'None';
+            loadingBtn(this.parentElement, '', this.className);
+            let downloadElem = (tableName === 'download_raw_data' || tableName === 'download_pacing_data');
+            let refreshPond = setDownloadBar(this.parentElement, this.textContent, (downloadElem));
+            getTable(tableName, this.parentElement.id, 'None', vendorKey, refreshPond);
+            animateBar();
         }
 
         $(document).ready(function () {
@@ -1652,10 +1660,10 @@
             addOnClickEvent('a[id^="runObject"]', runObjectOnClick);
             addOnClickEvent('button[id^="getLog"]', getLogOnClick);
             addOnClickEvent('button[id^="load"]', loadButtonOnClick);
+            addOnClickEvent('input[id*="refresh_"], button[id*="refresh_"]', refreshButtonsOnClick);
             addFilePond();
             addFilePondMeta();
             addSelectize();
-            refreshButtons();
             changeDataSource();
             changeAutoNote();
             getSelectedDashboard();

@@ -112,7 +112,7 @@
         function createTableElements(tableName, rowsName,
                                      topRowsName = '', tableTitle = '',
                                      tableDescription = '', colToggle = '',
-                                     tableAccordion = '') {
+                                     tableAccordion = '', specifyFormCols = '') {
             let collapseStr = (tableAccordion) ? 'collapse' : '';
             let title = (tableTitle) ? `
                 <div class="card-header">
@@ -188,6 +188,7 @@
                             </div>
                         </div>
                         <table id="${tableName}Table" data-value="${rowsName}" data-accordion="${collapseStr}"
+                               data-specifyform="${specifyFormCols}"
                                class="table table-striped table-responsive-sm small"></table>
                     </div>
                 </div>
@@ -245,27 +246,27 @@
             let fromFromCols = '';
             formNames.forEach((formName) => {
                 let colName = 'col' + formName;
-                let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
-                let inputStartHtml = (inputCheck) ? '<select ' : '<input type="number" value="" step="any"'
+                let colType = document.getElementById(colName).dataset['type'];
+                let inputCheck = colType === 'select';
+                let inputStartHtml = (inputCheck) ? '<select ' : '<input type="text" value="" step="any"'
                 let inputInnerHtml = (inputCheck) ? document.getElementById('colSelect' + formName).innerHTML : '';
                 let inputEndHtml = (inputCheck) ? '</select>' : '';
                 let inputIdHtml = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
                 let topRowIds = getTopRowIds(tableName);
-                let topRowData = ''
+                let topRowData = '';
                 topRowIds.forEach(topRowId => {
                     topRowData += ' data-' + topRowId + '=""'
-                })
+                });
+                let displayColNames = generateDisplayColumnName(formName);
                 fromFromCols += `
                 <div class="col-4 form-group" id="${formName}FormGroupCol">
-                    <label class="control-label"
-                           for="` + inputIdHtml + `">` + generateDisplayColumnName(formName) + `</label>
-                    ` + inputStartHtml + ` class="form-control form-control-sm"
-                           id="` + inputIdHtml + `"
-                           name="` + inputIdHtml + `"
+                    <label class="control-label" for="${inputIdHtml}">${displayColNames}</label>
+                           ${inputStartHtml} class="form-control form-control-sm"
+                           id="${inputIdHtml}" name="${inputIdHtml}"
                            onchange="syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')"
                            oninput="syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')"
                            ${topRowData}>
-                    ` + inputInnerHtml + inputEndHtml + `
+                    ${inputInnerHtml}${inputEndHtml}
                 </div>`
             });
             return fromFromCols
@@ -671,6 +672,7 @@
         }
 
         function addRows(rows, tableName) {
+            console.log(rows)
             rows.forEach(row => {
                 addRow(row, tableName);
             });
@@ -682,10 +684,11 @@
 
         function syncSingleTableWithForm(loopIndex, formName, tableName, topRowToggle = false) {
             let colName = 'col' + formName;
-            let inputCheck = document.getElementById(colName).dataset['type'] === 'select';
+            let curColElem = document.getElementById(colName);
+            let inputCheck = curColElem.dataset['type'] === 'select';
             let currentElemId = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
             let currentElem = document.getElementById(currentElemId);
-            let currentValue = (inputCheck) ? currentElem.selectize.getValue() : '$' + currentElem.value;
+            let currentValue = (inputCheck) ? currentElem.selectize.getValue() : currentElem.value;
             if (!inputCheck && !topRowToggle) {
                 let topRowElemIdSelector = 'topRowHeader' + tableName;
                 let selectedElem = document.querySelectorAll(`[id^='${topRowElemIdSelector}'].shadeCell`);
@@ -696,7 +699,7 @@
                 else {
                     let topRowIds = getTopRowIds(tableName);
                     let topRowVal = currentElem.value;
-                    if (!document.getElementById(colName).dataset['type'].includes('metrics')) {
+                    if (!curColElem.dataset['type'].includes('metrics')) {
                         topRowVal = topRowVal / topRowIds.length;
                     }
                     topRowIds.forEach(topRowId => {
@@ -706,8 +709,9 @@
             }
             document.getElementById('row' + formName + loopIndex).innerHTML = currentValue;
             let curRow = document.getElementById('tr' + loopIndex);
-            if (curRow) {
-                if (document.getElementById('rowtotal_budget' + loopIndex).innerHTML === "$0") {
+            let blankHighlight = curColElem.getAttribute('data-blank_highlight');
+            if ((curRow) && (blankHighlight)) {
+                if (document.getElementById('row' + currentElemId).innerHTML === "$0") {
                     document.getElementById('tr' + loopIndex).classList.add('shadeCellError');
                 } else {
                     document.getElementById('tr' + loopIndex).classList.remove('shadeCellError');
@@ -878,9 +882,16 @@
                 addSelectize();
                 addOnClickEvent('[id^="selectColumnsToggle"]', toggleMetricsOnChange, 'change');
             }
+            let specifyFormCol = table.getAttribute('data-specifyform');
             cols.forEach(col => {
                 let colName = col['name'];
-                thead.innerHTML += `<th data-form="${col['form']}" data-type="${col['type']}" id="col${colName}">${generateDisplayColumnName(colName)}</th>`;
+                let formCol = (!(specifyFormCol)) ? 'true': col['form'];
+                let blankHighlight = existsInJson(col, 'blank_highlight');
+                thead.innerHTML += `
+                    <th data-form="${formCol}" data-type="${col['type']}"
+                        data-blank_highlight="${blankHighlight}"
+                        id="col${colName}">${generateDisplayColumnName(colName)}
+                    </th>`;
                 if (col['hidden']) {
                     document.getElementById('col' + colName).style.display = 'none';
                 }
@@ -949,8 +960,9 @@
             let tableTopRows = existsInJson(tableData, 'top_rows');
             let tableCols = existsInJson(tableData, 'cols');
             let tableAccordion = existsInJson(tableData, 'accordion');
+            let specifyFormCols = existsInJson(tableData, 'specify_form_cols');
             createTableElements(tableName, rowsName, topRowsName, title,
-                description, colToggle, tableAccordion);
+                description, colToggle, tableAccordion, specifyFormCols);
             addTableColumns(tableCols, tableName);
             if (topRowsName) {
                 addCurrentTopRows(tableTopRows, tableName);

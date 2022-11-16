@@ -192,7 +192,8 @@ def get_topline():
     cols = []
     for x in col_list:
         cur_col = {'name': x, 'type': '', 'add_select_box': False,
-                   'hidden': False, 'header': False, 'form': False}
+                   'hidden': False, 'header': False, 'form': False,
+                   'blank_highlight': ''}
         if x == 'Partner':
             cur_col['type'] = 'select'
             cur_col['values'] = partner_list
@@ -215,6 +216,8 @@ def get_topline():
                 cur_col['type'] = 'default_metrics'
         if x in form_cols:
             cur_col['form'] = True
+        if x == 'total_budget':
+            cur_col['blank_highlight'] = True
         cols.append(cur_col)
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
     description = 'Plan details broken out by partner.'
@@ -222,7 +225,8 @@ def get_topline():
         'rows': partners, 'rows_name': 'Partner', 'cols': cols,
         'top_rows': phases, 'top_rows_name': 'Phase', 'totals': True,
         'title': 'Plan Table - {}'.format(obj_name),
-        'description': description, 'columns_toggle': True, 'accordion': True}
+        'description': description, 'columns_toggle': True, 'accordion': True,
+        'specify_form_cols': True}
     return jsonify({'data': data})
 
 

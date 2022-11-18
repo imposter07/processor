@@ -977,7 +977,13 @@ def get_table_return(task, table_name, proc_arg, job_name,
         table_data = df_to_html(df, table_name, job_name)
         data = {'html_data': table_data, 'msg': msg}
     else:
-        data = df_to_html(df, table_name, job_name)
+        to_html = True
+        cols_to_json = True
+        if table_name == 'modalTableOutputData':
+            to_html = False
+            cols_to_json = False
+            table_name = 'modal-body-table'
+        data = df_to_html(df, table_name, job_name, to_html, cols_to_json)
         if job_name == '.get_change_dict_order':
             data['dict_cols'] = json.dumps(job.result[1])
     return jsonify(data)
@@ -1010,7 +1016,7 @@ def utility_functions():
     return dict(mdebug=print_in_console)
 
 
-def df_to_html(df, name, job_name=''):
+def df_to_html(df, name, job_name='', to_html=True, cols_to_json=True):
     pd.set_option('display.max_colwidth', -1)
     set_index = True
     if 'change_dictionary_order' not in name:
@@ -1018,11 +1024,16 @@ def df_to_html(df, name, job_name=''):
         df = df.reset_index()
         if 'index' in df.columns and job_name != '.get_import_config_file':
             df = df[[x for x in df.columns if x != 'index'] + ['index']]
-    data = df.to_html(
-        index=set_index, table_id=name,
-        classes='table table-striped table-responsive-sm small',
-        border=0)
-    cols = json.dumps(df.columns.tolist())
+    if to_html:
+        data = df.to_html(
+            index=set_index, table_id=name,
+            classes='table table-striped table-responsive-sm small',
+            border=0)
+    else:
+        data = df.to_dict(orient='records')
+    cols = df.columns.tolist()
+    if cols_to_json:
+        cols = json.dumps(cols)
     return {'data': {'data': data, 'cols': cols, 'name': name}}
 
 

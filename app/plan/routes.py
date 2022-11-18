@@ -222,11 +222,11 @@ def get_topline():
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
     description = 'Plan details broken out by partner.'
     data = {
-        'rows': partners, 'rows_name': 'Partner', 'cols': cols,
+        'data': partners, 'rows_name': 'Partner', 'cols': cols,
         'top_rows': phases, 'top_rows_name': 'Phase', 'totals': True,
         'title': 'Plan Table - {}'.format(obj_name),
         'description': description, 'columns_toggle': True, 'accordion': True,
-        'specify_form_cols': True}
+        'specify_form_cols': True, 'col_dict': True}
     return jsonify({'data': data})
 
 
@@ -346,12 +346,7 @@ def plan_details(object_name):
 @login_required
 def get_plan_rule():
     name = 'rulesTable'
-    col_list = ['name', 'order', 'type', 'rule_info']
-    rows = [{x: '{} value'.format(x) for x in col_list}]
-    cols = []
-    for x in col_list:
-        cur_col = {'name': x, 'type': '', 'add_select_box': False,
-                   'hidden': False, 'header': False, 'form': False}
-        cols.append(cur_col)
-    data = {'cols': cols, 'name': name, 'rows': rows}
+    cols = ['name', 'order', 'type', 'rule_info']
+    rows = [{x: '{} value'.format(x) for x in cols}]
+    data = {'cols': cols, 'name': name, 'data': rows}
     return jsonify({'data': data})

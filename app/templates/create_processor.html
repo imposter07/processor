@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block app_header %}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='liquid_table.css') }}">
     <div id="alertContainer">
     <div id="alertPlaceholder"></div>
     </div>
@@ -476,6 +477,7 @@
 
     <script type="text/javascript" src="{{ url_for('static', filename='bootstrap-dark/darkModeHelper.js') }}"></script>
     <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='liquid_table.js') }}"></script>
     <script>
         function checkDuplicationType() {
             let duplicationType = document.getElementById('duplication_type');
@@ -905,8 +907,14 @@
                 } else {
                     show_modal_table('modalTableButton');
                     let newTableName = data['data']['name'];
-                    createTable(data['data']['cols'], data['data']['data'],
-                        newTableName);
+                    let tableCols = data['data']['cols'];
+                    let tableData = data['data']['data'];
+                    if (newTableName === 'modal-body-table') {
+                        createLiquidTable(data, {'tableName': newTableName});
+                    }
+                    else {
+                        createTable(tableCols, tableData, newTableName);
+                    }
                 }
             })
         }

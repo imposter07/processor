@@ -313,7 +313,7 @@ function addRowsOnClick() {
     document.getElementById(selectAddId).selectize.clear();
     let newRowsData = newRowNames.map(function (e) {
         let metricElem = document.getElementById(`colSelect${rowName}`).querySelector('option[value="' + e + '"]');
-        let metrics = (metricElem === null) ? {cpc: 0, cpm: 0} : metricElem.dataset
+        let metrics = (metricElem === null) ? {cpc: 0, cpm: 0} : metricElem.dataset;
         return Object.assign({}, {name: e, total_budget: 0,
             start_date: "{{ object.start_date }}", end_date: "{{ object.end_date }}"},
             metrics)

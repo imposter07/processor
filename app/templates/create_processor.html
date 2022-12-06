@@ -175,10 +175,39 @@
         </div>
       </div>
     </div>
+    <div class="modal hide fade" id="changeOrderMoreOptions" tabindex="-1" role="dialog"
+         aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg w-90" role="document">
+        <div class="modal-content">
+          <div class="modal-header text-center">
+            <h5 class="modal-title w-100">
+                COLUMN NAME</h5>
+            <button type="button" class="close" data-dismiss="modal"
+                data-toggle="modal" data-target="#modalTable" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div id="moreOptionsEditor"></div>
+            <div id="moreOptionsExample"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-success w-25" id="changeOrderMoreOptionsSave"
+                data-toggle="modal" data-target="#modalTable"
+                data-dismiss="modal">Save</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal"
+                data-toggle="modal" data-target="#modalTable">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <script>
         function show_modal_table(destElem) {
             document.getElementById(destElem).click();
         }
+        $('.modal').on('shown.bs.modal', function () {
+            $("body").addClass("modal-open")
+        });
     </script>
 {% endblock %}
 {% block vertical_navbar %}
@@ -903,7 +932,7 @@
                     show_modal_table('modalTableButton');
                     let newTableName = data['data']['name'];
                     createChangeDictOrder(data['data']['cols'], data['data']['data'],
-                        newTableName, data['dict_cols']);
+                        newTableName, data['dict_cols'], data['relational_cols']);
                 } else {
                     show_modal_table('modalTableButton');
                     let newTableName = data['data']['name'];

@@ -355,77 +355,431 @@ function getTableAsArray(tableId, cols=[]) {
 }
 
 function createChangeDictOrder(colData, rawData, tableName, dictColData,
+                               relationalData,
                                elem = "modal-body-table") {
     let dictCols = JSON.parse(dictColData);
     let dictOptions = dictCols.map(function (e) {
         return {text: e, value: e}
     });
+    let relationalOrderData = JSON.parse(relationalData);
     let buttonsHtml = `<div class="text-left">
-        <button class="btn btn-primary" tabindex="0" aria-controls=${tableName} type="button" title="Shift order up"
-          onclick="shiftOrderUp('${elem}')">
+        <button class="btn btn-primary" id="shiftUp" tabindex="0"  
+            aria-controls=${tableName} type="button" title="Shift order up">
           <i class="fas fa-angle-double-up" style="color:white"></i>
         </button>
-        <button class="btn btn-primary" tabindex="1" aria-controls=${tableName} type="button" title="Shift order down"
-          onclick="shiftOrderDown('${elem}')">
+        <button class="btn btn-primary" id="shiftDown" tabindex="1" 
+            aria-controls=${tableName} type="button" title="Shift order down">
           <i class="fas fa-angle-double-down" style="color:white"></i>
         </button>
       </div>`
 
     document.getElementById(elem).innerHTML = buttonsHtml + rawData;
+    document.getElementById(elem).querySelector('table').classList
+        .add('anchor_first_col')
+    document.getElementById('shiftDown').onclick = function() {
+        shiftOrderDown(elem, relationalOrderData);
+    }
+    document.getElementById('shiftUp').onclick = function() {
+        shiftOrderUp(elem, relationalOrderData);
+    }
     let labelColIndex = getColumnIndex(elem, '');
     let rows = document.getElementById(elem).getElementsByTagName('tr');
-    for (var i = 3, row; row = rows[i]; i++) {
-        labelElem = rows[i].cells[labelColIndex]
-        let defaultValue = [labelElem.innerHTML];
-        labelElem.innerHTML = `<select name='auto_order_select${i}' id='auto_order_select${i}'></select>`;
-        let labelSelect = $(`select[name='auto_order_select${i}']`);
-        let labelSelectize = labelSelect.selectize({options: dictOptions,
-                                                    searchField: 'text',
-                                                    items: defaultValue,
-                                                    delimiter: '|',
-                                                    create: true,
-                                                    persist: false,
-                                                    showAddOptionOnCreate: true,
-                                                    onBlur: function() {if ($(this)[0].getValue() === '') {
-                                                        $(this)[0].setValue('mpMisc')}}
-                                                    });
-        labelSelectize[0].selectize.addOption({value:defaultValue, text:defaultValue});
-        labelSelectize[0].selectize.addItem(defaultValue);
+    rows[0].cells[labelColIndex].innerHTML = 'Auto Dictionary Order'
+    for (let i=0, row; row=rows[i]; i++) {
+        let buttonCell = rows[i].insertCell(1)
+        buttonCell.style.verticalAlign = "middle"
     }
+    for (let i = 3, row; row = rows[i]; i++) {
+        let labelElem = rows[i].cells[labelColIndex]
+        let defaultValue = labelElem.innerHTML;
+        dictOptions.push({text: defaultValue, value: defaultValue})
+        labelElem.innerHTML = `<div class='form-group' style='margin-bottom: 0;'>
+                                 <select name='auto_order_select${i}' 
+                                    id='auto_order_select${i}'></select>
+                               </div>`;
+        let labelSelect = $(`select[name='auto_order_select${i}']`);
+        labelSelect.selectize({options: dictOptions,
+                               searchField: 'text',
+                               dropdownParent: 'body',
+                               items: [defaultValue],
+                               delimiter: '|',
+                               create: true,
+                               persist: false,
+                               showAddOptionOnCreate: true,
+                               onBlur: function() {if (this.getValue() === '') {
+                                   this.setValue('mpMisc');}},
+                               onChange: function() {
+                                   getDictColumnDetails(this, relationalOrderData);
+                                   clearAttributes(this);
+                                   addMoreOrderOptions(relationalOrderData);},
+                               onInitialize: function() {
+                                   parseCombCols(this, relationalOrderData);
+                                   getDictColumnDetails(this, relationalOrderData);}
+        });
+        dictOptions.pop();
+    }
+    addMoreOrderOptions(relationalOrderData);
 }
 
-function shiftOrderUp(modalElem) {
-    let labelColIndex = getColumnIndex(modalElem, '');
+function shiftOrderUp(modalElem, relationData) {
+    let firstRow = 3
     let rows = document.getElementById(modalElem).getElementsByTagName('tr');
-    for (var i = 3, row; row = rows[i]; i++) {
-        let nextValue = $(`#auto_order_select${i+1}`).val();
+    for (let i = firstRow; i < rows.length; i++) {
+        let nextValue
+        let currentSelect = document.getElementById(`auto_order_select${i}`);
+        if (document.getElementById(`auto_order_select${i+1}subSelect`)) {
+            nextValue = $(`#auto_order_select${i+1}subSelect`).val();
+        } else {
+            nextValue = $(`#auto_order_select${i+1}`).val();
+        }
         if (!nextValue) {
             nextValue = 'mpMisc'
         }
-        document.getElementById(`auto_order_select${i}`).selectize.addOption({value:nextValue, text:nextValue});
-        document.getElementById(`auto_order_select${i}`).selectize.setValue(nextValue, false);
+        if (rows[i+1] && rows[i+1].getAttribute('data-index')) {
+            rows[i].setAttribute('data-index',
+                                 rows[i+1].getAttribute('data-index'));
+            rows[i].setAttribute('data-delim',
+                                 rows[i+1].getAttribute('data-delim'));
+        } else {
+            rows[i].removeAttribute('data-index');
+            rows[i].removeAttribute('data-delim');
+        }
+        currentSelect.selectize.addOption({value:nextValue, text:nextValue});
+        currentSelect.selectize.setValue(nextValue, true);
+        getDictColumnDetails(currentSelect.selectize, relationData);
     }
+    addMoreOrderOptions(relationData);
 }
 
-function shiftOrderDown(modalElem) {
-    let labelColIndex = getColumnIndex(modalElem, '');
+function shiftOrderDown(modalElem, relationData) {
+    let firstRow = 3
     let rows = document.getElementById(modalElem).getElementsByTagName('tr');
-    for (var i = rows.length - 1; i > 2; i--) {
-        let prevValue = $(`#auto_order_select${i-1}`).val();
+    for (let i = rows.length - 1; i >= firstRow; i--) {
+        let prevValue
+        let currentSelect = document.getElementById(`auto_order_select${i}`)
+        if (document.getElementById(`auto_order_select${i-1}subSelect`)) {
+            prevValue = $(`#auto_order_select${i-1}subSelect`).val();
+        } else {
+            prevValue = $(`#auto_order_select${i-1}`).val();
+        }
         if (!prevValue) {
             prevValue = 'mpMisc'
         }
-        document.getElementById(`auto_order_select${i}`).selectize.addOption({value:prevValue, text:prevValue});
-        document.getElementById(`auto_order_select${i}`).selectize.setValue(prevValue, false);
+        if (rows[i-1].getAttribute('data-index')) {
+            rows[i].setAttribute('data-index',
+                                 rows[i-1].getAttribute('data-index'));
+            rows[i].setAttribute('data-delim',
+                                 rows[i-1].getAttribute('data-delim'));
+        } else {
+            rows[i].removeAttribute('data-index');
+            rows[i].removeAttribute('data-delim');
+        }
+        currentSelect.selectize.addOption({value:prevValue, text:prevValue});
+        currentSelect.selectize.setValue(prevValue, true);
+        getDictColumnDetails(currentSelect.selectize, relationData);
+    }
+    addMoreOrderOptions(relationData);
+}
+
+function parseCombCols(selectElem, relationData) {
+    let combKey = ':::'
+    let relKeys = Object.keys(relationData[0]);
+    let relValues = [].concat(...Object.values(relationData[0]));
+    let rowElem = selectElem.$input.closest('tr')[0];
+    let initVal = selectElem.getValue();
+    let col, index, delim
+    if (initVal.includes(combKey)) {
+        [col, index, delim] = initVal.split(combKey);
+        rowElem.setAttribute('data-index', index);
+        rowElem.setAttribute('data-delim', delim);
+        if (relValues.includes(col) || !relKeys.includes(col)) {
+            selectElem.setValue(col, true);
+        }
+    }
+}
+
+function clearAttributes(selectElem) {
+    let rowElem = selectElem.$input.closest('tr')[0];
+    rowElem.removeAttribute('data-index');
+    rowElem.removeAttribute('data-delim');
+}
+
+function getDictColumnDetails(selectElem, relationalData) {
+    let relationAuto = relationalData[0]
+    let relationKeys = Object.keys(relationAuto);
+    let relationValues = [].concat(...Object.values(relationAuto));
+    let subSelectId = selectElem.$input[0].id + 'subSelect'
+    if (relationKeys.includes(selectElem.items[0])
+        || relationValues.includes(selectElem.items[0])) {
+        let key, defaultValue
+        if (relationKeys.includes(selectElem.items[0])) {
+            key = selectElem.items[0]
+            defaultValue = relationAuto[key][0]
+        } else {
+            key = relationKeys.find(key =>
+                relationAuto[key].includes(selectElem.items[0]));
+            defaultValue = selectElem.items[0];
+            selectElem.setValue(key, true);
+        }
+        let subOptions = relationAuto[key].map(function (e) {
+            return {text: e, value: e}
+        });
+        if (!document.getElementById(subSelectId)) {
+            let newSelect = document.createElement("select");
+            newSelect.id = subSelectId;
+            selectElem.$input[0].parentElement.appendChild(newSelect);
+            $('#'+ subSelectId).selectize({options: subOptions,
+                                           items: [defaultValue],
+                                           dropdownParent: 'body',
+                                           onBlur: function() {if (this.getValue() === '') {
+                                               this.setValue(
+                                                   Object.keys(this.options)[0]
+                                               )}},
+                                           onChange: function() {
+                                               clearAttributes(this);
+                                               addMoreOrderOptions(relationalData);}
+                                           });
+        } else {
+            let currentSub = document.getElementById(subSelectId);
+            if (!relationAuto[key].includes(currentSub.selectize.getValue())) {
+                currentSub.selectize.clear(true);
+                currentSub.selectize.clearOptions(true);
+                currentSub.selectize.addOption(subOptions);
+            }
+            currentSub.selectize.setValue(defaultValue, true);
+        }
+    } else if (document.getElementById(subSelectId)) {
+        document.getElementById(subSelectId).selectize.destroy();
+        document.getElementById(subSelectId).remove();
     }
 }
 
 function removeChangeOrderSelectize(elem = "modal-body-table") {
-    let labelColIndex = getColumnIndex(elem, '');
+    let combKey = ':::'
     let rows = document.getElementById(elem).getElementsByTagName('tr');
-    for (var i = 3, row; row = rows[i]; i++) {
-        let value = document.getElementById(`auto_order_select${i}`).selectize.getValue();
+    for (let i = 3, row; row = rows[i]; i++) {
+        let value = document.getElementById(`auto_order_select${i}`)
+            .selectize.getValue();
+        if (document.getElementById(`auto_order_select${i}subSelect`)) {
+            value = document.getElementById(`auto_order_select${i}subSelect`)
+                .selectize.getValue();
+        }
+        if (rows[i].getAttribute('data-index')) {
+            let index = rows[i].getAttribute('data-index');
+            let delim = rows[i].getAttribute('data-delim');
+            value = [value, index, delim].join(combKey)
+        }
         let cellElem = document.getElementById(`auto_order_select${i}`).parentElement;
         cellElem.innerHTML = value;
+    }
+}
+
+function getForbiddenDelim(colName, relationData) {
+    let forbiddenDelim;
+    let [relationAuto, relationDelim] = relationData;
+    let relKey = Object.keys(relationAuto).find(
+        key => relationAuto[key].includes(colName));
+    if (relKey) {
+        forbiddenDelim = relationDelim[relKey][
+            relationAuto[relKey].findIndex(e => e == colName)];
+    }
+    return forbiddenDelim
+}
+
+function getLeadDelim(colName, relationData) {
+    let leadDelim;
+    let [relationAuto, relationDelim] = relationData;
+    let relKey = Object.keys(relationAuto).find(
+        key => relationAuto[key].includes(colName));
+    if (relKey) {
+        leadDelim = relationDelim[relKey][
+            relationAuto[relKey].findIndex(e => e == colName) - 1];
+    }
+    return leadDelim
+}
+
+function populateMoreOptionsModal(selectElems, relationData, delimOptions) {
+    let modalElem = document.getElementById('changeOrderMoreOptions');
+    let colName = selectElems[0].selectize.getValue();
+    let leadDelim = getLeadDelim(colName, relationData);
+    modalElem.querySelector('#changeOrderMoreOptionsSave').onclick =
+        function() {saveMoreOptions(leadDelim)};
+    modalElem.getElementsByClassName('modal-title')[0].innerHTML = colName
+    modalElem.querySelector('#moreOptionsEditor').innerHTML = `
+        <label>Column Order</label>
+        <input type="text">
+        <label>Column Delimiter</label>
+        <select></select>`
+    let inputElem = modalElem.querySelector('#moreOptionsEditor input');
+    let delimSelect = modalElem.querySelector('#moreOptionsEditor select');
+    let forbiddenDelim = getForbiddenDelim(colName, relationData);
+    if (forbiddenDelim) {
+        delimOptions = delimOptions.filter(e => e != forbiddenDelim);
+    }
+    let defaultDelim = delimOptions[0]
+    let sampleData = selectElems.map(function(e) {
+        let row = e.closest('tr');
+        let data = row.getElementsByTagName('td')[2].innerHTML
+        let index, delim
+        if (row.getAttribute('data-index')) {
+            index = row.getAttribute('data-index')
+            delim = row.getAttribute('data-delim')
+            if (delimOptions.includes(delim)) {
+                defaultDelim = delim
+            }
+        }
+        return {data: data, index: index, delim: delim, rowIndex: row.rowIndex}
+    });
+    sampleData.sort((a, b) => (Number(a.index) > Number(b.index)) ? 1 : -1);
+    let data = sampleData.map(function(e) {
+        return {text: e.data, value: e.rowIndex}
+    })
+    delimOptions = delimOptions.map(function(e) {
+        return {text: e, value: e}
+    })
+    inputElem.value = data.map(function(e) {return e.value}).join(',')
+    $(inputElem).selectize({
+        options: data,
+        plugins: ['drag_drop'],
+        delimiter: ',',
+    });
+    $(delimSelect).selectize({
+        options: delimOptions,
+        items: [defaultDelim]
+    });
+    //TODO: Set up preview
+}
+
+function findMinIndex(indexArr) {
+    if (!indexArr.length) {
+        return String(0)
+    }
+    let maxInd = Math.max(...indexArr)
+    for (let i=0; i <= maxInd + 1; i++) {
+        if (!indexArr.includes(String(i))) {
+            return String(i)
+        }
+    }
+}
+
+function replaceForbiddenDelim(rows, forbiddenDelim, defaultDelim) {
+    for (let row of rows) {
+        if (row.getAttribute('data-delim') == forbiddenDelim
+                && Number(row.getAttribute('data-index')) > 0) {
+            row.setAttribute('data-delim', defaultDelim)
+        }
+    }
+}
+
+function assignIndexDelim(selectElems, relationData, delimOptions) {
+    let colName = selectElems[0].selectize.getValue();
+    let forbiddenDelim = getForbiddenDelim(colName, relationData);
+    let leadDelim = getLeadDelim(colName, relationData);
+    if (forbiddenDelim) {
+        delimOptions = delimOptions.filter(e => e != forbiddenDelim);
+    }
+    let defaultDelim = delimOptions[0]
+    let rows = selectElems.map(function(e) {return e.closest('tr')});
+    let indexedRows = rows.filter(e =>
+        Boolean(e.getAttribute('data-index')));
+    let unindexedRows = rows.filter(e =>
+        !Boolean(e.getAttribute('data-index')));
+    if (indexedRows.length) {
+        for (let row of indexedRows) {
+            let index = row.getAttribute('data-index');
+            let delim = row.getAttribute('data-delim');
+            if (Number(index) > 0 && delimOptions.includes(delim)) {
+                defaultDelim = delim;
+                break;
+            }
+        }
+    }
+    let inds = indexedRows.map(function(e) {
+        return e.getAttribute('data-index')
+    })
+    for (let row of unindexedRows) {
+        let minInd = findMinIndex(inds);
+        inds.push(minInd);
+        row.setAttribute('data-index', minInd);
+        if (Number(minInd) > 0 || !leadDelim) {
+            row.setAttribute('data-delim', defaultDelim);
+        } else {
+            row.setAttribute('data-delim', leadDelim);
+        }
+    }
+}
+
+function saveMoreOptions(leadDelim) {
+    let modalElem = document.getElementById('moreOptionsEditor');
+    let inputElem = modalElem.getElementsByTagName('input')[0];
+    let selectElem = modalElem.getElementsByTagName('select')[0];
+    let rowOrder = inputElem.selectize.getValue().split(',');
+    let delim = selectElem.selectize.getValue();
+    let index = 0;
+    let rows = document.getElementById('modal-body-table')
+        .getElementsByTagName('tr');
+    for (let rowIndex of rowOrder) {
+        rows[rowIndex].setAttribute('data-index', index);
+        if (index > 0 || !leadDelim) {
+            rows[rowIndex].setAttribute('data-delim', delim);
+        } else {
+            rows[rowIndex].setAttribute('data-delim', leadDelim);
+        }
+        index++
+    }
+}
+
+function addMoreOrderOptions(relationData) {
+    let delimOptions = ['-', '_', '/']
+    let moreButton = `<button type="button" class="btn btn-primary btn-circle btn-sm"
+                              data-dismiss="modal"
+                              data-toggle="modal" data-target="#changeOrderMoreOptions">
+                        <i class="fas fa-ellipsis-h" style="color:white"></i>
+                      </button>`
+    let $primarySelects = $('select[id*=auto_order_select]').not('[id$=subSelect]')
+    let $secondarySelects = $('select[id*=auto_order_select][id$=subSelect]')
+    let allVals = []
+    $primarySelects.each(function(index, elem) {
+        allVals.push(elem.value);
+        let row = elem.closest("tr");
+        row.cells[1].innerHTML = ''
+    })
+    $secondarySelects.each(function(index, elem) {
+        allVals.push(elem.value);
+    })
+    let uniqueVals = new Set(allVals);
+    uniqueVals.delete('mpMisc');
+    for (let val of uniqueVals) {
+        let matchingSelects = []
+        $primarySelects.each(function(index, elem) {
+            if (elem.value === val) {
+                let subSelectId = elem.id + 'subSelect'
+                if (!document.getElementById(subSelectId)) {
+                    matchingSelects.push(elem)
+                }
+            }
+        });
+        $secondarySelects.each(function(index, elem) {
+            if (elem.value === val) {
+                matchingSelects.push(elem)
+            }
+        });
+        if (matchingSelects.length > 1) {
+            assignIndexDelim(matchingSelects, relationData, delimOptions)
+            for (let elem of matchingSelects) {
+                let row = elem.closest("tr")
+                row.cells[1].innerHTML = moreButton
+                row.getElementsByTagName('button')[0].onclick = function () {
+                    populateMoreOptionsModal(matchingSelects, relationData,
+                                             delimOptions)
+                }
+            }
+        } else {
+            for (let elem of matchingSelects) {
+                let row = elem.closest("tr")
+                row.removeAttribute('data-index')
+                row.removeAttribute('data-delim')
+            }
+        }
     }
 }

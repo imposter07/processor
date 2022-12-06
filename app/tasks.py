@@ -597,6 +597,7 @@ def get_change_dict_order(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
         import processor.reporting.vendormatrix as vm
+        import processor.reporting.dictionary as dct
         import processor.reporting.dictcolumns as dctc
         import processor.reporting.vmcolumns as vmc
         os.chdir(adjust_path(cur_processor.local_path))
@@ -608,15 +609,26 @@ def get_change_dict_order(processor_id, current_user_id, vk):
             else:
                 msg = 'NO DATA - CHECK THE API CONNECTION AND RUN PROCESSOR.'
             _set_task_progress(100)
-            return [pd.DataFrame([{'Result': msg}]), []]
+            return [pd.DataFrame([{'Result': msg}]), [], []]
         tdf = data_source.get_dict_order_df(include_index=False,
                                             include_full_name=True)
-        dict_cols = [col for col in dctc.COLS if col not in [dctc.FPN, dctc.PN]]
+        rc = dct.RelationalConfig()
+        rc.read(dctc.filename_rel_config)
+        relational_auto = rc.get_auto_cols()
+        relational_sep = rc.get_auto_delims()
+        relational_dict = [relational_auto, relational_sep]
+        dependants = [col for sublist in rc.rc[dctc.DEP].values() for col in
+                      sublist]
+        autos = rc.get_auto_cols_list()
+        dict_cols = [col for col in dctc.COLS if
+                     col not in [dctc.FPN, dctc.PN]]
+        dict_cols = [col for col in dict_cols if
+                     col not in dependants or col in autos]
         sample_size = 5
         if len(tdf.index) > sample_size:
             tdf = tdf.sample(sample_size)
         tdf = tdf.T
-        tables = [tdf, dict_cols]
+        tables = [tdf, dict_cols, relational_dict]
         _set_task_progress(100)
         return tables
     except:
@@ -822,14 +834,17 @@ def write_dictionary_order(processor_id, current_user_id, new_data, vk):
             processor_id=processor_id, current_user_id=current_user_id)
         import processor.reporting.vendormatrix as vm
         import processor.reporting.vmcolumns as vmc
+        import processor.reporting.dictionary as dct
+        import processor.reporting.dictcolumns as dctc
+        import processor.reporting.utils as utl
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         _set_task_progress(0)
         df = pd.read_json(new_data)
         if df.empty:
             dict_order = ''
         else:
-            dict_order = df['NaT'].drop([0, 1]).to_list()
-            dict_order = list(rename_duplicates(dict_order))
+            dict_order = df['Auto Dictionary Order'].drop([0, 1]).to_list()
+            dict_order = list(utl.rename_duplicates(dict_order))
             dict_order = '|'.join(dict_order)
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()

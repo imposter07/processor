@@ -986,6 +986,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
         data = df_to_html(df, table_name, job_name, to_html, cols_to_json)
         if job_name == '.get_change_dict_order':
             data['dict_cols'] = json.dumps(job.result[1])
+            data['relational_cols'] = json.dumps(job.result[2])
     return jsonify(data)
 
 

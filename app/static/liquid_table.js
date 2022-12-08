@@ -1,7 +1,8 @@
 function createTableElements(tableName, rowsName,
                              topRowsName = '', tableTitle = '',
                              tableDescription = '', colToggle = '',
-                             tableAccordion = '', specifyFormCols = '') {
+                             tableAccordion = '', specifyFormCols = '',
+                             rowOnClick = '') {
     let collapseStr = (tableAccordion) ? 'collapse' : '';
     let title = (tableTitle) ? `
         <div class="card-header">
@@ -77,7 +78,7 @@ function createTableElements(tableName, rowsName,
                     </div>
                 </div>
                 <table id="${tableName}Table" data-value="${rowsName}" data-accordion="${collapseStr}"
-                       data-specifyform="${specifyFormCols}"
+                       data-specifyform="${specifyFormCols}" data-rowclick="${rowOnClick}"
                        class="table table-striped table-responsive-sm small"></table>
             </div>
         </div>
@@ -230,8 +231,10 @@ function addRowToTable(rowData, tableName) {
             </td>
         </tr>`;
     let collapseStr = curTable.getAttribute('data-accordion');
+    let rowOnClick = curTable.getAttribute('data-rowclick');
+    rowOnClick = (rowOnClick) ? `onclick="${rowOnClick}(this)"` : '';
     let rowCard = `
-        <tr id="tr${loopIndex}" data-toggle="${collapseStr}"
+        <tr id="tr${loopIndex}" data-toggle="${collapseStr}" ${rowOnClick}
             data-target="#collapseRow${loopIndex}" class="accordion-toggle">
             ${tableHeaders}
         </tr>
@@ -804,11 +807,12 @@ function createLiquidTable(data, kwargs) {
     let tableAccordion = existsInJson(tableData, 'accordion');
     let specifyFormCols = existsInJson(tableData, 'specify_form_cols');
     let colDict = existsInJson(tableData, 'col_dict');
+    let rowOnClick = existsInJson(tableData, 'row_on_click');
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
     createTableElements(tableName, rowsName, topRowsName, title,
-        description, colToggle, tableAccordion, specifyFormCols);
+        description, colToggle, tableAccordion, specifyFormCols, rowOnClick);
     addTableColumns(tableCols, tableName);
     if (topRowsName) {
         addCurrentTopRows(tableTopRows, tableName);

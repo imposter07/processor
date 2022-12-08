@@ -1,0 +1,30 @@
+{% extends "create_processor.html" %}
+
+{% block app_content %}
+    <div class="col">
+        <div class="card">
+            <div id="screenshotImage"></div>
+        </div>
+    </div>
+    <div id="screenshot"></div>
+    <script>
+        function getScreenshots() {
+            let elem = document.getElementById('screenshot');
+            loadingBtn(elem);
+            setDownloadBar(elem, '', false);
+            getTable(elem.id, elem.id, 'None');
+        }
+        function getScreenshotImage(elem) {
+            let rowIndex = elem.id.replace('tr', '');
+            let urlElem = document.getElementById('rowurl' + rowIndex);
+            let imgElem = document.getElementById('screenshotImage');
+            imgElem.innerHTML = '';
+            loadingBtn(imgElem);
+            setDownloadBar(imgElem, '', false);
+            getTable('screenshotImage', imgElem.id, 'None', urlElem.innerHTML);
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            getScreenshots();
+        });
+    </script>
+{% endblock %}

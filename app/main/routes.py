@@ -852,7 +852,9 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'apply_processor_plan': '.apply_processor_plan',
                  'get_plan_property': '.get_plan_property',
                  'SOW': '.get_sow',
-                 'Topline': '.get_topline'}
+                 'Topline': '.get_topline',
+                 'screenshot': '.get_screenshot_table',
+                 'screenshotImage': '.get_screenshot_image'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -961,6 +963,13 @@ def get_table_return(task, table_name, proc_arg, job_name,
         mem.seek(0)
         return send_file(mem, as_attachment=True,
                          attachment_filename=file_name, mimetype=mime_type)
+    if 'screenshotImage' in table_name:
+        return send_file(
+            io.BytesIO(df),
+            download_name='screenshot.png',
+            mimetype='image/png',
+            as_attachment=True,
+        )
     for base_name in ['Relation', 'Uploader']:
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])
@@ -979,11 +988,16 @@ def get_table_return(task, table_name, proc_arg, job_name,
     else:
         to_html = True
         cols_to_json = True
-        if table_name == 'modalTableOutputData':
+        if table_name in ['modalTableOutputData', 'modalTablescreenshot']:
             to_html = False
             cols_to_json = False
-            table_name = 'modal-body-table'
+            if table_name == 'modalTableOutputData':
+                table_name = 'modal-body-table'
+            else:
+                table_name = table_name.replace('modalTable', '')
         data = df_to_html(df, table_name, job_name, to_html, cols_to_json)
+        if table_name == 'screenshot':
+            data['data']['row_on_click'] = 'getScreenshotImage'
         if job_name == '.get_change_dict_order':
             data['dict_cols'] = json.dumps(job.result[1])
             data['relational_cols'] = json.dumps(job.result[2])
@@ -1035,7 +1049,8 @@ def df_to_html(df, name, job_name='', to_html=True, cols_to_json=True):
     cols = df.columns.tolist()
     if cols_to_json:
         cols = json.dumps(cols)
-    return {'data': {'data': data, 'cols': cols, 'name': name}}
+    response = {'data': {'data': data, 'cols': cols, 'name': name}}
+    return response
 
 
 def rename_duplicates(old):
@@ -1331,7 +1346,10 @@ def processor_page(object_name):
     if not kwargs['object'].local_path:
         return redirect(url_for('main.edit_request_processor',
                                 object_name=object_name))
-    return render_template('dashboard.html', **kwargs)
+    if kwargs['object'].name == 'SCREENSHOT':
+        return render_template('screenshot.html', **kwargs)
+    else:
+        return render_template('dashboard.html', **kwargs)
 
 
 @bp.route('/processor/<object_name>/popup')

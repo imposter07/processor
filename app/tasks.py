@@ -5068,3 +5068,52 @@ def get_topline(plan_id, current_user_id):
             'Unhandled exception - Processor {} User {}'.format(
                 plan_id, current_user_id), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_screenshot_table(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.export as export
+        os.chdir(adjust_path(cur_processor.local_path))
+        db_class = export.DB()
+        db_class.input_config('dbconfig.json')
+        db_class.connect()
+        today = datetime.strftime(datetime.today(), '%Y-%m-%d')
+        command = "SELECT * FROM lqas.ss_view WHERE eventdate = '{}'".format(
+            today)
+        db_class.cursor.execute(command)
+        data = db_class.cursor.fetchall()
+        columns = [i[0] for i in db_class.cursor.description]
+        df = pd.DataFrame(data=data, columns=columns)
+        df = df.fillna(0)
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_screenshot_image(processor_id, current_user_id, vk=None):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.awss3 as awss3
+        os.chdir(adjust_path(cur_processor.local_path))
+        s3_class = awss3.S3()
+        s3_class.input_config('s3config.json')
+        key = vk.split('.com/')[1]
+        client = s3_class.get_client()
+        obj = client.get_object(Bucket=s3_class.bucket, Key=key)
+        response = obj['Body'].read()
+        _set_task_progress(100)
+        return [response]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

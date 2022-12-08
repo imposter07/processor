@@ -899,15 +899,26 @@
                 } else if (tableName === 'OutputDataTopline') {
                     mimeType = 'application/vnd.ms-excel';
                     extension = '.xlsx';
+                } else if (tableName === 'screenshotImage') {
+                    mimeType = 'image/bmp';
                 }
                 let blob = new Blob([data], {type: mimeType});
-                pond.addFile(blob);
-                let link = document.createElement('a');
-                link.href = window.URL.createObjectURL(blob);
-                link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey + extension;
-                link.click();
-                let elem = document.getElementById('downloadBarPond');
-                elem.parentElement.remove();
+                if (tableName === 'screenshotImage') {
+                    let image = new Image();
+                    image.src = URL.createObjectURL(blob);
+                    image.classList.add('col');
+                    let elem = document.getElementById('screenshotImage');
+                    elem.appendChild(image);
+                    document.getElementById('downloadProgressBaseClass').remove();
+                } else {
+                    pond.addFile(blob);
+                    let link = document.createElement('a');
+                    link.href = window.URL.createObjectURL(blob);
+                    link.download = "{{ title }}_" + "{{ object_name }}_" + tableName + "_" + vendorKey + extension;
+                    link.click();
+                    let elem = document.getElementById('downloadBarPond');
+                    elem.parentElement.remove();
+                }
             })
         }
 
@@ -933,7 +944,10 @@
                     let newTableName = data['data']['name'];
                     createChangeDictOrder(data['data']['cols'], data['data']['data'],
                         newTableName, data['dict_cols'], data['relational_cols']);
-                } else {
+                } else if (tableName === 'screenshot') {
+                    createLiquidTable(data, {'tableName': data['data']['name']});
+                }
+                else {
                     show_modal_table('modalTableButton');
                     let newTableName = data['data']['name'];
                     let tableCols = data['data']['cols'];
@@ -953,7 +967,8 @@
                 (tableName === 'download_raw_data') ||
                 (tableName === 'download_pacing_data') ||
                 (tableName === 'OutputDataSOW') ||
-                (tableName === 'OutputDataTopline')
+                (tableName === 'OutputDataTopline') ||
+                (tableName === 'screenshotImage' )
             ) {
                 downloadTableResponse(tableName, pond, vendorKey, data);
             }

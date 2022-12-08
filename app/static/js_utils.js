@@ -83,7 +83,7 @@ function addOnClickEvent(elemSelector, clickFunction, type = 'click') {
     }
 }
 
-function loadingBtn(elem, currentStyle, btnClass="btn btn-primary btn-block") {
+function loadingBtn(elem, currentStyle = '', btnClass="btn btn-primary btn-block") {
     elem.style.display = 'none';
     elem.insertAdjacentHTML('beforebegin', `
         <button id="loadingBtn" class="${btnClass}"
@@ -94,6 +94,5 @@ function loadingBtn(elem, currentStyle, btnClass="btn btn-primary btn-block") {
 }
 
 function existsInJson(jsonData, jsonKey) {
-    return (jsonData.hasOwnProperty(jsonKey)) ? jsonData[jsonKey] : ''
+    return (jsonData.hasOwnProperty(jsonKey) || jsonKey in jsonData) ? jsonData[jsonKey] : ''
 }
-

@@ -5079,9 +5079,11 @@ def get_screenshot_table(processor_id, current_user_id):
         db_class = export.DB()
         db_class.input_config('dbconfig.json')
         db_class.connect()
-        today = datetime.strftime(datetime.today(), '%Y-%m-%d')
-        command = "SELECT * FROM lqas.ss_view WHERE eventdate = '{}'".format(
-            today)
+        command = """
+        SELECT * 
+        FROM lqas.ss_view 
+        WHERE eventdate = (SELECT MAX("eventdate") FROM lqas.ss_view)
+        """
         db_class.cursor.execute(command)
         data = db_class.cursor.fetchall()
         columns = [i[0] for i in db_class.cursor.description]

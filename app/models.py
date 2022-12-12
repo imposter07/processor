@@ -866,7 +866,7 @@ class ProcessorDatasources(db.Model):
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
     key = db.Column(db.String(64))
     account_id = db.Column(db.Text)
-    account_filter = db.Column(db.String(128))
+    account_filter = db.Column(db.Text)
     start_date = db.Column(db.Date)
     api_fields = db.Column(db.String(128))
     vendor_key = db.Column(db.String(128))

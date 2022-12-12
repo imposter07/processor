@@ -22,7 +22,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
     PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm,\
     ProcessorNoteForm, ProcessorAutoAnalysisForm, WalkthroughUploadForm,\
-    ProcessorPlanForm, UploadTestForm
+    ProcessorPlanForm, UploadTestForm, ScreenshotForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
@@ -1347,6 +1347,11 @@ def processor_page(object_name):
         return redirect(url_for('main.edit_request_processor',
                                 object_name=object_name))
     if kwargs['object'].name == 'SCREENSHOT':
+        form = ScreenshotForm()
+        form.set_choices()
+        kwargs['form'] = form
+        kwargs['form_title'] = 'SCREENSHOT'
+        kwargs['form_description'] = 'Collection of screenshots, click to view.'
         return render_template('screenshot.html', **kwargs)
     else:
         return render_template('dashboard.html', **kwargs)

@@ -1,9 +1,16 @@
 {% extends "create_processor.html" %}
 
 {% block app_content %}
-    <div class="col">
-        <div class="card">
-            <div id="screenshotImage"></div>
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div id="screenshotImage"></div>
+            </div>
+        </div>
+        <div class="col-3" id="formCol" style="display:none;">
+            {% if form %}
+                {% include '_form.html' %}
+            {% endif %}
         </div>
     </div>
     <div id="screenshot"></div>
@@ -22,6 +29,7 @@
             loadingBtn(imgElem);
             setDownloadBar(imgElem, '', false);
             getTable('screenshotImage', imgElem.id, 'None', urlElem.innerHTML);
+            document.getElementById('formCol').style.display = '';
         }
         document.addEventListener("DOMContentLoaded", function() {
             getScreenshots();

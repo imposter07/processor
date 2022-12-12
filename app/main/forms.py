@@ -714,3 +714,18 @@ class WalkthroughUploadForm(FlaskForm):
 class UploadTestForm(FlaskForm):
     new_file = FileField(_l('New File'))
     submit_form = SubmitField(_l('SUBMIT BUTTON'))
+
+
+class ScreenshotForm(FlaskForm):
+    cur_client = SelectField(_l('Client'))
+    cur_product = SelectField(_l('Product'))
+    cur_campaign = SelectField(_l('Campaign'))
+    placement = SelectField(_l('Placement'))
+    creative = SelectField(_l('Creative'))
+
+    def set_choices(self):
+        for obj in [(Client, self.cur_client),
+                    (Product, self.cur_product), (Campaign, self.cur_campaign)]:
+            choices = [('', '')]
+            choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
+            obj[1].choices = choices

@@ -621,9 +621,8 @@ def get_change_dict_order(processor_id, current_user_id, vk):
                       sublist]
         autos = rc.get_auto_cols_list()
         dict_cols = [col for col in dctc.COLS if
-                     col not in [dctc.FPN, dctc.PN]]
-        dict_cols = [col for col in dict_cols if
-                     col not in dependants or col in autos]
+                     col not in [dctc.FPN, dctc.PN, dctc.MN, dctc.MT]
+                     + dependants or col in autos]
         sample_size = 5
         if len(tdf.index) > sample_size:
             tdf = tdf.sample(sample_size)

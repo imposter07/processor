@@ -11,15 +11,17 @@
                 {% set count.value = count.value + 1 %}
             {% endif %}
         {% endfor %}
-        You have completed <a href="{{ tutorials[0].get_tutorial_homepage_url() }}"><span class="font-weight-bold">{{ count.value }} tutorials.</span></a>
-        {% if count.value == 2 %}
-            <span class="text-success font-weight-bold">You are a true inspiration to us all!</span >
-        {%  elif count.value == 1 %}
-            <span class="text-warning font-weight-bold">It would be cooler if that number was 2.  But hey you tried!</span>
-        {% else %}
-            <span class="text-danger font-weight-bold">Unfortunately for you, however, you are trophyless.
-            Without guidance, without the strength of tutorials...
-            You are fated, it seems, to obscurity.</span>
+        {% if tutorials %}
+            You have completed <a href="{{ tutorials[0].get_tutorial_homepage_url() }}"><span class="font-weight-bold">{{ count.value }} tutorials.</span></a>
+            {% if count.value == 2 %}
+                <span class="text-success font-weight-bold">You are a true inspiration to us all!</span >
+            {%  elif count.value == 1 %}
+                <span class="text-warning font-weight-bold">It would be cooler if that number was 2.  But hey you tried!</span>
+            {% else %}
+                <span class="text-danger font-weight-bold">Unfortunately for you, however, you are trophyless.
+                Without guidance, without the strength of tutorials...
+                You are fated, it seems, to obscurity.</span>
+            {% endif %}
         {% endif %}
     </h6>
 {% endblock %}

@@ -2,7 +2,9 @@
     <div class="card shadow outer">
         <div class="card-header">
             <h3>
-                <a href="{{ tutorials[0].get_tutorial_homepage_url() }}">Available Tutorials</a>
+                {% if tutorials %}
+                    <a href="{{ tutorials[0].get_tutorial_homepage_url() }}">Available Tutorials</a>
+                {% endif %}
                 <i class="fas fa-graduation-cap btn btn-success" style="float:right; opacity:.8;"></i></h3>
             <h6 class="card-subtitle mb-2 text-muted">In-app tutorials to help understand more at Liquid.</h6>
         </div>

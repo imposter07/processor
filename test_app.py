@@ -1,8 +1,11 @@
+import time
 import pytest
+import processor.reporting.utils as utl
 from datetime import datetime, timedelta
 from app import create_app, db
 from app.models import User, Post
 from config import Config
+from multiprocessing import Process
 
 
 class TestConfig(Config):
@@ -10,16 +13,40 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite://'
 
 
-@pytest.fixture(scope='module')
-def app_fixture():
+def run_server(with_run=True):
     app = create_app(TestConfig)
     app_context = app.app_context()
     app_context.push()
     db.create_all()
+    if with_run:
+        u = User(username='test', email='test@test.com')  # type: ignore
+        u.set_password('test')
+        db.session.add(u)
+        db.session.commit()
+        app.run(debug=True, use_reloader=False)
+    return app, app_context
+
+
+@pytest.fixture(scope='module')
+def app_fixture():
+    app, app_context = run_server(False)
     yield app
     db.session.remove()
     db.drop_all()
     app_context.pop()
+
+
+@pytest.fixture(scope='module')
+def sw():
+    sw = utl.SeleniumWrapper()
+    p = Process(target=run_server)
+    p.start()
+    yield sw
+    sw.quit()
+    p.terminate()
+    p.join()
+    p.kill()
+    p.close()
 
 
 @pytest.mark.usefixtures("app_fixture")
@@ -101,3 +128,13 @@ class TestUserModelCase:
         assert f2 == [p2, p3]
         assert f3 == [p3, p4]
         assert f4 == [p4]
+
+
+@pytest.mark.usefixtures("sw")
+class TestUserLogin:
+    base_url = 'http://127.0.0.1:5000'
+
+    def test_login(self, sw):
+        sw.go_to_url(self.base_url, 1)
+        login_url = '{}/auth/login?next=%2F'.format(self.base_url)
+        assert sw.browser.current_url == login_url

@@ -41,6 +41,7 @@ def sw():
     sw = utl.SeleniumWrapper()
     p = Process(target=run_server)
     p.start()
+    time.sleep(2)
     yield sw
     sw.quit()
     p.terminate()
@@ -132,9 +133,24 @@ class TestUserModelCase:
 
 @pytest.mark.usefixtures("sw")
 class TestUserLogin:
-    base_url = 'http://127.0.0.1:5000'
+    base_url = 'http://127.0.0.1:5000/'
 
     def test_login(self, sw):
         sw.go_to_url(self.base_url, 1)
-        login_url = '{}/auth/login?next=%2F'.format(self.base_url)
+        login_url = '{}auth/login?next=%2F'.format(self.base_url)
         assert sw.browser.current_url == login_url
+        user_pass = [('test', '//*[@id="username"]'),
+                     ('test', '//*[@id="password"]')]
+        for item in user_pass:
+            elem = sw.browser.find_element_by_xpath(item[1])
+            elem.send_keys(item[0])
+        time.sleep(1)
+        login_btn = '//*[@id="submit"]'
+        sw.click_on_xpath(login_btn, 1)
+        assert sw.browser.current_url == self.base_url
+
+    def test_processor_page(self, sw):
+        assert sw.browser.current_url == self.base_url
+        proc_link = '//*[@id="navLinkProcessor"]'
+        sw.click_on_xpath(proc_link, 1)
+        assert sw.browser.current_url == '{}processor'.format(self.base_url)

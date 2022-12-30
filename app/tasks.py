@@ -4115,13 +4115,15 @@ def update_automatic_requests(processor_id, current_user_id):
             processor_id=cur_processor.id, key=fix_type).first()
         if analysis.data:
             df = pd.DataFrame(analysis.data)
-            df = utl.data_to_type(df, str_col=[
-                dctc.VEN, dctc.PKD, dctc.PD, vmc.clicks])
-            undefined = (df[dctc.VEN] + ' - ' + df[dctc.PKD] + ' - '
-                         + df[dctc.PD] + ': Clicks = '
-                         + df[vmc.clicks]).to_list()
-            msg = ('{} {}\n\n'.format(analysis.message, ', '
-                                      .join(undefined)))
+            cols = [dctc.VEN, dctc.PKD, dctc.PD, vmc.clicks]
+            df = utl.data_to_type(df, str_col=cols)
+            if all(x in df.columns for x in cols):
+                undefined = (df[dctc.VEN] + ' - ' + df[dctc.PKD] + ' - '
+                             + df[dctc.PD] + ': Clicks = '
+                             + df[vmc.clicks]).to_list()
+            else:
+                undefined = []
+            msg = ('{} {}\n\n'.format(analysis.message, ', '.join(undefined)))
             update_single_auto_request(processor_id, current_user_id,
                                        fix_type=fix_type,
                                        fix_description=msg,

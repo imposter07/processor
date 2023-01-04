@@ -1027,6 +1027,7 @@ def write_relational_config(processor_id, current_user_id, new_data,
 def get_import_config_file(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.vmcolumns as vmc
         import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
@@ -1034,8 +1035,11 @@ def get_import_config_file(processor_id, current_user_id, vk):
         data_source = matrix.get_data_source(vk=vk)
         f_lib = ic.set_config_file_lib(data_source.params[ic.config_file])
         config_file = ic.load_file(data_source.params[ic.config_file], f_lib)
-        if vk.split('_')[1] == 'Adwords':
+        api_type = vk.split('_')[1]
+        if api_type == vmc.api_aw_key:
             df = pd.DataFrame(config_file)
+        elif api_type == vmc.api_raw_key:
+            df = pd.DataFrame({'values': ['RAW FILES DO NOT HAVE CONFIG']})
         else:
             df = pd.DataFrame({'values': config_file})
         tables = [df]

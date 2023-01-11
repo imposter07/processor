@@ -2070,14 +2070,17 @@ def set_processor_plan_net(processor_id, current_user_id, default_vm=None):
         base_path = create_local_path(cur_processor)
         os.chdir(adjust_path(base_path))
         if not os.path.exists('mediaplan.csv'):
-            return False
+            return False, 'Plan does not exist.'
         df = pd.read_csv('mediaplan.csv')
         if MediaPlan.placement_phase in df.columns:
             cam_name = MediaPlan.placement_phase
         else:
             cam_name = MediaPlan.campaign_phase
-        df = df.groupby([cam_name, MediaPlan.partner_name])[
-            dctc.PNC].sum().reset_index()
+        plan_cols = [cam_name, MediaPlan.partner_name]
+        miss_cols = [x for x in plan_cols + [dctc.PNC] if x not in df.columns]
+        if miss_cols:
+            return False, '{} not a column name in plan.'.format(miss_cols)
+        df = df.groupby(plan_cols)[dctc.PNC].sum().reset_index()
         df = df.rename(columns={cam_name: dctc.CAM,
                                 MediaPlan.partner_name: dctc.VEN})
         df[dctc.FPN] = df[dctc.CAM] + '_' + df[dctc.VEN]
@@ -2091,12 +2094,12 @@ def set_processor_plan_net(processor_id, current_user_id, default_vm=None):
         data_source = matrix.get_data_source(vm.plan_key)
         dic = dct.Dict(data_source.p[vmc.filenamedict])
         dic.write(df)
-        return True
+        return True, ''
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+        return False, 'Unknown.'
 
 
 def send_processor_build_email(
@@ -2500,7 +2503,7 @@ def build_processor_from_request(processor_id, current_user_id):
             progress['set_fees'] = 'Success!'
         _set_task_progress(62)
         os.chdir(cur_path)
-        result = set_processor_plan_net(processor_id, current_user_id)
+        result, msg = set_processor_plan_net(processor_id, current_user_id)
         if result:
             progress['set_planned_net'] = 'Success!'
         _set_task_progress(75)
@@ -2696,12 +2699,12 @@ def set_plan_as_datasource(processor_id, current_user_id, base_matrix):
                 os.chdir(adjust_path(base_path))
                 base_matrix.write()
         _set_task_progress(100)
-        return True
+        return True, ''
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+        return False, 'Unknown error'
 
 
 def add_account_types(processor_id, current_user_id):
@@ -2719,8 +2722,11 @@ def add_account_types(processor_id, current_user_id):
         base_path = adjust_path(create_local_path(cur_proc))
         mp_path = os.path.join(base_path, 'mediaplan.csv')
         if not os.path.exists(mp_path):
-            return False
+            return False, 'Plan does not exist.'
         df = pd.read_csv(mp_path)
+        if MediaPlan.partner_name not in df.columns:
+            msg = '{} not a column name in plan.'.format(MediaPlan.partner_name)
+            return False, msg
         partner_list = df[MediaPlan.partner_name].unique()
         api_dict = {}
         for key, value in vmc.api_partner_name_translation.items():
@@ -2739,12 +2745,12 @@ def add_account_types(processor_id, current_user_id):
                     db.session.add(new_act)
                     db.session.commit()
         _set_task_progress(100)
-        return True
+        return True, ''
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+        return False, 'Unknown Error'
 
 
 def add_plan_fess_to_processor(processor_id, current_user_id):
@@ -2756,7 +2762,7 @@ def add_plan_fess_to_processor(processor_id, current_user_id):
         base_path = adjust_path(create_local_path(cur_proc))
         mp_path = os.path.join(base_path, 'mediaplan.csv')
         if not os.path.exists(mp_path):
-            return False
+            return False, 'Media plan does not exist.'
         df = pd.read_csv(mp_path)
         serving_cols = ['Ad Serving Type', 'Ad Serving Rate', 'Reporting Fee']
         for col in serving_cols:
@@ -2795,12 +2801,12 @@ def add_plan_fess_to_processor(processor_id, current_user_id):
             cur_proc.rate_card_id = rate_card.id
             db.session.commit()
         _set_task_progress(100)
-        return True
+        return True, ''
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+        return False, 'Unknown error'
 
 
 def write_plan_property(processor_id, current_user_id, vk, new_data):
@@ -2844,8 +2850,10 @@ def single_apply_processor_plan(processor_id, current_user_id, progress,
         r = add_account_types(processor_id, current_user_id)
     elif progress_type == 'Add Fees':
         r = add_plan_fess_to_processor(processor_id, current_user_id)
-    if r:
+    if r[0]:
         progress[progress_type] = ['Success!']
+    else:
+        progress[progress_type] = ['FAILED: {}'.format(r[1])]
     return progress
 
 
@@ -2929,7 +2937,7 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
             df = pd.read_csv(mp_file)
             pack_col = dctc.PKD.replace('mp', '')
             if pack_col not in df.columns:
-                return False
+                return False, '{} not in file'.format(pack_col)
             df = df.groupby([pack_col])[dctc.PNC].sum().reset_index()
             df = df[~df[pack_col].isin(['0', 0, 'None'])]
             df = df.rename(columns={dctc.PNC: 'Net Cost (Capped)'})
@@ -2951,12 +2959,12 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
         msg_text = 'Spend cap file was saved.'
         processor_post_message(cur_obj, cur_user, msg_text)
         _set_task_progress(100)
-        return True
+        return True, ''
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+        return False, 'Unknown Error'
 
 
 def set_spend_cap_config_file(processor_id, current_user_id, dict_col):
@@ -2977,12 +2985,12 @@ def set_spend_cap_config_file(processor_id, current_user_id, dict_col):
                     ''.format(cur_obj.name))
         processor_post_message(cur_obj, cur_user, msg_text)
         _set_task_progress(100)
-        return True
+        return True, ''
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+        return False, 'Unknown error occurred'
 
 
 def processor_fix_request(processor_id, current_user_id, fix):
@@ -2991,10 +2999,10 @@ def processor_fix_request(processor_id, current_user_id, fix):
         ali_user = User.query.get(4)
         fixed = False
         if fix.fix_type == 'Update Plan':
-            fixed = set_processor_plan_net(processor_id, ali_user.id)
+            fixed, msg = set_processor_plan_net(processor_id, ali_user.id)
         elif fix.fix_type == 'Spend Cap':
-            fixed = set_spend_cap_config_file(processor_id, ali_user.id,
-                                              fix.column_name)
+            fixed, msg = set_spend_cap_config_file(processor_id, ali_user.id,
+                                                   fix.column_name)
         elif fix.fix_type == 'Change Dimension':
             pass
         elif fix.fix_type == 'Change Metric':

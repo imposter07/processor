@@ -953,6 +953,8 @@
                     let tableCols = data['data']['cols'];
                     let tableData = data['data']['data'];
                     if (newTableName === 'modal-body-table') {
+                        let modalTable = document.getElementById("modal-body-table");
+                        modalTable.innerHTML = "";
                         createLiquidTable(data, {'tableName': newTableName});
                     }
                     else {

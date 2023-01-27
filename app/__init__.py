@@ -2,7 +2,7 @@ import os
 import rq
 import logging
 from logging.handlers import SMTPHandler, RotatingFileHandler
-from flask import Flask, request, current_app
+from flask import Flask, request, current_app, has_request_context
 from flask_sqlalchemy import SQLAlchemy as _BaseSQLAlchemy
 from sqlalchemy import MetaData
 from flask_migrate import Migrate
@@ -22,6 +22,17 @@ class SQLAlchemy(_BaseSQLAlchemy):
     def apply_pool_defaults(self, app, options):
         super(SQLAlchemy, self).apply_pool_defaults(app, options)
         options["pool_pre_ping"] = True
+
+
+class RequestFormatter(logging.Formatter):
+    def format(self, record):
+        if has_request_context():
+            record.url = request.url
+            record.remote_addr = request.remote_addr
+        else:
+            record.url = None
+            record.remote_addr = None
+        return super().format(record)
 
 
 naming_convention = {
@@ -86,6 +97,10 @@ def create_app(config_class=Config()):
     app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rq")
 
     if not app.debug and not app.testing:
+        formatter = RequestFormatter(
+            '[%(asctime)s] %(remote_addr)s requested %(url)s\n'
+            '%(levelname)s in %(module)s: %(message)s'
+        )
         if app.config['MAIL_SERVER']:
             auth = None
             if app.config['MAIL_USERNAME'] or app.config['MAIL_PASSWORD']:
@@ -100,22 +115,19 @@ def create_app(config_class=Config()):
                 toaddrs=app.config['ADMINS'], subject='LQA Data Failure',
                 credentials=auth, secure=secure)
             mail_handler.setLevel(logging.ERROR)
+            mail_handler.setFormatter(formatter)
             app.logger.addHandler(mail_handler)
 
         if not os.path.exists('logs'):
             os.mkdir('logs')
         file_handler = RotatingFileHandler('logs/logging.log',
                                            maxBytes=10240, backupCount=10)
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s '
-            '[in %(pathname)s:%(lineno)d]'))
         file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
         app.logger.addHandler(file_handler)
         import sys
         console = logging.StreamHandler(sys.stdout)
-        console.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s '
-            '[in %(pathname)s:%(lineno)d]'))
+        console.setFormatter(formatter)
         app.logger.addHandler(console)
         app.logger.setLevel(logging.INFO)
         app.logger.info('LQA App startup')

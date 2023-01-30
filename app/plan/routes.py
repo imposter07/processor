@@ -175,7 +175,7 @@ def get_topline():
     df = df[['vendorname', 'vendortypename', 'cpm', 'cpc',
              'cplpv', 'cpbc', 'cpv', 'cpcv']]
     df = df.rename(columns={
-        'vendorname': 'Partner', 'vendortypename': 'partner_type'})
+        'vendorname': 'partner', 'vendortypename': 'partner_type'})
     partner_list = df.to_dict(orient='records')
     sd = cur_plan.start_date
     ed = cur_plan.end_date
@@ -187,14 +187,14 @@ def get_topline():
     metric_cols = def_metric_cols + [
         'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
         'cpv', 'Video Views 100', 'cpcv']
-    col_list = (['partner_type', 'Partner', 'total_budget', 'Phase'] +
+    col_list = (['partner_type', 'partner', 'total_budget', 'Phase'] +
                 weeks_str + metric_cols)
     cols = []
     for x in col_list:
         cur_col = {'name': x, 'type': '', 'add_select_box': False,
                    'hidden': False, 'header': False, 'form': False,
                    'blank_highlight': ''}
-        if x == 'Partner':
+        if x == 'partner':
             cur_col['type'] = 'select'
             cur_col['values'] = partner_list
             cur_col['add_select_box'] = True
@@ -222,7 +222,7 @@ def get_topline():
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
     description = 'Plan details broken out by partner.'
     data = {
-        'data': partners, 'rows_name': 'Partner', 'cols': cols,
+        'data': partners, 'rows_name': 'partner', 'cols': cols,
         'top_rows': phases, 'top_rows_name': 'Phase', 'totals': True,
         'title': 'Plan Table - {}'.format(obj_name),
         'description': description, 'columns_toggle': True, 'accordion': True,
@@ -254,7 +254,7 @@ def save_topline():
         phase_name = data[phase_idx]['Phase']['phaseSelect' + phase_idx]
         cur_phase = PlanPhase.query.filter_by(name=phase_name,
                                               plan_id=cur_plan.id).first()
-        partner_data = data[phase_idx]['Partner']
+        partner_data = data[phase_idx]['partner']
         part_num_list = [int(x['name'].replace('total_budget', ''))
                          for x in partner_data if 'total_budget' in x['name']]
         for x in part_num_list:

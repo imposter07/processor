@@ -246,3 +246,47 @@ def remove_special_characters(string):
     result = re.sub(r'[^a-zA-Z0-9 ]', '', string)
     result = re.sub(r'\s', '', result)
     return result
+
+
+class LiquidTable(object):
+    def __init__(self):
+        pass
+
+
+class LiquidTableColumn(object):
+    name_str = 'name'
+    type_str = 'type'
+    values_str = 'values'
+    add_select_box_str = 'add_select_box'
+    hidden_str = 'hidden'
+    header_str = 'header'
+    form_str = 'form'
+    blank_highlight_str = 'blank_highlight'
+
+    def __init__(self, name, col_type='', values=None, add_select_box=False,
+                 hidden=False, header=False, form=False, blank_highlight=''):
+        self.name = name
+        self.type = col_type
+        self.values = values
+        self.add_select_box = add_select_box
+        self.hidden = hidden
+        self.header = header
+        self.form = form
+        self.blank_highlight = blank_highlight
+        self.col_dict = self.update_dict()
+
+    def update_dict(self):
+        self.col_dict = {
+            self.name_str: self.name,
+            self.type_str: self.type,
+            self.values_str: self.values,
+            self.add_select_box_str: self.add_select_box,
+            self.hidden_str: self.hidden,
+            self.header_str: self.header,
+            self.form_str: self.form,
+            self.blank_highlight_str: self.blank_highlight}
+        return self.col_dict
+
+    def make_select(self):
+        self.type = 'select'
+        self.update_dict()

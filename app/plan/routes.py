@@ -174,56 +174,58 @@ def get_topline():
     df = df.fillna(0)
     df = df[['vendorname', 'vendortypename', 'cpm', 'cpc',
              'cplpv', 'cpbc', 'cpv', 'cpcv']]
+    partner_name = 'partner'
+    partner_type_name = 'partner_type'
+    phase_name = 'Phase'
+    total_budget = 'total_budget'
     df = df.rename(columns={
-        'vendorname': 'partner', 'vendortypename': 'partner_type'})
+        'vendorname': partner_name, 'vendortypename': partner_type_name})
     partner_list = df.to_dict(orient='records')
     sd = cur_plan.start_date
     ed = cur_plan.end_date
     weeks = [sd + dt.timedelta(days=x)
              for i, x in enumerate(range((ed-sd).days)) if i % 7 == 0]
     weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
-    form_cols = ['total_budget', 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
+    form_cols = [total_budget, 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
     def_metric_cols = ['cpm', 'Impressions', 'cpc', 'Clicks']
     metric_cols = def_metric_cols + [
         'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
         'cpv', 'Video Views 100', 'cpcv']
-    col_list = (['partner_type', 'partner', 'total_budget', 'Phase'] +
+    col_list = ([partner_type_name, partner_name, total_budget, phase_name] +
                 weeks_str + metric_cols)
     cols = []
     for x in col_list:
-        cur_col = {'name': x, 'type': '', 'add_select_box': False,
-                   'hidden': False, 'header': False, 'form': False,
-                   'blank_highlight': ''}
-        if x == 'partner':
-            cur_col['type'] = 'select'
-            cur_col['values'] = partner_list
-            cur_col['add_select_box'] = True
-            cur_col['form'] = True
-        if x == 'partner_type':
-            cur_col['type'] = 'select'
-            cur_col['form'] = True
-            cur_col['values'] = pd.DataFrame(
-                df['partner_type'].unique()).rename(
-                    columns={0: 'partner_type'}).to_dict(orient='records')
-        if x == 'Phase':
-            cur_col['type'] = 'select'
-            cur_col['values'] = [{'Phase': x} for x in ['Launch', 'Pre-Launch']]
-            cur_col['hidden'] = True
-            cur_col['header'] = True
+        cur_col = utl.LiquidTableColumn(name=x)
+        if x in [partner_name, partner_type_name]:
+            cur_col.make_select()
+            cur_col.form = True
+        if x == partner_name:
+            cur_col.add_select_box = True
+            cur_col.values = partner_list
+        if x == partner_type_name:
+            cur_col.values = pd.DataFrame(
+                df[partner_type_name].unique()).rename(
+                    columns={0: partner_type_name}).to_dict(orient='records')
+        if x == phase_name:
+            cur_col.make_select()
+            cur_col.values = [{phase_name: x} for x in ['Launch', 'Pre-Launch']]
+            cur_col.hidden = True
+            cur_col.header = True
         if x in metric_cols:
-            cur_col['type'] = 'metrics'
+            cur_col.type = 'metrics'
             if x in def_metric_cols:
-                cur_col['type'] = 'default_metrics'
+                cur_col.type = 'default_metrics'
         if x in form_cols:
-            cur_col['form'] = True
-        if x == 'total_budget':
-            cur_col['blank_highlight'] = True
-        cols.append(cur_col)
+            cur_col.form = True
+        if x == total_budget:
+            cur_col.blank_highlight = True
+        cur_col.update_dict()
+        cols.append(cur_col.col_dict)
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
     description = 'Plan details broken out by partner.'
     data = {
-        'data': partners, 'rows_name': 'partner', 'cols': cols,
-        'top_rows': phases, 'top_rows_name': 'Phase', 'totals': True,
+        'data': partners, 'rows_name': partner_name, 'cols': cols,
+        'top_rows': phases, 'top_rows_name': phase_name, 'totals': True,
         'title': 'Plan Table - {}'.format(obj_name),
         'description': description, 'columns_toggle': True, 'accordion': True,
         'specify_form_cols': True, 'col_dict': True}
@@ -333,11 +335,11 @@ def edit_sow(object_name):
     return render_template('plan/plan.html', **kwargs)
 
 
-@bp.route('/plan/<object_name>/plan_details', methods=['GET', 'POST'])
+@bp.route('/plan/<object_name>/plan_rules', methods=['GET', 'POST'])
 @login_required
-def plan_details(object_name):
+def plan_rules(object_name):
     kwargs = Plan().get_current_plan(
-        object_name, 'edit_plan', edit_progress=100, edit_name='Plan Details')
+        object_name, 'edit_plan', edit_progress=100, edit_name='Plan Rules')
     kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)
 

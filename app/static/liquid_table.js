@@ -138,7 +138,7 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
         let colName = 'col' + formName;
         let colType = document.getElementById(colName).dataset['type'];
         let inputCheck = colType === 'select';
-        let inputStartHtml = (inputCheck) ? '<select ' : '<input type="text" value="" step="any"'
+        let inputStartHtml = (inputCheck) ? '<select ' : `<input type="text" value="" step="any"`;
         let inputInnerHtml = (inputCheck) ? document.getElementById('colSelect' + formName).innerHTML : '';
         let inputEndHtml = (inputCheck) ? '</select>' : '';
         let inputIdHtml = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
@@ -610,7 +610,7 @@ function populateTotalCards(tableName) {
         let currentRows = document.querySelectorAll(`[id^='row${rowName}']`);
         currentRows.forEach(currentRow => {
             let rowNum = currentRow.id.replace(`row${rowName}`, '');
-            if (rowNum[0] !== '-') {
+            if (!isNaN(rowNum[0])) {
                 let rowCost = parseFloat(document.getElementById('rowtotal_budget' + rowNum).innerHTML.replace('$', ''));
                 formNames.forEach(formName => {
                     let costPerName = formName[0];

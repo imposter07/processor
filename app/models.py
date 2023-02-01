@@ -1568,7 +1568,7 @@ class Plan(db.Model):
             kwargs['buttons'] = [{'Basic': 'plan.edit_plan'},
                                  {'Topline': 'plan.topline'},
                                  {'SOW': 'plan.edit_sow'},
-                                 {'Plan Details': 'plan.plan_details'}]
+                                 {'Plan Rules': 'plan.plan_rules'}]
             posts, next_url, prev_url = Post.get_posts_for_objects(
                 cur_obj, None, current_page, 'plan')
             kwargs['posts'] = posts.items

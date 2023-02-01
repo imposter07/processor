@@ -174,7 +174,7 @@
             let kwargs = {'tableName': tableName}
             {% if edit_name == 'Topline' %}
                 makeRequest('/get_topline', 'POST', data, createLiquidTable, 'json', kwargs);
-            {% elif edit_name == 'Plan Details' %}
+            {% elif edit_name == 'Plan Rules' %}
                 makeRequest('/get_plan_rule', 'POST', data, createLiquidTable, 'json', kwargs);
             {% endif %}
         });

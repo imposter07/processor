@@ -549,7 +549,7 @@ function syncSingleTableWithForm(loopIndex, formName, tableName, topRowToggle = 
     let curRow = document.getElementById('tr' + loopIndex);
     let blankHighlight = curColElem.getAttribute('data-blank_highlight');
     if ((curRow) && (blankHighlight)) {
-        if (document.getElementById('row' + currentElemId).innerHTML === "$0") {
+        if (["$0", "0", ""].includes(document.getElementById('row' + currentElemId).innerHTML)) {
             document.getElementById('tr' + loopIndex).classList.add('shadeCellError');
         } else {
             document.getElementById('tr' + loopIndex).classList.remove('shadeCellError');

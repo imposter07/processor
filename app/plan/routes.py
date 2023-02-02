@@ -7,6 +7,7 @@ import app.utils as utl
 from flask_babel import _
 from app.plan import bp
 from datetime import datetime
+import processor.reporting.dictcolumns as dctc
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
@@ -193,43 +194,27 @@ def get_topline():
         'cpv', 'Video Views 100', 'cpcv']
     col_list = ([partner_type_name, partner_name, total_budget, phase_name] +
                 weeks_str + metric_cols)
-    cols = []
-    for x in col_list:
-        cur_col = utl.LiquidTableColumn(name=x)
-        if x in [partner_name, partner_type_name]:
-            cur_col.make_select()
-            cur_col.form = True
-        if x == partner_name:
-            cur_col.add_select_box = True
-            cur_col.values = partner_list
-        if x == partner_type_name:
-            cur_col.values = pd.DataFrame(
-                df[partner_type_name].unique()).rename(
-                    columns={0: partner_type_name}).to_dict(orient='records')
-        if x == phase_name:
-            cur_col.make_select()
-            cur_col.values = [{phase_name: x} for x in ['Launch', 'Pre-Launch']]
-            cur_col.hidden = True
-            cur_col.header = True
-        if x in metric_cols:
-            cur_col.type = 'metrics'
-            if x in def_metric_cols:
-                cur_col.type = 'default_metrics'
-        if x in form_cols:
-            cur_col.form = True
-        if x == total_budget:
-            cur_col.blank_highlight = True
-        cur_col.update_dict()
-        cols.append(cur_col.col_dict)
+    partner_type_list = pd.DataFrame(
+        df[partner_type_name].unique()).rename(
+        columns={0: partner_type_name}).to_dict(orient='records')
+    phase_list = [{phase_name: x} for x in ['Launch', 'Pre-Launch']]
+    select_val_dict = {
+        partner_name: partner_list,
+        partner_type_name: partner_type_list,
+        phase_name: phase_list
+    }
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
     description = 'Plan details broken out by partner.'
-    data = {
-        'data': partners, 'rows_name': partner_name, 'cols': cols,
-        'top_rows': phases, 'top_rows_name': phase_name, 'totals': True,
-        'title': 'Plan Table - {}'.format(obj_name),
-        'description': description, 'columns_toggle': True, 'accordion': True,
-        'specify_form_cols': True, 'col_dict': True}
-    return jsonify({'data': data})
+    title = 'Plan Table - {}'.format(obj_name)
+    lt = utl.LiquidTable(
+        col_list, data=partners, top_rows=phases, totals=True, title=title,
+        description=description, columns_toggle=True, accordion=True,
+        specify_form_cols=True, col_dict=True,
+        select_val_dict=select_val_dict, select_box=partner_name,
+        form_cols=form_cols + [partner_name, partner_type_name],
+        metric_cols=metric_cols, def_metric_cols=def_metric_cols,
+        header=phase_name, highlight_row=total_budget)
+    return jsonify({'data': lt.table_dict})
 
 
 @bp.route('/save_topline', methods=['GET', 'POST'])
@@ -350,5 +335,6 @@ def get_plan_rule():
     name = 'rulesTable'
     cols = ['name', 'order', 'type', 'rule_info']
     rows = [{x: '{} value'.format(x) for x in cols}]
-    data = {'cols': cols, 'name': name, 'data': rows}
-    return jsonify({'data': data})
+    # data = {'cols': cols, 'name': name, 'data': rows}
+    lt = utl.LiquidTable(col_list=cols, data=rows, title=name)
+    return jsonify({'data': lt.table_dict})

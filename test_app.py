@@ -1,3 +1,4 @@
+import os
 import time
 import pytest
 import processor.reporting.utils as utl
@@ -9,7 +10,6 @@ from multiprocessing import Process
 
 
 class TestConfig(Config):
-    TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite://'
 
 
@@ -41,13 +41,10 @@ def sw():
     sw = utl.SeleniumWrapper()
     p = Process(target=run_server)
     p.start()
-    time.sleep(2)
     yield sw
     sw.quit()
     p.terminate()
     p.join()
-    p.kill()
-    p.close()
 
 
 @pytest.mark.usefixtures("app_fixture")
@@ -136,21 +133,28 @@ class TestUserLogin:
     base_url = 'http://127.0.0.1:5000/'
 
     def test_login(self, sw):
+        time.sleep(5)
         sw.go_to_url(self.base_url, 1)
         login_url = '{}auth/login?next=%2F'.format(self.base_url)
         assert sw.browser.current_url == login_url
-        user_pass = [('test', '//*[@id="username"]'),
-                     ('test', '//*[@id="password"]')]
-        for item in user_pass:
-            elem = sw.browser.find_element_by_xpath(item[1])
-            elem.send_keys(item[0])
-        time.sleep(1)
-        login_btn = '//*[@id="submit"]'
-        sw.click_on_xpath(login_btn, 1)
+        user_pass = [('test', 'username'), ('test', 'password')]
+        sw.send_keys_from_list(user_pass)
+        sw.xpath_from_id_and_click('submit', 1)
         assert sw.browser.current_url == self.base_url
 
+    def test_create_processor(self, sw):
+        create_url = '{}create_processor'.format(self.base_url)
+        sw.go_to_url(create_url)
+        assert sw.browser.current_url == create_url
+        form_names = ['cur_client', 'cur_product', 'cur_campaign', 'description']
+        elem_form = [('test', x) for x in form_names]
+        elem_form += [('Base Processor', 'name')]
+        sw.send_keys_from_list(elem_form)
+        sw.xpath_from_id_and_click('loadContinue')
+        sw.go_to_url('{}explore'.format(self.base_url))
+        time.sleep(3)
+
     def test_processor_page(self, sw):
-        assert sw.browser.current_url == self.base_url
         proc_link = '//*[@id="navLinkProcessor"]'
         sw.click_on_xpath(proc_link, 1)
         assert sw.browser.current_url == '{}processor'.format(self.base_url)

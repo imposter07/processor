@@ -249,8 +249,76 @@ def remove_special_characters(string):
 
 
 class LiquidTable(object):
-    def __init__(self):
-        pass
+    def __init__(self, col_list, data=None, top_rows=None,
+                 totals=False, title='', description='', columns_toggle=False,
+                 accordion=False, specify_form_cols=False, col_dict=False,
+                 select_val_dict=None, select_box=None,
+                 form_cols=None, metric_cols=None, def_metric_cols=None,
+                 header=None, highlight_row=None):
+        self.col_list = col_list
+        self.data = data
+        self.top_rows = top_rows
+        self.totals = totals
+        self.title = title
+        self.description = description
+        self.columns_toggle = columns_toggle
+        self.accordion = accordion
+        self.specify_form_cols = specify_form_cols
+        self.col_dict = col_dict
+        self.select_val_dict = select_val_dict
+        self.select_box = select_box
+        self.form_cols = form_cols
+        self.metric_cols = metric_cols
+        self.def_metric_cols = def_metric_cols
+        self.header = header
+        self.highlight_row = highlight_row
+        self.rows_name = None
+        self.top_rows_name = None
+        self.cols = self.make_columns(
+            self.col_list, self.select_val_dict, self.select_box,
+            self.form_cols, self.metric_cols, self.def_metric_cols, self.header,
+            self.highlight_row)
+        self.table_dict = self.make_table_dict(
+            self.cols, self.data, self.top_rows, self.totals, self.title,
+            self.description, self.columns_toggle, self.accordion,
+            self.specify_form_cols, self.col_dict)
+
+    def make_columns(self, col_list, select_val_dict, select_box, form_cols,
+                     metric_cols, def_metric_cols, header, highlight_row):
+        cols = []
+        for x in col_list:
+            cur_col = LiquidTableColumn(name=x)
+            if select_val_dict and x in select_val_dict:
+                cur_col.make_select()
+                cur_col.values = select_val_dict[x]
+            if select_box and x == select_box:
+                cur_col.add_select_box = True
+                self.rows_name = x
+            if form_cols and x in form_cols:
+                cur_col.form = True
+            if metric_cols and x in metric_cols:
+                cur_col.type = 'metrics'
+                if def_metric_cols and x in def_metric_cols:
+                    cur_col.type = 'default_metrics'
+            if header and x == header:
+                cur_col.make_header()
+                self.top_rows_name = x
+            if highlight_row and x == highlight_row:
+                cur_col.blank_highlight = True
+            cur_col.update_dict()
+            cols.append(cur_col.col_dict)
+        return cols
+
+    def make_table_dict(self, cols, data, top_rows, totals, title, description,
+                        columns_toggle, accordion, specify_form_cols, col_dict):
+        table_dict = {
+            'data': data, 'rows_name': self.rows_name, 'cols': cols,
+            'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
+            'totals': totals, 'title': title, 'description': description,
+            'columns_toggle': columns_toggle, 'accordion': accordion,
+            'specify_form_cols': specify_form_cols,
+            'col_dict': col_dict}
+        return table_dict
 
 
 class LiquidTableColumn(object):
@@ -290,3 +358,8 @@ class LiquidTableColumn(object):
     def make_select(self):
         self.type = 'select'
         self.update_dict()
+
+    def make_header(self):
+        self.hidden = True
+        self.header = True
+        self.make_select()

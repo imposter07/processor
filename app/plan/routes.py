@@ -209,8 +209,8 @@ def get_topline():
     lt = utl.LiquidTable(
         col_list, data=partners, top_rows=phases, totals=True, title=title,
         description=description, columns_toggle=True, accordion=True,
-        specify_form_cols=True, col_dict=True,
-        select_val_dict=select_val_dict, select_box=partner_name,
+        specify_form_cols=True, select_val_dict=select_val_dict,
+        select_box=partner_name,
         form_cols=form_cols + [partner_name, partner_type_name],
         metric_cols=metric_cols, def_metric_cols=def_metric_cols,
         header=phase_name, highlight_row=total_budget)
@@ -333,8 +333,11 @@ def plan_rules(object_name):
 @login_required
 def get_plan_rule():
     name = 'rulesTable'
-    cols = ['name', 'order', 'type', 'rule_info']
-    rows = [{x: '{} value'.format(x) for x in cols}]
-    # data = {'cols': cols, 'name': name, 'data': rows}
-    lt = utl.LiquidTable(col_list=cols, data=rows, title=name)
+    name_col = 'column_name'
+    cols = [name_col, 'order', 'type', 'rule_info']
+    select_val_dict = {name_col: [{name_col: x} for x in dctc.COLS]}
+    lt = utl.LiquidTable(
+        col_list=cols, title=name, table_name='rulesTable',
+        select_val_dict=select_val_dict, select_box=name_col,
+        form_cols=[name_col], specify_form_cols=True)
     return jsonify({'data': lt.table_dict})

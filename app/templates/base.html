@@ -24,6 +24,13 @@
         {{ _('Welcome to the  Liquid App') }}{% endif %}
 {% endblock %}
 </title>
+
+<div id="jinjaValues"
+    {% if title %}data-title="{{ title }}"{% endif %}
+    {% if uploader_type %}data-uploader_type="{{ uploader_type }}"{% endif %}
+    {% if title %}data-object_name="{{ object_name }}"{% endif %}
+    {% if title %}data-edit_name="{{ edit_name }}"{% endif %}
+</div>
 </head>
 
 {% block navbar %}

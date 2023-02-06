@@ -111,6 +111,19 @@
     </div>
     {% include 'tutorials/tutorial_available.html' %}
 </div>
+<div class="row">
+    <div class="col">
+        <div class="card shadow outer">
+            <div class="card-header">
+                <h3>Open Requests<i class="fas fa-tasks btn btn-danger" style="float:right; opacity:.8;"></i></h3>
+                <h6 class="card-subtitle mb-2 text-muted">Notes/POV from campaigns or meetings over the past week</h6>
+            </div>
+            <div class="card-body">
+                <div id="notesTable"></div>
+            </div>
+        </div>
+    </div>
+</div>
 <br><br>
 <div id="carousel" class="carousel slide" data-ride="carousel">
     <div class="carousel-inner text-center">
@@ -182,7 +195,8 @@
         <span class="sr-only">Next</span>
     </a>
 </div>
-
+<script src="{{ url_for('static', filename='js_utils.js') }}"></script>
+<script src="{{ url_for('static', filename='liquid_table.js') }}"></script>
 <script>
     function addNavLinks(procNav, pageNum, newText, hasAnother, followed){
         let navItem = '<li id="page'+ newText +'" class="page-item">' +
@@ -294,6 +308,10 @@
         });
     }
 
+    function getNotes() {
+        getTable('notesTable', '', '');
+    }
+
     function getSelectedDashboard() {
         $('[id^=dashSelect]').unbind().on('change', function (e) {
             let selectedText = this.options[e.target.selectedIndex].text
@@ -317,17 +335,19 @@
         if (window.location.pathname === "/explore"){
            getProcessors(1, false, filterDict);
            getOpenRequests(1, false, filterDict);
+           getNotes();
        }
        else {
            getProcessors(1, true, filterDict);
            getOpenRequests(1, true, filterDict);
+           getNotes();
        }
     }
     function loadJS(){
-        getProcessorBasedOnPage()
+        getProcessorBasedOnPage();
     }
     $(document).ready(function() {
-        loadJS()
+        loadJS();
     });
 </script>
 {% include "_select_builder.html" %}

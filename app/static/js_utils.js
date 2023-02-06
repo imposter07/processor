@@ -96,3 +96,21 @@ function loadingBtn(elem, currentStyle = '', btnClass="btn btn-primary btn-block
 function existsInJson(jsonData, jsonKey) {
     return (jsonData.hasOwnProperty(jsonKey) || jsonKey in jsonData) ? jsonData[jsonKey] : ''
 }
+
+function addElemRemoveLoadingBtn(elemId) {
+    if (elemId) {
+        document.getElementById('loadingBtn').remove();
+        let elem = document.getElementById(elemId);
+        elem.style.display = '';
+    }
+}
+
+function animateBar(){
+    let d = document.getElementById("progressBar");
+    d.className += " progress-bar-animated";
+}
+
+function unanimateBar(barId = "progressBar"){
+    let d = document.getElementById(barId);
+    d.className = d.className.replace( /(?:^|\s)progress-bar-animated(?!\S)/g , '' );
+}

@@ -438,7 +438,10 @@ def get_task_progress():
                             row_names = [str(df[x].iloc[0]) for x in plan_cols]
                             row_names = ''.join(row_names)
                             row_names = utl.remove_special_characters(row_names)
-                            df = df[final_cols]
+                            try:
+                                df = df[final_cols]
+                            except:
+                                continue
                             df = df_to_html(df, row_names)
                             html_dfs.append(df)
                         data['data'] = html_dfs

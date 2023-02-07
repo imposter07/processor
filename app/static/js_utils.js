@@ -107,10 +107,14 @@ function addElemRemoveLoadingBtn(elemId) {
 
 function animateBar(){
     let d = document.getElementById("progressBar");
-    d.className += " progress-bar-animated";
+    if (d) {
+        d.className += " progress-bar-animated";
+    }
 }
 
 function unanimateBar(barId = "progressBar"){
     let d = document.getElementById(barId);
-    d.className = d.className.replace( /(?:^|\s)progress-bar-animated(?!\S)/g , '' );
+    if (d) {
+        d.className = d.className.replace( /(?:^|\s)progress-bar-animated(?!\S)/g , '' );
+    }
 }

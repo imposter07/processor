@@ -9,7 +9,9 @@ function turnOffProgress(downloadingProgress, oldHtml, clickElem) {
     downloadingProgress = null;
     let downloadID = (clickElem.indexOf('request_table-') !== -1) ? 'downloadProgress' + clickElem : 'downloadProgress';
     let downloadElem = document.getElementById(downloadID);
-    downloadElem.style.width = '100%';
+    if (downloadElem) {
+        downloadElem.style.width = '100%';
+    }
     unanimateBar(downloadID);
 }
 
@@ -69,7 +71,7 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
             let newTableName = data['data']['name'];
             createChangeDictOrder(data['data']['cols'], data['data']['data'],
                 newTableName, data['dict_cols'], data['relational_cols']);
-        } else if (tableName === 'screenshot') {
+        } else if (['screenshot', 'notesTable'].includes(tableName)) {
             createLiquidTable(data, {'tableName': data['data']['name']});
         }
         else {
@@ -145,7 +147,7 @@ function getTaskProgress(tableName, updateFunction = false, downloadingProgress,
                 table: tableName,
                 fix_id: fixId,
                 vendorkey: vendorKey
-            }).done(function (data, status) {
+            }).done(function (data) {
                 if ('complete' in data && data['complete']) {
                     turnOffProgress(downloadingProgress, oldHtml, clickElem);
                     if (!forceReturn) {
@@ -153,27 +155,24 @@ function getTaskProgress(tableName, updateFunction = false, downloadingProgress,
                             vendorKey, fixId);
                     }
                 }
-                if (clickElem.indexOf('request_table-') !== -1) {
-                    var downloadID = '#downloadProgress' + clickElem
-                }
-                else {
-                    var downloadID = '#downloadProgress'
-                }
+                let downloadID = (clickElem.indexOf('request_table-') !== -1) ? '#downloadProgress' + clickElem : '#downloadProgress';
                 let downloadProgress = $(downloadID);
                 let newPercent = data['percent'];
-                let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
-                if (newPercent > oldPercent) {
-                    if (updateFunction) {
-                        updateFunction(newPercent);
+                if (downloadProgress) {
+                    let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
+                    if (newPercent > oldPercent) {
+                        if (updateFunction) {
+                            updateFunction(newPercent);
+                        } else {
+                            downloadProgress.attr("style", "width: " + newPercent + "%")
+                        }
                     } else {
-                        downloadProgress.attr("style", "width: " + newPercent + "%")
-                    }
-                } else {
-                    let percent = oldPercent + 2;
-                    if (updateFunction) {
-                        updateFunction(percent);
-                    } else {
-                        downloadProgress.attr("style", "width: " + percent + "%")
+                        let percent = oldPercent + 2;
+                        if (updateFunction) {
+                            updateFunction(percent);
+                        } else {
+                            downloadProgress.attr("style", "width: " + percent + "%")
+                        }
                     }
                 }
         });
@@ -193,9 +192,11 @@ function getTableResponse(data, kwargs) {
     if (forceReturn) {
         getTableComplete(tableName, pond, vendorKey, data);
     } else {
-        downloadingProgress = getTaskProgress(tableName, false, downloadingProgress,
-            null, data['task'], forceReturn, pond, vendorKey, oldHtml, clickElem,
-            fixId);
+        if (data['task']) {
+            downloadingProgress = getTaskProgress(tableName, false, downloadingProgress,
+                null, data['task'], forceReturn, pond, vendorKey, oldHtml, clickElem,
+                fixId);
+        }
     }
     if (forceReturn) {
         turnOffProgress(downloadingProgress, oldHtml, clickElem);

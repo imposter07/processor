@@ -854,7 +854,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'SOW': '.get_sow',
                  'Topline': '.get_topline',
                  'screenshot': '.get_screenshot_table',
-                 'screenshotImage': '.get_screenshot_image'}
+                 'screenshotImage': '.get_screenshot_image',
+                 'notesTable': '.get_notes_table'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -898,12 +899,10 @@ def get_table_arguments():
             if cur_proc.get_request_task_in_progress(
                     job_name, description):
                 flash(_('This job: {} is already running!').format(table_name))
-                return jsonify(
-                    {'data': {'data': [], 'cols': [], 'name': table_name}})
+                return table_name, cur_proc, proc_arg, None
         else:
             flash(_('This job: {} is already running!').format(table_name))
-            return jsonify(
-                {'data': {'data': [], 'cols': [], 'name': table_name}})
+            return table_name, cur_proc, proc_arg, None
     if request.form['fix_id'] != 'None':
         if job_name == '.apply_quick_fix':
             proc_arg['fix_id'] = request.form['fix_id']
@@ -988,7 +987,8 @@ def get_table_return(task, table_name, proc_arg, job_name,
     else:
         to_html = True
         cols_to_json = True
-        if table_name in ['modalTableOutputData', 'modalTablescreenshot']:
+        if table_name in ['modalTableOutputData', 'modalTablescreenshot',
+                          'modalTablenotesTable']:
             to_html = False
             cols_to_json = False
             if table_name == 'modalTableOutputData':
@@ -1008,6 +1008,9 @@ def get_table_return(task, table_name, proc_arg, job_name,
 @login_required
 def get_table():
     table_name, cur_proc, proc_arg, job_name = get_table_arguments()
+    if not job_name:
+        data = {'data': 'fail', 'task': '', 'level': 'fail'}
+        return data
     if job_name == '.get_request_table':
         msg_text = 'Getting {} table for {}'.format(
             table_name, proc_arg['fix_id'])

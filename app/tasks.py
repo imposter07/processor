@@ -13,12 +13,11 @@ from flask import render_template
 from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
-from app.utils import rename_duplicates
 from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
-    Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow
+    Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes
 
 app = create_app()
 app.app_context().push()
@@ -5131,5 +5130,19 @@ def get_screenshot_image(processor_id, current_user_id, vk=None):
         _set_task_progress(100)
         msg = 'Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_notes_table(user_id, running_user):
+    try:
+        _set_task_progress(0)
+        n = Notes.query.all()
+        n = pd.DataFrame([x.get_form_dict() for x in n]).fillna('')
+        _set_task_progress(100)
+        return [n]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - User {}'.format(user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

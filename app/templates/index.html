@@ -115,7 +115,7 @@
     <div class="col">
         <div class="card shadow outer">
             <div class="card-header">
-                <h3>Open Requests<i class="fas fa-tasks btn btn-danger" style="float:right; opacity:.8;"></i></h3>
+                <h3>Notes<i class="fas fa-tasks btn btn-danger" style="float:right; opacity:.8;"></i></h3>
                 <h6 class="card-subtitle mb-2 text-muted">Notes/POV from campaigns or meetings over the past week</h6>
             </div>
             <div class="card-body">
@@ -197,6 +197,7 @@
 </div>
 <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
 <script src="{{ url_for('static', filename='liquid_table.js') }}"></script>
+<script src="{{ url_for('static', filename='get_table.js') }}"></script>
 <script>
     function addNavLinks(procNav, pageNum, newText, hasAnother, followed){
         let navItem = '<li id="page'+ newText +'" class="page-item">' +
@@ -309,7 +310,7 @@
     }
 
     function getNotes() {
-        getTable('notesTable', '', '');
+        getTable('notesTable', 'notesTable', '');
     }
 
     function getSelectedDashboard() {

@@ -225,6 +225,22 @@ def run_processor(processor_id, current_user_id, run_args):
             update_analysis_in_db(processor_id, current_user_id)
             os.chdir(cur_path)
             update_automatic_requests(processor_id, current_user_id)
+        if 'exp' in run_args:
+            for col in ['vendorname', 'countryname', 'kpiname',
+                        'environmentname', 'productname', 'eventdate'
+                        'campaignname']:
+                app.logger.info('Getting db col: {}'.format(col))
+                filter_dict = []
+                if processor_id == 23:
+                    import datetime as dt
+                    today = dt.datetime.today()
+                    thirty = today - dt.timedelta(days=30)
+                    today = today.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                    thirty = thirty.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                    filter_dict = [{'eventdate': [thirty, today]}]
+                get_data_tables_from_db(
+                    processor_id, current_user_id, dimensions=[col],
+                    metrics=['kpi'], filter_dict=filter_dict)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(proc=processor_to_run, usr=user_that_ran,
                                text=msg_text, run_complete=True)
@@ -2752,7 +2768,7 @@ def add_account_types(processor_id, current_user_id):
         return False, 'Unknown Error'
 
 
-def add_plan_fess_to_processor(processor_id, current_user_id):
+def add_plan_fees_to_processor(processor_id, current_user_id):
     try:
         _set_task_progress(0)
         import processor.reporting.dictcolumns as dctc
@@ -2848,7 +2864,7 @@ def single_apply_processor_plan(processor_id, current_user_id, progress,
     elif progress_type == 'Add Account Types':
         r = add_account_types(processor_id, current_user_id)
     elif progress_type == 'Add Fees':
-        r = add_plan_fess_to_processor(processor_id, current_user_id)
+        r = add_plan_fees_to_processor(processor_id, current_user_id)
     if r[0]:
         progress[progress_type] = ['Success!']
     else:
@@ -5138,7 +5154,7 @@ def get_notes_table(user_id, running_user):
     try:
         _set_task_progress(0)
         n = Notes.query.all()
-        n = pd.DataFrame([x.get_form_dict() for x in n]).fillna('')
+        n = pd.DataFrame([x.get_table_dict() for x in n]).fillna('')
         _set_task_progress(100)
         return [n]
     except:

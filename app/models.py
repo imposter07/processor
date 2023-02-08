@@ -1121,6 +1121,10 @@ class Notes(db.Model):
     notification = db.Column(db.Text)
     notification_day = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    vendor = db.Column(db.Text)
+    country = db.Column(db.Text)
+    environment = db.Column(db.Text)
+    kpi = db.Column(db.Text)
     posts = db.relationship('Post', backref='notes', lazy='dynamic')
 
     def get_form_dict(self):
@@ -1132,6 +1136,18 @@ class Notes(db.Model):
             'notification_day': self.notification_day
         }
         return form_dict
+
+    def get_table_dict(self):
+        table_dict = {
+            'processor_id': self.processor_id,
+            'user_id': self.user_id,
+            'note_text': self.note_text,
+            'vendor': self.vendor,
+            'country': self.country,
+            'environment': self.environment,
+            'kpi': self.kpi
+        }
+        return table_dict
 
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
@@ -1639,7 +1655,7 @@ class PlanPhase(db.Model):
 
     def set_from_form(self, form, current_plan):
         self.plan_id = current_plan.id
-        self.name = form['name']
+        self.name = form['phaseSelect']
         self.start_date = form['start_date']
         self.end_date = form['end_date']
 

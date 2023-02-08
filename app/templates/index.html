@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block app_header %}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='liquid_table.css') }}">
     <h1 class="">{{ _('Hi, %(username)s!', username=current_user.username) }}</h1>
     <h6 class="card-subtitle mb-2 text-muted">
         Welcome to lqadata.com.  If you are new please check

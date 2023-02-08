@@ -655,7 +655,8 @@ def edit_processor_import_upload_file(object_name):
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
     if file_type not in ['.xlsx', '.csv']:
-        return jsonify({'data': 'failed: {}'.format(cur_proc.name)})
+        msg = 'FAILED: File was not an xlsx or csv.  Only use those types.'
+        return jsonify({'data': 'failed', 'message': msg, 'level': 'danger'})
     search_dict = {}
     for col in ['account_id', 'start_date', 'api_fields', 'key',
                 'account_filter', 'name']:
@@ -682,7 +683,8 @@ def edit_processor_import_upload_file(object_name):
             running_user=current_user.id, new_data=mem,
             vk=ds.vendor_key, mem_file=True, file_type=file_type)
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(cur_proc.name)})
+    msg = 'File was saved.'
+    return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
 
 
 @bp.route('/processor/<object_name>/edit/import', methods=['GET', 'POST'])
@@ -1264,7 +1266,7 @@ def edit_processor_clean_upload_file(object_name):
         running_user=current_user.id, new_data=mem,
         vk=ds.vendor_key, mem_file=True, file_type=file_type)
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(cur_proc.name)})
+    return jsonify({'data': 'success', 'message': msg_text, 'level': 'success'})
 
 
 @bp.route('/processor/<object_name>/edit/clean', methods=['GET', 'POST'])
@@ -1630,9 +1632,16 @@ def edit_processor_plan_upload_file(object_name):
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
-    utl.check_and_add_media_plan(mem, cur_proc, object_type=Processor,
-                                 current_user=current_user)
-    return jsonify({'data': 'success: {}'.format(cur_proc.name)})
+    plan_saved = utl.check_and_add_media_plan(
+        mem, cur_proc, object_type=Processor, current_user=current_user)
+    if plan_saved:
+        data = 'success'
+        msg = 'SUCCESS: {} plan has been saved.'.format(cur_proc.name)
+    else:
+        data = 'danger'
+        msg = "Plan not saved - is 'Media Plan' the name of a sheet?"
+        msg = 'FAILED: {}. {}'.format(cur_proc.name, msg)
+    return jsonify({'data': data, 'message': msg, 'level': data})
 
 
 @bp.route('/processor/<object_name>/edit/plan_normal/upload_file',
@@ -1939,7 +1948,7 @@ def edit_processor_request_fix_upload_file(object_name):
             '.save_spend_cap_file', _(msg_text),
             running_user=current_user.id, new_data=mem)
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(cur_proc.name)})
+    return jsonify({'data': 'success', 'message': msg_text, 'level': 'success'})
 
 
 @bp.route('/processor/<object_name>/edit/fix/submit',
@@ -2089,7 +2098,9 @@ def edit_processor_note(object_name):
             processor_id=cur_proc.id, user_id=current_user.id,
             note_text=form.note_text.data, notification=form.notification.data,
             notification_day=form.notification_day.data,
-            created_at=datetime.utcnow()
+            vendor=form.vendor.data, country=form.country.data,
+            environment=form.environment.data,
+            kpi=form.kpi.data, created_at=datetime.utcnow()
         )
         db.session.add(new_note)
         db.session.commit()
@@ -2648,7 +2659,8 @@ def edit_uploader_upload_file(object_name):
                                  current_user=current_user)
     cur_up.media_plan = True
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(cur_up.name)})
+    msg = 'File was saved.'
+    return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
 
 
 @bp.route('/uploader/<object_name>/edit', methods=['GET', 'POST'])
@@ -2744,7 +2756,7 @@ def uploader_name_file_upload(object_name):
         parameter=current_key, mem_file=True,
         object_level=object_level)
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(cur_up.name)})
+    return jsonify({'data': 'success', 'message': msg_text, 'level': 'success'})
 
 
 @bp.route('/uploader/<object_name>/edit/campaign/upload_file',
@@ -2889,7 +2901,7 @@ def uploader_file_upload(object_name):
         '.uploader_save_creative', _(msg_text),
         running_user=current_user.id, file=mem, file_name=file_name)
     db.session.commit()
-    return jsonify({'data': 'success: {}'.format(cur_up.name)})
+    return jsonify({'data': 'success', 'message': msg_text, 'level': 'success'})
 
 
 @bp.route('/uploader/<object_name>/edit/ad', methods=['GET', 'POST'])
@@ -3385,7 +3397,7 @@ def edit_walkthrough_upload_file():
         '.update_walkthrough', _(msg_text),
         running_user=current_user.id, new_data=mem)
     db.session.commit()
-    return jsonify({'data': 'success'})
+    return jsonify({'data': 'success', 'message': msg_text, 'level': 'success'})
 
 
 @bp.route('/upload_test', methods=['GET', 'POST'])

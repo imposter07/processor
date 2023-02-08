@@ -9,6 +9,7 @@ from app.models import Task, Processor, User, Campaign, Project, Client, Product
 from flask import current_app, render_template
 from flask_babel import _
 import uploader.upload.creator as cre
+from xlrd.biffh import XLRDError
 
 
 def launch_task(cur_class, name, description, running_user, task_class_args,
@@ -221,7 +222,7 @@ def convert_media_plan_to_df(current_file):
     try:
         mp = cre.MediaPlan(current_file)
         df = mp.df
-    except KeyError as e:
+    except (KeyError, ValueError, XLRDError) as e:
         msg = 'Try again with correct columns file was missing: {}'.format(e)
         current_app.logger.warning(msg)
     return df
@@ -229,10 +230,13 @@ def convert_media_plan_to_df(current_file):
 
 def check_and_add_media_plan(media_plan_data, processor_to_edit,
                              object_type=Processor, current_user=None):
+    plan_saved = False
     if media_plan_data:
         if not current_user:
             current_user = User.query.get(processor_to_edit.user_id)
         df = convert_media_plan_to_df(media_plan_data)
+        if df.empty:
+            return plan_saved
         msg_text = ('Attempting to save media plan for processor: {}'
                     ''.format(processor_to_edit.name))
         processor_to_edit.launch_task(
@@ -240,6 +244,8 @@ def check_and_add_media_plan(media_plan_data, processor_to_edit,
             running_user=current_user.id,
             media_plan=df, object_type=object_type)
         db.session.commit()
+        plan_saved = True
+    return plan_saved
 
 
 def remove_special_characters(string):

@@ -514,6 +514,11 @@
             }
         }
 
+        function filePondAlert(response) {
+            let data = JSON.parse(response);
+            displayAlert(data['message'], data['level']);
+        }
+
         function addFilePond() {
             FilePond.registerPlugin(
                 FilePondPluginImagePreview,
@@ -521,9 +526,12 @@
             );
             FilePond.parse(document.body);
             FilePond.setOptions({server: {
-                    url: window.location.href.replace('#', '') + '/upload_file',
-                    method: 'POST',
-                },
+                    process: {
+                        url: window.location.href.replace('#', '') + '/upload_file',
+                        method: 'POST',
+                        onload: (response) => filePondAlert(response),
+                        onerror: (response) => filePondAlert(response),
+                    }},
                 allowPaste: false,
                 credits: false,
                 fileMetadataObject: {

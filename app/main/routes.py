@@ -1387,36 +1387,9 @@ def run_object():
             'import': '--api all --ftp all --dbi all --analyze',
             'export': '--exp all --tab --analyze',
             'basic': '--basic --analyze',
-            'update': '--update all --noprocess',
-            'fb': '--api fb --analyze',
-            'aw': '--api aw --analyze',
-            'tw': '--api tw --analyze',
-            'ttd': '--api ttd --analyze',
-            'ga': '--api ga --analyze',
-            'nb': '--api nb --analyze',
-            'af': '--api af --analyze',
-            'sc': '--api sc --analyze',
-            'aj': '--api aj --analyze',
-            'dc': '--api dc --analyze',
-            'rs': '--api rs --analyze',
-            'db': '--api db --analyze',
-            'vk': '--api vk --analyze',
-            'rc': '--api rc --analyze',
-            'szk': '--api szk --analyze',
-            'red': '--api red --analyze',
-            'dcm': '--api dc --analyze',
-            'dv': '--api dv --analyze',
-            'adk': '--api adk --analyze',
-            'inn': '--api inn -- analyze',
-            'tik': '--api tik --analyze',
-            'amz': '--api amz --analyze',
-            'cri': '--api cri --analyze',
-            'pm': '--api pm --analyze',
-            'sam': '--api sam --analyze',
-            'gs': '--api gs --analyze',
-            'qt': '--api qt --analyze',
-            'yv': '--api yv --analyze',
-            'amd': '--api amd --analyze'}
+            'update': '--update all --noprocess'}
+        for api in vmc.api_translation.values():
+            arg_trans[api] = '--api {} --analyze'.format(api)
     else:
         cur_obj = Uploader
         task_name = '.run_uploader'

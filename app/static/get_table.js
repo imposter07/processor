@@ -73,6 +73,10 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
                 newTableName, data['dict_cols'], data['relational_cols']);
         } else if (['screenshot', 'notesTable'].includes(tableName)) {
             createLiquidTable(data, {'tableName': data['data']['name']});
+        } else if (tableName === 'Pacing Table') {
+            generatePacingTable(tableName, data['data']['data'], data['plan_cols'])
+        } else if (tableName === 'Daily Pacing') {
+            generateDailyPacing(tableName, data['data']['data'], data['data']['plan_cols'])
         }
         else {
             show_modal_table('modalTableButton');

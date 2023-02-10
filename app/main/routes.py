@@ -426,29 +426,8 @@ def get_task_progress():
                 job = task.get_rq_job()
                 if job and job.result:
                     dfs = job.result[0]
-                    if 'get_processor_pacing_metrics' in str(job):
-                        data['data'] = df_to_html(dfs, 'Pacing Table')
-                        data['plan_cols'] = job.result[1]
-                    elif 'get_daily_pacing' in str(job):
-                        plan_cols = job.result[1]
-                        final_cols = plan_cols + [
-                            vmc.date, cal.NCF, 'Daily Spend Goal', 'Day Pacing']
-                        html_dfs = []
-                        for df in dfs:
-                            row_names = [str(df[x].iloc[0]) for x in plan_cols]
-                            row_names = ''.join(row_names)
-                            row_names = utl.remove_special_characters(row_names)
-                            try:
-                                df = df[final_cols]
-                            except:
-                                continue
-                            df = df_to_html(df, row_names)
-                            html_dfs.append(df)
-                        data['data'] = html_dfs
-                        data['plan_cols'] = plan_cols
-                    else:
-                        data['data'] = dfs.reset_index().to_dict(
-                            orient='records')
+                    data['data'] = dfs.reset_index().to_dict(
+                        orient='records')
     else:
         task = cur_obj.get_task_in_progress(name=job_name)
     if task:
@@ -860,7 +839,9 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'Topline': '.get_topline',
                  'screenshot': '.get_screenshot_table',
                  'screenshotImage': '.get_screenshot_image',
-                 'notesTable': '.get_notes_table'}
+                 'notesTable': '.get_notes_table',
+                 'Pacing Table': '.get_processor_pacing_metrics',
+                 'Daily Pacing': '.get_daily_pacing'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -989,6 +970,22 @@ def get_table_return(task, table_name, proc_arg, job_name,
         msg = job.result[1]
         table_data = df_to_html(df, table_name, job_name)
         data = {'html_data': table_data, 'msg': msg}
+    elif job_name == '.get_daily_pacing':
+        plan_cols = job.result[1]
+        final_cols = plan_cols + [
+            vmc.date, cal.NCF, 'Daily Spend Goal', 'Day Pacing']
+        html_dfs = []
+        for tmp_df in df:
+            if isinstance(tmp_df, type(pd.DataFrame())):
+                row_names = [str(tmp_df[x].iloc[0]) for x in plan_cols]
+                row_names = ''.join(row_names)
+                row_names = utl.remove_special_characters(row_names)
+                final_cols = [
+                    col for col in final_cols if col in tmp_df.columns]
+                tmp_df = tmp_df[final_cols]
+                tmp_df = df_to_html(tmp_df, row_names)
+                html_dfs.append(tmp_df)
+        data = {'data': {'data': html_dfs, 'plan_cols': plan_cols}}
     else:
         to_html = True
         cols_to_json = True
@@ -1006,6 +1003,8 @@ def get_table_return(task, table_name, proc_arg, job_name,
         if job_name == '.get_change_dict_order':
             data['dict_cols'] = json.dumps(job.result[1])
             data['relational_cols'] = json.dumps(job.result[2])
+        if job_name == '.get_processor_pacing_metrics':
+            data['plan_cols'] = job.result[1]
     return jsonify(data)
 
 
@@ -3043,10 +3042,6 @@ def get_metrics():
         job_name = '.get_processor_total_metrics'
         proc_arg = {x: proc_arg[x] for x in proc_arg
                     if x in ['running_user', 'filter_dict']}
-    elif request.form['elem'] == '#pacingMetrics':
-        job_name = '.get_processor_pacing_metrics'
-    elif request.form['elem'] == '#dailyPacing':
-        job_name = '.get_daily_pacing'
     elif request.form['elem'] == '#pacingAlertCount':
         job_name = '.get_pacing_alert_count'
     elif request.form['elem'] == '#pacingAlerts':

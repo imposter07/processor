@@ -14,14 +14,14 @@
             pointer-events: all;
         }
 
-        .progress-bar {
+        .radial-progress-bar {
             fill: #ddd;
             margin-left: auto;
             margin-right: auto;
             margin-top: auto;
         }
 
-        .progress-bar-bg {
+        .radial-progress-bar-bg {
             fill: #3f3f3f;
         }
 
@@ -64,7 +64,7 @@
                     </a>
                     <a class="nav-link" id="nav-pacing-tab" data-toggle="tab" href="#nav-pacing" role="tab" aria-controls="nav-pacing" aria-selected="false"
                         onclick="setTimeout(getMetrics, 1000, '#pacingAlerts', generateAlerts, ['vendorname', 'campaignname'], ['netcost', 'adservingcost']);
-                                 setTimeout(getMetrics, 1000, '#pacingMetrics', generatePacingTable, ['vendorname', 'campaignname'], ['netcost', 'adservingcost'], []);
+                                 setTimeout(getPacingTable, 1000, 'Pacing Table');
                                  this.onclick=null;">
                         <h4>
                             <div class="icon-badge-container">

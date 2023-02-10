@@ -945,10 +945,6 @@
                     let newPercent = data['percent'];
                     chart.update(parseInt(newPercent))
                     if (!forceReturn && 'data' in data) {
-                        if (createVisualFunction === generatePacingTable ||
-                            createVisualFunction === generateDailyPacing) {
-                            xCol = data['plan_cols']
-                        }
                         getMetricsComplete(chart, data['data'], xCol, yCol,
                             createVisualFunction, filterDict, addSelect, elem);
                         turnOffRadialProgress(elem, downloadingProgress, oldHtml, clickElem);
@@ -961,10 +957,7 @@
     function getMetricsComplete(chart, data, xCol, yCol, createVisualFunction,
         filterDict, addSelect, elem) {
         chart.update(100);
-        if ((Array.isArray(data) && data.length) ||
-            ((createVisualFunction === generatePacingTable ||
-             createVisualFunction === generateDailyPacing) &&
-             'data' in data['data'])) {
+        if (Array.isArray(data) && data.length) {
             yCol = (yCol.includes('kpi')) ? (
                 Object.keys(data[0]).filter(function (e) {
                     return e !== 'index' && e !== xCol
@@ -1196,10 +1189,16 @@
         }
     }
 
-    function generatePacingTable(elem, data, xCol, yCol) {
-        const elemID = elem.replace('#', '');
+    function getPacingTable(tableName) {
+        elem = document.getElementById(tableName)
+        setDownloadBar(elem, elem.textContent, false);
+        getTable(tableName, elem.parentElement.id, 'None');
+        animateBar();
+    }
+
+    function generatePacingTable(elemID, data, xCol, yCol) {
         elem = document.getElementById(elemID);
-        elem.innerHTML += data['data']['data'];
+        elem.innerHTML += data;
         elem.style.height = "100%";
         let cols = xCol + [, 'Planned Net Cost', 'Uncapped'];
         cols = cols.split(",");
@@ -1207,13 +1206,9 @@
         getProgBars(elemID, "Delivery", "% Through Campaign", "Start Date");
         hideColumn(elemID, "% Through Campaign");
         addAccordianSetup(elemID);
-        dailyPacingProg = `
-            <div id="dailyPacingProgressContainer" class="card container-fluid shadow outer d-flex">
-                <div>Daily Pacing Accordians:</div>
-                <div id="dailyPacingProgress" class="ml-auto" style="height:50px; width:100px;"></div>
-            </div>`;
-        elem.parentNode.insertAdjacentHTML('afterend', dailyPacingProg);
-        getMetrics('#dailyPacing', generateDailyPacing, xCol, ['netcost'], []);
+        setDownloadBar(elem, elem.textContent, false);
+        getTable('Daily Pacing', elem.parentElement.id, 'None');
+        animateBar();
     }
 
     function addSort(tableName, bodyName) {
@@ -1291,10 +1286,7 @@
                 }
             }
         }
-        addSort('pacingMetrics', 'accordianPacing');
-        const elemID = elem.replace('#', '');
-        const progElem = document.getElementById(elemID + "ProgressContainer");
-        progElem.remove();
+        addSort('Pacing Table', 'accordianPacing');
     }
 
     function generateAlertCount(elem, data, xCol, yCol) {

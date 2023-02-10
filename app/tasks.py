@@ -3697,6 +3697,8 @@ def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
         import processor.reporting.expcolumns as exc
         import processor.reporting.utils as utl
         import processor.reporting.export as export
+        if dimensions is None:
+            dimensions = []
         cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
         os.chdir(cur_proc.local_path)
         matrix = vm.VendorMatrix()

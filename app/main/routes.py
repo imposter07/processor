@@ -986,11 +986,12 @@ def get_table_return(task, table_name, proc_arg, job_name,
                 tmp_df = df_to_html(tmp_df, row_names)
                 html_dfs.append(tmp_df)
         data = {'data': {'data': html_dfs, 'plan_cols': plan_cols}}
+    elif utl.LiquidTable.id_col in df and df[utl.LiquidTable.id_col]:
+        data = {'data': df}
     else:
         to_html = True
         cols_to_json = True
-        if table_name in ['modalTableOutputData', 'modalTablescreenshot',
-                          'modalTablenotesTable']:
+        if table_name in ['modalTableOutputData', 'modalTablescreenshot']:
             to_html = False
             cols_to_json = False
             if table_name == 'modalTableOutputData':
@@ -1896,6 +1897,7 @@ def edit_processor_request_fix_upload_file(object_name):
     fix_type = [x['value'] for x in object_form if x['name'] == 'fix_type'][0]
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
+    msg_text = ''
     if fix_type == 'New File':
         new_name = file_name
         new_name = new_name.replace('.csv', '')

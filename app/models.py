@@ -1139,8 +1139,9 @@ class Notes(db.Model):
 
     def get_table_dict(self):
         table_dict = {
-            'processor_id': self.processor_id,
-            'user_id': self.user_id,
+            'created_at': self.created_at,
+            'processor_name': self.processor.name if self.processor else '',
+            'username': self.user.username,
             'note_text': self.note_text,
             'vendor': self.vendor,
             'country': self.country,

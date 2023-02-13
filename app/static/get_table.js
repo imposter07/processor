@@ -71,7 +71,10 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
             let newTableName = data['data']['name'];
             createChangeDictOrder(data['data']['cols'], data['data']['data'],
                 newTableName, data['dict_cols'], data['relational_cols']);
-        } else if (['screenshot', 'notesTable'].includes(tableName)) {
+        } else if (existsInJson(data['data'], 'liquid_table')) {
+            createLiquidTable(data, {'tableName': data['data']['name']});
+        }
+        else if (['screenshot', 'notesTable'].includes(tableName)) {
             createLiquidTable(data, {'tableName': data['data']['name']});
         } else if (tableName === 'Pacing Table') {
             generatePacingTable(tableName, data['data']['data'], data['plan_cols'])

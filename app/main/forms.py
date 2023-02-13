@@ -452,6 +452,10 @@ class ProcessorNoteForm(FlaskForm):
     notification_day = SelectField(
         choices=[(x, x) for x in ['Monday', 'Tuesday', 'Wednesday', 'Thursday'
                                   'Friday', 'Saturday', 'Sunday']])
+    vendor = SelectField('Vendor')
+    country = SelectField('Country')
+    environment = SelectField('Environment')
+    kpi = SelectField('KPI')
     form_continue = HiddenField('form_continue')
 
     def set_vendor_key_choices(self, current_processor_id):

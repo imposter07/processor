@@ -8,6 +8,7 @@ import shutil
 import itertools
 import pandas as pd
 import numpy as np
+import app.utils as app_utl
 from datetime import datetime
 from flask import render_template
 from rq import get_current_job
@@ -5155,10 +5156,34 @@ def get_screenshot_image(processor_id, current_user_id, vk=None):
 def get_notes_table(user_id, running_user):
     try:
         _set_task_progress(0)
-        n = Notes.query.all()
-        n = pd.DataFrame([x.get_table_dict() for x in n]).fillna('')
+        name = 'notesTable'
+        vendor_col = 'vendor'
+        select_cols = [vendor_col, 'country', 'environment', 'kpi']
+        select_val_dict = {}
+        for col in select_cols:
+            col_name = '{}name'.format(col)
+            a = ProcessorAnalysis.query.filter_by(
+                processor_id=23, key='database_cache',
+                parameter=col_name).first()
+            df = pd.read_json(a.data)
+            df = df.rename(columns={col_name: col}).to_dict(orient='records')
+            select_val_dict[col] = df
+        form_cols = ['note_text', 'created_at', 'username', 'processor_name']
+        form_cols += select_cols
+        import datetime as dt
+        seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
+        df = Notes.query.filter(Notes.created_at > seven_days_ago).all()
+        df = pd.DataFrame([x.get_table_dict() for x in df]).fillna('')
+        df = df[form_cols]
+        lt = app_utl.LiquidTable(
+            data=df.to_dict(orient='records'),
+            col_list=df.columns.tolist(), table_name=name,
+            select_val_dict=select_val_dict, accordion=True,
+            form_cols=form_cols, specify_form_cols=True,
+            new_modal_button=True)
+        lt = lt.table_dict
         _set_task_progress(100)
-        return [n]
+        return [lt]
     except:
         _set_task_progress(100)
         msg = 'Unhandled exception - User {}'.format(user_id)

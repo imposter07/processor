@@ -255,12 +255,15 @@ def remove_special_characters(string):
 
 
 class LiquidTable(object):
+    id_col = 'liquid_table'
+
     def __init__(self, col_list, data=None, top_rows=None,
                  totals=False, title='', description='', columns_toggle=False,
                  accordion=False, specify_form_cols=False, col_dict=True,
                  select_val_dict=None, select_box=None,
                  form_cols=None, metric_cols=None, def_metric_cols=None,
-                 header=None, highlight_row=None, table_name='liquidTable'):
+                 header=None, highlight_row=None, new_modal_button=False,
+                 table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -279,8 +282,10 @@ class LiquidTable(object):
         self.header = header
         self.highlight_row = highlight_row
         self.table_name = table_name
+        self.new_modal_button = new_modal_button
         self.rows_name = None
         self.top_rows_name = None
+        self.liquid_table = True
         self.cols = self.make_columns(
             self.col_list, self.select_val_dict, self.select_box,
             self.form_cols, self.metric_cols, self.def_metric_cols, self.header,
@@ -288,7 +293,8 @@ class LiquidTable(object):
         self.table_dict = self.make_table_dict(
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
-            self.specify_form_cols, self.col_dict, self.table_name)
+            self.specify_form_cols, self.col_dict, self.table_name,
+            self.new_modal_button)
 
     def make_columns(self, col_list, select_val_dict, select_box, form_cols,
                      metric_cols, def_metric_cols, header, highlight_row):
@@ -318,14 +324,16 @@ class LiquidTable(object):
 
     def make_table_dict(self, cols, data, top_rows, totals, title, description,
                         columns_toggle, accordion, specify_form_cols, col_dict,
-                        table_name):
+                        table_name, new_modal_button):
         table_dict = {
             'data': data, 'rows_name': self.rows_name, 'cols': cols,
             'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
             'totals': totals, 'title': title, 'description': description,
             'columns_toggle': columns_toggle, 'accordion': accordion,
             'specify_form_cols': specify_form_cols,
-            'col_dict': col_dict, 'name': table_name}
+            'col_dict': col_dict, 'name': table_name,
+            self.id_col: self.liquid_table,
+            'new_modal_button': new_modal_button}
         return table_dict
 
 

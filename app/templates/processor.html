@@ -1,9 +1,13 @@
 {% extends "create_processor.html" %}
 
 {% block vertical_navbar %}
-    <h4 class="sidebar-heading d-flex justify-content-between align-items-center">
-                  <span>{{ _('Data Processor') }}</span>
-    </h4>
+    <div class="card shadow outer">
+        <div class="card-header">
+            <h3>Processor<i class="fas fa-blender-phone btn btn-secondary"
+                               style="float:right;"></i></h3>
+            <h6 class="card-subtitle mb-2 text-muted">Create a new processor instance.</h6>
+        </div>
+
         <button id="requestProcessor"
             class="btn btn-outline-info btn-block text-left"
             type="button" href="">
@@ -11,27 +15,44 @@
                    role="button"></i>
                 {{ _('Request Processor') }}
     </button><br>
-    <div class="col mb-3">
-        <div class="row">
-            <input id="datePicker"
-                   class="custom-select custom-select-sm
-                                          flatpickr flatpickr-input active"
-                   type="text" placeholder="Date"
-                   data-id="range"
-                   readonly="readonly" data-input>
+    </div>
+    <div class="card shadow outer">
+        <div class="card-header">
+            <h3>Date Filter<i class="fas fa-calendar btn btn-secondary"
+                               style="float:right;"></i></h3>
+            <h6 class="card-subtitle mb-2 text-muted">Date filter for Notes and plots.</h6>
+        </div>
+        <div class="col mb-3">
+            <div class="row">
+                <input id="datePicker"
+                       class="custom-select custom-select-sm
+                                              flatpickr flatpickr-input active"
+                       type="text" placeholder="Date"
+                       data-id="range"
+                       readonly="readonly" data-input>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <div class="card shadow outer">
+                <div class="card-header">
+                    <h3>Notes<i class="fas fa-tasks btn btn-info" style="float:right; opacity:.8;"></i></h3>
+                    <h6 class="card-subtitle mb-2 text-muted">Notes/POV from campaigns or meetings over the past week</h6>
+                </div>
+                <div class="card-body">
+                    <div id="notesTable"></div>
+                </div>
+            </div>
         </div>
     </div>
 {% endblock %}
 
 {% block app_header %}
-    <h1 class="text-muted font-weight-bolder">{{ _('Reporting Data') }}</h1>
-    <div class="progress mx-auto" style="height: 20px; width: 50%;">
-        <div id="progressBar"
-             class="progress-bar progress-bar-striped bg-info"
-             role="progressbar" style="width:{{ edit_progress }}%;"
-             aria-valuenow={{ edit_progress }} aria-valuemin="0"
-             aria-valuemax="100">{{ edit_name }}</div>
-    </div><br>
+    <h1 class="">Reporting Data</h1>
+    <h6 class="card-subtitle mb-2 text-muted">
+        Reporting data across all campaigns, defaulting to the past 30 days.
+    </h6>
 {% endblock %}
 {% block app_content %}
 
@@ -162,7 +183,7 @@
 
     <br>
     <div class="row">
-        <div class="col h-50">
+        <div class="col">
             <div class="card-header">
                 <h7 class="mb-3">Products</h7>
                 <select id="productMetricsSelect"
@@ -175,7 +196,9 @@
                 <div id="productMetrics" style="height:250px;"></div>
             </div>
         </div>
-        <div class="col h-50">
+    </div>
+    <div class="row">
+        <div class="col">
             <div class="card-header">
                 <h7 class="mb-3">Daily</h7>
                 <select id="dailyMetricsSelect" class="form-control form-control-sm">
@@ -385,6 +408,7 @@
             });
             let filterDict = getDates();
             requestProcessor();
+            getTable('notesTable', 'notesTable', '');
             getAllCharts(filterDict);
         });
     </script>

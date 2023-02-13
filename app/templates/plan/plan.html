@@ -107,11 +107,12 @@
         }
 
     </style>
-    <div id="tableDiv"></div>
+    <div id="Topline"></div>
     <script>
         function submitToplineForm(formContinue, tableName) {
             let formTopline = {};
             let topRowIdPrefix = 'topRowHeader' + tableName;
+            console.log(tableName)
             let topRowsName = document.getElementById(tableName + 'TableSlideCol').getAttribute('data-value');
             let rowName = document.getElementById(`${tableName}Table`).getAttribute('data-value');
             let topRowElems = document.querySelectorAll(`[id^="${topRowIdPrefix}"]`);
@@ -119,7 +120,7 @@
                 elem.click();
                 let curIdx = elem.id.replace(topRowIdPrefix, '');
                 formTopline[curIdx] = {topRowsName: {}, rowName: {}}
-                formTopline[curIdx][topRowsName] = Object.fromEntries(new FormData(document.querySelector(`[id^=${tableName}${topRowsName}${curIdx}]`)));
+                formTopline[curIdx][topRowsName] = $(`[id^=topRowForm${tableName}${curIdx}]`).serializeArray();
                 formTopline[curIdx][rowName] =  $(`[id^=form${tableName}]`).serializeArray();
                 elem.click();
             });
@@ -165,7 +166,7 @@
         });
 
         document.addEventListener("DOMContentLoaded", function() {
-            let tableName = 'tableDiv';
+            let tableName = 'Topline';
             let data = {
                 object_type: "{{ title }}",
                 object_name: "{{ object_name }}",

@@ -213,7 +213,7 @@ def get_topline():
         select_box=partner_name,
         form_cols=form_cols + [partner_name, partner_type_name],
         metric_cols=metric_cols, def_metric_cols=def_metric_cols,
-        header=phase_name, highlight_row=total_budget)
+        header=phase_name, highlight_row=total_budget, table_name='Topline')
     return jsonify({'data': lt.table_dict})
 
 
@@ -228,17 +228,22 @@ def save_topline():
     for phase_idx in data:
         phase = data[phase_idx]
         phase_data = phase['Phase']
-        phase_dict = {'name': phase_data['phaseSelect' + phase_idx],
-                      'total_budget': phase_data['total_budget' + phase_idx]}
-        phase_dict = utl.get_sd_ed_in_dict(
-            phase_dict, phase_data['dates' + phase_idx])
+        phase_dict = {}
+        for col in ['phaseSelect', 'total_budget', 'dates']:
+            col_name = '{}{}'.format(col, phase_idx)
+            new_data = [x['value'] for x in phase_data
+                        if x['name'] == col_name][0]
+            if col == 'dates':
+                phase_dict = utl.get_sd_ed_in_dict(phase_dict, new_data)
+            else:
+                phase_dict[col] = new_data
         phase_list.append(phase_dict)
     old_phase = PlanPhase.query.filter_by(plan_id=cur_plan.id).all()
     utl.sync_new_form_data_with_database(
         form_dict=phase_list, old_db_items=old_phase, db_model=PlanPhase,
-        relation_db_item=cur_plan)
+        relation_db_item=cur_plan, form_search_name='phaseSelect')
     for phase_idx in data:
-        phase_name = data[phase_idx]['Phase']['phaseSelect' + phase_idx]
+        phase_name = data[phase_idx]['Phase'][0]['value']
         cur_phase = PlanPhase.query.filter_by(name=phase_name,
                                               plan_id=cur_plan.id).first()
         partner_data = data[phase_idx]['partner']

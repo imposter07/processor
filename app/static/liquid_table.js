@@ -1,8 +1,82 @@
+function addNewRowModal(tableName) {
+    // Create the modal element
+    let loopIndex = addRow(null, tableName);
+    const modal = document.createElement("div");
+    modal.classList.add("modal", "fade");
+    modal.setAttribute("tabindex", "-1");
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("id", "addRowModal");
+
+    // Create the modal dialog
+    const modalDialog = document.createElement("div");
+    modalDialog.classList.add("modal-dialog");
+    modalDialog.setAttribute("role", "document");
+    modal.appendChild(modalDialog);
+
+    // Create the modal content
+    const modalContent = document.createElement("div");
+    modalContent.classList.add("modal-content");
+    modalDialog.appendChild(modalContent);
+
+    // Create the modal header
+    const modalHeader = document.createElement("div");
+    modalHeader.classList.add("modal-header");
+    modalContent.appendChild(modalHeader);
+
+    // Create the modal title
+    const modalTitle = document.createElement("h5");
+    modalTitle.classList.add("modal-title");
+    modalTitle.textContent = "Add Row";
+    modalHeader.appendChild(modalTitle);
+
+    // Create the modal body
+    const modalBody = document.createElement("div");
+    modalBody.classList.add("modal-body");
+    modalContent.appendChild(modalBody);
+
+    // Create the form
+    let form  = document.getElementById(`form${tableName}${loopIndex}`);
+    modalBody.appendChild(form);
+
+    // Create the modal footer
+    const modalFooter = document.createElement("div");
+    modalFooter.classList.add("modal-footer");
+    modalContent.appendChild(modalFooter);
+
+    // Create the save button
+    const saveButton = document.createElement("button");
+    saveButton.classList.add("btn", "btn-outline-success", "btn-block");
+    saveButton.textContent = "Save";
+    saveButton.addEventListener("click", function() {
+        let form  = document.getElementById(`form${tableName}${loopIndex}`);
+        let fh = document.getElementById(`${tableName}FormHolder${loopIndex}`);
+        fh.appendChild(form);
+        document.body.removeChild(modal);
+        document.querySelector(".modal-backdrop").remove();
+    });
+
+    modalFooter.appendChild(saveButton);
+
+    // Append the modal to the body
+    document.body.appendChild(modal);
+
+    // Display the modal
+    $("#addRowModal").modal("show");
+
+    // When the modal is closed, remove it from the body and return the form to its original location
+    $("#formModal").on("hidden.bs.modal", function() {
+        let form  = document.getElementById(`form${tableName}${loopIndex}`);
+        let fh = document.getElementById(`${tableName}FormHolder${loopIndex}`);
+        fh.appendChild(form);
+        document.body.removeChild(modal);
+    });
+}
+
 function createTableElements(tableName, rowsName,
                              topRowsName = '', tableTitle = '',
                              tableDescription = '', colToggle = '',
                              tableAccordion = '', specifyFormCols = '',
-                             rowOnClick = '') {
+                             rowOnClick = '', newModalBtn = '') {
     let collapseStr = (tableAccordion) ? 'collapse' : '';
     let title = (tableTitle) ? `
         <div class="card-header">
@@ -37,6 +111,16 @@ function createTableElements(tableName, rowsName,
             Add ${topRowsName}
         </button>
     ` : '';
+    let newModalBtnHtml = (newModalBtn)? `
+        <button id="addNewRowModal${tableName}"
+                class="btn btn-outline-success text-left"
+                type="button" href=""
+                onclick="addNewRowModal('${tableName}');">
+            <i class="fas fa-plus"
+               role="button"></i>
+            Add New Row
+        </button>
+    ` : '';
     let elem = document.getElementById(tableName);
     let elemToAdd = `
     <div class="card shadow outer text-center">
@@ -58,6 +142,7 @@ function createTableElements(tableName, rowsName,
                         <div class="btn-group">
                             ${topRowsBtnHtml}
                             ${colToggleBtnHtml}
+                            ${newModalBtnHtml}
                         </div>
                     </div>
                     <div class="col">
@@ -256,8 +341,10 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
         topRowElem = document.getElementById('topRowHeader' + tableName + topRowIndex);
         topRowElem.click();
     }
-    let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
-    fp.setDate([rowData.start_date, rowData.end_date]);
+    if ('start_date' in rowData) {
+        let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
+        fp.setDate([rowData.start_date, rowData.end_date]);
+    }
     let rowFormNames = getRowFormNames(tableName);
     rowFormNames.forEach((rowFormName) => {
         let colName = 'col' + rowFormName;
@@ -292,18 +379,20 @@ function deleteRow(loopIndex, tableName) {
 }
 
 function addRow(rowData = null, tableName) {
+    let loopIndex = '';
     if (rowData) {
         let rowName = document.getElementById(`${tableName}Table`).getAttribute('data-value');
-        let loopIndex = findInQuerySelectorAll(rowData[rowName.toLowerCase()], `row${rowName}`);
+        loopIndex = findInQuerySelectorAll(rowData[rowName.toLowerCase()], `row${rowName}`);
         if (!loopIndex) {
             loopIndex = addRowToTable(rowData, tableName);
         }
         addRowDetailsToForm(rowData, loopIndex, tableName);
     }
     else {
-        addRowToTable(rowData, tableName);
+        loopIndex = addRowToTable(rowData, tableName);
     }
     toggleMetrics(tableName);
+    return loopIndex;
 }
 
 function addRowsOnClick() {
@@ -808,11 +897,13 @@ function createLiquidTable(data, kwargs) {
     let specifyFormCols = existsInJson(tableData, 'specify_form_cols');
     let colDict = existsInJson(tableData, 'col_dict');
     let rowOnClick = existsInJson(tableData, 'row_on_click');
+    let newModalBtn = existsInJson(tableData, 'new_modal_button');
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
     createTableElements(tableName, rowsName, topRowsName, title,
-        description, colToggle, tableAccordion, specifyFormCols, rowOnClick);
+        description, colToggle, tableAccordion, specifyFormCols, rowOnClick,
+        newModalBtn);
     addTableColumns(tableCols, tableName);
     if (topRowsName) {
         addCurrentTopRows(tableTopRows, tableName);

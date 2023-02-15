@@ -118,3 +118,55 @@ function unanimateBar(barId = "progressBar"){
         d.className = d.className.replace( /(?:^|\s)progress-bar-animated(?!\S)/g , '' );
     }
 }
+
+function removeValues(arr1, arr2) {
+  return arr1.filter(function(value) {
+    return arr2.indexOf(value) === -1;
+  });
+}
+
+function checkIfExists(arr1, arr2) {
+  return arr2.some(function(value) {
+    return arr1.indexOf(value) !== -1;
+  });
+}
+
+
+
+function setDownloadBar(currentElement, textContent, pond = true) {
+    let oldDownload = document.getElementById('downloadProgressBaseClass');
+    if (oldDownload) {
+        oldDownload.remove();
+    }
+    $(
+        '<div id="downloadProgressBaseClass" class="progress">\n' +
+        '  <div id="downloadProgress" ' +
+               'class="progress-bar bg-success progress-bar-striped progress-bar-animated" ' +
+               'role="progressbar" ' +
+        'style="width: 1%" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100"></div>\n' +
+        '</div>').insertAfter(currentElement);
+    animateBar();
+    if (pond) {
+        $('<div class="form-group" style="height:96px">' +
+         '<input id="downloadBarPond" type="file"></div>)').insertAfter(currentElement);
+        const inputElement = document.querySelector('input[id="downloadBarPond"]');
+        let pondElem = FilePond.create(inputElement,
+            {files: [
+                {
+                    source: '12345',
+                    options: {
+                        type: 'local',
+                        file: {
+                            name: textContent + '.csv',
+                            type: 'text/csv'
+                        }
+                    }
+                }
+            ],
+            allowPaste: false,
+            credits: false
+            });
+        pondElem.instantUpload = false;
+        return pondElem
+    }
+}

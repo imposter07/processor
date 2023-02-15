@@ -263,6 +263,7 @@ class LiquidTable(object):
                  select_val_dict=None, select_box=None,
                  form_cols=None, metric_cols=None, def_metric_cols=None,
                  header=None, highlight_row=None, new_modal_button=False,
+
                  table_name='liquidTable'):
         self.col_list = col_list
         self.data = data

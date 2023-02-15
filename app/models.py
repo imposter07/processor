@@ -1125,6 +1125,8 @@ class Notes(db.Model):
     country = db.Column(db.Text)
     environment = db.Column(db.Text)
     kpi = db.Column(db.Text)
+    start_date = db.Column(db.Date, default=datetime.utcnow)
+    end_date = db.Column(db.Date, default=datetime.utcnow)
     posts = db.relationship('Post', backref='notes', lazy='dynamic')
 
     def get_form_dict(self):
@@ -1146,7 +1148,9 @@ class Notes(db.Model):
             'vendor': self.vendor,
             'country': self.country,
             'environment': self.environment,
-            'kpi': self.kpi
+            'kpi': self.kpi,
+            'start_date': self.start_date,
+            'end_date': self.end_date
         }
         return table_dict
 

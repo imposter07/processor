@@ -11,6 +11,7 @@ function turnOffProgress(downloadingProgress, oldHtml, clickElem) {
     let downloadElem = document.getElementById(downloadID);
     if (downloadElem) {
         downloadElem.style.width = '100%';
+        downloadElem.parentElement.remove();
     }
     unanimateBar(downloadID);
 }
@@ -162,23 +163,25 @@ function getTaskProgress(tableName, updateFunction = false, downloadingProgress,
                             vendorKey, fixId);
                     }
                 }
-                let downloadID = (clickElem.indexOf('request_table-') !== -1) ? '#downloadProgress' + clickElem : '#downloadProgress';
-                let downloadProgress = $(downloadID);
-                let newPercent = data['percent'];
-                if (downloadProgress) {
-                    let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
-                    if (newPercent > oldPercent) {
-                        if (updateFunction) {
-                            updateFunction(newPercent);
+                else {
+                    let downloadID = (clickElem.indexOf('request_table-') !== -1) ? '#downloadProgress' + clickElem : '#downloadProgress';
+                    let downloadProgress = $(downloadID);
+                    let newPercent = data['percent'];
+                    if (downloadProgress) {
+                        let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
+                        if (newPercent > oldPercent) {
+                            if (updateFunction) {
+                                updateFunction(newPercent);
+                            } else {
+                                downloadProgress.attr("style", "width: " + newPercent + "%")
+                            }
                         } else {
-                            downloadProgress.attr("style", "width: " + newPercent + "%")
-                        }
-                    } else {
-                        let percent = oldPercent + 2;
-                        if (updateFunction) {
-                            updateFunction(percent);
-                        } else {
-                            downloadProgress.attr("style", "width: " + percent + "%")
+                            let percent = oldPercent + 2;
+                            if (updateFunction) {
+                                updateFunction(percent);
+                            } else {
+                                downloadProgress.attr("style", "width: " + percent + "%")
+                            }
                         }
                     }
                 }

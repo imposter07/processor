@@ -180,8 +180,12 @@ function addDays(date, days) {
 
 function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell") {
     if (!dateRange) {
-        const fp = document.querySelector('#datePicker' + loopIndex)._flatpickr;
-        dateRange = fp.selectedDates;
+        const elem = document.querySelector('#datePicker' + loopIndex);
+        if (elem) {
+            dateRange = elem._flatpickr.selectedDates;
+        } else {
+            return false
+        }
     }
     let startDate = new Date(dateRange[0]);
     let endDate = new Date(dateRange[1]);
@@ -217,8 +221,28 @@ function getRowHtml(loopIndex, tableName) {
     return tableHeaders
 }
 
+function getDateForm(loopIndex) {
+    let dateForm = `
+        <div class="col form-group">
+            <label class="control-label" for="datePicker${loopIndex}">Dates</label>
+            <input id="datePicker${loopIndex}"
+                   class="custom-select custom-select-sm
+                                          flatpickr flatpickr-input active"
+                   type="text" placeholder="Date"
+                   data-id="range" name="dates${loopIndex}"
+                   readonly="readonly" data-input>
+        </div>`
+    return dateForm
+}
+
 function buildFormFromCols(loopIndex, formNames, tableName) {
     let fromFromCols = '';
+    let dateCols = ['start_date', 'end_date'];
+    let weekColsExist = document.querySelectorAll('*[id^="col20"]').length !== 0;
+    if ((checkIfExists(formNames, dateCols)) || (weekColsExist)) {
+        fromFromCols = getDateForm(loopIndex);
+        formNames = removeValues(formNames, dateCols);
+    }
     formNames.forEach((formName) => {
         let colName = 'col' + formName;
         let colType = document.getElementById(colName).dataset['type'];
@@ -277,7 +301,7 @@ function addRowToTable(rowData, tableName) {
     d1 = document.getElementById(bodyId);
     let formHolderName = tableName + 'FormHolder';
     let loopIndex = d1.querySelectorAll(`.${formHolderName}:last-child`);
-    loopIndex = (loopIndex.length != 0) ? (parseInt(loopIndex[loopIndex.length- 1].id.replace(formHolderName, '')) + 1).toString() : '0'
+    loopIndex = (loopIndex.length != 0) ? (parseInt(loopIndex[loopIndex.length- 1].id.replace(formHolderName, '')) + 1).toString() : '0';
     let tableHeadElems = getTableHeadElems(tableName);
     let tableHeaders = getRowHtml(loopIndex, tableName);
     let rowFormNames = getRowFormNames(tableName);
@@ -291,15 +315,6 @@ function addRowToTable(rowData, tableName) {
                 <div class="card-body">
                     <div class="${formHolderName}" id="${formHolderName}${loopIndex}" >
                         <form id="form${tableName}${loopIndex}"  class="row">
-                            <div class="col form-group">
-                                <label class="control-label" for="datePicker${loopIndex}">Dates</label>
-                                <input id="datePicker${loopIndex}"
-                                       class="custom-select custom-select-sm
-                                                              flatpickr flatpickr-input active"
-                                       type="text" placeholder="Date"
-                                       data-id="range" name="dates${loopIndex}"
-                                       readonly="readonly" data-input>
-                            </div>
                             <div class="col-4 form-group">
                                 <label class="control-label" for="deleteRow${loopIndex}">DELETE</label>
                                 <button id="deleteRow${loopIndex}" onclick="deleteRow(${loopIndex}, ${tableName});"
@@ -341,11 +356,12 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
         topRowElem = document.getElementById('topRowHeader' + tableName + topRowIndex);
         topRowElem.click();
     }
+    let rowFormNames = getRowFormNames(tableName);
     if ('start_date' in rowData) {
         let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
         fp.setDate([rowData.start_date, rowData.end_date]);
+        rowFormNames = removeValues(rowFormNames, ['start_date', 'end_date']);
     }
-    let rowFormNames = getRowFormNames(tableName);
     rowFormNames.forEach((rowFormName) => {
         let colName = 'col' + rowFormName;
         let colElem = document.getElementById(colName);
@@ -600,6 +616,7 @@ function addDatePicker() {
         let loopIndex = this.id.replace('datePicker', '');
         let shadeColor = loopIndex.replace('-', '')
         shadeDates(loopIndex, null, 'shadeCell' + shadeColor);
+
     });
 }
 

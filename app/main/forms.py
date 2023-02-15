@@ -456,6 +456,8 @@ class ProcessorNoteForm(FlaskForm):
     country = SelectField('Country')
     environment = SelectField('Environment')
     kpi = SelectField('KPI')
+    start_date = DateField('Start Date')
+    end_date = DateField('End Date')
     form_continue = HiddenField('form_continue')
 
     def set_vendor_key_choices(self, current_processor_id):

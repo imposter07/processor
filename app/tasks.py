@@ -5169,7 +5169,9 @@ def get_notes_table(user_id, running_user):
             df = df.rename(columns={col_name: col}).to_dict(orient='records')
             select_val_dict[col] = df
         form_cols = ['note_text', 'created_at', 'username', 'processor_name']
+        date_cols = ['start_date', 'end_date']
         form_cols += select_cols
+        form_cols += date_cols
         import datetime as dt
         seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
         df = Notes.query.filter(Notes.created_at > seven_days_ago).all()

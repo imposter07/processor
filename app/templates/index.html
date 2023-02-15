@@ -311,7 +311,10 @@
     }
 
     function getNotes() {
-        getTable('notesTable', 'notesTable', '');
+        let elem = document.getElementById('notesTable');
+        loadingBtn(elem, elem.style, elem.className);
+        setDownloadBar(elem, elem.textContent, false);
+        getTable(elem.id, elem.id, 'None');
     }
 
     function getSelectedDashboard() {

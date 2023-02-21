@@ -76,7 +76,8 @@ function createTableElements(tableName, rowsName,
                              topRowsName = '', tableTitle = '',
                              tableDescription = '', colToggle = '',
                              tableAccordion = '', specifyFormCols = '',
-                             rowOnClick = '', newModalBtn = '') {
+                             rowOnClick = '', newModalBtn = '',
+                             colFilter = '') {
     let collapseStr = (tableAccordion) ? 'collapse' : '';
     let title = (tableTitle) ? `
         <div class="card-header">
@@ -164,6 +165,7 @@ function createTableElements(tableName, rowsName,
                 </div>
                 <table id="${tableName}Table" data-value="${rowsName}" data-accordion="${collapseStr}"
                        data-specifyform="${specifyFormCols}" data-rowclick="${rowOnClick}"
+                       data-colfilter="${colFilter}"
                        class="table table-striped table-responsive-sm small"></table>
             </div>
         </div>
@@ -815,7 +817,7 @@ function generateDisplayColumnName(colName) {
 function addTableColumns(cols, name) {
     let tHeadName =  name + 'TableTHead';
     let table = document.getElementById(name + 'Table');
-    table.innerHTML += `<thead id ="${tHeadName}"><tr id="${name}TableHeader"></tr></thead>`;
+    table.innerHTML += `<thead id="${tHeadName}"><tr id="${name}TableHeader"></tr></thead>`;
     let thead = document.getElementById(name + 'TableHeader');
     let selectColsElem = document.getElementById('selectColumnsToggle' + name);
     if (selectColsElem) {
@@ -898,6 +900,122 @@ function convertColsToObject(cols) {
     });
 }
 
+function getColumnValues(columnIndex, rows) {
+    // Get an array of values for the given column index
+    let values = [];
+    rows.forEach(row => {
+        let cell = row.getElementsByTagName("td")[columnIndex];
+        let value = cell.textContent || cell.innerText;
+        if (!values.includes(value)) {
+            values.push(value);
+        }
+    })
+    return values;
+}
+
+function showFilterDialog() {
+    let tableId = this.dataset.tableId;
+    let colIdx = this.dataset.colIdx;
+    let filterDialogs = document.querySelectorAll(`[id^='colFilterBox${tableId}']`);
+    filterDialogs.forEach(elem => {
+       elem.style.display = 'none';
+    });
+    let dialogDisplay = document.getElementById(`colFilterBox${tableId}${colIdx}`);
+    dialogDisplay.style.display = '';
+}
+
+function filterTable() {
+    let tableId = this.dataset.tableid;
+    let table = document.getElementById(tableId);
+    let colIdx = this.dataset.colidx;
+    const searchValue = this.value.toLowerCase();
+    let col = table.rows[0].cells[colIdx];
+    let checkboxes = col.querySelectorAll('input[type="checkbox"]');
+    const selectedValues = new Set();
+    if (!checkboxes[0].checked) {
+        checkboxes.forEach(elem => {
+            if ((elem.dataset.curvalue !== 'Select All') && (elem.checked)) {
+                selectedValues.add(elem.dataset.curvalue);
+            }
+        })
+    }
+    let rows = table.querySelectorAll("tr:not([id*='Hidden']):not([id*='Header'])");
+    rows.forEach(row => {
+        let idx = row.id.replace('tr', '');
+        const cell = row.cells[colIdx];
+        const showRow =
+            cell.textContent.toLowerCase().includes(searchValue) &&
+            (selectedValues.size === 0 ||
+                selectedValues.has(cell.textContent));
+        row.style.display = showRow ? "" : "none";
+    })
+}
+
+function createTableFilter(tableId) {
+    const table = document.getElementById(tableId);
+
+    // Get the table rows
+    const rows = table.querySelectorAll("tr:not([id*='Hidden']):not([id*='Header'])");
+
+    const valuesByColumn = new Map();
+
+    // Extract unique values in each column
+    for (let j = 0; j < table.rows[0].cells.length; j++) {
+        const values = getColumnValues(j, rows)
+        valuesByColumn.set(j, values);
+    }
+
+    function createDialog(j, values) {
+        const headerCell = table.rows[0].cells[j];
+        const dialog = document.createElement("div");
+        dialog.classList.add("card", "shadow", "popover");
+        dialog.style.display = "none";
+        dialog.id = `colFilterBox${tableId}${j}`;
+        dialog.dataset.tableId = tableId;
+        dialog.dataset.colIdx = j;
+        headerCell.appendChild(dialog);
+
+        const input = document.createElement("input");
+        input.id = `colFilterBoxSearch${tableId}${j}`
+        input.type = "text";
+        input.placeholder = "Search...";
+        input.classList.add("form-control")
+        input.dataset.tableId = tableId;
+        input.dataset.colIdx = j;
+        dialog.appendChild(input);
+        addOnClickEvent('#' + input.id, filterTable, 'input');
+        dialog.appendChild(document.createElement("br"));
+        values.unshift("Select All");
+        values.forEach(function (value, i) {
+            let filterPrefix = 'colFilterSwitchItem'
+            let switchId = `${filterPrefix}${tableId}${j}${i}`;
+            let elemToAdd = `
+                <div class="custom-control custom-switch">
+                    <input data-tableid="${tableId}" data-colidx="${j}" data-curvalue="${value}"
+                         type="checkbox" checked class="custom-control-input" id="${switchId}">
+                    <label class="custom-control-label" for="${switchId}">${value}</label>
+                </div>
+            `
+            dialog.insertAdjacentHTML('beforeend', elemToAdd);
+            addOnClickEvent('#' + switchId, filterTable, 'change', false);
+        });
+
+        // Add the filter icon
+        const icon = document.createElement("i");
+        icon.classList.add("fa", "fa-filter");
+        icon.id = `colFilterIcon${tableId}${j}`
+        icon.dataset.tableId = tableId;
+        icon.dataset.colIdx = j;
+        headerCell.appendChild(icon);
+        addOnClickEvent('#' + icon.id, showFilterDialog, 'click');
+    }
+
+    for (let j = 0; j < table.rows[0].cells.length; j++) {
+        const values = valuesByColumn.get(j);
+        createDialog(j, values);
+    }
+}
+
 function createLiquidTable(data, kwargs) {
     let tableName = kwargs['tableName'];
     let tableData = data['data'];
@@ -915,12 +1033,13 @@ function createLiquidTable(data, kwargs) {
     let colDict = existsInJson(tableData, 'col_dict');
     let rowOnClick = existsInJson(tableData, 'row_on_click');
     let newModalBtn = existsInJson(tableData, 'new_modal_button');
+    let colFilter = existsInJson(tableData, 'col_filter');
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
     createTableElements(tableName, rowsName, topRowsName, title,
         description, colToggle, tableAccordion, specifyFormCols, rowOnClick,
-        newModalBtn);
+        newModalBtn, colFilter);
     addTableColumns(tableCols, tableName);
     if (topRowsName) {
         addCurrentTopRows(tableTopRows, tableName);
@@ -931,6 +1050,9 @@ function createLiquidTable(data, kwargs) {
     if (totalCards) {
         createTotalCards(tableName);
         populateTotalCards(tableName);
+    }
+    if (colFilter){
+        createTableFilter(tableName + 'Table')
     }
     addSelectize();
     addDatePicker();

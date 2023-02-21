@@ -5176,7 +5176,10 @@ def get_notes_table(user_id, running_user):
         seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
         df = Notes.query.filter(Notes.created_at > seven_days_ago).all()
         df = pd.DataFrame([x.get_table_dict() for x in df]).fillna('')
-        df = df[form_cols]
+        if df.empty:
+            df = pd.DataFrame(columns=form_cols)
+        else:
+            df = df[form_cols]
         lt = app_utl.LiquidTable(
             data=df.to_dict(orient='records'),
             col_list=df.columns.tolist(), table_name=name,

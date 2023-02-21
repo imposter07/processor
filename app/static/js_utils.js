@@ -50,35 +50,38 @@ function sortTable(bodyName, tableHeaderId) {
     const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
             v1 !== '' && v2 !== '' && !isNaN(v1.replace(/[$%]/g,'')) && !isNaN(v2.replace(/[$%]/g,'')) ? v1.replace(/[$%]/g,'') - v2.replace(/[$%]/g,'') : v1.toString().localeCompare(v2)
     )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
-    document.getElementById(tableHeaderId).innerHTML = document.getElementById(tableHeaderId).innerHTML;
-    document.querySelectorAll("th:not([id*='thHidden'])").forEach(th => th.addEventListener('click', (() => {
+    // document.getElementById(tableHeaderId).innerHTML = document.getElementById(tableHeaderId).innerHTML;
+    function sortTableEvent() {
         const table = document.getElementById(bodyName);
-        let sortArrow = th.getElementsByClassName('fas');
+        let sortArrow = this.getElementsByClassName('fas');
         if (sortArrow.length > 0) {
             let downArrow = sortArrow[0].classList.contains('fa-arrow-down');
             let arrowReplace = (downArrow) ? ['down', 'up'] : ['up', 'down'];
             sortArrow[0].className = sortArrow[0].className.replace(arrowReplace[0], arrowReplace[1]);
         } else {
-            th.innerHTML += `<i class="fas fa-arrow-down" href="#" role="button"></i>`;
+            this.insertAdjacentHTML('beforeend', `<i class="fas fa-arrow-down" href="#" role="button"></i>`);
         }
-        Array.from(table.querySelectorAll("[id*='tr']:not([id*='trHidden'])"))
-            .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
-            .forEach(function(tr) {
+        Array.from(table.querySelectorAll("tr:not([id*='Hidden']):not([id*='Header'])"))
+            .sort(comparer(Array.from(this.parentNode.children).indexOf(this), this.asc = !this.asc))
+            .forEach(function (tr) {
                 let loopIndex = tr.id.replace('tr', '');
                 let hiddenElem = document.getElementById('trHidden' + loopIndex);
                 hiddenElem.remove();
                 table.appendChild(tr);
                 table.appendChild(hiddenElem);
             });
-    })));
+    }
+    addOnClickEvent("th:not([id*='thHidden'])", sortTableEvent, 'click', false);
 }
 
-function addOnClickEvent(elemSelector, clickFunction, type = 'click') {
+function addOnClickEvent(elemSelector, clickFunction, type = 'click', preventDefault = true) {
     for (let elm of document.querySelectorAll(elemSelector)) {
         elm.removeEventListener(type, clickFunction);
-        elm.addEventListener(type, function(e) {
-            e.preventDefault();
-        });
+        if (preventDefault) {
+            elm.addEventListener(type, function (e) {
+                e.preventDefault();
+            });
+        }
         elm.addEventListener(type, clickFunction);
     }
 }

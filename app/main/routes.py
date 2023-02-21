@@ -2074,7 +2074,8 @@ def edit_processor_note(object_name):
             notification_day=form.notification_day.data,
             vendor=form.vendor.data, country=form.country.data,
             environment=form.environment.data,
-            kpi=form.kpi.data, created_at=datetime.utcnow()
+            kpi=form.kpi.data, created_at=datetime.utcnow(),
+            start_date=form.start_date.data, end_date=form.end_date.data
         )
         db.session.add(new_note)
         db.session.commit()

@@ -836,6 +836,7 @@ function addTableColumns(cols, name) {
         thead.innerHTML += `
             <th data-form="${formCol}" data-type="${col['type']}"
                 data-blank_highlight="${blankHighlight}" data-name="${colName}"
+                data-tableid="${name}Table"
                 id="col${colName}">${generateDisplayColumnName(colName)}
             </th>`;
         if (col['hidden']) {
@@ -913,40 +914,49 @@ function getColumnValues(columnIndex, rows) {
     return values;
 }
 
-function showFilterDialog() {
+function closeFilterDialog() {
     let tableId = this.dataset.tableId;
-    let colIdx = this.dataset.colIdx;
     let filterDialogs = document.querySelectorAll(`[id^='colFilterBox${tableId}']`);
     filterDialogs.forEach(elem => {
-       elem.style.display = 'none';
+        elem.style.display = 'none';
     });
+}
+
+function showFilterDialog() {
+    closeFilterDialog.call(this);
+    let tableId = this.dataset.tableId;
+    let colIdx = this.dataset.colIdx;
     let dialogDisplay = document.getElementById(`colFilterBox${tableId}${colIdx}`);
     dialogDisplay.style.display = '';
+    dialogDisplay.style.top = 'auto';
+    dialogDisplay.style.left = 'auto';
+    dialogDisplay.style.zIndex = 'auto';
 }
 
 function filterTable() {
     let tableId = this.dataset.tableid;
     let table = document.getElementById(tableId);
     let colIdx = this.dataset.colidx;
-    const searchValue = this.value.toLowerCase();
+    let searchValueId = `colFilterBoxSearch${tableId}${colIdx}`;
+    const searchValue = document.getElementById(searchValueId).value;
     let col = table.rows[0].cells[colIdx];
     let checkboxes = col.querySelectorAll('input[type="checkbox"]');
     const selectedValues = new Set();
-    if (!checkboxes[0].checked) {
-        checkboxes.forEach(elem => {
-            if ((elem.dataset.curvalue !== 'Select All') && (elem.checked)) {
-                selectedValues.add(elem.dataset.curvalue);
-            }
-        })
-    }
+    let isSelectAll = (this.dataset.curvalue === 'Select All');
+    checkboxes.forEach(elem => {
+        if (isSelectAll) {
+            elem.checked = (this.checked)
+        }
+        if ((elem.dataset.curvalue !== 'Select All') && (elem.checked)) {
+            selectedValues.add(elem.dataset.curvalue);
+        }
+    });
     let rows = table.querySelectorAll("tr:not([id*='Hidden']):not([id*='Header'])");
     rows.forEach(row => {
-        let idx = row.id.replace('tr', '');
         const cell = row.cells[colIdx];
         const showRow =
-            cell.textContent.toLowerCase().includes(searchValue) &&
-            (selectedValues.size === 0 ||
-                selectedValues.has(cell.textContent));
+            cell.textContent.toLowerCase().includes(searchValue.toLowerCase()) &&
+            selectedValues.has(cell.textContent);
         row.style.display = showRow ? "" : "none";
     })
 }
@@ -974,20 +984,29 @@ function createTableFilter(tableId) {
         dialog.dataset.tableId = tableId;
         dialog.dataset.colIdx = j;
         headerCell.appendChild(dialog);
-
+        const dialogHeader = document.createElement("div");
+        dialogHeader.classList.add("card-header");
+        dialogHeader.dataset.tableId = tableId;
+        dialogHeader.onclick = closeFilterDialog;
+        dialog.appendChild(dialogHeader);
+        const closeIcon = document.createElement("i");
+        closeIcon.classList.add("fa", "fa-filter");
+        closeIcon.onclick = closeFilterDialog;
+        closeIcon.dataset.tableId = tableId;
+        dialogHeader.appendChild(closeIcon);
         const input = document.createElement("input");
-        input.id = `colFilterBoxSearch${tableId}${j}`
+        input.id = `colFilterBoxSearch${tableId}${j}`;
         input.type = "text";
         input.placeholder = "Search...";
-        input.classList.add("form-control")
-        input.dataset.tableId = tableId;
-        input.dataset.colIdx = j;
+        input.classList.add("form-control");
+        input.dataset.tableid = tableId;
+        input.dataset.colidx = j;
         dialog.appendChild(input);
         addOnClickEvent('#' + input.id, filterTable, 'input');
         dialog.appendChild(document.createElement("br"));
         values.unshift("Select All");
         values.forEach(function (value, i) {
-            let filterPrefix = 'colFilterSwitchItem'
+            let filterPrefix = 'colFilterSwitchItem';
             let switchId = `${filterPrefix}${tableId}${j}${i}`;
             let elemToAdd = `
                 <div class="custom-control custom-switch">

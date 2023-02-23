@@ -73,10 +73,14 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
             createChangeDictOrder(data['data']['cols'], data['data']['data'],
                 newTableName, data['dict_cols'], data['relational_cols']);
         } else if (existsInJson(data['data'], 'liquid_table')) {
-            createLiquidTable(data, {'tableName': data['data']['name']});
-        }
-        else if (['screenshot', 'notesTable'].includes(tableName)) {
-            createLiquidTable(data, {'tableName': data['data']['name']});
+            let newTableName = data['data']['name'];
+            const modalName = 'modal-body-table';
+            if (newTableName === modalName) {
+                let modalTable = document.getElementById(modalName);
+                modalTable.innerHTML = "";
+                show_modal_table('modalTableButton');
+            }
+            createLiquidTable(data, {'tableName': newTableName});
         } else if (tableName === 'Pacing Table') {
             generatePacingTable(tableName, data['data']['data'], data['plan_cols'])
         } else if (tableName === 'Daily Pacing') {

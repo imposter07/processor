@@ -574,7 +574,11 @@ def get_data_tables(processor_id, current_user_id, parameter=None,
         else:
             parameter = []
         if parameter and not tables.empty:
-            tables = [tables.groupby(parameter)[metrics].sum()]
+            tables = tables.groupby(parameter)[metrics].sum()
+            tables = tables.reset_index()
+            tables = app_utl.LiquidTable(df=tables,
+                                         table_name='modal-body-table')
+            tables = [tables.table_dict]
         elif parameter and tables.empty:
             tables = [tables]
         else:
@@ -5121,8 +5125,10 @@ def get_screenshot_table(processor_id, current_user_id):
         columns = [i[0] for i in db_class.cursor.description]
         df = pd.DataFrame(data=data, columns=columns)
         df = df.fillna(0)
+        lt = app_utl.LiquidTable(df=df, table_name='screenshot',
+                                 row_on_click='getScreenshotImage')
         _set_task_progress(100)
-        return [df]
+        return [lt.table_dict]
     except:
         _set_task_progress(100)
         msg = 'Unhandled exception - Processor {} User {}'.format(

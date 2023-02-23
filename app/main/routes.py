@@ -991,16 +991,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
     else:
         to_html = True
         cols_to_json = True
-        if table_name in ['modalTableOutputData', 'modalTablescreenshot']:
-            to_html = False
-            cols_to_json = False
-            if table_name == 'modalTableOutputData':
-                table_name = 'modal-body-table'
-            else:
-                table_name = table_name.replace('modalTable', '')
         data = df_to_html(df, table_name, job_name, to_html, cols_to_json)
-        if table_name == 'screenshot':
-            data['data']['row_on_click'] = 'getScreenshotImage'
         if job_name == '.get_change_dict_order':
             data['dict_cols'] = json.dumps(job.result[1])
             data['relational_cols'] = json.dumps(job.result[2])

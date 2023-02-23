@@ -257,13 +257,14 @@ def remove_special_characters(string):
 class LiquidTable(object):
     id_col = 'liquid_table'
 
-    def __init__(self, col_list, data=None, top_rows=None,
+    def __init__(self, col_list=None, data=None, top_rows=None,
                  totals=False, title='', description='', columns_toggle=False,
-                 accordion=False, specify_form_cols=False, col_dict=True,
+                 accordion=False, specify_form_cols=True, col_dict=True,
                  select_val_dict=None, select_box=None,
                  form_cols=None, metric_cols=None, def_metric_cols=None,
                  header=None, highlight_row=None, new_modal_button=False,
-                 col_filter=True, table_name='liquidTable'):
+                 col_filter=True, df=pd.DataFrame(), row_on_click='',
+                 table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -284,6 +285,11 @@ class LiquidTable(object):
         self.table_name = table_name
         self.new_modal_button = new_modal_button
         self.col_filter = col_filter
+        self.row_on_click = row_on_click
+        self.df = df
+        self.build_from_df()
+        self.form_cols = self.check_form_cols(
+            self.form_cols, self.specify_form_cols, self.col_list)
         self.rows_name = None
         self.top_rows_name = None
         self.liquid_table = True
@@ -295,7 +301,18 @@ class LiquidTable(object):
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
             self.specify_form_cols, self.col_dict, self.table_name,
-            self.new_modal_button, self.col_filter)
+            self.new_modal_button, self.col_filter, self.row_on_click)
+
+    def build_from_df(self):
+        if not self.df.empty:
+            self.data = self.df.to_dict(orient='records')
+            self.col_list = self.df.columns.tolist()
+
+    @staticmethod
+    def check_form_cols(form_cols, specify_form_cols, col_list):
+        if specify_form_cols and not form_cols:
+            form_cols = col_list
+        return form_cols
 
     def make_columns(self, col_list, select_val_dict, select_box, form_cols,
                      metric_cols, def_metric_cols, header, highlight_row):
@@ -325,7 +342,7 @@ class LiquidTable(object):
 
     def make_table_dict(self, cols, data, top_rows, totals, title, description,
                         columns_toggle, accordion, specify_form_cols, col_dict,
-                        table_name, new_modal_button, col_filter):
+                        table_name, new_modal_button, col_filter, row_on_click):
         table_dict = {
             'data': data, 'rows_name': self.rows_name, 'cols': cols,
             'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
@@ -334,7 +351,8 @@ class LiquidTable(object):
             'specify_form_cols': specify_form_cols,
             'col_dict': col_dict, 'name': table_name,
             self.id_col: self.liquid_table,
-            'new_modal_button': new_modal_button, 'col_filter': col_filter}
+            'new_modal_button': new_modal_button, 'col_filter': col_filter,
+            'row_on_click': row_on_click}
         return table_dict
 
 

@@ -228,7 +228,7 @@ def run_processor(processor_id, current_user_id, run_args):
             update_automatic_requests(processor_id, current_user_id)
         if 'exp' in run_args:
             for col in ['vendorname', 'countryname', 'kpiname',
-                        'environmentname', 'productname', 'eventdate'
+                        'environmentname', 'productname', 'eventdate',
                         'campaignname']:
                 app.logger.info('Getting db col: {}'.format(col))
                 filter_dict = []

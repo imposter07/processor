@@ -1210,23 +1210,11 @@
         }
 
         function getDatasourceTable(){
-            $.ajax({
-                type: "POST",
-                url: "/get_datasource_table",
-                data: {
-                    object_name: "{{ object_name }}",
-                    object_type:  "{{ title }}",
-                    object_level: "{{ edit_name }}",
-                },
-            }).done(function(data, status) {
-                appendRows();
-                appendCardAsTable(data['data'], "dsCardCol",
-                    "#rowOne", 'DATA SOURCE TABLE');
-            }).fail(function(jqXHR, textStatus ) {
-
-            }).always(function(){
-
-            });
+            appendRows();
+            let elem = document.getElementById('rowOne');
+            loadingBtn(elem);
+            setDownloadBar(elem, elem.textContent, false);
+            getTable('datasource_table', elem.id, 'None');
         }
 
         function getAutoNote(noteName='Topline', subNoteName='Total'){

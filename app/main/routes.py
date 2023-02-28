@@ -841,7 +841,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'screenshotImage': '.get_screenshot_image',
                  'notesTable': '.get_notes_table',
                  'Pacing Table': '.get_processor_pacing_metrics',
-                 'Daily Pacing': '.get_daily_pacing'}
+                 'Daily Pacing': '.get_daily_pacing',
+                 'datasource_table': '.get_processor_data_source_table'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -1159,61 +1160,6 @@ def save_datasource():
     task.wait_and_get_job(loops=20)
     return jsonify({'message': 'This data source {} was saved!'.format(
         datasource_name), 'level': 'success'})
-
-
-@bp.route('/get_datasource_table', methods=['GET', 'POST'])
-@login_required
-def get_datasource_table():
-    obj_name = request.form['object_name']
-    cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
-    import processor.reporting.analyze as az
-    analysis = ProcessorAnalysis.query.filter_by(
-        processor_id=cur_proc.id, key=az.Analyze.raw_columns).first()
-    if analysis and analysis.data:
-        df = pd.DataFrame(analysis.data)
-    else:
-        df = pd.DataFrame(columns=['Vendor Key'])
-    analysis = ProcessorAnalysis.query.filter_by(
-        processor_id=cur_proc.id, key=az.Analyze.raw_file_update_col).first()
-    if analysis and analysis.data:
-        tdf = pd.DataFrame(analysis.data)
-    else:
-        tdf = pd.DataFrame(columns=['source'])
-    if df.empty:
-        df = pd.merge(tdf, df, how='outer', left_on='source',
-                      right_on='Vendor Key')
-        df = df.drop(['Vendor Key'], axis=1)
-        df = df.rename(columns={'source': 'Vendor Key'})
-    else:
-        df = pd.merge(df, tdf, how='outer', left_on='Vendor Key',
-                      right_on='source')
-        df = df.drop(['source'], axis=1)
-    analysis = ProcessorAnalysis.query.filter_by(
-        processor_id=cur_proc.id, key=az.Analyze.unknown_col).first()
-    if analysis and analysis.data:
-        tdf = pd.DataFrame(analysis.data)
-        tdf['Vendor Key'] = tdf['Vendor Key'].str.strip("'")
-        cols = [x for x in tdf.columns if x != 'Vendor Key']
-        col = 'Undefined Plan Net'
-        tdf[col] = tdf[cols].values.tolist()
-        tdf[col] = tdf[col].str.join('_')
-        tdf = tdf.drop(cols, axis=1)
-        tdf = tdf.groupby(['Vendor Key'], as_index=False).agg(
-            {col: '|'.join})
-    else:
-        tdf = pd.DataFrame(columns=['Vendor Key'])
-    df = pd.merge(df, tdf, how='outer', left_on='Vendor Key',
-                  right_on='Vendor Key')
-    analysis = ProcessorAnalysis.query.filter_by(
-        processor_id=cur_proc.id, key=az.Analyze.vk_metrics).first()
-    if analysis and analysis.data:
-        tdf = pd.DataFrame(analysis.data)
-    else:
-        tdf = pd.DataFrame(columns=['Vendor Key'])
-    df = pd.merge(df, tdf, how='outer', left_on='Vendor Key',
-                  right_on='Vendor Key')
-    table_data = df_to_html(df, 'datasource_table')
-    return jsonify({'data': table_data})
 
 
 def get_datasource_raw_columns(obj_name, datasource_name):

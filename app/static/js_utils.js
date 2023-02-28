@@ -103,7 +103,10 @@ function existsInJson(jsonData, jsonKey) {
 
 function addElemRemoveLoadingBtn(elemId) {
     if (elemId) {
-        document.getElementById('loadingBtn').remove();
+        let loadingElem = document.getElementById('loadingBtn');
+        if (loadingElem) {
+            loadingElem.remove();
+        }
         let elem = document.getElementById(elemId);
         elem.style.display = '';
     }

@@ -305,6 +305,7 @@ class LiquidTable(object):
 
     def build_from_df(self):
         if not self.df.empty:
+            self.df = self.df.fillna('None')
             self.data = self.df.to_dict(orient='records')
             self.col_list = self.df.columns.tolist()
 

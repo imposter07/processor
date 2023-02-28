@@ -5200,3 +5200,68 @@ def get_notes_table(user_id, running_user):
         msg = 'Unhandled exception - User {}'.format(user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_processor_data_source_table(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_proc = Processor.query.get(processor_id)
+        import processor.reporting.analyze as az
+        import processor.reporting.vmcolumns as vmc
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.raw_columns).first()
+        if analysis and analysis.data:
+            df = pd.DataFrame(analysis.data)
+        else:
+            df = pd.DataFrame(columns=[vmc.vendorkey])
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id,
+            key=az.Analyze.raw_file_update_col).first()
+        source_col = 'source'
+        if analysis and analysis.data:
+            tdf = pd.DataFrame(analysis.data)
+        else:
+            tdf = pd.DataFrame(columns=[source_col])
+        if df.empty:
+            df = pd.merge(tdf, df, how='outer', left_on=source_col,
+                          right_on=vmc.vendorkey)
+            df = df.drop([vmc.vendorkey], axis=1)
+            df = df.rename(columns={'source': vmc.vendorkey})
+        else:
+            df = pd.merge(df, tdf, how='outer', left_on=vmc.vendorkey,
+                          right_on=source_col)
+            df = df.drop([source_col], axis=1)
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.unknown_col).first()
+        if analysis and analysis.data:
+            tdf = pd.DataFrame(analysis.data)
+            tdf[vmc.vendorkey] = tdf[vmc.vendorkey].str.strip("'")
+            cols = [x for x in tdf.columns if x != vmc.vendorkey]
+            col = 'Undefined Plan Net'
+            tdf[col] = tdf[cols].values.tolist()
+            tdf[col] = tdf[col].str.join('_')
+            tdf = tdf.drop(cols, axis=1)
+            tdf = tdf.groupby([vmc.vendorkey], as_index=False).agg(
+                {col: '|'.join})
+        else:
+            tdf = pd.DataFrame(columns=[vmc.vendorkey])
+        df = pd.merge(df, tdf, how='outer', left_on=vmc.vendorkey,
+                      right_on=vmc.vendorkey)
+        analysis = ProcessorAnalysis.query.filter_by(
+            processor_id=cur_proc.id, key=az.Analyze.vk_metrics).first()
+        if analysis and analysis.data:
+            tdf = pd.DataFrame(analysis.data)
+        else:
+            tdf = pd.DataFrame(columns=[vmc.vendorkey])
+        df = pd.merge(df, tdf, how='outer', left_on=vmc.vendorkey,
+                      right_on=vmc.vendorkey)
+        lt = app_utl.LiquidTable(df=df, table_name='rowOne')
+        lt = lt.table_dict
+        _set_task_progress(100)
+        return [lt]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

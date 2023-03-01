@@ -239,6 +239,7 @@ def run_processor(processor_id, current_user_id, run_args):
                     today = today.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
                     thirty = thirty.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
                     filter_dict = [{'eventdate': [thirty, today]}]
+                os.chdir(cur_path)
                 get_data_tables_from_db(
                     processor_id, current_user_id, dimensions=[col],
                     metrics=['kpi'], filter_dict=filter_dict)

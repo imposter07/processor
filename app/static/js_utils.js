@@ -88,9 +88,10 @@ function addOnClickEvent(elemSelector, clickFunction, type = 'click', preventDef
 }
 
 function loadingBtn(elem, currentStyle = '', btnClass="btn btn-primary btn-block") {
+    let loadingBtnId = 'loadingBtn' + elem.id;
     elem.style.display = 'none';
     elem.insertAdjacentHTML('beforebegin', `
-        <button id="loadingBtn" class="${btnClass}"
+        <button id="${loadingBtnId}" class="${btnClass}"
             style="${currentStyle}" type="button" disabled>
           <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
           Loading...
@@ -103,7 +104,8 @@ function existsInJson(jsonData, jsonKey) {
 
 function addElemRemoveLoadingBtn(elemId) {
     if (elemId) {
-        let loadingElem = document.getElementById('loadingBtn');
+        let loadingBtnId = 'loadingBtn' + elemId;
+        let loadingElem = document.getElementById(loadingBtnId);
         if (loadingElem) {
             loadingElem.remove();
         }
@@ -138,25 +140,33 @@ function checkIfExists(arr1, arr2) {
   });
 }
 
-
-
 function setDownloadBar(currentElement, textContent, pond = true) {
-    let oldDownload = document.getElementById('downloadProgressBaseClass');
+    let dlProgStr = 'downloadProgress';
+    let dlProgBaseId = dlProgStr + 'BaseClass' + currentElement.id;
+    let dlProgId = dlProgStr + currentElement.id;
+    let oldDownload = document.getElementById(dlProgBaseId);
     if (oldDownload) {
         oldDownload.remove();
     }
-    $(
-        '<div id="downloadProgressBaseClass" class="progress">\n' +
-        '  <div id="downloadProgress" ' +
-               'class="progress-bar bg-success progress-bar-striped progress-bar-animated" ' +
-               'role="progressbar" ' +
-        'style="width: 1%" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100"></div>\n' +
-        '</div>').insertAfter(currentElement);
+    let elemToAdd = `
+        <div id="${dlProgBaseId}" class="progress">
+            <div id="${dlProgId}"
+                 class="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                 role="progressbar"
+                 style="width: 1%" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100">
+            </div>
+        </div>`
+    currentElement.insertAdjacentHTML('afterend', elemToAdd);
     animateBar();
     if (pond) {
-        $('<div class="form-group" style="height:96px">' +
-         '<input id="downloadBarPond" type="file"></div>)').insertAfter(currentElement);
-        const inputElement = document.querySelector('input[id="downloadBarPond"]');
+        let dlPondId = 'downloadBarPond' + currentElement.id;
+        let pondElemToAdd = `
+            <div class="form-group" style="height:96px">
+                <input id="${dlPondId}" type="file">
+            </div>
+        `
+        currentElement.insertAdjacentHTML('afterend', pondElemToAdd);
+        const inputElement = document.querySelector(`input[id="${dlPondId}"]`);
         let pondElem = FilePond.create(inputElement,
             {files: [
                 {

@@ -227,9 +227,10 @@ def run_processor(processor_id, current_user_id, run_args):
             os.chdir(cur_path)
             update_automatic_requests(processor_id, current_user_id)
         if 'exp' in run_args:
-            for col in ['vendorname', 'countryname', 'kpiname',
+            dim_list = ['vendorname', 'countryname', 'kpiname',
                         'environmentname', 'productname', 'eventdate',
-                        'campaignname']:
+                        'campaignname']
+            for col in dim_list:
                 app.logger.info('Getting db col: {}'.format(col))
                 filter_dict = []
                 if processor_id == 23:
@@ -243,6 +244,7 @@ def run_processor(processor_id, current_user_id, run_args):
                 get_data_tables_from_db(
                     processor_id, current_user_id, dimensions=[col],
                     metrics=['kpi'], filter_dict=filter_dict)
+                update_all_notes_table(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(proc=processor_to_run, usr=user_that_ran,
                                text=msg_text, run_complete=True)
@@ -5199,6 +5201,60 @@ def get_notes_table(user_id, running_user):
     except:
         _set_task_progress(100)
         msg = 'Unhandled exception - User {}'.format(user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_single_notes_table(processor_id, current_user_id, vk=None):
+    try:
+        _set_task_progress(0)
+        cur_proc = Processor.query.get(processor_id)
+        cur_note = cur_proc.notes.filter_by(id=int(vk)).first()
+        table_name = 'singleNoteTable{}'.format(vk)
+        df = pd.read_json(cur_note.data)
+        lt = app_utl.LiquidTable(df=df, table_name=table_name)
+        lt = lt.table_dict
+        _set_task_progress(100)
+        return [lt]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Processor {} User {} VK {}'.format(
+            processor_id, current_user_id, vk)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def update_all_notes_table(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_proc = Processor.query.get(processor_id)
+        dimensions = ['dimensions']
+        date_cols = ['start_date', 'end_date']
+        dim_cols = ['vendor', 'kpi', 'country', 'environment']
+        cols = dimensions + date_cols + dim_cols
+        for n in cur_proc.notes:
+            note_dict = {k: v for k, v in n.to_dict().items() if k in cols}
+            if any(note_dict.values()):
+                f_dict = {k + 'name': [v] for k, v in note_dict.items()
+                          if k in dim_cols and v}
+                dimensions = [x for x in f_dict.keys()]
+                if any([n.start_date, n.end_date]):
+                    import datetime as dt
+                    str_format = '%Y-%m-%dT%H:%M:%S.%fZ'
+                    sd = n.start_date.strftime(str_format)
+                    ed = n.end_date.strftime(str_format)
+                    f_dict['eventdate'] = [sd, ed]
+                f_dict = [{k: v} for k, v in f_dict.items()]
+                df = get_data_tables_from_db(
+                    processor_id, current_user_id, dimensions=dimensions,
+                    metrics=['kpi'], filter_dict=f_dict)[0]
+                n.data = df.to_json(orient='records')
+                db.session.commit()
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 

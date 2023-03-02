@@ -842,7 +842,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'notesTable': '.get_notes_table',
                  'Pacing Table': '.get_processor_pacing_metrics',
                  'Daily Pacing': '.get_daily_pacing',
-                 'datasource_table': '.get_processor_data_source_table'}
+                 'datasource_table': '.get_processor_data_source_table',
+                 'singleNoteTable': '.get_single_notes_table'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -2005,6 +2006,7 @@ def edit_processor_note(object_name):
     form = ProcessorNoteForm()
     kwargs['form'] = form
     if request.method == 'POST':
+        print(form.start_date.data)
         new_note = Notes(
             processor_id=cur_proc.id, user_id=current_user.id,
             note_text=form.note_text.data, notification=form.notification.data,
@@ -2012,8 +2014,8 @@ def edit_processor_note(object_name):
             vendor=form.vendor.data, country=form.country.data,
             environment=form.environment.data,
             kpi=form.kpi.data, created_at=datetime.utcnow(),
-            start_date=form.start_date.data, end_date=form.end_date.data
-        )
+            start_date=form.start_date.data, end_date=form.end_date.data,
+            dimensions=form.dimensions.data)
         db.session.add(new_note)
         db.session.commit()
         creation_text = "Processor {} note {} was created".format(

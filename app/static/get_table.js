@@ -7,7 +7,7 @@ function turnOffProgress(downloadingProgress, oldHtml, clickElem) {
     unanimateBar();
     clearInterval(downloadingProgress);
     downloadingProgress = null;
-    let downloadID = (clickElem.indexOf('request_table-') !== -1) ? 'downloadProgress' + clickElem : 'downloadProgress';
+    let downloadID = 'downloadProgress' + clickElem;
     let downloadElem = document.getElementById(downloadID);
     if (downloadElem) {
         downloadElem.style.width = '100%';
@@ -36,7 +36,10 @@ function downloadTableResponse(tableName, pond, vendorKey, data) {
             image.classList.add('col');
             let elem = document.getElementById('screenshotImage');
             elem.appendChild(image);
-            document.getElementById('downloadProgressBaseClass').remove();
+            let dlBars = document.querySelectorAll(`[id^="downloadProgressBaseClass"]`);
+            dlBars.forEach(elem => {
+                elem.remove();
+            });
         } else {
             pond.addFile(blob);
             let jinjaValues = document.getElementById('jinjaValues').dataset;
@@ -44,8 +47,10 @@ function downloadTableResponse(tableName, pond, vendorKey, data) {
             link.href = window.URL.createObjectURL(blob);
             link.download = jinjaValues['title']  + "_" + jinjaValues['object_name'] + "_" + tableName + "_" + vendorKey + extension;
             link.click();
-            let elem = document.getElementById('downloadBarPond');
-            elem.parentElement.remove();
+            let dlBars = document.querySelectorAll(`[id^="downloadBarPond"]`);
+            dlBars.forEach(elem => {
+                elem.parentElement.remove();
+            });
         }
     })
 }
@@ -168,23 +173,23 @@ function getTaskProgress(tableName, updateFunction = false, downloadingProgress,
                     }
                 }
                 else {
-                    let downloadID = (clickElem.indexOf('request_table-') !== -1) ? '#downloadProgress' + clickElem : '#downloadProgress';
-                    let downloadProgress = $(downloadID);
+                    let downloadID = 'downloadProgress' + clickElem;
+                    let downloadProgress = document.getElementById(downloadID);
                     let newPercent = data['percent'];
                     if (downloadProgress) {
-                        let oldPercent = parseInt(downloadProgress.attr("style").match(/\d+/)[0]);
+                        let oldPercent = parseInt(downloadProgress.getAttribute("style").match(/\d+/)[0]);
                         if (newPercent > oldPercent) {
                             if (updateFunction) {
                                 updateFunction(newPercent);
                             } else {
-                                downloadProgress.attr("style", "width: " + newPercent + "%")
+                                downloadProgress.setAttribute("style", "width: " + newPercent + "%")
                             }
                         } else {
                             let percent = oldPercent + 2;
                             if (updateFunction) {
                                 updateFunction(percent);
                             } else {
-                                downloadProgress.attr("style", "width: " + percent + "%")
+                                downloadProgress.setAttribute("style", "width: " + percent + "%")
                             }
                         }
                     }
@@ -222,7 +227,8 @@ function getTableError(error, kwargs) {
     let downloadingProgress = kwargs['downloadingProgress'];
     let oldHtml = kwargs['oldHtml'];
     let clickElem = kwargs['clickElem'];
-    let downloadProgress = document.getElementById('downloadProgress');
+    let dlId = 'downloadProgress' + clickElem;
+    let downloadProgress = document.getElementById(dlId);
     downloadProgress.style.width = '100%';
     // window.location.reload(true);
     if (forceReturn) {

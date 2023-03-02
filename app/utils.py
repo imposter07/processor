@@ -318,27 +318,28 @@ class LiquidTable(object):
     def make_columns(self, col_list, select_val_dict, select_box, form_cols,
                      metric_cols, def_metric_cols, header, highlight_row):
         cols = []
-        for x in col_list:
-            cur_col = LiquidTableColumn(name=x)
-            if select_val_dict and x in select_val_dict:
-                cur_col.make_select()
-                cur_col.values = select_val_dict[x]
-            if select_box and x == select_box:
-                cur_col.add_select_box = True
-                self.rows_name = x
-            if form_cols and x in form_cols:
-                cur_col.form = True
-            if metric_cols and x in metric_cols:
-                cur_col.type = 'metrics'
-                if def_metric_cols and x in def_metric_cols:
-                    cur_col.type = 'default_metrics'
-            if header and x == header:
-                cur_col.make_header()
-                self.top_rows_name = x
-            if highlight_row and x == highlight_row:
-                cur_col.blank_highlight = True
-            cur_col.update_dict()
-            cols.append(cur_col.col_dict)
+        if col_list:
+            for x in col_list:
+                cur_col = LiquidTableColumn(name=x)
+                if select_val_dict and x in select_val_dict:
+                    cur_col.make_select()
+                    cur_col.values = select_val_dict[x]
+                if select_box and x == select_box:
+                    cur_col.add_select_box = True
+                    self.rows_name = x
+                if form_cols and x in form_cols:
+                    cur_col.form = True
+                if metric_cols and x in metric_cols:
+                    cur_col.type = 'metrics'
+                    if def_metric_cols and x in def_metric_cols:
+                        cur_col.type = 'default_metrics'
+                if header and x == header:
+                    cur_col.make_header()
+                    self.top_rows_name = x
+                if highlight_row and x == highlight_row:
+                    cur_col.blank_highlight = True
+                cur_col.update_dict()
+                cols.append(cur_col.col_dict)
         return cols
 
     def make_table_dict(self, cols, data, top_rows, totals, title, description,

@@ -1263,6 +1263,16 @@
             });
         }
 
+        function getNotesTables() {
+            const notesTableStr = 'singleNoteTable';
+            let notesElems = document.querySelectorAll(`*[id^="${notesTableStr}"]`);
+            notesElems.forEach(elem => {
+                loadingBtn(elem);
+                setDownloadBar(elem, elem.textContent, false);
+                getTable(notesTableStr, elem.id, 'None', elem.id.replace(notesTableStr, ''));
+            });
+        }
+
         function addMessageButtons(message, buttons) {
             $('#rowZero').append(
                 '<div class="col">' +
@@ -1428,18 +1438,20 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             loadJS();
-            if ("{{ edit_name }}" === "Clean") {
+            if ("{{ edit_name }}" === 'Clean') {
                 getDatasourceTable();
-            } else if ("{{ edit_name }}" === "Automatic Notes") {
+            } else if ("{{ edit_name }}" === 'Automatic Notes') {
                 getAutoNote();
-            } else if ("{{ edit_name }}" === "Plan") {
+            } else if ("{{ edit_name }}" === 'Plan') {
                 getPlan();
             } else if ("{{ edit_name }}" === 'Import') {
                 removeSpecialChars();
             } else if ("{{ edit_name }}" === 'Accounts') {
                 removeSpecialChars();
+            } else if ("{{ edit_name }}" === 'All Notes') {
+                getNotesTables();
             }
-            if ("{{ title }}" === "Uploader") {
+            if ("{{ title }}" === 'Uploader') {
                 checkDuplicationType();
             }
         });

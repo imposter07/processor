@@ -1127,6 +1127,8 @@ class Notes(db.Model):
     kpi = db.Column(db.Text)
     start_date = db.Column(db.Date, default=datetime.utcnow)
     end_date = db.Column(db.Date, default=datetime.utcnow)
+    dimensions = db.Column(db.Text)
+    data = db.Column(db.JSON)
     posts = db.relationship('Post', backref='notes', lazy='dynamic')
 
     def get_form_dict(self):
@@ -1154,11 +1156,13 @@ class Notes(db.Model):
         }
         return table_dict
 
-    def to_dict(self):
+    def to_dict(self, include_data=True):
+        cols_exclude = ['created_at', 'fixed_time', 'complete', 'processor']
+        if not include_data:
+            cols_exclude += ['data']
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                      if not k.startswith("_") and 'id' not in k
-                     and k not in ['created_at', 'fixed_time', 'complete',
-                                   'processor']])
+                     and k not in cols_exclude])
 
     def get_last_post(self):
         return self.posts.order_by(Post.timestamp.desc()).first()

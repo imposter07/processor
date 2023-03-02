@@ -18,6 +18,33 @@ th {
     cursor: pointer;
 }
 
+table {width: 100%;}
+
+tr > td:hover {
+    overflow: visible;
+    white-space: unset;
+}
+
+td
+{
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fa-filter {
+  visibility: hidden;
+}
+
+th:hover .fa-filter {
+  visibility: visible;
+}
+
+.popover {
+    z-index: 1000 !important;
+}
+
 tr:hover {
     background-color: lightsteelblue !important;
 }

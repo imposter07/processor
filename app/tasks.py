@@ -201,6 +201,36 @@ def processor_failed_email(processor_id, current_user_id, exception_text):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+def update_cached_data_in_processor_run(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        dim_list = ['vendorname', 'countryname', 'kpiname',
+                    'environmentname', 'productname', 'eventdate',
+                    'campaignname']
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        for col in dim_list:
+            app.logger.info('Getting db col: {}'.format(col))
+            filter_dict = []
+            if processor_id == 23:
+                import datetime as dt
+                today = dt.datetime.today()
+                thirty = today - dt.timedelta(days=30)
+                today = today.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                thirty = thirty.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                filter_dict = [{'eventdate': [thirty, today]}]
+            os.chdir(cur_path)
+            get_data_tables_from_db(
+                processor_id, current_user_id, dimensions=[col],
+                metrics=['kpi'], filter_dict=filter_dict, use_cache=False)
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def run_processor(processor_id, current_user_id, run_args):
     try:
         processor_to_run, user_that_ran = get_processor_and_user_from_id(
@@ -227,24 +257,9 @@ def run_processor(processor_id, current_user_id, run_args):
             os.chdir(cur_path)
             update_automatic_requests(processor_id, current_user_id)
         if 'exp' in run_args:
-            dim_list = ['vendorname', 'countryname', 'kpiname',
-                        'environmentname', 'productname', 'eventdate',
-                        'campaignname']
-            for col in dim_list:
-                app.logger.info('Getting db col: {}'.format(col))
-                filter_dict = []
-                if processor_id == 23:
-                    import datetime as dt
-                    today = dt.datetime.today()
-                    thirty = today - dt.timedelta(days=30)
-                    today = today.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-                    thirty = thirty.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-                    filter_dict = [{'eventdate': [thirty, today]}]
-                os.chdir(cur_path)
-                get_data_tables_from_db(
-                    processor_id, current_user_id, dimensions=[col],
-                    metrics=['kpi'], filter_dict=filter_dict)
-                update_all_notes_table(processor_id, current_user_id)
+            os.chdir(cur_path)
+            update_cached_data_in_processor_run(processor_id, current_user_id)
+            update_all_notes_table(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(proc=processor_to_run, usr=user_that_ran,
                                text=msg_text, run_complete=True)
@@ -3471,7 +3486,8 @@ def get_processor_total_metrics(processor_id, current_user_id,
 
 
 def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
-                            dimensions=None, metrics=None, filter_dict=None):
+                            dimensions=None, metrics=None, filter_dict=None,
+                            use_cache=True):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
@@ -3493,10 +3509,11 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         os.chdir(adjust_path(cur_processor.local_path))
         if not metrics:
             metrics = ['impressions', 'clicks', 'netcost']
+        metrics = sorted(metrics)
         old_analysis = update_analysis_in_db_reporting_cache(
             processor_id, current_user_id, pd.DataFrame(),
             dimensions, metrics, filter_dict, check=True)
-        if old_analysis:
+        if old_analysis and use_cache:
             if old_analysis.date == datetime.today().date():
                 df = pd.read_json(old_analysis.data).sort_index()
                 _set_task_progress(100)
@@ -4238,7 +4255,7 @@ def update_analysis_in_db_reporting_cache(processor_id, current_user_id, df,
         metrics_str = '|'.join(metrics)
         if not filter_dict:
             filter_dict = {}
-        filter_dict = {k: v for x in filter_dict for k, v in x.items()}
+        filter_dict = {k: v for x in filter_dict for k, v in x.items() if v}
         filter_col_str = '|'.join(filter_dict.keys())
         filter_val = []
         for k, v in filter_dict.items():

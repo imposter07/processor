@@ -4,17 +4,19 @@
     <div class="card shadow outer">
         <div class="card-header">
             <h3>Processor<i class="fas fa-blender-phone btn btn-secondary"
-                               style="float:right;"></i></h3>
-            <h6 class="card-subtitle mb-2 text-muted">Create a new processor instance.</h6>
+                            style="float:right;"></i></h3>
+            <h6 class="card-subtitle mb-2 text-muted">Create a new processor
+                instance.</h6>
         </div>
 
         <button id="requestProcessor"
-            class="btn btn-outline-info btn-block text-left"
-            type="button" href="">
-                <i class="fas fa-blender-phone"
-                   role="button"></i>
-                {{ _('Request Processor') }}
-    </button><br>
+                class="btn btn-outline-info btn-block text-left"
+                type="button" href="">
+            <i class="fas fa-blender-phone"
+               role="button"></i>
+            {{ _('Request Processor') }}
+        </button>
+        <br>
     </div>
     <div class="card shadow outer">
         <div class="card-header">
@@ -23,6 +25,13 @@
             <h6 class="card-subtitle mb-2 text-muted">Date filter for Notes and plots.</h6>
         </div>
         <div class="col mb-3">
+            <button id="allDates"
+                    class="btn btn-outline-info btn-block text-left"
+                    type="button" href="">
+                <i class="fas fa-calendar"
+                   role="button"></i>
+                {{ _('ALL TIME') }}
+            </button>
             <div class="row">
                 <input id="datePicker"
                        class="custom-select custom-select-sm
@@ -284,18 +293,10 @@
 
 
     <script>
-        function requestProcessor() {
-            $('[id^=requestProcessor]').click(function () {
-                let dropdownButton = "#" + $(this)[0].id;
-                $(dropdownButton).prop("disabled", true);
-                let oldHtml = $(dropdownButton).html();
-                $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-                );
-                setDownloadBar(this, this.textContent, false);
-                getTable('all_processors', dropdownButton, oldHtml);
-            })
+        function requestProcessorEvent() {
+            loadingBtn(this);
+            setDownloadBar(this, this.textContent, false);
+            getTable('all_processors', this.id, 'None');
         }
 
         function show_modal_table(destElem) {
@@ -316,7 +317,7 @@
                 metrics, filterDict, null, null, null, null, addSelect, null,
                 null, null, false);
             if (allCharts) {
-                getSecondaryCharts(filterDict, clickElem)
+                getSecondaryCharts(filterDict, clickElem);
             }
         }
 
@@ -355,49 +356,39 @@
             return filterDict
         }
 
-        $(document).ready(function() {
-            $('button[id^="applyFilter"]').unbind('click').click(function () {
-                let dropdownButton = "#" + $(this)[0].id;
-                $(dropdownButton).prop("disabled", true);
-                let oldHtml = $(dropdownButton).html();
-                $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-                  );
-                animateBar();
-                let filterDict = getDates();
-                filterDict = getFilters('productname', filterDict);
-                filterDict = getFilters('campaignname', filterDict);
-                filterDict = getFilters('vendorname', filterDict);
-                filterDict = getFilters('countryname', filterDict);
-                filterDict = getFilters('environmentname', filterDict);
-                filterDict = getFilters('kpiname', filterDict);
-                getAllCharts(filterDict, dropdownButton, oldHtml, true);
-            });
-        });
+        function getAllFilters() {
+            let filterDict = getDates();
+            filterDict = getFilters('productname', filterDict);
+            filterDict = getFilters('campaignname', filterDict);
+            filterDict = getFilters('vendorname', filterDict);
+            filterDict = getFilters('countryname', filterDict);
+            filterDict = getFilters('environmentname', filterDict);
+            filterDict = getFilters('kpiname', filterDict);
+            return filterDict
+        }
 
-        $(document).ready(function() {
-            $('button[id^="getAllCharts"]').unbind('click').click(function () {
-                let dropdownButton = "#" + $(this)[0].id;
-                $(dropdownButton).prop("disabled", true);
-                $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-                  );
-                animateBar();
-                let filterDict = getDates();
-                filterDict = getFilters('productname', filterDict)
-                filterDict = getFilters('campaignname', filterDict);
-                filterDict = getFilters('vendorname', filterDict);
-                filterDict = getFilters('countryname', filterDict);
-                filterDict = getFilters('environmentname', filterDict);
-                filterDict = getFilters('kpiname', filterDict);
-                getSecondaryCharts(filterDict);
-                $(dropdownButton).attr("hidden",true);
-            });
-        });
+        function applyFilterEvent() {
+            loadingBtn(this);
+            animateBar();
+            let filterDict = getAllFilters();
+            getAllCharts(filterDict, this.id, 'None', true);
+            addElemRemoveLoadingBtn(this.id);
+        }
 
-        $(document).ready(function () {
+        function getAllChartsClickEvent() {
+            loadingBtn(this);
+            animateBar();
+            let filterDict = getAllFilters();
+            getSecondaryCharts(filterDict);
+            addElemRemoveLoadingBtn(this.id);
+            this.setAttribute('hidden', true);
+        }
+
+        function removeAllDatesEvent() {
+            $('#datePicker')[0]._flatpickr.clear();
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
             $("select[id$='MetricsSelect']").selectize();
             let today = new Date();
             let priorDate = new Date(new Date().setDate(today.getDate() - 30));
@@ -407,9 +398,12 @@
                 inline: true
             });
             let filterDict = getDates();
-            requestProcessor();
             getTable('notesTable', 'notesTable', '');
             getAllCharts(filterDict);
+            addOnClickEvent('button[id^="getAllCharts"]', getAllChartsClickEvent);
+            addOnClickEvent('button[id^="applyFilter"]', applyFilterEvent);
+            addOnClickEvent('[id^=requestProcessor]', requestProcessorEvent);
+            addOnClickEvent('[id^=allDates]', removeAllDatesEvent);
         });
     </script>
 {% endblock %}

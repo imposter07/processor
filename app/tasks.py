@@ -210,7 +210,7 @@ def update_cached_data_in_processor_run(processor_id, current_user_id):
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         for col in dim_list:
             app.logger.info('Getting db col: {}'.format(col))
-            filter_dict = []
+            filter_dicts = [[]]
             if processor_id == 23:
                 import datetime as dt
                 today = dt.datetime.today()
@@ -218,10 +218,12 @@ def update_cached_data_in_processor_run(processor_id, current_user_id):
                 today = today.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
                 thirty = thirty.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
                 filter_dict = [{'eventdate': [thirty, today]}]
+                filter_dicts.append(filter_dict)
             os.chdir(cur_path)
-            get_data_tables_from_db(
-                processor_id, current_user_id, dimensions=[col],
-                metrics=['kpi'], filter_dict=filter_dict, use_cache=False)
+            for filter_dict in filter_dicts:
+                get_data_tables_from_db(
+                    processor_id, current_user_id, dimensions=[col],
+                    metrics=['kpi'], filter_dict=filter_dict, use_cache=False)
         _set_task_progress(100)
         return True
     except:
@@ -260,6 +262,9 @@ def run_processor(processor_id, current_user_id, run_args):
             os.chdir(cur_path)
             update_cached_data_in_processor_run(processor_id, current_user_id)
             update_all_notes_table(processor_id, current_user_id)
+            if processor_id == 23:
+                os.chdir(cur_path)
+                get_project_numbers(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(proc=processor_to_run, usr=user_that_ran,
                                text=msg_text, run_complete=True)
@@ -4262,10 +4267,10 @@ def update_analysis_in_db_reporting_cache(processor_id, current_user_id, df,
             if v:
                 new_list = v
                 if k == 'eventdate':
-                    sd = datetime.strptime(
-                        v[0], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
-                    ed = datetime.strptime(
-                        v[1], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d')
+                    old_date = '%Y-%m-%dT%H:%M:%S.%fZ'
+                    new_date = '%Y-%m-%d'
+                    sd = datetime.strptime(v[0], old_date).strftime(new_date)
+                    ed = datetime.strptime(v[1], old_date).strftime(new_date)
                     new_list = [sd, ed]
                 filter_val.append(','.join(new_list))
         filter_val_str = '|'.join(filter_val)

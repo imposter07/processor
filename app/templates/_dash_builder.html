@@ -44,7 +44,7 @@
 <script>
     function autoMargin(elem, maxHeight, lMargin, bMargin, dataLength = 1,
                         dataLengthY = 1) {
-        const parent = d3.select(elem)
+        const parent = d3.select(elem);
         const size = parent.node().getBoundingClientRect()
         let margin = {top: 10, right: 10, bottom: bMargin, left: lMargin},
             width = (size.width - margin.left - margin.right) * dataLength,
@@ -62,12 +62,11 @@
 
     function generateSelect(elem, allGroup, selectElem = 'Select') {
         let buttonSelector = elem + selectElem;
-        $(buttonSelector).html('' +
-            '<select id="' + buttonSelector + ' " ' +
-            'class="form-control form-control-sm">' +
-            '<option>Select Metric</option>' +
-            '</select>'
-        )
+        let elemToAdd = `
+            <select id="${buttonSelector}" class="form-control form-control-sm">
+                <option>Select Metric</option>
+            </select>`;
+        $(buttonSelector).html(elemToAdd);
         d3.select(buttonSelector)
             .selectAll('myOptions')
             .data(allGroup)
@@ -82,7 +81,7 @@
         allGroup = allGroup.map(x => {
             return ({text: x});
         });
-        addSelectOptions(allGroup, '', buttonSelector)
+        addSelectOptions(allGroup, '', buttonSelector, elem.replace('#', ''));
     }
 
     function wrapText(text, width) {
@@ -657,17 +656,16 @@
     }
 
     function generateBarChart(elem, data, xCol, yCol) {
-        data = sortData(data, yCol[0])
-        let dataLength = (data.length < 10) ? 1 : data.length / 10
+        data = sortData(data, yCol[0]);
+        let dataLength = (data.length < 10) ? 1 : data.length / 10;
         let am = autoMargin(elem, 250, 60, 30, dataLength);
-        let svg = am.svg
-        generateSelect(elem, yCol)
+        let svg = am.svg;
+        generateSelect(elem, yCol);
         // A color scale: one color for each group
-        let myColor = getColorPal(yCol)
+        let myColor = getColorPal(yCol);
         let axes = generateAxis(
             data, svg, d3.scaleBand(), d3.scaleLinear(), am.width, am.height,
-            xCol, yCol[0], false
-        )
+            xCol, yCol[0], false);
 
         function update(selectedVar) {
             // Add Y axis
@@ -1382,7 +1380,7 @@
     }
 
 
-    function addSelectOptions(data, xCol, selectDiv=false) {
+    function addSelectOptions(data, xCol, selectDiv=false, baseElemId='') {
         let i = 0;
         let newData = $.map(data, function (obj) {
             obj['text'] = obj['text'] || obj[xCol];
@@ -1391,8 +1389,19 @@
             i++;
             return obj;
         });
-        let elem = selectDiv ? selectDiv : "#" + xCol + "Select"
-        let selectizeElem = $(elem)[0].selectize
+        let elemIdJquery = selectDiv ? selectDiv : "#" + xCol + "Select";
+        let elemId = elemIdJquery.replace('#', '');
+        let elem = document.getElementById(elemId);
+        if (!(elem)) {
+            let elemToAdd = `
+                <select id="${elemId}" class="form-control form-control-sm">
+                    <option>Select Metric</option>
+                </select>`
+            let baseElem = document.getElementById(baseElemId);
+            baseElem.insertAdjacentHTML('beforeend', elemToAdd);
+            addSelectize();
+        }
+        let selectizeElem = $(elemIdJquery)[0].selectize;
         selectizeElem.load(function(callback) {
             callback(newData);
         });

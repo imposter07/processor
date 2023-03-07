@@ -259,28 +259,29 @@
     </div>
 
     <script>
-        function getAllCharts(filterDict, clickElem=null, oldHtml=null,
-                              allCharts=false) {
-            let metrics = ['kpi']
+        function getAllCharts(filterDict, clickElem = null, oldHtml = null,
+                              allCharts = false) {
+            let metrics = ['kpi'];
             getMetrics('#totalMetrics', generateTotalCards, ['mpProduct Name'],
-                 metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
+                metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
             getMetrics('#dailyMetrics', generateAreaChart, ['eventdate'],
                 metrics, filterDict);
             getMetrics('#deliveryMetrics', generateProgressBars, ['vendorname'],
                 ['netcost', 'plannednetcost'], filterDict);
             getMetrics('#pacingAlertCount', generateAlertCount, ['vendorname'],
-                            ['netcost', 'plannednetcost'], filterDict);
+                ['netcost', 'plannednetcost'], filterDict);
             if (allCharts) {
-                getSecondaryCharts(filterDict, clickElem)
+                getSecondaryCharts(filterDict, clickElem);
             }
         }
 
         function getSecondaryCharts(filterDict, clickElem=null) {
-            let addSelect = !(clickElem)
-            let metrics = ['kpi']
-            $('#thirdRow').removeAttr('hidden')
-            $('#fourthRow').removeAttr('hidden')
-            $('#filterRow').removeAttr('hidden')
+            let addSelect = !(clickElem);
+            let metrics = ['kpi'];
+            let rowIds = ['thirdRow', 'fourthRow', 'filterRow'];
+            rowIds.forEach(elemId => {
+                document.getElementById(elemId).removeAttribute('hidden');
+            });
             getMetrics('#partnerMetrics', generateBarChart, ['vendorname'],
                 metrics, filterDict, null, null, null, null, addSelect);
             getMetrics('#countryMetrics', generateBarChart, ['countryname'],
@@ -300,57 +301,46 @@
 
         function getFilters(colName, filterDict) {
             let newFilter = {};
-            newFilter[colName] = $('#' + colName + 'Select')[0].selectize.items
-            filterDict = filterDict.concat(newFilter)
+            newFilter[colName] = $('#' + colName + 'Select')[0].selectize.items;
+            filterDict = filterDict.concat(newFilter);
             return filterDict
         }
 
-        $(document).ready(function() {
-            $('button[id^="applyFilter"]').unbind('click').click(function () {
-                let dropdownButton = "#" + $(this)[0].id;
-                $(dropdownButton).prop("disabled", true);
-                let oldHtml = $(dropdownButton).html();
-                $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-                  );
-                animateBar();
-                let filterDict = getDates();
-                filterDict = getFilters('campaignname', filterDict);
-                filterDict = getFilters('vendorname', filterDict);
-                filterDict = getFilters('countryname', filterDict);
-                filterDict = getFilters('environmentname', filterDict);
-                filterDict = getFilters('kpiname', filterDict);
-                getAllCharts(filterDict, dropdownButton, oldHtml, true);
-            });
-        });
+        function getAllFilters() {
+            let filterDict = getDates();
+            let cols = ['campaignname', 'vendorname', 'countryname',
+                'environmentname', 'kpiname'];
+            cols.forEach(col => {
+                filterDict = getFilters(col, filterDict);
+            })
+            return filterDict
+        }
 
-        $(document).ready(function() {
-            $('button[id^="getAllCharts"]').unbind('click').click(function () {
-                let dropdownButton = "#" + $(this)[0].id;
-                $(dropdownButton).prop("disabled", true);
-                $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-                  );
-                animateBar();
-                let filterDict = getDates();
-                filterDict = getFilters('campaignname', filterDict);
-                filterDict = getFilters('vendorname', filterDict);
-                filterDict = getFilters('countryname', filterDict);
-                filterDict = getFilters('environmentname', filterDict);
-                filterDict = getFilters('kpiname', filterDict);
-                getSecondaryCharts(filterDict);
-                $(dropdownButton).attr("hidden",true);
-            });
-        });
+        function applyFilterEvent() {
+            loadingBtn(this);
+            animateBar();
+            let filterDict = getAllFilters();
+            getAllCharts(filterDict, this.id, 'None', true);
+            addElemRemoveLoadingBtn(this.id);
+        }
 
-        $(document).ready(function () {
-            $("select[id$='MetricsSelect']").selectize();
+        function getAllChartsClickEvent() {
+            loadingBtn(this);
+            animateBar();
+            let filterDict = getAllFilters();
+            getSecondaryCharts(filterDict);
+            addElemRemoveLoadingBtn(this.id);
+            this.setAttribute('hidden', true);
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            addOnClickEvent('button[id^="getAllCharts"]', getAllChartsClickEvent);
+            addOnClickEvent('button[id^="applyFilter"]', applyFilterEvent);
+            addSelectize();
             $("#datePicker").flatpickr({
                 mode: "range"
             });
-            getAllCharts()
+            getAllCharts();
         });
     </script>
 {% endblock %}

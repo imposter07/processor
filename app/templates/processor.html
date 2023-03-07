@@ -389,7 +389,7 @@
         }
 
         document.addEventListener("DOMContentLoaded", function() {
-            $("select[id$='MetricsSelect']").selectize();
+            addSelectize();
             let today = new Date();
             let priorDate = new Date(new Date().setDate(today.getDate() - 30));
             $("#datePicker").flatpickr({

@@ -236,9 +236,9 @@ function getTableError(error, kwargs) {
     }
 }
 
-async function getTable(tableName, clickElem, oldHtml, vendorKey='None',
-                  pond='None', progress=true, fixId='None',
-                        forceReturn=false) {
+async function getTable(tableName, clickElem, oldHtml, vendorKey= 'None',
+                  pond='None', progress= true, fixId= 'None',
+                  forceReturn= false) {
     let jinjaValues = document.getElementById('jinjaValues').dataset;
     let uploaderType = (jinjaValues['title'] === "Uploader") ? jinjaValues['uploader_type'] : "None";
     let data = {

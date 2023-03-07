@@ -122,18 +122,26 @@ function createTableElements(tableName, rowsName,
             Add New Row
         </button>
     ` : '';
+    let showChartBtnHtml = `
+        <button id="showChartBtn${tableName}"
+            class="btn btn-outline-success text-left" type="button" href=""
+            onclick="showChart('${tableName}');">
+            <i class="fas fa-chart-bar" role="button"></i>
+        </button>
+    `
     let elem = document.getElementById(tableName);
     let elemToAdd = `
     <div class="card shadow outer text-center">
         ${title}
     <div class="card-body">
         ${colToggleHtml}
+        ${showChartBtnHtml}
         <div class="row">
             <div id="${tableName}TableSlideCol" class="col-xs"
                  style="" data-value="${topRowsName}">
                 <div id="${tableName}TableSlide" class="card-deck"></div>
             </div>
-            <div class="col">
+            <div id="${tableName}TableBaseCol" class="col">
                 <div class="row">
                     <div class="col">
                         <div id="addRowsPlaceholder${tableName}" class="input-group mb-3">
@@ -167,6 +175,9 @@ function createTableElements(tableName, rowsName,
                        data-specifyform="${specifyFormCols}" data-rowclick="${rowOnClick}"
                        data-colfilter="${colFilter}"
                        class="table table-striped table-responsive-sm small"></table>
+            </div>
+            <div id="${tableName}ChartCol" class="col" style="">
+                <div id="${tableName}ChartPlaceholder"></div>
             </div>
         </div>
     </div>
@@ -1035,6 +1046,40 @@ function createTableFilter(tableId) {
     }
 }
 
+function showChart(tableName) {
+    let elem = document.getElementById(`${tableName}ChartCol`);
+    let tableElem = document.getElementById(`${tableName}TableBaseCol`);
+    let showChartBtn = document.getElementById(`showChartBtn${tableName}`);
+    if (elem.style.display === 'none') {
+        elem.style.display = '';
+        tableElem.style.display = 'none';
+        showChartBtn.classList.remove('btn-outline-success');
+        showChartBtn.classList.add('btn-success');
+    }
+    else {
+        elem.style.display = 'none';
+        tableElem.style.display = '';
+        showChartBtn.classList.remove('btn-success');
+        showChartBtn.classList.add('btn-outline-success');
+    }
+}
+
+function createLiquidTableChart(tableName, tableRows) {
+    let chartElemId = `${tableName}ChartPlaceholder`;
+    let chartElem = document.getElementById(chartElemId);
+    let headElems = getTableHeadElems(tableName);
+    let xCols = [];
+    let yCols = [];
+    headElems.forEach(elem => {
+        let firstCellId = elem.id.replace('col', 'row') + '0';
+        let cell = document.getElementById(firstCellId);
+        let value = cell.textContent || cell.innerText;
+        let cellName = elem.id.replace('col', '');
+        (isNaN(value)) ? xCols.push(cellName) : yCols.push(cellName);
+    });
+    generateBarChart(`#${chartElem.id}`, tableRows, xCols[0], yCols);
+}
+
 function createLiquidTable(data, kwargs) {
     let tableName = kwargs['tableName'];
     let tableData = data['data'];
@@ -1071,8 +1116,10 @@ function createLiquidTable(data, kwargs) {
         populateTotalCards(tableName);
     }
     if (colFilter){
-        createTableFilter(tableName + 'Table')
+        createTableFilter(tableName + 'Table');
     }
+    createLiquidTableChart(tableName, tableRows);
+    showChart(tableName);
     addSelectize();
     addDatePicker();
     addOnClickEvent('button[id^=addRows]', addRowsOnClick);

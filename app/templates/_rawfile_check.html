@@ -99,13 +99,10 @@
     if (("{{ edit_name }}" === 'Clean') || ("{{ edit_name }}" === 'Import')) {
         document.addEventListener('FilePond:processfile', (e) => {
             show_modal_table('modalRawFileButton');
-            let rawFileTableBody = '#rawFileTableBody'
-            let oldHtml = $(rawFileTableBody).html();
-            $(rawFileTableBody).html(
-                `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
-                            role="status" aria-hidden="true"></span> Loading...`
-            );
-            setDownloadBar(rawFileTableBody, 'None', false);
+            let rawFileTableBodyId = 'rawFileTableBody';
+            let elem = document.getElementById(rawFileTableBodyId);
+            loadingBtn(elem);
+            setDownloadBar(elem, 'None', false);
             if ("{{ edit_name }}" === 'Clean') {
                 var vendorKey = $('#data_source_clean').val();
             } else {
@@ -116,7 +113,7 @@
                 }
             }
             $('#rawFileBody').attr('data-vk', vendorKey);
-            getTable('raw_file_comparison', rawFileTableBody, oldHtml, vendorKey, 'None', false);
+            getTable('raw_file_comparison', rawFileTableBodyId, 'None', vendorKey, 'None', false);
             changeMetrics();
         });
     }

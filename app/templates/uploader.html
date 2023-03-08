@@ -64,42 +64,19 @@
         {% include '_post.html' %}
     {% endfor %}
     <script>
-        $(document).ready(function() {
-            $('select').on('change', function(e){
-                $('#carousel').carousel($(this)[0].selectedIndex - 1);
-            });
-        });
-        $(document).ready(function() {
-            $('a[id^="editTable"]').click(function () {
-                var tableName = this.id.replace('editTable', '');
-                var dropdownButton = "#" + $(this).parents()[2].children[0].id;
-                $(dropdownButton).prop("disabled", true);
-                var oldHtml = $(dropdownButton).html();
-                $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-                  );
-                animateBar();
-                getTable(tableName, dropdownButton, oldHtml);
-            });
-        });
-        function getTable(tableName, clickElem, oldHtml){
-            $.post('/get_table',
-                {
-                    table: tableName,
-                    processor:  "{{ processor_name }}"
-            }).done(function(data, status) {
-                show_modal_table('modalTableButton');
-                var newTableName = data['data']['name'];
-                createTable(data['data']['cols'], data['data']['data'],
-                    newTableName);
-            }).fail(function() {
-                console.log('fail')
-            }).always(function(){
-                $(clickElem).prop("disabled", false);
-                $(clickElem).html(oldHtml);
-                unanimateBar();
-            });
+        function carouselOnChange(){
+            $('#carousel').carousel($(this)[0].selectedIndex - 1);
         }
+
+        function editTableOnClick() {
+            let tableName = this.id.replace('editTable', '');
+            animateBar();
+            getTable(tableName, this.id);
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            addOnClickEvent('a[id^="editTable"]', editTableOnClick);
+            addOnClickEvent('select', carouselOnChange, 'change');
+        });
     </script>
 {% endblock %}

@@ -96,14 +96,7 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
             let newTableName = data['data']['name'];
             let tableCols = data['data']['cols'];
             let tableData = data['data']['data'];
-            if (newTableName === 'modal-body-table') {
-                let modalTable = document.getElementById("modal-body-table");
-                modalTable.innerHTML = "";
-                createLiquidTable(data, {'tableName': newTableName});
-            }
-            else {
-                createTable(tableCols, tableData, newTableName);
-            }
+            createTable(tableCols, tableData, newTableName);
         }
     })
 }
@@ -236,9 +229,16 @@ function getTableError(error, kwargs) {
     }
 }
 
-async function getTable(tableName, clickElem, oldHtml, vendorKey= 'None',
+function setDownloadBarAndLoadingBtn(elemId) {
+    let elem = document.getElementById(elemId);
+    setDownloadBar(elem, '', false);
+    loadingBtn(elem);
+}
+
+async function getTable(tableName, clickElem, oldHtml = 'None', vendorKey= 'None',
                   pond='None', progress= true, fixId= 'None',
                   forceReturn= false) {
+    setDownloadBarAndLoadingBtn(clickElem);
     let jinjaValues = document.getElementById('jinjaValues').dataset;
     let uploaderType = (jinjaValues['title'] === "Uploader") ? jinjaValues['uploader_type'] : "None";
     let data = {

@@ -282,8 +282,6 @@
             rowIds.forEach(elemId => {
                 document.getElementById(elemId).removeAttribute('hidden');
             });
-            getMetrics('#partnerMetrics', generateBarChart, ['vendorname'],
-                metrics, filterDict, null, null, null, null, addSelect);
             getMetrics('#countryMetrics', generateBarChart, ['countryname'],
                 metrics, filterDict, null, null, null, null, addSelect);
             getMetrics('#campaignMetrics', generateLollipopChart, ['campaignname'],

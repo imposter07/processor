@@ -101,8 +101,6 @@
             show_modal_table('modalRawFileButton');
             let rawFileTableBodyId = 'rawFileTableBody';
             let elem = document.getElementById(rawFileTableBodyId);
-            loadingBtn(elem);
-            setDownloadBar(elem, 'None', false);
             if ("{{ edit_name }}" === 'Clean') {
                 var vendorKey = $('#data_source_clean').val();
             } else {

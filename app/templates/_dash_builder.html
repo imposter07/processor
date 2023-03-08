@@ -1,4 +1,4 @@
-<style type="text/css">
+<style>
     .widget {
         height: 25vh;
         width: 175px;
@@ -1188,14 +1188,13 @@
     }
 
     function getPacingTable(tableName) {
-        elem = document.getElementById(tableName)
-        setDownloadBar(elem, elem.textContent, false);
-        getTable(tableName, elem.parentElement.id, 'None');
+        let elem = document.getElementById(tableName);
+        getTable(tableName, elem.parentElement.id);
         animateBar();
     }
 
     function generatePacingTable(elemID, data, xCol, yCol) {
-        elem = document.getElementById(elemID);
+        let elem = document.getElementById(elemID);
         elem.innerHTML += data;
         elem.style.height = "100%";
         let cols = xCol + [, 'Planned Net Cost', 'Uncapped'];
@@ -1204,8 +1203,7 @@
         getProgBars(elemID, "Delivery", "% Through Campaign", "Start Date");
         hideColumn(elemID, "% Through Campaign");
         addAccordianSetup(elemID);
-        setDownloadBar(elem, elem.textContent, false);
-        getTable('Daily Pacing', elem.parentElement.id, 'None');
+        getTable('Daily Pacing', elem.parentElement.id);
         animateBar();
     }
 

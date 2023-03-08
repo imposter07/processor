@@ -15,24 +15,16 @@
     </div>
     <div id="screenshot"></div>
     <script>
-        function getScreenshots() {
-            let elem = document.getElementById('screenshot');
-            loadingBtn(elem);
-            setDownloadBar(elem, '', false);
-            getTable(elem.id, elem.id, 'None');
-        }
         function getScreenshotImage(elem) {
             let rowIndex = elem.id.replace('tr', '');
             let urlElem = document.getElementById('rowurl' + rowIndex);
             let imgElem = document.getElementById('screenshotImage');
             imgElem.innerHTML = '';
-            loadingBtn(imgElem);
-            setDownloadBar(imgElem, '', false);
             getTable('screenshotImage', imgElem.id, 'None', urlElem.innerHTML);
             document.getElementById('formCol').style.display = '';
         }
         document.addEventListener("DOMContentLoaded", function() {
-            getScreenshots();
+            getTable('screenshot', 'screenshot');
         });
     </script>
 {% endblock %}

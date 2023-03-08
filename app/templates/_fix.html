@@ -69,13 +69,6 @@
                 <div id="request_table-{{ fix.fix_type }}">
                 </div>
                 <br>
-                <div id="downloadProgressBaseClass" class="progress">
-                    <div id="downloadProgressrequest_table-{{ fix.fix_type }}"
-                         class="progress-bar bg-success progress-bar-striped progress-bar-animated"
-                         role="progressbar" style="width: 1%" aria-valuenow="1" aria-valuemin="0"
-                         aria-valuemax="100">
-                    </div>
-                </div>
             </div>
         </div>
         <div class="card-footer">
@@ -92,30 +85,18 @@
         </div>
     </div>
 <script>
-    $(document).ready(function () {
+    function quickFixEvent() {
+        let fixId = this.id.replace('quickFix', '');
+        getTable('quick_fix', this.id, 'None', 'None', 'None', false, fixId);
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        addOnClickEvent('button[id^="quickFix"]', quickFixEvent);
         let tableName = "request_table-{{ fix.fix_type }}";
         let fixType = "{{ fix.fix_type }}";
-        let elem = document.getElementById(tableName);
-        let oldHTML = elem.html;
-        getTable('request_table', tableName, oldHTML, 'None', 'None', true, fixType);
+        getTable('request_table', tableName, 'None', 'None', 'None', true, fixType);
         animateBar();
     });
-
-    $(document).ready(function () {
-        $('button[id^="quickFix"]').unbind().click(function () {
-            let dropdownButton = "#" + $(this)[0].id;
-            $(dropdownButton).prop("disabled", true);
-            let oldHtml = $(dropdownButton).html();
-            $(dropdownButton).html(
-                `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-            );
-            let fixId = this.id.replace('quickFix', '');
-            setDownloadBar(this, this.textContent, false);
-            getTable('quick_fix', dropdownButton, oldHtml, 'None', 'None', false, fixId);
-        });
-    });
-
 </script>
 
 {% else %}

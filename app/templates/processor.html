@@ -294,9 +294,7 @@
 
     <script>
         function requestProcessorEvent() {
-            loadingBtn(this);
-            setDownloadBar(this, this.textContent, false);
-            getTable('all_processors', this.id, 'None');
+            getTable('all_processors', this.id);
         }
 
         function show_modal_table(destElem) {
@@ -398,7 +396,7 @@
                 inline: true
             });
             let filterDict = getDates();
-            getTable('notesTable', 'notesTable', '');
+            getTable('notesTable', 'notesTable');
             getAllCharts(filterDict);
             addOnClickEvent('button[id^="getAllCharts"]', getAllChartsClickEvent);
             addOnClickEvent('button[id^="applyFilter"]', applyFilterEvent);

@@ -224,14 +224,27 @@ function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell") {
     });
 }
 
-function getRowHtml(loopIndex, tableName) {
+function getRowHtml(loopIndex, tableName, rowData = null) {
     let tableHeadElems = document.getElementById(tableName + 'TableHeader');
     tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
     let tableHeaders = '';
     tableHeadElems.forEach(tableHeadElem => {
-        tableHeaders = tableHeaders + `<td id="row${tableHeadElem.id.replace('col', '')}${loopIndex}" style="display:${tableHeadElem.style.display};"></td>`
+        let colName = tableHeadElem.id.replace('col', '');
+        let cellData = getCellContent(rowData, colName);
+        tableHeaders = tableHeaders + `<td id="row${colName}${loopIndex}" style="display:${tableHeadElem.style.display};">${cellData}</td>`
     });
     return tableHeaders
+}
+
+function getCellContent(rowData, colName) {
+    let cellContent = '';
+    if (rowData && rowData[colName]) {
+        cellContent = rowData[colName];
+        if (typeof cellContent === 'object') {
+            cellContent = JSON.stringify(cellContent);
+        }
+    }
+    return cellContent
 }
 
 function getDateForm(loopIndex) {
@@ -316,7 +329,7 @@ function addRowToTable(rowData, tableName) {
     let loopIndex = d1.querySelectorAll(`.${formHolderName}:last-child`);
     loopIndex = (loopIndex.length != 0) ? (parseInt(loopIndex[loopIndex.length- 1].id.replace(formHolderName, '')) + 1).toString() : '0';
     let tableHeadElems = getTableHeadElems(tableName);
-    let tableHeaders = getRowHtml(loopIndex, tableName);
+    let tableHeaders = getRowHtml(loopIndex, tableName, rowData);
     let rowFormNames = getRowFormNames(tableName);
     let rowForm = buildFormFromCols(loopIndex, rowFormNames, tableName);
     let hiddenRowHtml = `
@@ -382,7 +395,7 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
         let currentElemId = (inputCheck) ? rowFormName.toLowerCase() + 'Select' + loopIndex : rowFormName + loopIndex;
         let curElem = document.getElementById(currentElemId);
         let name = colElem.getAttribute('data-name');
-        let newValue = rowData[name];
+        let newValue = getCellContent(rowData, name);
         if (inputCheck) {
             curElem.selectize.addOption({
                 text: newValue,

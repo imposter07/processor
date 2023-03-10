@@ -858,7 +858,7 @@
             vendorKeyId = ("{{ edit_name }}" === 'Clean') ? 'data_source_clean': vendorKeyId;
             let vendorKeyElem = document.getElementById(vendorKeyId);
             let vendorKey = (vendorKeyElem) ? vendorKeyElem.value : 'None';
-            getTable(tableName, this.parentElement.id, 'None', vendorKey);
+            getTable(tableName, this.id, 'None', vendorKey);
             animateBar();
         }
 

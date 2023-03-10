@@ -41,7 +41,6 @@ function downloadTableResponse(tableName, pond, vendorKey, data) {
                 elem.remove();
             });
         } else {
-            pond.addFile(blob);
             let jinjaValues = document.getElementById('jinjaValues').dataset;
             let link = document.createElement('a');
             link.href = window.URL.createObjectURL(blob);

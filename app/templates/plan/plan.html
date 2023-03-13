@@ -112,7 +112,6 @@
         function submitToplineForm(formContinue, tableName) {
             let formTopline = {};
             let topRowIdPrefix = 'topRowHeader' + tableName;
-            console.log(tableName)
             let topRowsName = document.getElementById(tableName + 'TableSlideCol').getAttribute('data-value');
             let rowName = document.getElementById(`${tableName}Table`).getAttribute('data-value');
             let topRowElems = document.querySelectorAll(`[id^="${topRowIdPrefix}"]`);

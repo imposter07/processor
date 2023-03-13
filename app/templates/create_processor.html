@@ -44,20 +44,7 @@
         </ul>
     </nav>
     {% endif %}
-    {% if view_selector %}
-        <div class="form-group">
-            <label for="viewSelector"></label>
-            <select class="form-control" id="viewSelector">
-                {% for view_select in view_selector %}
-                    <option {% if view_select['active'] == True %} selected{% endif %}
-                     value="{% if object_function_call %}
-                                  {{ url_for(view_select['value'], **object_function_call) }}
-                             {% endif %}">
-                        {{ view_select['view'] }}</option>
-                {% endfor %}
-            </select>
-        </div>
-    {% endif %}
+    {% include '_view_selector.html' %}
     <!-- Modal -->
     <button id="logModalButton" type="button" class="btn btn-primary"
             data-toggle="modal" data-target="#logModal" style="display: none;">
@@ -1384,12 +1371,6 @@
             });
         });
 
-        $(document).ready(function() {
-            $('#viewSelector').on('change', function(e){
-                window.location = this.selectize.getValue()
-            });
-        });
-
         function addPopovers() {
             $('[data-toggle="hover"]').popover({trigger: "hover"})
         }
@@ -1408,6 +1389,7 @@
             getSelectedDashboard();
             addPopovers();
             addWalkthrough();
+            addOnClickEvent('[id^="viewSelector"]', viewSelectorChangeEvent, 'change');
         }
 
         document.addEventListener("DOMContentLoaded", function() {

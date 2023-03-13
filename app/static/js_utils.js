@@ -77,13 +77,19 @@ function sortTable(bodyName, tableHeaderId) {
 
 function addOnClickEvent(elemSelector, clickFunction, type = 'click', preventDefault = true) {
     for (let elm of document.querySelectorAll(elemSelector)) {
-        elm.removeEventListener(type, clickFunction);
-        if (preventDefault) {
-            elm.addEventListener(type, function (e) {
-                e.preventDefault();
+        if ((elm.tagName === 'SELECT') && (elm.selectize)) {
+            $('#' + elm.id).unbind().on(type, function (e) {
+                clickFunction(e);
             });
+        } else {
+            elm.removeEventListener(type, clickFunction);
+            if (preventDefault) {
+                elm.addEventListener(type, function (e) {
+                    e.preventDefault();
+                });
+            }
+            elm.addEventListener(type, clickFunction);
         }
-        elm.addEventListener(type, clickFunction);
     }
 }
 
@@ -186,4 +192,8 @@ function setDownloadBar(currentElement, textContent, pond = true) {
         pondElem.instantUpload = false;
         return pondElem
     }
+}
+
+function viewSelectorChangeEvent(e) {
+    window.location = e.target.selectize.getValue();
 }

@@ -5,15 +5,7 @@
         <div id="alertPlaceholder"></div>
     </div>
     <h1 class="text-muted font-weight-bolder">{{ _('Client Calendar') }}</h1>
-    <div class="form-group">
-        <select class="form-control" id="viewSelector">
-            {% for view_select in view_selector %}
-                <option {% if view_select['active'] == True %} selected{% endif %}
-                 value="{{ url_for(view_select['value']) }}">
-                    {{ view_select['view'] }}</option>
-            {% endfor %}
-        </select>
-    </div>
+    {% include '_view_selector.html' %}
 {% endblock %}
 
 {% block vertical_navbar %}
@@ -104,7 +96,7 @@
     <script src="{{ url_for('static', filename='fullcalendar/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        function addCalendar() {
             let calendarEl = document.getElementById('calendar');
             let calendar = new FullCalendar.Calendar(calendarEl, {
                     events: '/get_processor_by_date',
@@ -118,7 +110,7 @@
                 },
             );
             calendar.render();
-        });
+        }
 
         function getProcessorUserMap(filterDict, clickElem, oldHtml) {
             let proc = $('#processors');
@@ -298,7 +290,7 @@
                         projectNumberSelectChange();
                         getSelectedDashboard();
                         getProcessorBody();
-                        addCreatePlanEvent();
+                        addOnClickEvent('button[id*="createPlan"]', addCreatePlanEvent);
                 }).fail(function (jqXHR, textStatus) {
                     console.log("Request failed: " + textStatus);
                 });
@@ -325,12 +317,6 @@
             });
         }
 
-        function viewSelectorChangeEvent() {
-            $('#viewSelector').on('change', function (e) {
-                window.location = this.selectize.getValue()
-            });
-        }
-
         function createPlan(processorId) {
             let data = {
                 processor_id: processorId,
@@ -348,27 +334,21 @@
             });
         }
 
-        function addCreatePlanEvent(){
-            $('button[id*="createPlan"]').unbind().click(function () {
-                let dropdownButton = "#" + $(this)[0].id;
-                $(dropdownButton).prop("disabled", true);
-                let oldHtml = $(dropdownButton).html();
-                $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-                  );
-                let processorId = this.id.replace('createPlan', '');
-                createPlan(processorId);
-            });
+        function addCreatePlanEvent() {
+            loadingBtn(this);
+            let processorId = this.id.replace('createPlan', '');
+            createPlan(processorId);
         }
 
-        $(document).ready(function () {
-            viewSelectorChangeEvent();
+        document.addEventListener("DOMContentLoaded", function() {
+            addCalendar();
             let filterDict = [{'live': $('#liveProcessorsSwitch')[0].checked}];
             getProcessorUserMap(filterDict);
             addSelectize();
             addApplyFilterBtn();
+            addOnClickEvent('[id^="viewSelector"]', viewSelectorChangeEvent, 'change');
         });
+
     </script>
     {% include "_dash_builder.html" %}
     {% include "_table_builder.html" %}

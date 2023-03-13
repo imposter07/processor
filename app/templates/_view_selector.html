@@ -1,0 +1,17 @@
+{% if view_selector %}
+    <div class="form-group">
+        <label for="viewSelector"></label>
+        <select class="form-control" id="viewSelector">
+            {% for view_select in view_selector %}
+                <option {% if view_select['active'] == True %}
+                    selected{% endif %}
+                    value="{% if object_function_call %}
+                             {{ url_for(view_select['value'], **object_function_call) }}
+                        {% else %}
+                            {{ url_for(view_select['value']) }}
+                        {% endif %}">
+                    {{ view_select['view'] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+{% endif %}

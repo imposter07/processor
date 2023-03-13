@@ -599,8 +599,8 @@ function toggleMetrics(tableName) {
     })
 }
 
-function toggleMetricsOnChange() {
-    let tableName = this.id.replace('selectColumnsToggle', '');
+function toggleMetricsOnChange(e) {
+    let tableName = e.target.id.replace('selectColumns', '');
     toggleMetrics(tableName);
 }
 
@@ -850,7 +850,7 @@ function addTableColumns(cols, name) {
                 <option value="">Select Columns To Add...</option>
             </select>`;
         addSelectize();
-        addOnClickEvent('[id^="selectColumnsToggle"]', toggleMetricsOnChange, 'change');
+        addOnClickEvent('[id^="selectColumns"]', toggleMetricsOnChange, 'change');
     }
     let specifyFormCol = table.getAttribute('data-specifyform');
     cols.forEach(col => {

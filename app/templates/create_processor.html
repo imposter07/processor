@@ -483,11 +483,9 @@
 {% block scripts %}
     {{ moment.include_moment() }}
     {{ moment.lang(g.locale) }}
-    <link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
-    <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css" rel="stylesheet">
-    <script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.js"></script>
-    <script src="https://unpkg.com/filepond-plugin-file-metadata/dist/filepond-plugin-file-metadata.js"></script>
-    <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='filepond/filepond.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='filepond/filepond.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='filepond/filepond-plugin-file-metadata.js') }}"></script>
 
     <script type="text/javascript" src="{{ url_for('static', filename='bootstrap-dark/darkModeHelper.js') }}"></script>
     <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
@@ -508,7 +506,7 @@
 
         function addFilePond() {
             FilePond.registerPlugin(
-                FilePondPluginImagePreview,
+                // FilePondPluginImagePreview,
                 FilePondPluginFileMetadata,
             );
             FilePond.parse(document.body);

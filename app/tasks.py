@@ -4583,10 +4583,9 @@ def get_project_numbers(processor_id, current_user_id):
                     product_id=form_product.id).check_and_add()
                 description = ('Automatically generated from '
                                'project number: {}').format(pn[pn_col])
-                name = (pn['Project'].
-                        replace('_', ' ').replace('|', ' ').
-                        replace(':', ' ').replace('.', ' ').replace("'", ' ').
-                        replace('&', ' '))
+                name = pn['Project']
+                for char in ['_', '|', ':', '.', "'", '&', '/']:
+                    name = name.replace(char, ' ')
                 new_processor = Processor(
                     name=name, description=description,
                     user_id=4, created_at=datetime.utcnow(),

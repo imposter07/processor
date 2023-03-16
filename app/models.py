@@ -544,13 +544,13 @@ class Processor(db.Model):
         primaryjoin=(project_number_processor.c.processor_id == id),
         secondaryjoin="project_number_processor.c.project_id == Project.id",
         backref=db.backref('project_number_processor', lazy='dynamic'),
-        lazy='dynamic', viewonly=True)
+        lazy='dynamic')
     plans = db.relationship(
         'Plan', secondary=processor_plan,
         primaryjoin=(processor_plan.c.processor_id == id),
         secondaryjoin="processor_plan.c.plan_id == Plan.id",
         backref=db.backref('processor_plan', lazy='dynamic'),
-        lazy='dynamic', viewonly=True)
+        lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,

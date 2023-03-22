@@ -252,19 +252,20 @@ def run_processor(processor_id, current_user_id, run_args):
             main()
         copy_processor_local(old_file_path, copy_back=True)
         if 'analyze' in run_args:
-            os.chdir(cur_path)
-            get_processor_sources(processor_id, current_user_id)
-            os.chdir(cur_path)
-            update_analysis_in_db(processor_id, current_user_id)
-            os.chdir(cur_path)
-            update_automatic_requests(processor_id, current_user_id)
+            task_functions = [get_processor_sources, update_analysis_in_db,
+                              update_automatic_requests]
+            for task_function in task_functions:
+                os.chdir(cur_path)
+                task_function(processor_id, current_user_id)
         if 'exp' in run_args:
             os.chdir(cur_path)
             update_cached_data_in_processor_run(processor_id, current_user_id)
             update_all_notes_table(processor_id, current_user_id)
             if processor_id == 23:
-                os.chdir(cur_path)
-                get_project_numbers(processor_id, current_user_id)
+                task_functions = [get_project_numbers, get_glossary_definitions]
+                for task_function in task_functions:
+                    os.chdir(cur_path)
+                    task_function(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         processor_post_message(proc=processor_to_run, usr=user_that_ran,
                                text=msg_text, run_complete=True)
@@ -5374,3 +5375,38 @@ def get_processor_data_source_table(processor_id, current_user_id):
             processor_id, current_user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_glossary_definitions(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        import processor.reporting.gsapi as gsapi
+        import processor.reporting.utils as utl
+        os.chdir('processor')
+        api = gsapi.GsApi()
+        api.input_config('gsapi_googledoc.json')
+        df = api.get_data(fields=[api.doc_str])
+        df = df[df[api.head_str].notnull()]
+        glossary = df.to_dict(orient='records')
+        for x in glossary:
+            header = x[api.head_str]
+            content = x[api.cont_str]
+            n = Notes.query.filter_by(header=header,
+                                      note_type='Glossary').first()
+            if not n:
+                new_note = Notes(header=header, note_type='Glossary',
+                                 created_at=datetime.utcnow(),
+                                 note_text=content, user_id=current_user_id)
+                db.session.add(new_note)
+                db.session.commit()
+            elif n.note_text != content:
+                n.note_text = content
+                db.session.commit()
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return pd.DataFrame()

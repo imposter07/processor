@@ -1129,6 +1129,8 @@ class Notes(db.Model):
     end_date = db.Column(db.Date, default=datetime.utcnow)
     dimensions = db.Column(db.Text)
     data = db.Column(db.JSON)
+    header = db.Column(db.Text)
+    note_type = db.Column(db.Text)
     posts = db.relationship('Post', backref='notes', lazy='dynamic')
 
     def get_form_dict(self):

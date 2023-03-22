@@ -282,14 +282,14 @@
             rowIds.forEach(elemId => {
                 document.getElementById(elemId).removeAttribute('hidden');
             });
-            getMetrics('#countryMetrics', generateBarChart, ['countryname'],
-                metrics, filterDict, null, null, null, null, addSelect);
-            getMetrics('#campaignMetrics', generateLollipopChart, ['campaignname'],
-                metrics, filterDict, null, null, null, null, addSelect);
-            getMetrics('#environmentMetrics', generateLollipopChart, ['environmentname'],
-                metrics, filterDict, null, null, null, null, addSelect)
-            getMetrics('#kpiMetrics', generateLollipopChart, ['kpiname'],
-                metrics, filterDict, null, null, null, null, addSelect)
+            let cols = ['partner', 'country', 'campaign', 'environment', 'kpi'];
+            cols.forEach(function (col, i) {
+                let chartId = `#${col}Metrics`;
+                let colName = (col === 'partner') ? 'vendorname' : `${col}name`;
+                let chartType = (i > 1) ? generateLollipopChart : generateBarChart;
+                getMetrics(chartId, chartType, [colName],
+                    metrics, filterDict, null, null, null, null, addSelect);
+            })
         }
 
         function getDates() {

@@ -92,6 +92,8 @@ class APIForm(FlaskForm):
     start_date = DateField('Start Date', format='%Y-%m-%d')
     account_filter = StringField('Filter')
     api_fields = StringField('API Fields')
+    test_connection = SubmitField('Test Connection', render_kw={
+        'style': 'visibility:hidden'})
     refresh_import_config = SubmitField('Edit Config File',
                                         render_kw={'type': 'button'})
     raw_file = FileField('Raw File')
@@ -106,12 +108,18 @@ class ImportForm(FlaskForm):
     apis = FieldList(FormField(APIForm, label=''))
 
     def set_apis(self, data_source, cur_proc):
+        db_vk_col = 'vendor_key'
+        test_conn_col = 'test_connection'
         imp_dict = []
         proc_imports = data_source.query.filter_by(
             processor_id=cur_proc.id).all()
         for imp in proc_imports:
             if imp.name is not None:
                 form_dict = imp.get_import_form_dict()
+                if [x for x in vmc.test_apis if x in form_dict[db_vk_col]]:
+                    form_dict[test_conn_col] = True
+                else:
+                    form_dict[test_conn_col] = False
                 imp_dict.append(form_dict)
         self.apis = imp_dict
         return imp_dict

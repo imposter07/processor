@@ -835,6 +835,47 @@
             }
         }
 
+        function testApiOnClick() {
+            let vendorKey;
+            try {
+                vendorKey = this.parentElement.parentElement.parentElement.querySelectorAll(
+                    "[id*='vendor_key']")[0].value
+            } catch (err) {
+                vendorKey = 'None';
+            }
+            getTable('TestConnection', this.id, 'None', vendorKey, 'None');
+        }
+
+        function addTestButton(elem) {
+            let keySelector = 'select[id^="apis-"][id$="-key"]';
+            document.querySelectorAll(keySelector).forEach(elem =>
+                addTestButton(elem));
+            $(keySelector).on('change', function(){
+                addTestButton(this);
+            });
+        }
+
+        async function checkTestProcessor() {
+            let response = await fetch('/get_test_apis');
+            let json_response = await response.json();
+            let test_apis = json_response['test_apis'];
+            let buttonSelector = 'input[id*="test_connection"][class*="btn"]';
+            let keySelector = 'select[id^="apis-"][id$="-key"]';
+            document.querySelectorAll(keySelector).forEach(function(elem) {
+                let apiKey = elem.selectize.getValue();
+                if (test_apis.indexOf(apiKey) > -1) {
+                    let test_button = (
+                        elem.parentNode.parentNode.parentNode.parentNode
+                            .parentNode.querySelector(buttonSelector));
+                    test_button.setAttribute('style', '');
+                    test_button.setAttribute('class', 'btn-block btn-sm btn-success');
+                    addOnClickEvent('input[id*="test_connection"]' +
+                        '[class*="btn"]:not([style*="visibility:hidden"])',
+                        testApiOnClick);
+                }
+            });
+        }
+
         function refreshButtonsOnClick() {
             let refreshId = 'refresh_';
             let tableName = this.id.split(refreshId)[1];
@@ -1400,6 +1441,7 @@
                 getPlan();
             } else if ("{{ edit_name }}" === 'Import') {
                 removeSpecialChars();
+                checkTestProcessor();
             } else if ("{{ edit_name }}" === 'Accounts') {
                 removeSpecialChars();
             } else if ("{{ edit_name }}" === 'All Notes') {

@@ -4796,6 +4796,37 @@ def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):
         return False
 
 
+def test_api_connection(processor_id, current_user_id, vk):
+    try:
+        if vk == '':
+            df = pd.DataFrame([{
+                'Result': 'No vendor key save the new card first then retry.'}])
+            lt = app_utl.LiquidTable(df=df, table_name='modal-body-table',
+                                     col_filter=False)
+        else:
+            _set_task_progress(0)
+            cur_processor = Processor.query.get(processor_id)
+            import processor.reporting.importhandler as ih
+            import processor.reporting.vendormatrix as vm
+            os.chdir(adjust_path(cur_processor.local_path))
+            matrix = vm.VendorMatrix()
+            test = ih.ImportHandler('all', matrix)
+            df = test.test_api_calls([vk])
+            lt = app_utl.LiquidTable(df=df, table_name='modal-body-table',
+                                     col_filter=False, conditional_format=True)
+        _set_task_progress(100)
+        return [lt.table_dict]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        df = pd.DataFrame([{'Result': 'CONFIG WAS UNABLE TO BE LOADED.'}])
+        lt = app_utl.LiquidTable(df=df, table_name='modal-body-table',
+                                 col_filter=False)
+        return [lt.table_dict]
+
+
 def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
     try:
         _set_task_progress(0)

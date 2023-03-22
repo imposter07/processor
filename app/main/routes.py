@@ -724,6 +724,13 @@ def edit_processor_import(object_name):
     return render_template('create_processor.html', **kwargs)
 
 
+@bp.route('/get_test_apis', methods=['GET', 'POST'])
+@login_required
+def get_test_apis():
+    test_apis = vmc.test_apis
+    return jsonify({'test_apis': test_apis})
+
+
 @bp.route('/get_log', methods=['GET', 'POST'])
 @login_required
 def get_log():
@@ -816,6 +823,7 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'Constant': '.get_constant_dict',
                  'Relation': '.get_relational_config',
                  'OutputData': '.get_data_tables',
+                 'TestConnection': '.test_api_connection',
                  'dictionary_order': '.get_dict_order',
                  'change_dictionary_order': '.get_change_dict_order',
                  'raw_data': '.get_raw_data',

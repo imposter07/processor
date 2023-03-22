@@ -642,7 +642,6 @@ function addDatePicker() {
         let loopIndex = this.id.replace('datePicker', '');
         let shadeColor = loopIndex.replace('-', '')
         shadeDates(loopIndex, null, 'shadeCell' + shadeColor);
-
     });
 }
 
@@ -1059,6 +1058,36 @@ function createTableFilter(tableId) {
     }
 }
 
+function addConditionalFormatting(tableName, args) {
+    let comparisonOperatorsHash = {
+        '<': function(a, b) { return a < b; },
+        '>': function(a, b) { return a > b; },
+        '>=': function(a, b) { return a >= b; },
+        '<=': function(a, b) { return a <= b; },
+        '===': function(a, b) { return a === b; },
+    };
+    let comparator = comparisonOperatorsHash[args['comparator']];
+    const table = document.getElementById(tableName);
+    const rows = table.querySelectorAll('tr:not([id*="Hidden"])');
+    let colInd = 0;
+    for (let j = 0, col; col = rows[0].cells[j]; j++) {
+        if (col.innerText === args['comp_col']) {
+          colInd = j;
+        }
+    }
+    for (let i = 1, row; row = rows[i]; i++) {
+        let val = row.cells[colInd].innerHTML;
+        if (comparator(val, args['comp_val'])) {
+            (args['full_row']) ? row.style.backgroundColor = args['true_color'] :
+                row.cells[colInd].style.background = args['true_color']
+        }
+        else {
+            (args['full_row']) ? row.style.backgroundColor = args['false_color'] :
+                row.cells[colInd].style.background = args['false_color']
+        }
+    }
+}
+
 function showChart(tableName) {
     let elem = document.getElementById(`${tableName}ChartCol`);
     let tableElem = document.getElementById(`${tableName}TableBaseCol`);
@@ -1111,6 +1140,7 @@ function createLiquidTable(data, kwargs) {
     let rowOnClick = existsInJson(tableData, 'row_on_click');
     let newModalBtn = existsInJson(tableData, 'new_modal_button');
     let colFilter = existsInJson(tableData, 'col_filter');
+    let conditionalFormat = existsInJson(tableData, 'conditional_format');
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
@@ -1130,6 +1160,11 @@ function createLiquidTable(data, kwargs) {
     }
     if (colFilter){
         createTableFilter(tableName + 'Table');
+    }
+    if (conditionalFormat){
+        setTimeout(() => {
+            addConditionalFormatting(tableName, conditionalFormat);
+        }, 1000)
     }
     createLiquidTableChart(tableName, tableRows);
     showChart(tableName);

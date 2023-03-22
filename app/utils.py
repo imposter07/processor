@@ -263,8 +263,8 @@ class LiquidTable(object):
                  select_val_dict=None, select_box=None,
                  form_cols=None, metric_cols=None, def_metric_cols=None,
                  header=None, highlight_row=None, new_modal_button=False,
-                 col_filter=True, df=pd.DataFrame(), row_on_click='',
-                 table_name='liquidTable'):
+                 col_filter=True, conditional_format=False, df=pd.DataFrame(),
+                 row_on_click='', table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -286,6 +286,13 @@ class LiquidTable(object):
         self.new_modal_button = new_modal_button
         self.col_filter = col_filter
         self.row_on_click = row_on_click
+        if conditional_format is True:
+            self.conditional_format = {
+                'comp_col': 'SUCCESS', 'comparator': '===',
+                'comp_val': 'true', 'true_color': "#90EE90",
+                'false_color': "#FF7F7F", 'full_row': True}
+        else:
+            self.conditional_format = conditional_format
         self.df = df
         self.build_from_df()
         self.form_cols = self.check_form_cols(
@@ -301,7 +308,8 @@ class LiquidTable(object):
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
             self.specify_form_cols, self.col_dict, self.table_name,
-            self.new_modal_button, self.col_filter, self.row_on_click)
+            self.new_modal_button, self.col_filter, self.row_on_click,
+            self.conditional_format)
 
     def build_from_df(self):
         if not self.df.empty:
@@ -344,7 +352,8 @@ class LiquidTable(object):
 
     def make_table_dict(self, cols, data, top_rows, totals, title, description,
                         columns_toggle, accordion, specify_form_cols, col_dict,
-                        table_name, new_modal_button, col_filter, row_on_click):
+                        table_name, new_modal_button, col_filter, row_on_click,
+                        conditional_format):
         table_dict = {
             'data': data, 'rows_name': self.rows_name, 'cols': cols,
             'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
@@ -354,7 +363,8 @@ class LiquidTable(object):
             'col_dict': col_dict, 'name': table_name,
             self.id_col: self.liquid_table,
             'new_modal_button': new_modal_button, 'col_filter': col_filter,
-            'row_on_click': row_on_click}
+            'row_on_click': row_on_click,
+            'conditional_format': conditional_format}
         return table_dict
 
 

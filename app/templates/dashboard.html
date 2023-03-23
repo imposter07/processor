@@ -59,8 +59,12 @@
         <div class="col-md-12">
             <div class="card-header">
                 <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                    <a class="nav-link active" id="nav-dash-tab" data-toggle="tab" href="#nav-dash" role="tab" aria-controls="nav-dash" aria-selected="true">
-                        <h4><i class="fas fa-solid fa-chart-column btn btn-secondary" style="float:right;" aria-hidden="true"></i></h4>
+                    <a class="nav-link active" id="nav-dash-tab"
+                       data-toggle="tab" href="#nav-dash" role="tab"
+                       aria-controls="nav-dash" aria-selected="true">
+                        <h4>
+                            <i class="fas fa-solid fa-chart-column btn btn-secondary"
+                               style="float:right;" aria-hidden="true"></i></h4>
                     </a>
                     <a class="nav-link" id="nav-pacing-tab" data-toggle="tab" href="#nav-pacing" role="tab" aria-controls="nav-pacing" aria-selected="false"
                         onclick="setTimeout(getMetrics, 1000, '#pacingAlerts', generateAlerts, ['vendorname', 'campaignname'], ['netcost', 'adservingcost']);
@@ -73,6 +77,13 @@
                             </div>
                             <div id="pacingAlertCountProgress" style="height:50px; width:100px;" hidden></div>
                         </h4>
+                    </a>
+                    <a class="nav-link" id="nav-billing-tab"
+                       data-toggle="tab" href="#nav-billing" role="tab"
+                       aria-controls="nav-billing" aria-selected="true">
+                        <h4>
+                            <i class="fas fa-solid fa-money-bill btn btn-secondary"
+                               style="float:right;" aria-hidden="true"></i></h4>
                     </a>
                 </div>
             </div>
@@ -256,6 +267,11 @@
             </div>
         </div>
         {% include 'pacing.html' %}
+        <div class="tab-pane fade show" id="nav-billing" role="tabpanel"
+             aria-labelledby="nav-dash-tab"></div>
+            <div class="row">
+                <div id="billingTable"></div>
+            </div>
     </div>
 
     <script>
@@ -331,9 +347,15 @@
             this.setAttribute('hidden', true);
         }
 
+        function getBillingTable() {
+            let billingTableId = 'billingTable';
+            getTable(billingTableId, billingTableId);
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
             addOnClickEvent('button[id^="getAllCharts"]', getAllChartsClickEvent);
             addOnClickEvent('button[id^="applyFilter"]', applyFilterEvent);
+            addOnClickEvent('[id^="nav-billing-tab"]', getBillingTable);
             addSelectize();
             $("#datePicker").flatpickr({
                 mode: "range"

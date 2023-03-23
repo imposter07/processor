@@ -5410,3 +5410,22 @@ def get_glossary_definitions(processor_id, current_user_id):
             'Unhandled exception - Processor {} User {}'.format(
                 processor_id, current_user_id), exc_info=sys.exc_info())
         return pd.DataFrame()
+
+
+def get_billing_table(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        df = get_data_tables_from_db(
+            processor_id, current_user_id,
+            dimensions=['campaignname', 'vendorname'],
+            metrics=['netcost', 'plannednetcost'])[0]
+        lt = app_utl.LiquidTable(df=df, table_name='billingTable')
+        lt = lt.table_dict
+        _set_task_progress(100)
+        return [lt]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

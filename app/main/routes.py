@@ -851,7 +851,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'Pacing Table': '.get_processor_pacing_metrics',
                  'Daily Pacing': '.get_daily_pacing',
                  'datasource_table': '.get_processor_data_source_table',
-                 'singleNoteTable': '.get_single_notes_table'}
+                 'singleNoteTable': '.get_single_notes_table',
+                 'billingTable': '.get_billing_table'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',

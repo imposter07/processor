@@ -1189,8 +1189,7 @@
 
     function getPacingTable(tableName) {
         let elem = document.getElementById(tableName);
-        getTable(tableName, elem.parentElement.id);
-        animateBar();
+        getTable(tableName, elem.id);
     }
 
     function generatePacingTable(elemID, data, xCol, yCol) {
@@ -1203,7 +1202,7 @@
         getProgBars(elemID, "Delivery", "% Through Campaign", "Start Date");
         hideColumn(elemID, "% Through Campaign");
         addAccordianSetup(elemID);
-        getTable('Daily Pacing', elem.parentElement.id);
+        getTable('Daily Pacing', elem.id);
         animateBar();
     }
 

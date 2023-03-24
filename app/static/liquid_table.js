@@ -269,6 +269,7 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
         fromFromCols = getDateForm(loopIndex);
         formNames = removeValues(formNames, dateCols);
     }
+    let topRowIds = getTopRowIds(tableName);
     formNames.forEach((formName) => {
         let colName = 'col' + formName;
         let colType = document.getElementById(colName).dataset['type'];
@@ -277,7 +278,6 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
         let inputInnerHtml = (inputCheck) ? document.getElementById('colSelect' + formName).innerHTML : '';
         let inputEndHtml = (inputCheck) ? '</select>' : '';
         let inputIdHtml = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
-        let topRowIds = getTopRowIds(tableName);
         let topRowData = '';
         topRowIds.forEach(topRowId => {
             topRowData += ' data-' + topRowId + '=""'
@@ -366,8 +366,8 @@ function addRowToTable(rowData, tableName) {
         </tr>
         ${hiddenRowHtml}`;
     d1.insertAdjacentHTML('beforeend', rowCard);
-    addSelectize();
-    addDatePicker();
+    addDatePicker(`#datePicker${loopIndex}`);
+    addSelectize(`[id$='Select${loopIndex}']`);
     addOnClickEvent('[id^=topRowHeader]', editTopRowOnClick);
     sortTable(bodyId, tableName + 'TableHeader');
     return loopIndex
@@ -633,8 +633,7 @@ function addTopRowOnClick() {
     addElemRemoveLoadingBtn(this.id);
 }
 
-function addDatePicker() {
-    let selector = '[id^=datePicker]';
+function addDatePicker(selector = '[id^=datePicker]') {
     $(selector).flatpickr({
         mode: "range",
     });
@@ -659,8 +658,9 @@ function syncSingleTableWithForm(loopIndex, formName, tableName, topRowToggle = 
     let currentElem = document.getElementById(currentElemId);
     let currentValue = (inputCheck) ? currentElem.selectize.getValue() : currentElem.value;
     if (!inputCheck && !topRowToggle) {
+        let table = document.getElementById(tableName);
         let topRowElemIdSelector = 'topRowHeader' + tableName;
-        let selectedElem = document.querySelectorAll(`[id^='${topRowElemIdSelector}'].shadeCell`);
+        let selectedElem = table.querySelectorAll(`[id^='${topRowElemIdSelector}'].shadeCell`);
         if (selectedElem.length !== 0) {
             let topRowId = selectedElem[0].id.replace(topRowElemIdSelector, '');
             currentElem.dataset[topRowId] = currentElem.value;
@@ -785,8 +785,9 @@ function populateTotalCards(tableName) {
 }
 
 function getTopRowIds(tableName) {
+    let table = document.getElementById(tableName);
     let topRowIdSelector = 'topRowHeader' + tableName;
-    let topRowElems = document.querySelectorAll(`[id^="${topRowIdSelector}"]`);
+    let topRowElems = table.querySelectorAll(`[id^="${topRowIdSelector}"]`);
     return Array.prototype.map.call(topRowElems, function (elem) {
         return parseInt(elem.id.replace(topRowIdSelector, ''));
     });

@@ -2,8 +2,8 @@
 <link rel="stylesheet" type="text/css" id="selectizeDark" href="{{ url_for('static', filename='Selectize/selectize.dark.css') }}">
 <script type="text/javascript" src="{{ url_for('static', filename='Selectize/selectize.js') }}"></script>
 <script>
-    function addSelectize() {
-        $("select:not(.flatpickr-monthDropdown-months):not(select[id^='colSelect'])").selectize({
+    function addSelectize(selector = "select:not(.flatpickr-monthDropdown-months):not(select[id^='colSelect'])") {
+        $(selector).selectize({
             dropdownParent:'body',
             shouldSort: false,
             duplicates: true,

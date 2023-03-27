@@ -4,6 +4,7 @@ import json
 import yaml
 import time
 import copy
+import random
 import shutil
 import itertools
 import pandas as pd
@@ -4630,7 +4631,8 @@ def get_all_processors(user_id, running_user):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def update_tutorial(user_id, running_user, tutorial_name, new_data):
+def update_tutorial(user_id, running_user, tutorial_name, new_data,
+                    new_data_is_df=False):
     try:
         _set_task_progress(0)
         cur_tutorial = Tutorial.query.filter_by(name=tutorial_name).first()
@@ -4638,8 +4640,11 @@ def update_tutorial(user_id, running_user, tutorial_name, new_data):
             cur_tutorial = Tutorial(name=tutorial_name)
             db.session.add(cur_tutorial)
             db.session.commit()
-        new_data.seek(0)
-        df = pd.read_excel(new_data)
+        if new_data_is_df:
+            df = new_data
+        else:
+            new_data.seek(0)
+            df = pd.read_excel(new_data)
         df = df.fillna('')
         tut_dict = df.to_dict(orient='index')
         for tut_stage_id in tut_dict:
@@ -5388,7 +5393,10 @@ def get_glossary_definitions(processor_id, current_user_id):
         df = api.get_data(fields=[api.doc_str])
         df = df[df[api.head_str].notnull()]
         glossary = df.to_dict(orient='records')
-        for x in glossary:
+        tutorial_stages = []
+        stages_before_question = 5
+        tutorial_questions = 0
+        for idx, x in enumerate(glossary):
             header = x[api.head_str]
             content = x[api.cont_str]
             n = Notes.query.filter_by(header=header,
@@ -5402,6 +5410,29 @@ def get_glossary_definitions(processor_id, current_user_id):
             elif n.note_text != content:
                 n.note_text = content
                 db.session.commit()
+            stage = TutorialStage.create_dict(
+                tutorial_level=idx+tutorial_questions, header=header,
+                message=content, alert_level='info',
+                alert="Press 'Save & Continue' to get to the next level!")
+            tutorial_stages.append(stage)
+            if (idx % stages_before_question) == 0 and idx != 0:
+                tutorial_questions += 1
+                first_idx = (idx - stages_before_question) + 1
+                correct_answer = random.randint(0, stages_before_question - 1)
+                choices = '|'.join(
+                    '{}. {}'.format(yidx + 1, y['header']) for yidx, y in
+                    enumerate(glossary[first_idx:idx + 1]))
+                stage = TutorialStage.create_dict(
+                    tutorial_level=idx + tutorial_questions,
+                    question=glossary[correct_answer + first_idx]['content'],
+                    question_answers=choices, correct_answer=correct_answer + 1,
+                    alert='CORRECT!', sub_header='Question',
+                    header='Glossary', alert_level='success')
+                tutorial_stages.append(stage)
+        g_tut_name = 'Glossary of Advertising and Gaming Abbreviations'
+        tutorial_stages = pd.DataFrame(tutorial_stages)
+        update_tutorial(current_user_id, current_user_id, g_tut_name,
+                        new_data=tutorial_stages, new_data_is_df=True)
         _set_task_progress(100)
         return [df]
     except:

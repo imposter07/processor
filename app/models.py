@@ -1491,6 +1491,24 @@ class TutorialStage(db.Model):
             for x in self.message.split('\n')]
         return message_split
 
+    @staticmethod
+    def create_dict(tutorial_level=0, header='', sub_header='',
+                    message='', alert='', alert_level='', image='', question='',
+                    question_answers='', correct_answer=''):
+        stage = {
+            'tutorial_level': tutorial_level,
+            'header': header,
+            'sub_header': sub_header,
+            'message': message,
+            'alert': alert,
+            'alert_level': alert_level,
+            'image': image,
+            'question': question,
+            'question_answers': question_answers,
+            'correct_answer': str(correct_answer)
+        }
+        return stage
+
 
 class Walkthrough(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -1224,8 +1224,7 @@
             }).fail(function (jqXHR, textStatus) {
 
             }).always(function () {
-                $('#loadingBtn').remove();
-                $('#loadRefresh').show();
+                addElemRemoveLoadingBtn('loadRefresh');
                 unanimateBar();
             });
         }

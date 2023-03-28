@@ -264,7 +264,7 @@ class LiquidTable(object):
                  form_cols=None, metric_cols=None, def_metric_cols=None,
                  header=None, highlight_row=None, new_modal_button=False,
                  col_filter=True, conditional_format=False, df=pd.DataFrame(),
-                 row_on_click='', table_name='liquidTable'):
+                 row_on_click='', button_col=None, table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -286,6 +286,7 @@ class LiquidTable(object):
         self.new_modal_button = new_modal_button
         self.col_filter = col_filter
         self.row_on_click = row_on_click
+        self.button_col = button_col
         if conditional_format is True:
             self.conditional_format = {
                 'comp_col': 'SUCCESS', 'comparator': '===',
@@ -303,7 +304,7 @@ class LiquidTable(object):
         self.cols = self.make_columns(
             self.col_list, self.select_val_dict, self.select_box,
             self.form_cols, self.metric_cols, self.def_metric_cols, self.header,
-            self.highlight_row)
+            self.highlight_row, self.button_col)
         self.table_dict = self.make_table_dict(
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
@@ -324,7 +325,8 @@ class LiquidTable(object):
         return form_cols
 
     def make_columns(self, col_list, select_val_dict, select_box, form_cols,
-                     metric_cols, def_metric_cols, header, highlight_row):
+                     metric_cols, def_metric_cols, header, highlight_row,
+                     button_col):
         cols = []
         if col_list:
             for x in col_list:
@@ -346,6 +348,8 @@ class LiquidTable(object):
                     self.top_rows_name = x
                 if highlight_row and x == highlight_row:
                     cur_col.blank_highlight = True
+                if button_col and x in button_col:
+                    cur_col.type = 'button_col'
                 cur_col.update_dict()
                 cols.append(cur_col.col_dict)
         return cols

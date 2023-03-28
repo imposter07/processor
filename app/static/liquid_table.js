@@ -1,11 +1,11 @@
-function addNewRowModal(tableName) {
+function createModal(modalId='', modalTitleText='', form = null,
+                     saveBtnFunction='', saveBtnFunctionKwargs = {}) {
     // Create the modal element
-    let loopIndex = addRow(null, tableName);
     const modal = document.createElement("div");
     modal.classList.add("modal", "fade");
     modal.setAttribute("tabindex", "-1");
     modal.setAttribute("role", "dialog");
-    modal.setAttribute("id", "addRowModal");
+    modal.setAttribute("id", modalId);
 
     // Create the modal dialog
     const modalDialog = document.createElement("div");
@@ -26,7 +26,7 @@ function addNewRowModal(tableName) {
     // Create the modal title
     const modalTitle = document.createElement("h5");
     modalTitle.classList.add("modal-title");
-    modalTitle.textContent = "Add Row";
+    modalTitle.textContent = modalTitleText;
     modalHeader.appendChild(modalTitle);
 
     // Create the modal body
@@ -34,42 +34,56 @@ function addNewRowModal(tableName) {
     modalBody.classList.add("modal-body");
     modalContent.appendChild(modalBody);
 
-    // Create the form
-    let form  = document.getElementById(`form${tableName}${loopIndex}`);
-    modalBody.appendChild(form);
+    if (form) {
+        modalBody.appendChild(form);
+    }
 
     // Create the modal footer
     const modalFooter = document.createElement("div");
     modalFooter.classList.add("modal-footer");
     modalContent.appendChild(modalFooter);
 
+    saveBtnFunction = (saveBtnFunction) ? (saveBtnFunction) : function() {};
+
     // Create the save button
     const saveButton = document.createElement("button");
     saveButton.classList.add("btn", "btn-outline-success", "btn-block");
     saveButton.textContent = "Save";
-    saveButton.addEventListener("click", function() {
-        let form  = document.getElementById(`form${tableName}${loopIndex}`);
-        let fh = document.getElementById(`${tableName}FormHolder${loopIndex}`);
-        fh.appendChild(form);
+    saveButton.addEventListener("click", function () {
+        saveBtnFunction(saveBtnFunctionKwargs);
         document.body.removeChild(modal);
         document.querySelector(".modal-backdrop").remove();
     });
-
     modalFooter.appendChild(saveButton);
 
     // Append the modal to the body
     document.body.appendChild(modal);
 
     // Display the modal
-    $("#addRowModal").modal("show");
+    $("#" + modalId).modal("show");
 
     // When the modal is closed, remove it from the body and return the form to its original location
     $("#formModal").on("hidden.bs.modal", function() {
-        let form  = document.getElementById(`form${tableName}${loopIndex}`);
-        let fh = document.getElementById(`${tableName}FormHolder${loopIndex}`);
-        fh.appendChild(form);
+        saveBtnFunction(saveBtnFunctionKwargs);
         document.body.removeChild(modal);
     });
+    return modal
+}
+
+function addNewRowSaveBtnFunction(kwargs) {
+    let tableName = kwargs['tableName'];
+    let loopIndex = kwargs['loopIndex'];
+    let form = document.getElementById(`form${tableName}${loopIndex}`);
+    let fh = document.getElementById(`${tableName}FormHolder${loopIndex}`);
+    fh.appendChild(form);
+}
+
+function addNewRowModal(tableName) {
+    let loopIndex = addRow(null, tableName);
+    let form  = document.getElementById(`form${tableName}${loopIndex}`);
+    let kwargs = {'tableName': tableName, 'loopIndex': loopIndex}
+    createModal('addRowModal', 'Add Row', form,
+        addNewRowSaveBtnFunction, kwargs);
 }
 
 function createTableElements(tableName, rowsName,
@@ -224,6 +238,22 @@ function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell") {
     });
 }
 
+function buttonColOnClick(tableName, colName, loopIndex) {
+    let form = document.createElement("form");
+    form.setAttribute('method',"post");
+    let i = document.getElementById(`${colName}${loopIndex}`).parentElement;
+
+    let s = document.createElement("input"); //input element, File
+    s.setAttribute('type',"file");
+    s.setAttribute('value',"Submit");
+    form.appendChild(i);
+    form.appendChild(s);
+
+    let modalId = `modal${tableName}${colName}${loopIndex}`.toUpperCase();
+    let titleName = `${tableName} - ${colName} - ${loopIndex}`;
+    createModal(modalId, titleName, form);
+}
+
 function getRowHtml(loopIndex, tableName, rowData = null) {
     let tableHeadElems = document.getElementById(tableName + 'TableHeader');
     tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
@@ -231,7 +261,18 @@ function getRowHtml(loopIndex, tableName, rowData = null) {
     tableHeadElems.forEach(tableHeadElem => {
         let colName = tableHeadElem.id.replace('col', '');
         let cellData = getCellContent(rowData, colName);
-        tableHeaders = tableHeaders + `<td id="row${colName}${loopIndex}" style="display:${tableHeadElem.style.display};">${cellData}</td>`
+        let isButtonCol = tableHeadElem.dataset['type'] === 'button_col';
+        let buttonColBtn = `
+            <button id="btn${colName}${loopIndex}" class="btn btn-outline-success text-left"
+                    type="button" href="" 
+                    onclick="buttonColOnClick('${tableName}', '${colName}', '${loopIndex}');">
+                <i class="fas fa-plus"  role="button"></i>
+            </button>`
+        let buttonColHtml = (isButtonCol) ? buttonColBtn: '';
+        tableHeaders += `
+            <td id="row${colName}${loopIndex}" style="display:${tableHeadElem.style.display};">
+                ${cellData}${buttonColHtml}
+            </td>`
     });
     return tableHeaders
 }
@@ -248,7 +289,7 @@ function getCellContent(rowData, colName) {
 }
 
 function getDateForm(loopIndex) {
-    let dateForm = `
+    return `
         <div class="col form-group">
             <label class="control-label" for="datePicker${loopIndex}">Dates</label>
             <input id="datePicker${loopIndex}"
@@ -258,7 +299,6 @@ function getDateForm(loopIndex) {
                    data-id="range" name="dates${loopIndex}"
                    readonly="readonly" data-input>
         </div>`
-    return dateForm
 }
 
 function buildFormFromCols(loopIndex, formNames, tableName) {
@@ -327,7 +367,7 @@ function addRowToTable(rowData, tableName) {
     d1 = document.getElementById(bodyId);
     let formHolderName = tableName + 'FormHolder';
     let loopIndex = d1.querySelectorAll(`.${formHolderName}:last-child`);
-    loopIndex = (loopIndex.length != 0) ? (parseInt(loopIndex[loopIndex.length- 1].id.replace(formHolderName, '')) + 1).toString() : '0';
+    loopIndex = (loopIndex.length !== 0) ? (parseInt(loopIndex[loopIndex.length- 1].id.replace(formHolderName, '')) + 1).toString() : '0';
     let tableHeadElems = getTableHeadElems(tableName);
     let tableHeaders = getRowHtml(loopIndex, tableName, rowData);
     let rowFormNames = getRowFormNames(tableName);
@@ -676,6 +716,11 @@ function syncSingleTableWithForm(loopIndex, formName, tableName, topRowToggle = 
             })
         }
     }
+    let isButtonCol = curColElem.dataset['type'] === 'button_col';
+    if (isButtonCol) {
+        let btnElem = document.getElementById(`btn${formName}${loopIndex}`);
+        currentValue += btnElem.outerHTML;
+    }
     document.getElementById('row' + formName + loopIndex).innerHTML = currentValue;
     let curRow = document.getElementById('tr' + loopIndex);
     let blankHighlight = curColElem.getAttribute('data-blank_highlight');
@@ -828,7 +873,7 @@ function addTopRow(topRowData, tableName) {
 }
 
 function addCurrentTopRows(topRowsData, tableName) {
-    topRowsData.forEach(function (topRowData, i) {
+    topRowsData.forEach(topRowData => {
         addTopRow(topRowData, tableName);
     });
     turnOffAllCards(tableName);

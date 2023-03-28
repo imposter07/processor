@@ -5450,7 +5450,10 @@ def get_billing_table(processor_id, current_user_id):
             processor_id, current_user_id,
             dimensions=['campaignname', 'vendorname'],
             metrics=['netcost', 'plannednetcost'])[0]
-        lt = app_utl.LiquidTable(df=df, table_name='billingTable')
+        invoice_cost = 'invoicecost'
+        df[invoice_cost] = 5000
+        lt = app_utl.LiquidTable(df=df, table_name='billingTable',
+                                 button_col=[invoice_cost])
         lt = lt.table_dict
         _set_task_progress(100)
         return [lt]

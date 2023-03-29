@@ -55,7 +55,7 @@ class MessageForm(FlaskForm):
 
 
 class ProcessorForm(FlaskForm):
-    name = StringField(_l('Name'), validators=[
+    name = StringField(_l('Name'), render_kw={'readonly': True}, validators=[
         DataRequired(), Regexp("[^']", message='Remove special characters')])
     description = StringField(_l('Description'), validators=[
         DataRequired()])

@@ -4819,7 +4819,8 @@ def test_api_connection(processor_id, current_user_id, vk):
             test = ih.ImportHandler('all', matrix)
             df = test.test_api_calls([vk])
             lt = app_utl.LiquidTable(df=df, table_name='modal-body-table',
-                                     col_filter=False, conditional_format=True)
+                                     highlight_row='Success',
+                                     highlight_type='')
         _set_task_progress(100)
         return [lt.table_dict]
     except:
@@ -5449,11 +5450,14 @@ def get_billing_table(processor_id, current_user_id):
         df = get_data_tables_from_db(
             processor_id, current_user_id,
             dimensions=['campaignname', 'vendorname'],
-            metrics=['netcost', 'plannednetcost'])[0]
+            metrics=['netcost', 'plannednetcost'], use_cache=False)[0]
         invoice_cost = 'invoicecost'
-        df[invoice_cost] = 5000
+        df[invoice_cost] = df['netcost']
+        df['plan - netcost'] = df['plannednetcost'] - df['netcost']
+        df['invoice - plancost'] = df[invoice_cost] - df['plannednetcost']
         lt = app_utl.LiquidTable(df=df, table_name='billingTable',
-                                 button_col=[invoice_cost])
+                                 button_col=[invoice_cost],
+                                 highlight_row=invoice_cost)
         lt = lt.table_dict
         _set_task_progress(100)
         return [lt]

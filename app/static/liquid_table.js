@@ -690,6 +690,30 @@ function addRows(rows, tableName) {
     });
 }
 
+function parseApplyRowHighlight(loopIndex, curColElem, currentValue, curElem) {
+    let curRow = document.getElementById('tr' + loopIndex);
+    let highlightRow = JSON.parse(decodeURIComponent(curColElem.dataset['highlight_row']));
+    if ((curRow) && (highlightRow)) {
+        let comparisonOperatorsHash = {
+            '<': function(a, b) { return a < b; },
+            '>': function(a, b) { return a > b; },
+            '>=': function(a, b) { return a >= b; },
+            '<=': function(a, b) { return a <= b; },
+            '===': function(a, b) { return a === b; },
+            'includes': function(a, b) {return b.includes(a)}
+        };
+        let comparator = comparisonOperatorsHash[highlightRow['comparator']];
+        let fullRow = highlightRow['full_row'];
+        let elemToColor = (fullRow) ? curRow : curElem;
+        let compValues = highlightRow['comp_val'];
+        let trueColor = highlightRow['true_color'];
+        let falseColor = highlightRow['false_color'];
+        let colorsToAddRemove = (comparator(currentValue, compValues)) ? [trueColor, falseColor] : [falseColor, trueColor];
+        (colorsToAddRemove[0]) ? elemToColor.classList.add(colorsToAddRemove[0]) : '';
+        (colorsToAddRemove[1]) ? elemToColor.classList.remove(colorsToAddRemove[1]) : '';
+    }
+}
+
 function syncSingleTableWithForm(loopIndex, formName, tableName, topRowToggle = false) {
     let colName = 'col' + formName;
     let curColElem = document.getElementById(colName);
@@ -716,21 +740,18 @@ function syncSingleTableWithForm(loopIndex, formName, tableName, topRowToggle = 
             })
         }
     }
+    if (formName.toLowerCase().includes('cost')) {
+        currentValue = formatNumber(Number(currentValue));
+        currentValue = '$' + currentValue;
+    }
+    let curElem = document.getElementById('row' + formName + loopIndex);
+    parseApplyRowHighlight(loopIndex, curColElem, currentValue, curElem);
     let isButtonCol = curColElem.dataset['type'] === 'button_col';
     if (isButtonCol) {
         let btnElem = document.getElementById(`btn${formName}${loopIndex}`);
         currentValue += btnElem.outerHTML;
     }
-    document.getElementById('row' + formName + loopIndex).innerHTML = currentValue;
-    let curRow = document.getElementById('tr' + loopIndex);
-    let blankHighlight = curColElem.getAttribute('data-blank_highlight');
-    if ((curRow) && (blankHighlight)) {
-        if (["$0", "0", ""].includes(document.getElementById('row' + currentElemId).innerHTML)) {
-            document.getElementById('tr' + loopIndex).classList.add('shadeCellError');
-        } else {
-            document.getElementById('tr' + loopIndex).classList.remove('shadeCellError');
-        }
-    }
+    curElem.innerHTML = currentValue;
     populateTotalCards(tableName);
 }
 
@@ -901,10 +922,10 @@ function addTableColumns(cols, name) {
     cols.forEach(col => {
         let colName = col['name'];
         let formCol = (!(specifyFormCol)) ? 'true': col['form'];
-        let blankHighlight = existsInJson(col, 'blank_highlight');
+        let highlightRow = encodeURIComponent(JSON.stringify(existsInJson(col, 'highlight_row')));
         thead.innerHTML += `
             <th data-form="${formCol}" data-type="${col['type']}"
-                data-blank_highlight="${blankHighlight}" data-name="${colName}"
+                data-highlight_row="${highlightRow}" data-name="${colName}"
                 data-tableid="${name}Table"
                 id="col${colName}">${generateDisplayColumnName(colName)}
             </th>`;
@@ -1104,36 +1125,6 @@ function createTableFilter(tableId) {
     }
 }
 
-function addConditionalFormatting(tableName, args) {
-    let comparisonOperatorsHash = {
-        '<': function(a, b) { return a < b; },
-        '>': function(a, b) { return a > b; },
-        '>=': function(a, b) { return a >= b; },
-        '<=': function(a, b) { return a <= b; },
-        '===': function(a, b) { return a === b; },
-    };
-    let comparator = comparisonOperatorsHash[args['comparator']];
-    const table = document.getElementById(tableName);
-    const rows = table.querySelectorAll('tr:not([id*="Hidden"])');
-    let colInd = 0;
-    for (let j = 0, col; col = rows[0].cells[j]; j++) {
-        if (col.innerText === args['comp_col']) {
-          colInd = j;
-        }
-    }
-    for (let i = 1, row; row = rows[i]; i++) {
-        let val = row.cells[colInd].innerHTML;
-        if (comparator(val, args['comp_val'])) {
-            (args['full_row']) ? row.style.backgroundColor = args['true_color'] :
-                row.cells[colInd].style.background = args['true_color']
-        }
-        else {
-            (args['full_row']) ? row.style.backgroundColor = args['false_color'] :
-                row.cells[colInd].style.background = args['false_color']
-        }
-    }
-}
-
 function showChart(tableName) {
     let elem = document.getElementById(`${tableName}ChartCol`);
     let tableElem = document.getElementById(`${tableName}TableBaseCol`);
@@ -1186,7 +1177,6 @@ function createLiquidTable(data, kwargs) {
     let rowOnClick = existsInJson(tableData, 'row_on_click');
     let newModalBtn = existsInJson(tableData, 'new_modal_button');
     let colFilter = existsInJson(tableData, 'col_filter');
-    let conditionalFormat = existsInJson(tableData, 'conditional_format');
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
@@ -1204,13 +1194,8 @@ function createLiquidTable(data, kwargs) {
         createTotalCards(tableName);
         populateTotalCards(tableName);
     }
-    if (colFilter){
+    if (colFilter) {
         createTableFilter(tableName + 'Table');
-    }
-    if (conditionalFormat){
-        setTimeout(() => {
-            addConditionalFormatting(tableName, conditionalFormat);
-        }, 1000)
     }
     createLiquidTableChart(tableName, tableRows);
     showChart(tableName);

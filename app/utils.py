@@ -263,8 +263,9 @@ class LiquidTable(object):
                  select_val_dict=None, select_box=None,
                  form_cols=None, metric_cols=None, def_metric_cols=None,
                  header=None, highlight_row=None, new_modal_button=False,
-                 col_filter=True, conditional_format=False, df=pd.DataFrame(),
-                 row_on_click='', button_col=None, table_name='liquidTable'):
+                 col_filter=True, df=pd.DataFrame(), row_on_click='',
+                 button_col=None, highlight_type='blank',
+                 table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -287,13 +288,7 @@ class LiquidTable(object):
         self.col_filter = col_filter
         self.row_on_click = row_on_click
         self.button_col = button_col
-        if conditional_format is True:
-            self.conditional_format = {
-                'comp_col': 'SUCCESS', 'comparator': '===',
-                'comp_val': 'true', 'true_color': "#90EE90",
-                'false_color': "#FF7F7F", 'full_row': True}
-        else:
-            self.conditional_format = conditional_format
+        self.highlight_type = highlight_type
         self.df = df
         self.build_from_df()
         self.form_cols = self.check_form_cols(
@@ -304,13 +299,12 @@ class LiquidTable(object):
         self.cols = self.make_columns(
             self.col_list, self.select_val_dict, self.select_box,
             self.form_cols, self.metric_cols, self.def_metric_cols, self.header,
-            self.highlight_row, self.button_col)
+            self.highlight_row, self.button_col, self.highlight_type)
         self.table_dict = self.make_table_dict(
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
             self.specify_form_cols, self.col_dict, self.table_name,
-            self.new_modal_button, self.col_filter, self.row_on_click,
-            self.conditional_format)
+            self.new_modal_button, self.col_filter, self.row_on_click)
 
     def build_from_df(self):
         if not self.df.empty:
@@ -326,7 +320,7 @@ class LiquidTable(object):
 
     def make_columns(self, col_list, select_val_dict, select_box, form_cols,
                      metric_cols, def_metric_cols, header, highlight_row,
-                     button_col):
+                     button_col, highlight_type):
         cols = []
         if col_list:
             for x in col_list:
@@ -347,7 +341,8 @@ class LiquidTable(object):
                     cur_col.make_header()
                     self.top_rows_name = x
                 if highlight_row and x == highlight_row:
-                    cur_col.blank_highlight = True
+                    ht = cur_col.parse_highlight_type(highlight_type)
+                    cur_col.highlight_row = ht
                 if button_col and x in button_col:
                     cur_col.type = 'button_col'
                 cur_col.update_dict()
@@ -356,8 +351,7 @@ class LiquidTable(object):
 
     def make_table_dict(self, cols, data, top_rows, totals, title, description,
                         columns_toggle, accordion, specify_form_cols, col_dict,
-                        table_name, new_modal_button, col_filter, row_on_click,
-                        conditional_format):
+                        table_name, new_modal_button, col_filter, row_on_click):
         table_dict = {
             'data': data, 'rows_name': self.rows_name, 'cols': cols,
             'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
@@ -367,8 +361,7 @@ class LiquidTable(object):
             'col_dict': col_dict, 'name': table_name,
             self.id_col: self.liquid_table,
             'new_modal_button': new_modal_button, 'col_filter': col_filter,
-            'row_on_click': row_on_click,
-            'conditional_format': conditional_format}
+            'row_on_click': row_on_click}
         return table_dict
 
 
@@ -380,10 +373,10 @@ class LiquidTableColumn(object):
     hidden_str = 'hidden'
     header_str = 'header'
     form_str = 'form'
-    blank_highlight_str = 'blank_highlight'
+    highlight_row_str = 'highlight_row'
 
     def __init__(self, name, col_type='', values=None, add_select_box=False,
-                 hidden=False, header=False, form=False, blank_highlight=''):
+                 hidden=False, header=False, form=False, highlight_row=''):
         self.name = name
         self.type = col_type
         self.values = values
@@ -391,7 +384,7 @@ class LiquidTableColumn(object):
         self.hidden = hidden
         self.header = header
         self.form = form
-        self.blank_highlight = blank_highlight
+        self.highlight_row = highlight_row
         self.col_dict = self.update_dict()
 
     def update_dict(self):
@@ -403,7 +396,7 @@ class LiquidTableColumn(object):
             self.hidden_str: self.hidden,
             self.header_str: self.header,
             self.form_str: self.form,
-            self.blank_highlight_str: self.blank_highlight}
+            self.highlight_row_str: self.highlight_row}
         return self.col_dict
 
     def make_select(self):
@@ -414,3 +407,21 @@ class LiquidTableColumn(object):
         self.hidden = True
         self.header = True
         self.make_select()
+
+    @staticmethod
+    def parse_highlight_type(highlight_type):
+        full_row = True
+        true_color = 'shadeCell3'
+        false_color = 'shadeCell4'
+        comparison_values = 'true'
+        comparator = '==='
+        if highlight_type == 'blank':
+            true_color = false_color
+            false_color = ''
+            comparison_values = ["$0", "0", ""]
+            comparator = 'includes'
+        ht = {
+            'comparator': comparator, 'comp_val': comparison_values,
+            'true_color': true_color, 'false_color': false_color,
+            'full_row': full_row}
+        return ht

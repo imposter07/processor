@@ -2015,7 +2015,6 @@ def edit_processor_note(object_name):
     form = ProcessorNoteForm()
     kwargs['form'] = form
     if request.method == 'POST':
-        print(form.start_date.data)
         new_note = Notes(
             processor_id=cur_proc.id, user_id=current_user.id,
             note_text=form.note_text.data, notification=form.notification.data,

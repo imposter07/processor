@@ -9,6 +9,7 @@ import shutil
 import itertools
 import pandas as pd
 import numpy as np
+import datetime as dt
 import app.utils as app_utl
 from datetime import datetime
 from flask import render_template
@@ -20,6 +21,19 @@ from app.models import User, Post, Task, Processor, Message, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes
+import processor.reporting.calc as cal
+import processor.reporting.utils as utl
+import processor.reporting.export as exp
+import processor.reporting.analyze as az
+import processor.reporting.vmcolumns as vmc
+import processor.reporting.expcolumns as exc
+import processor.reporting.dictionary as dct
+import processor.reporting.vendormatrix as vm
+import processor.reporting.dictcolumns as dctc
+import processor.reporting.importhandler as ih
+import processor.reporting.gsapi as gsapi
+import uploader.upload.utils as u_utl
+import uploader.upload.creator as cre
 
 app = create_app()
 app.app_context().push()
@@ -156,7 +170,6 @@ def copy_processor_local(file_path, copy_back=False):
                 copy_file(old_file, new_file)
         if not os.path.exists(new_file_path):
             os.makedirs(new_file_path)
-        import processor.reporting.utils as utl
         for directory in [utl.config_path, utl.raw_path, utl.dict_path]:
             new_path = os.path.join(new_file_path, directory)
             old_path = os.path.join(file_path, directory)
@@ -213,7 +226,6 @@ def update_cached_data_in_processor_run(processor_id, current_user_id):
             app.logger.info('Getting db col: {}'.format(col))
             filter_dicts = [[]]
             if processor_id == 23:
-                import datetime as dt
                 today = dt.datetime.today()
                 thirty = today - dt.timedelta(days=30)
                 today = today.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
@@ -325,8 +337,6 @@ def write_translational_dict(processor_id, current_user_id, new_data):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
-        import processor.reporting.dictionary as dct
-        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         tc = dct.DictTranslationConfig()
         df = pd.read_json(new_data)
@@ -346,8 +356,6 @@ def write_translational_dict(processor_id, current_user_id, new_data):
 
 
 def set_initial_constant_file(cur_processor):
-    import processor.reporting.dictionary as dct
-    import processor.reporting.dictcolumns as dctc
     os.chdir(adjust_path(cur_processor.local_path))
     dcc = dct.DictConstantConfig(None)
     dcc.read_raw_df(dctc.filename_con_config)
@@ -424,7 +432,6 @@ def get_processor_sources(processor_id, current_user_id):
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
         _set_task_progress(0)
-        import processor.reporting.vendormatrix as vm
         os.chdir('processor')
         default_param_ic = vm.ImportConfig(matrix=True)
         processor_path = adjust_path(cur_processor.local_path)
@@ -461,8 +468,6 @@ def set_processor_imports(processor_id, current_user_id, form_imports,
                 processor_dict.pop('raw_file', None)
         processor_path = adjust_path(cur_processor.local_path)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.vendormatrix as vm
         from processor.reporting.vendormatrix import ImportConfig
         os.chdir('processor')
         default_param_ic = ImportConfig(matrix=True)
@@ -500,7 +505,6 @@ def set_data_sources(processor_id, current_user_id, form_sources):
             processor_id=processor_id, current_user_id=current_user_id)
         old_sources = ProcessorDatasources.query.filter_by(
             processor_id=cur_processor.id).all()
-        import processor.reporting.vmcolumns as vmc
         _set_task_progress(0)
         for source in form_sources:
             ds = [x for x in old_sources if 'original_vendor_key' in source and
@@ -522,7 +526,6 @@ def set_data_sources(processor_id, current_user_id, form_sources):
             else:
                 sources[idx][
                     'original_vendor_key'] = sources[idx][vmc.vendorkey]
-        import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         matrix.set_data_sources(sources)
@@ -560,10 +563,6 @@ def get_data_tables(processor_id, current_user_id, parameter=None,
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.calc as cal
-        import processor.reporting.utils as utl
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.dictcolumns as dctc
         if not cur_processor.local_path:
             _set_task_progress(100)
             return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
@@ -623,7 +622,6 @@ def get_data_tables(processor_id, current_user_id, parameter=None,
 def get_dict_order(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
@@ -641,10 +639,6 @@ def get_dict_order(processor_id, current_user_id, vk):
 def get_change_dict_order(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.dictionary as dct
-        import processor.reporting.dictcolumns as dctc
-        import processor.reporting.vmcolumns as vmc
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
@@ -686,9 +680,6 @@ def get_change_dict_order(processor_id, current_user_id, vk):
 def delete_dict(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.utils as utl
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
@@ -719,7 +710,6 @@ def get_raw_data(processor_id, current_user_id, vk, parameter=None):
     try:
         cur_processor = Processor.query.get(processor_id)
         _set_task_progress(20)
-        import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         _set_task_progress(40)
         matrix = vm.VendorMatrix()
@@ -744,9 +734,6 @@ def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
-        import processor.reporting.utils as utl
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.vendormatrix as vm
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir('processor')
         default_param_ic = vm.ImportConfig(matrix=True)
@@ -805,9 +792,6 @@ def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
 def get_dictionary(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.dictionary as dct
-        import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
@@ -828,11 +812,6 @@ def write_dictionary(processor_id, current_user_id, new_data, vk,
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
-        import processor.reporting.utils as utl
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.dictionary as dct
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
@@ -876,11 +855,6 @@ def write_dictionary_order(processor_id, current_user_id, new_data, vk):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.dictionary as dct
-        import processor.reporting.dictcolumns as dctc
-        import processor.reporting.utils as utl
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         _set_task_progress(0)
         df = pd.read_json(new_data)
@@ -910,8 +884,6 @@ def write_dictionary_order(processor_id, current_user_id, new_data, vk):
 def get_translation_dict(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.dictionary as dct
-        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         tc = dct.DictTranslationConfig()
         tc.read(dctc.filename_tran_config)
@@ -927,7 +899,6 @@ def get_translation_dict(processor_id, current_user_id):
 def get_vendormatrix(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         _set_task_progress(100)
@@ -943,8 +914,6 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.vendormatrix as vm
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
@@ -972,8 +941,6 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
 def get_constant_dict(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.dictionary as dct
-        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         dcc = dct.DictConstantConfig(None)
         dcc.read_raw_df(dctc.filename_con_config)
@@ -990,8 +957,6 @@ def write_constant_dict(processor_id, current_user_id, new_data):
     try:
         cur_processor = Processor.query.get(processor_id)
         user_that_ran = User.query.get(current_user_id)
-        import processor.reporting.dictionary as dct
-        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         dcc = dct.DictConstantConfig(None)
         df = pd.read_json(new_data)
@@ -1014,8 +979,6 @@ def write_constant_dict(processor_id, current_user_id, new_data):
 def get_relational_config(processor_id, current_user_id, parameter=None):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.dictionary as dct
-        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         rc = dct.RelationalConfig()
         rc.read(dctc.filename_rel_config)
@@ -1042,8 +1005,6 @@ def write_relational_config(processor_id, current_user_id, new_data,
     try:
         cur_processor = Processor.query.get(processor_id)
         user_that_ran = User.query.get(current_user_id)
-        import processor.reporting.dictionary as dct
-        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         rc = dct.RelationalConfig()
         df = pd.read_json(new_data)
@@ -1072,8 +1033,6 @@ def write_relational_config(processor_id, current_user_id, new_data,
 def get_import_config_file(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         ic = vm.ImportConfig()
@@ -1102,7 +1061,6 @@ def write_import_config_file(processor_id, current_user_id, new_data, vk):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
-        import processor.reporting.vendormatrix as vm
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
@@ -1137,7 +1095,6 @@ def write_tableau_config_file(processor_id, current_user_id):
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
-        import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         file_name = os.path.join('config', 'tabconfig.json')
         if cur_processor.tableau_datasource:
@@ -1603,7 +1560,6 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
         cur_up, user_that_ran = get_uploader_and_user_from_id(
             uploader_id=uploader_id, current_user_id=current_user_id)
         _set_task_progress(0)
-        import uploader.upload.utils as utl
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(cur_up.local_path))
         file_name = uploader_file_translation(
@@ -1622,7 +1578,7 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
                 odf = pd.read_excel(file_name)
                 odf = odf.loc[odf['impacted_column_name'] != vk]
                 df = odf.append(df, ignore_index=True, sort=False)
-            utl.write_df(df, file_name)
+            u_utl.write_df(df, file_name)
         msg_text = ('{} uploader {} was updated.'
                     ''.format(file_name, cur_up.name))
         processor_post_message(cur_up, user_that_ran, msg_text,
@@ -1645,7 +1601,6 @@ def set_object_relation_file(uploader_id, current_user_id,
             uploader_type=uploader_type).first()
         up_rel = UploaderRelations.query.filter_by(
             uploader_objects_id=up_cam.id).all()
-        import uploader.upload.utils as utl
         os.chdir(adjust_path(cur_up.local_path))
         file_name = uploader_file_translation(
             'uploader_full_relation', object_level=object_level,
@@ -1660,7 +1615,7 @@ def set_object_relation_file(uploader_id, current_user_id,
                      'impacted_column_new_value': [rel.relation_constant],
                      'position': ['Constant']})
                 df = df.append(ndf, ignore_index=True, sort=False)
-        utl.write_df(df, file_name)
+        u_utl.write_df(df, file_name)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Uploader {} User {}'.format(
@@ -1670,7 +1625,6 @@ def set_object_relation_file(uploader_id, current_user_id,
 def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
                              creator_column=None, file_filter=None,
                              duplication_type=None, uploader_type='Facebook'):
-    import uploader.upload.creator as cre
     primary_column = get_primary_column(object_level, uploader_type)
     if uploader_type == 'Facebook':
         upload_create_path = 'fb'
@@ -1821,8 +1775,6 @@ def uploader_create_objects(uploader_id, current_user_id,
             uploader_id=cur_up.id, object_level=object_level,
             uploader_type=uploader_type).first()
         _set_task_progress(0)
-        import uploader.upload.creator as cre
-        import uploader.upload.utils as utl
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         creator_col = UploaderObjects.string_to_list(up_obj.media_plan_columns)
         creator_column = '|'.join(creator_col)
@@ -1835,7 +1787,7 @@ def uploader_create_objects(uploader_id, current_user_id,
         df = pd.DataFrame(new_dict)
         os.chdir(adjust_path(cur_up.local_path))
         file_name = uploader_file_translation('Creator')
-        utl.write_df(df, file_name)
+        u_utl.write_df(df, file_name)
         os.chdir(cur_path)
         set_object_relation_file(uploader_id, current_user_id,
                                  object_level=object_level,
@@ -2006,8 +1958,6 @@ def write_conversions(processor_id, current_user_id, new_data):
 def set_conversions(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.vendormatrix as vm
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         for key in set(x.key for x in cur_processor.conversions):
@@ -2060,7 +2010,7 @@ def set_conversions(processor_id, current_user_id):
         return False
 
 
-def convert_rate_card_to_relation(df, dctc):
+def convert_rate_card_to_relation(df):
     df = df.rename(columns={'adserving_fee': dctc.AR,
                             'reporting_fee': dctc.RFR,
                             'type_name': dctc.SRV})
@@ -2075,8 +2025,6 @@ def set_processor_fees(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
         rate_card = cur_processor.rate_card
-        import processor.reporting.dictcolumns as dctc
-        import processor.reporting.dictionary as dct
         os.chdir(adjust_path(cur_processor.local_path))
         rate_list = []
         for row in rate_card.rates:
@@ -2084,14 +2032,12 @@ def set_processor_fees(processor_id, current_user_id):
                                   for col in row.__table__.columns.keys()
                                   if 'id' not in col))
         df = pd.DataFrame(rate_list)
-        df = convert_rate_card_to_relation(df, dctc)
+        df = convert_rate_card_to_relation(df)
         rc = dct.RelationalConfig()
         rc.read(dctc.filename_rel_config)
         params = rc.get_relation_params('Serving')
         dr = dct.DictRelational(**params)
         dr.write(df)
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.vendormatrix as vm
         matrix = vm.VendorMatrix()
         index = matrix.vm_df[matrix.vm_df[vmc.vendorkey] == 'DCM'].index[0]
         matrix.vm_change(index, 'RULE_3_FACTOR', cur_processor.dcm_service_fees)
@@ -2108,10 +2054,6 @@ def set_processor_plan_net(processor_id, current_user_id, default_vm=None):
     try:
         cur_processor = Processor.query.get(processor_id)
         from uploader.upload.creator import MediaPlan
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.dictionary as dct
-        import processor.reporting.dictcolumns as dctc
         base_path = create_local_path(cur_processor)
         os.chdir(adjust_path(base_path))
         if not os.path.exists('mediaplan.csv'):
@@ -2303,7 +2245,6 @@ def monthly_email_last_login(current_user_id, text_body, header, tab=0):
 
 def monthly_email_app_updates(current_user_id, text_body, header, tab=0):
     try:
-        import datetime as dt
         new_posts = Post.query.filter(Post.timestamp >= datetime.today() -
                                       dt.timedelta(days=1))
         new_posts = new_posts.filter_by(user_id=3)
@@ -2326,8 +2267,6 @@ def monthly_email_app_updates(current_user_id, text_body, header, tab=0):
 
 def monthly_email_data_toplines(current_user_id, text_body, header, tab=0):
     try:
-        import datetime as dt
-        import processor.reporting.analyze as az
         cu = User.query.get(current_user_id)
         proc = cu.processor_followed.filter(
             Processor.end_date > datetime.today()).all()
@@ -2412,7 +2351,6 @@ def set_processor_config_file(processor_id, current_user_id, config_type,
     try:
         cur_processor = Processor.query.get(processor_id)
         client_name = cur_processor.campaign.product.client.name
-        import processor.reporting.utils as utl
         os.chdir(adjust_path(cur_processor.local_path))
         file_path = '{}_api_cred'.format(config_type)
         file_name = '{}_dict.csv'.format(config_type)
@@ -2450,8 +2388,6 @@ def set_processor_config_files(processor_id, current_user_id):
 def make_database_view(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.utils as utl
-        import processor.reporting.export as exp
         os.chdir(adjust_path(cur_processor.local_path))
         product_name = cur_processor.campaign.product.name
         sb = exp.ScriptBuilder()
@@ -2479,7 +2415,6 @@ def schedule_processor(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
         msg_text = 'Scheduling processor: {}'.format(cur_processor.name)
-        import datetime as dt
         sched = TaskScheduler.query.filter_by(
             processor_id=cur_processor.id).first()
         if not sched:
@@ -2690,7 +2625,6 @@ def get_plan_property(processor_id, current_user_id, vk):
 
 def check_processor_plan(processor_id, current_user_id, object_type=Processor):
     try:
-        import datetime as dt
         cur_obj = object_type.query.get(processor_id)
         base_path = create_local_path(cur_obj)
         mp_path = os.path.join(base_path, 'mediaplan.csv')
@@ -2720,9 +2654,6 @@ def set_plan_as_datasource(processor_id, current_user_id, base_matrix):
         base_path = create_local_path(cur_obj)
         mp_path = os.path.join(base_path, 'mediaplan.csv')
         if os.path.exists(mp_path):
-            import processor.reporting.utils as utl
-            import processor.reporting.vmcolumns as vmc
-            import processor.reporting.vendormatrix as vm
             raw_path = os.path.join(base_path, 'raw_data')
             utl.dir_check(raw_path)
             copy_file(mp_path, os.path.join(raw_path, 'mediaplan.csv'))
@@ -2756,7 +2687,6 @@ def add_account_types(processor_id, current_user_id):
     try:
         _set_task_progress(0)
         cur_proc = Processor.query.get(processor_id)
-        import processor.reporting.vmcolumns as vmc
         from uploader.upload.creator import MediaPlan
         if cur_proc.local_path:
             cur_act_model = ProcessorDatasources
@@ -2801,7 +2731,6 @@ def add_account_types(processor_id, current_user_id):
 def add_plan_fees_to_processor(processor_id, current_user_id):
     try:
         _set_task_progress(0)
-        import processor.reporting.dictcolumns as dctc
         cur_proc = Processor.query.get(processor_id)
         cur_user = User.query.get(current_user_id)
         base_path = adjust_path(create_local_path(cur_proc))
@@ -2831,7 +2760,7 @@ def add_plan_fees_to_processor(processor_id, current_user_id):
             write_constant_dict(processor_id, current_user_id, df.to_json())
             df = get_relational_config(processor_id, current_user_id,
                                        parameter='Serving')[0]
-            sdf = convert_rate_card_to_relation(sdf, dctc)
+            sdf = convert_rate_card_to_relation(sdf)
             df = df[~df[dctc.SRV].isin(sdf[dctc.SRV].to_list())]
             df = df.append(sdf, ignore_index=True).reset_index(drop=True)
             write_relational_config(processor_id, current_user_id, df.to_json(),
@@ -2866,7 +2795,6 @@ def write_plan_property(processor_id, current_user_id, vk, new_data):
             save_media_plan(processor_id, current_user_id,
                             pd.read_json(new_data))
         elif vk == 'Add Fees':
-            import processor.reporting.dictcolumns as dctc
             write_relational_config(processor_id, current_user_id, new_data,
                                     dctc.SRV)
         _set_task_progress(100)
@@ -2878,7 +2806,7 @@ def write_plan_property(processor_id, current_user_id, vk, new_data):
 
 
 def single_apply_processor_plan(processor_id, current_user_id, progress,
-                                progress_type, cur_path, matrix, dctc):
+                                progress_type, cur_path, matrix):
     os.chdir(cur_path)
     r = None
     if progress_type == 'Plan Net':
@@ -2911,8 +2839,6 @@ def apply_processor_plan(processor_id, current_user_id, vk):
         current_progress = 0
         _set_task_progress(current_progress)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        import processor.reporting.dictcolumns as dctc
-        import processor.reporting.vendormatrix as vm
         os.chdir('processor')
         matrix = vm.VendorMatrix()
         os.chdir(cur_path)
@@ -2922,7 +2848,7 @@ def apply_processor_plan(processor_id, current_user_id, vk):
         for progress_type in vk:
             progress = single_apply_processor_plan(
                 processor_id, current_user_id, progress, progress_type,
-                cur_path, matrix, dctc)
+                cur_path, matrix)
             current_progress += (100 / len(progress_types))
             _set_task_progress(current_progress)
         df = pd.DataFrame(progress).T.reset_index()
@@ -2952,10 +2878,9 @@ def save_media_plan(processor_id, current_user_id, media_plan,
             ))
         else:
             object_name = 'Uploader'
-            import uploader.upload.utils as utl
-            utl.write_df(df=media_plan,
-                         file_name=os.path.join(base_path, 'mediaplan.xlsx'),
-                         sheet_name='Media Plan')
+            u_utl.write_df(df=media_plan,
+                           file_name=os.path.join(base_path, 'mediaplan.xlsx'),
+                           sheet_name='Media Plan')
         msg_text = ('{} media plan was updated.'
                     ''.format(cur_obj.name))
         processor_post_message(cur_obj, cur_user, msg_text,
@@ -2972,7 +2897,6 @@ def save_media_plan(processor_id, current_user_id, media_plan,
 def save_spend_cap_file(processor_id, current_user_id, new_data,
                         from_plan=False, as_json=False):
     try:
-        import processor.reporting.dictcolumns as dctc
         cur_obj = Processor.query.get(processor_id)
         cur_user = User.query.get(current_user_id)
         file_name = '/dictionaries/plannet_placement.csv'
@@ -3130,9 +3054,6 @@ def set_vendormatrix_dates(processor_id, current_user_id, start_date=None,
     try:
         cur_processor, user_that_ran = get_processor_and_user_from_id(
             processor_id=processor_id, current_user_id=current_user_id)
-        import processor.reporting.utils as utl
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.vendormatrix as vm
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
@@ -3174,10 +3095,8 @@ def set_vendormatrix_dates(processor_id, current_user_id, start_date=None,
 def remove_upload_id_file(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.utils as utl
-        import processor.reporting.expcolumns as exp
         os.chdir(adjust_path(cur_processor.local_path))
-        os.remove(os.path.join(utl.config_path, exp.upload_id_file))
+        os.remove(os.path.join(utl.config_path, exc.upload_id_file))
         shutil.rmtree('backup')
         return True
     except:
@@ -3199,7 +3118,6 @@ def duplicate_processor(processor_id, current_user_id, form_data):
         'schedule_processor': 'Failed'
     }
     try:
-        import datetime as dt
         _set_task_progress(0)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         cur_processor = Processor.query.get(processor_id)
@@ -3320,7 +3238,6 @@ def duplicate_uploader(uploader_id, current_user_id, form_data):
         'create_new_uploader_objects_in_db': 'Failed'
     }
     try:
-        import datetime as dt
         _set_task_progress(0)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         cur_uploader = Uploader.query.get(uploader_id)
@@ -3364,10 +3281,6 @@ def get_processor_total_metrics_file(processor_id, current_user_id):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.analyze as az
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.dictcolumns as dctc
-        import processor.reporting.vmcolumns as vmc
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         aly = az.Analyze(file_name='Raw Data Output.csv', matrix=matrix)
@@ -3402,8 +3315,6 @@ def get_processor_total_metrics_file(processor_id, current_user_id):
 
 
 def clean_topline_df_from_db(db_item, new_col_name):
-    import processor.reporting.utils as utl
-    import processor.reporting.analyze as az
     df = pd.DataFrame(db_item.data)
     if not df.empty:
         df = utl.data_to_type(df, float_col=list(df.columns))
@@ -3421,9 +3332,6 @@ def get_processor_total_metrics(processor_id, current_user_id,
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.analyze as az
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.utils as utl
         topline_analysis = cur_processor.processor_analysis.filter_by(
             key=az.Analyze.topline_col).all()
         if processor_id == 23:
@@ -3492,15 +3400,13 @@ def get_processor_total_metrics(processor_id, current_user_id,
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+# noinspection SqlResolve
 def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                             dimensions=None, metrics=None, filter_dict=None,
                             use_cache=True):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.utils as utl
-        import processor.reporting.export as export
-        import processor.reporting.analyze as az
         if ((not cur_processor.local_path) or
                 (not os.path.exists(adjust_path(cur_processor.local_path)))):
             _set_task_progress(100)
@@ -3579,7 +3485,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         """.format(select_sql, where_sql)
         if dimensions_sql:
             command += 'GROUP BY {}'.format(dimensions_sql)
-        db_class = export.DB()
+        db_class = exp.DB()
         db_class.input_config('dbconfig.json')
         db_class.connect()
         _set_task_progress(50)
@@ -3647,11 +3553,6 @@ def get_raw_file_data_table(processor_id, current_user_id, parameter=None,
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.utils as utl
-        import processor.reporting.export as export
-        import processor.reporting.analyze as az
         if ((not cur_processor.local_path) or
                 (not os.path.exists(adjust_path(cur_processor.local_path)))):
             _set_task_progress(100)
@@ -3720,15 +3621,6 @@ def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
                                  filter_dict=None):
     try:
         _set_task_progress(0)
-        import processor.reporting.analyze as az
-        import processor.reporting.calc as cal
-        import processor.reporting.dictionary as dct
-        import processor.reporting.dictcolumns as dctc
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.expcolumns as exc
-        import processor.reporting.utils as utl
-        import processor.reporting.export as export
         if dimensions is None:
             dimensions = []
         cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
@@ -3785,13 +3677,6 @@ def get_daily_pacing(processor_id, current_user_id, parameter=None,
                      dimensions=None, metrics=None, filter_dict=None):
     try:
         _set_task_progress(0)
-        import processor.reporting.calc as cal
-        import processor.reporting.analyze as az
-        import processor.reporting.utils as utl
-        import processor.reporting.dictcolumns as dctc
-        import processor.reporting.dictionary as dct
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.vmcolumns as vmc
         cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
         os.chdir(cur_proc.local_path)
         matrix = vm.VendorMatrix()
@@ -3828,7 +3713,6 @@ def get_pacing_alert_count(processor_id, current_user_id, parameter=None,
                            dimensions=None, metrics=None, filter_dict=None):
     try:
         _set_task_progress(0)
-        import processor.reporting.analyze as az
         count = 0
         cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
         os.chdir(cur_proc.local_path)
@@ -3873,9 +3757,6 @@ def get_pacing_alerts(processor_id, current_user_id, parameter=None,
                       dimensions=None, metrics=None, filter_dict=None):
     try:
         _set_task_progress(0)
-        import processor.reporting.analyze as az
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.vmcolumns as vmc
         rdf = pd.DataFrame(columns=['msg'])
         cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
         os.chdir(cur_proc.local_path)
@@ -4015,19 +3896,20 @@ def update_single_auto_request(processor_id, current_user_id, fix_type,
 
 
 def get_vendor_keys_of_update_files(df):
-    tdf = df[df['source'].str[:3] == 'API']
-    tdf = tdf[tdf['source'].str[:len('API_Rawfile')] == 'API_Rawfile']
+    key_col = vmc.vendorkey if vmc.vendorkey in df.columns else 'source'
+    tdf = df[df[key_col].str[:3] == 'API']
+    tdf = tdf[tdf[key_col].str[:len('API_Rawfile')] == 'API_Rawfile']
     tdf = tdf[tdf['update_tier'] == 'Greater Than One Week']
-    undefined = tdf['source'].tolist()
+    undefined = tdf[key_col].tolist()
     msg = ''
     if len(tdf) > 0:
         msg += ('The following raw files have not been updated for '
                 'over a week: {}\n\n'.format(','.join(undefined)))
-    tdf = df[df['source'].str[:3] == 'API']
-    tdf = tdf[tdf['source'].str[:len('API_Rawfile')] != 'API_Rawfile']
+    tdf = df[df[key_col].str[:3] == 'API']
+    tdf = tdf[tdf[key_col].str[:len('API_Rawfile')] != 'API_Rawfile']
     tdf = tdf[tdf['update_tier'] != 'Today']
     if len(tdf) > 0:
-        api_undefined = tdf['source'].tolist()
+        api_undefined = tdf[key_col].tolist()
         msg += ('The following API files did not update today: '
                 ' {}\n'.format(','.join(api_undefined)))
         undefined.extend(api_undefined)
@@ -4038,10 +3920,6 @@ def update_automatic_requests(processor_id, current_user_id):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.utils as utl
-        import processor.reporting.analyze as az
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.dictcolumns as dctc
         fix_type = az.Analyze.unknown_col
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_processor.id, key=fix_type).first()
@@ -4257,7 +4135,6 @@ def update_analysis_in_db_reporting_cache(processor_id, current_user_id, df,
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.analyze as az
         dimensions_str = '|'.join(dimensions)
         metrics_str = '|'.join(metrics)
         if not filter_dict:
@@ -4311,7 +4188,6 @@ def update_analysis_in_db(processor_id, current_user_id):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.analyze as az
         os.chdir(adjust_path(cur_processor.local_path))
         with open(az.Analyze.analysis_dict_file_name, 'r') as f:
             analysis_dict = json.load(f)
@@ -4409,8 +4285,6 @@ def analysis_email_basic(processor_id, current_user_id, text_body, header,
 def analysis_email_kpi(processor_id, current_user_id, text_body, header,
                        full_analysis, analysis_keys):
     try:
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.dictcolumns as dctc
         analysis = [x for x in full_analysis if x.key in analysis_keys]
         text_body = add_text_body(text_body, header, tab=0)
         kpis = set(x.parameter for x in analysis
@@ -4446,7 +4320,6 @@ def analysis_email_kpi(processor_id, current_user_id, text_body, header,
 def build_processor_analysis_email(processor_id, current_user_id):
     try:
         _set_task_progress(0)
-        import processor.reporting.analyze as az
         cur_processor = Processor.query.get(processor_id)
         analysis = cur_processor.processor_analysis.all()
         text_body = []
@@ -4478,8 +4351,6 @@ def build_processor_analysis_email(processor_id, current_user_id):
 def get_kpis_for_processor(processor_id, current_user_id):
     try:
         _set_task_progress(0)
-        import processor.reporting.analyze as az
-        import processor.reporting.expcolumns as exc
         cur_processor = Processor.query.get(processor_id)
         vc = az.ValueCalc()
         analysis = cur_processor.processor_analysis.all()
@@ -4524,8 +4395,6 @@ def parse_date_from_project_number(cur_string, date_opened):
 def get_project_numbers(processor_id, current_user_id):
     try:
         _set_task_progress(0)
-        import processor.reporting.gsapi as gsapi
-        import processor.reporting.utils as utl
         os.chdir('processor')
         api = gsapi.GsApi()
         api.input_config('gsapi.json')
@@ -4750,9 +4619,6 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
         else:
             _set_task_progress(0)
             cur_processor = Processor.query.get(processor_id)
-            import processor.reporting.analyze as az
-            import processor.reporting.vendormatrix as vm
-            import processor.reporting.utils as utl
             os.chdir(adjust_path(cur_processor.local_path))
             matrix = vm.VendorMatrix()
             aly = az.Analyze(matrix=matrix)
@@ -4780,9 +4646,6 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
 def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):
     try:
         cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.utils as utl
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk=vk)
@@ -4812,8 +4675,6 @@ def test_api_connection(processor_id, current_user_id, vk):
         else:
             _set_task_progress(0)
             cur_processor = Processor.query.get(processor_id)
-            import processor.reporting.importhandler as ih
-            import processor.reporting.vendormatrix as vm
             os.chdir(adjust_path(cur_processor.local_path))
             matrix = vm.VendorMatrix()
             test = ih.ImportHandler('all', matrix)
@@ -4840,11 +4701,6 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
         cur_processor = Processor.query.get(processor_id)
         cur_fix = Requests.query.get(fix_id)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        import datetime as dt
-        import processor.reporting.analyze as az
-        import processor.reporting.vendormatrix as vm
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.dictcolumns as dctc
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         analysis = ProcessorAnalysis.query.filter_by(
@@ -5109,7 +4965,6 @@ def get_sow(plan_id, current_user_id):
 def get_topline(plan_id, current_user_id):
     try:
         _set_task_progress(0)
-        import datetime as dt
         cur_plan = Plan.query.get(plan_id)
         file_name = 'topline_{}.xlsx'.format(cur_plan.id)
         writer = pd.ExcelWriter(file_name)
@@ -5168,6 +5023,7 @@ def get_topline(plan_id, current_user_id):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+# noinspection SqlResolve
 def get_screenshot_table(processor_id, current_user_id):
     try:
         _set_task_progress(0)
@@ -5240,7 +5096,6 @@ def get_notes_table(user_id, running_user):
         date_cols = ['start_date', 'end_date']
         form_cols += select_cols
         form_cols += date_cols
-        import datetime as dt
         seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
         df = Notes.query.filter(Notes.created_at > seven_days_ago).all()
         df = pd.DataFrame([x.get_table_dict() for x in df]).fillna('')
@@ -5298,7 +5153,6 @@ def update_all_notes_table(processor_id, current_user_id):
                           if k in dim_cols and v}
                 dimensions = [x for x in f_dict.keys()]
                 if any([n.start_date, n.end_date]):
-                    import datetime as dt
                     str_format = '%Y-%m-%dT%H:%M:%S.%fZ'
                     sd = n.start_date.strftime(str_format)
                     ed = n.end_date.strftime(str_format)
@@ -5322,8 +5176,6 @@ def get_processor_data_source_table(processor_id, current_user_id):
     try:
         _set_task_progress(0)
         cur_proc = Processor.query.get(processor_id)
-        import processor.reporting.analyze as az
-        import processor.reporting.vmcolumns as vmc
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_proc.id, key=az.Analyze.raw_columns).first()
         if analysis and analysis.data:
@@ -5333,11 +5185,11 @@ def get_processor_data_source_table(processor_id, current_user_id):
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_proc.id,
             key=az.Analyze.raw_file_update_col).first()
-        source_col = 'source'
         if analysis and analysis.data:
             tdf = pd.DataFrame(analysis.data)
         else:
-            tdf = pd.DataFrame(columns=[source_col])
+            tdf = pd.DataFrame(columns=[vmc.vendorkey])
+        source_col = vmc.vendorkey if vmc.vendorkey in tdf.columns else 'source'
         if df.empty:
             df = pd.merge(tdf, df, how='outer', left_on=source_col,
                           right_on=vmc.vendorkey)
@@ -5386,8 +5238,6 @@ def get_processor_data_source_table(processor_id, current_user_id):
 def get_glossary_definitions(processor_id, current_user_id):
     try:
         _set_task_progress(0)
-        import processor.reporting.gsapi as gsapi
-        import processor.reporting.utils as utl
         os.chdir('processor')
         api = gsapi.GsApi()
         api.input_config('gsapi_googledoc.json')

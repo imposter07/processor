@@ -3992,8 +3992,15 @@ def update_automatic_requests(processor_id, current_user_id):
             processor_id=cur_processor.id, key=fix_type).first()
         if analysis.data:
             df = pd.DataFrame(analysis.data)
-            undefined = (df['mpVendor'] + ' - ' + df['Vendor Key'] + ' - ' +
-                         df['Metric']).to_list()
+            un_col = 'undefined'
+            cols = [dctc.VEN, vmc.vendorkey, az.CheckDoubleCounting.metric_col]
+            for col in cols:
+                if col in df.columns:
+                    if un_col not in df.columns:
+                        df[un_col] = df[col]
+                    else:
+                        df[un_col] = df[un_col] + ' - ' + df[col]
+            undefined = df[un_col].to_list()
             msg = (
                 '{} {}\n\n'.format(analysis.message, ','.join(undefined)))
             update_single_auto_request(processor_id, current_user_id,

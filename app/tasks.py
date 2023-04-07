@@ -5189,16 +5189,11 @@ def get_processor_data_source_table(processor_id, current_user_id):
             tdf = pd.DataFrame(analysis.data)
         else:
             tdf = pd.DataFrame(columns=[vmc.vendorkey])
-        source_col = vmc.vendorkey if vmc.vendorkey in tdf.columns else 'source'
+        tdf = tdf.rename(columns={'source': vmc.vendorkey})
         if df.empty:
-            df = pd.merge(tdf, df, how='outer', left_on=source_col,
-                          right_on=vmc.vendorkey)
-            df = df.drop([vmc.vendorkey], axis=1)
-            df = df.rename(columns={'source': vmc.vendorkey})
+            df = pd.merge(tdf, df, how='outer', on=vmc.vendorkey)
         else:
-            df = pd.merge(df, tdf, how='outer', left_on=vmc.vendorkey,
-                          right_on=source_col)
-            df = df.drop([source_col], axis=1)
+            df = pd.merge(df, tdf, how='outer', on=vmc.vendorkey)
         analysis = ProcessorAnalysis.query.filter_by(
             processor_id=cur_proc.id, key=az.Analyze.unknown_col).first()
         if analysis and analysis.data:

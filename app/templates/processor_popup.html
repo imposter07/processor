@@ -60,7 +60,7 @@
     </div>
     {% if processor.local_path %}
     <div class="card-body">
-    <div class="row justify-content-center" style="display: flex;" >
+    <div class="" style="">
         <div class="tab-content" id="nav-tabContent-processor{{ processor.id }}">
             <div class="tab-pane fade show active" id="nav-plinks{{ processor.id }}"
                  role="tabpanel" aria-labelledby="nav-plinks-tab{{ processor.id }}">
@@ -80,7 +80,7 @@
             </div>
             <div class="tab-pane fade show" id="nav-appgraph{{ processor.id }}"
                  role="tabpanel" aria-labelledby="nav-appgraph-tab{{ processor.id }}">
-                <div class="col mb-3">
+                <div class="col">
                     <select id="dashSelect{{ processor.id }}"
                             class="form-control form-control-sm">
                         <option value="">Select Dashboard...
@@ -89,6 +89,27 @@
                             <option value="{{ dash }}">{{ dash }}</option>
                         {% endfor %}
                     </select>
+                    <div id="dashFooter{{ processor.id }}"
+                         style="display: none;">
+                        <div id="" class="row">
+                            <div class="col">
+                                <div class="card-header">
+                                    <h7 class="mb-3"></h7>
+                                    <select id="dash_placeholderMetrics{{ processor.id }}Select"
+                                            class="form-control form-control-sm">
+                                        <option>Select Metric
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="shadow outer">
+                                    <div id="dash_placeholderMetricsProgress{{ processor.id }}"
+                                         class="widget">
+                                    </div>
+                                    <div id="dash_placeholderMetrics{{ processor.id }}"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="tab-pane fade show" id="nav-tableau{{ processor.id }}"
@@ -122,26 +143,6 @@
                         This processor instance does not have a tableau specified.  Please add to the Basic Tab.
                     </h6>
                 {% endif %}
-            </div>
-        </div>
-        <div id="dashFooter{{ processor.id }}" style="display: none;">
-            <div id="" class="row">
-                <div class="col">
-                    <div class="card-header">
-                        <h7 class="mb-3"></h7>
-                        <select id="dash_placeholderMetrics{{ processor.id }}Select"
-                                class="form-control form-control-sm">
-                            <option>Select Metric
-                            </option>
-                        </select>
-                    </div>
-                    <div class="shadow outer">
-                        <div id="dash_placeholderMetricsProgress{{ processor.id }}"
-                             class="widget">
-                        </div>
-                        <div id="dash_placeholderMetrics{{ processor.id }}"></div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

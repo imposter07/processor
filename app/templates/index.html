@@ -14,7 +14,7 @@
         {% endfor %}
         {% if tutorials %}
             You have completed <a href="{{ tutorials[0].get_tutorial_homepage_url() }}"><span class="font-weight-bold">{{ count.value }} tutorials.</span></a>
-            {% if count.value == 2 %}
+            {% if count.value > 1 %}
                 <span class="text-success font-weight-bold">You are a true inspiration to us all!</span >
             {%  elif count.value == 1 %}
                 <span class="text-warning font-weight-bold">It would be cooler if that number was 2.  But hey you tried!</span>
@@ -116,11 +116,14 @@
     <div class="col">
         <div class="card shadow outer">
             <div class="card-header">
-                <h3>Notes<i class="fas fa-tasks btn btn-danger" style="float:right; opacity:.8;"></i></h3>
+                <h3>Notes<i class="fas fa-tasks btn btn-success" style="float:right; opacity:.8;"></i></h3>
                 <h6 class="card-subtitle mb-2 text-muted">Notes/POV from campaigns or meetings over the past week</h6>
             </div>
             <div class="card-body">
-                <div id="notesTable"></div>
+                <button class="btn btn-primary btn-block btn-lg" id="notesTable"
+                        type="button">
+                    Get Notes
+                </button>
             </div>
         </div>
     </div>
@@ -143,7 +146,7 @@
                        title={{ _('Processor') }} href="{{ url_for('main.processor') }}"></a>
                     <p>
                         <img src="{{ url_for('static', filename='data.jpg') }}"
-                             style="height: 400px;">
+                             style="height: 400px;" alt="">
                     </p>
                 </div>
             </a>
@@ -162,7 +165,7 @@
                        title={{ _('Uploader') }} href="#"></a>
                     <p>
                         <img src="{{ url_for('static', filename='fb.jpg') }}"
-                             style="height: 400px;">
+                             style="height: 400px;" alt="">
                     </p>
                 </div>
             </a>
@@ -179,7 +182,7 @@
                        title={{ _('Clients') }} href="{{ url_for('main.clients') }}"></a>
                     <p>
                         <img src="{{ url_for('static', filename='clients.JPG') }}"
-                             style="height: 400px;">
+                             style="height: 400px;" alt="">
                     </p>
                 </div>
             </a>
@@ -200,156 +203,166 @@
 <script src="{{ url_for('static', filename='liquid_table.js') }}"></script>
 <script src="{{ url_for('static', filename='get_table.js') }}"></script>
 <script>
-    function addNavLinks(procNav, pageNum, newText, hasAnother, followed){
-        let navItem = '<li id="page'+ newText +'" class="page-item">' +
-          '<a class="page-link" href="#" tabindex="-1" ' +
-            'onclick="getProcessors(' + pageNum + ','+ followed+')"  >'+newText+'</a>' +
-        '</li>';
-        procNav.append(navItem);
+    function addNavLinks(procNav, pageNum, newText, hasAnother, followed) {
+        let navItem = `
+            <li id="page${newText}" class="page-item">
+                <a class="page-link" href="#" tabindex="-1"
+                onclick="getProcessors(${pageNum},${followed})">${newText}</a>
+            </li>`;
+        procNav.insertAdjacentHTML('beforeend', navItem);
         if (!(hasAnother)) {
            document.getElementById("page" + newText).classList.add("disabled");
         }
     }
+
     function addProcessorsToSelect(data){
         let processorsSelectId = 'processorsSelect';
-        let baseSelectBox =
-            '<div class="input-group">' +
-            '<select id=' + processorsSelectId + ' multiple=""' +
-            'class="form-control form-control-sm">' +
-            '<option value="">Select Live Processors...</option></select>' +
-            '<div class="input-group-btn">' +
-            '<button id="processorFilterSave"' +
-            'class="btn btn-outline-success" type="button">Filter</button></div>'
-            '</div>';
-        let baseSelect = $('#processorSelectContainer');
-        baseSelect.empty();
-        baseSelect.append(baseSelectBox);
+        let baseSelectBox = `
+            <div class="input-group">
+                <select id=${processorsSelectId} multiple="" class="form-control form-control-sm">
+                    <option value="">Select Live Processors...</option>
+                </select>
+                <div class="input-group-btn">
+                    <button id="processorFilterSave" class="btn btn-outline-success"
+                            type="button">Filter
+                    </button>
+                </div>
+            </div>`;
+        let baseSelect = document.getElementById('processorSelectContainer');
+        baseSelect.innerHTML = baseSelectBox;
         let selectBox = document.getElementById(processorsSelectId);
         data.forEach(function (d) {
             selectBox.add(new Option(d));
         });
         addSelectize();
-        projectNumberSelectChange();
+        addOnClickEvent('[id^=processorFilterSave]', projectNumberSelectChange);
     }
+
+    function getProcessorsResponse(data, kwargs) {
+        let pageNum = kwargs['pageNum'];
+        let proc = kwargs['proc'];
+        let procNav = kwargs['procNav'];
+        let followed = kwargs['followed'];
+        let pages = data['pages'];
+        addProcessorsToSelect(data['processors']);
+        procNav.innerHTML = `
+            <ul id="processorsPage" class="pagination justify-content-center">\n</ul>
+        `;
+        proc.innerHTML = '';
+        data['items'].forEach(item => {
+            proc.insertAdjacentHTML('beforeend', item);
+        });
+        addNavLinks(procNav, pageNum - 1, "Previous", data['has_prev'], followed);
+        for (let i = 1; i < pages + 1; i++) {
+            let idxFollowStr = `${i}, ${followed}`;
+            let elemToAdd = `
+                <li id="page${i}" class="page-item">
+                    <a class="page-link" onclick="getProcessors(${idxFollowStr})" href=#>${i}
+                    </a>
+                </li>`;
+            procNav.insertAdjacentHTML('beforeend', elemToAdd);
+            if (pageNum === i) {
+                document.getElementById("page" + i).classList.add("active");
+            }
+        }
+        addNavLinks(procNav, pageNum + 1, "Next", data['has_next'], followed);
+        if (pages === 0) {
+            let elemToAdd = `
+                <h3 class="text-center">
+                    'No processors you follow are live'
+                </h3><br>
+            `
+            proc.insertAdjacentHTML('beforeend', elemToAdd);
+        }
+        addSelectize();
+        addOnClickEvent('[id^=dashSelect]', getSelectedDashboard, 'change');
+        addElemRemoveLoadingBtn('processors');
+    }
+
     function getProcessors(pageNum, followed, filterDict=null){
-        let proc = $('#processors');
-        let procNav = $('#processorsPage');
-        proc.html('' +
-            '<button class="btn btn-primary btn-block btn-lg" id="loadingBtn" type="button" disabled>' +
-              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-              'Loading Live Processors...' +
-            '</button>');
-        procNav.html('');
-        $.post('/get_live_processors',
-            {
-                page: pageNum,
-                followed: followed,
-                filter_dict: JSON.stringify(filterDict)
-        }).done(function(data) {
-            addProcessorsToSelect(data['processors']);
-            procNav.html('<ul id="processorsPage" class="pagination justify-content-center">\n' +
-                '  </ul>');
-            for (let i = 0; i < data['items'].length; i++) {
-                proc.append(data['items'][i])}
-            addNavLinks(procNav, pageNum - 1, "Previous", data['has_prev'], followed);
-            for (let i = 1; i < data['pages'] + 1; i++){
-                procNav.append('<li id="page' + i + '" class="page-item"><a class="page-link" ' +
-                    'onclick="getProcessors(' + i + ','+ followed+')" href=#>' + i + '</a></li>');
-                if (pageNum === i) {
-                    document.getElementById("page" + i).classList.add("active");
-                }
-            }
-            addNavLinks(procNav, pageNum + 1, "Next", data['has_next'], followed);
-            if (data['pages'] === 0) {
-            proc.html('<h3 class="text-center">' +
-                '{{ _('No processors you follow are live') }}' +
-            '</h3><br>')
-            }
-            addSelectize();
-            getSelectedDashboard()
-        }).fail(function(jqXHR, textStatus ) {
-            console.log("Request failed: " + textStatus);
-            location.reload();
-        }).always(function(){
-            $('#loadingBtn').remove();
-        });
+        let proc = document.getElementById('processors');
+        let procNav = document.getElementById('processorsPage');
+        loadingBtn(proc);
+        let data = {
+            page: pageNum,
+            followed: followed,
+            filter_dict: JSON.stringify(filterDict)
+        }
+        let kwargs = {
+            'pageNum': pageNum,
+            'procNav': procNav,
+            'proc': proc,
+            'followed': followed
+        }
+        makeRequest('get_live_processors', 'POST', data, getProcessorsResponse,
+            'json', kwargs);
     }
+
     function projectNumberSelectChange() {
-        $('[id^=processorFilterSave]').click(function () {
-            let dropdownButton = "#" + $(this)[0].id;
-            $(dropdownButton).prop("disabled", true);
-            let oldHtml = $(dropdownButton).html();
-            $(dropdownButton).html(
-                `<span class="spinner-grow spinner-grow-sm" role="status"
-                  aria-hidden="true"></span> Loading...`
-            );
-            let filterDict = [{'live': true}];
-            filterDict = getFilters('processors', filterDict);
-            getProcessorBasedOnPage(filterDict)
-        })
+        loadingBtn(this);
+        let filterDict = [{'live': true}];
+        filterDict = getFilters('processors', filterDict);
+        getProcessorBasedOnPage(filterDict);
     }
-    function getOpenRequests(pageNum, followed, filterDict=null){
-        let proc = $('#openRequests');
-        proc.html('' +
-            '<button class="btn btn-primary btn-block btn-lg" id="loadingBtn" type="button" disabled>' +
-              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-              'Loading Open Requests...' +
-            '</button>');
 
-        $.post('/get_open_processor_requests',
-            {
-                page: pageNum,
-                followed: followed,
-                filter_dict: JSON.stringify(filterDict)
-        }).done(function(data) {
-            proc.html(data['items'])
-        }).fail(function(jqXHR, textStatus ) {
-            console.log("Request failed: " + textStatus);
-        }).always(function(){
+    function getOpenRequestsResponse(data, kwargs) {
+        let openElem = kwargs['elem'];
+        openElem.innerHTML = '';
+        openElem.insertAdjacentHTML('beforeend', data['items']);
+        addElemRemoveLoadingBtn(openElem.id);
+    }
 
-        });
+    function getOpenRequests(pageNum, followed, filterDict=null) {
+        let openElem = document.getElementById('openRequests');
+        loadingBtn(openElem);
+        let data = {
+            page: pageNum,
+            followed: followed,
+            filter_dict: JSON.stringify(filterDict)
+        }
+        let kwargs = {'elem': openElem}
+        makeRequest('/get_open_processor_requests', 'POST', data,
+            getOpenRequestsResponse, 'json', kwargs);
     }
 
     function getNotes() {
-        getTable('notesTable', 'notesTable');
+        let notesTableId = 'notesTable';
+        document.getElementById(notesTableId).outerHTML = `<div id=${notesTableId}></div`;
+        getTable(notesTableId, notesTableId);
     }
 
-    function getSelectedDashboard() {
-        $('[id^=dashSelect]').unbind().on('change', function (e) {
-            let selectedText = this.options[e.target.selectedIndex].text
-            let procName = this.id.replace('dashSelect', '')
-            $('#dashFooter' + procName).removeAttr('style')
-            let metrics = ['kpi']
-            let filterDict = {}
-            let chartFunction = (function () {
-                if (selectedText === 'Date') {
-                    return generateAreaChart;
-                } else {
-                    return generateBarChart;
-                }
-            })
-            getMetrics('#dash_placeholderMetrics' + procName, chartFunction(),
-                selectedText, metrics,
-                filterDict, "", 250, null, null, null, null, null, procName);
-        });
+    function getSelectedDashboard(e) {
+        let selectedText = e.target.options[e.target.selectedIndex].text;
+        let procName = e.target.id.replace('dashSelect', '');
+        document.getElementById('dashFooter' + procName).removeAttribute('style');
+        let metrics = ['kpi'];
+        let filterDict = {}
+        let chartFunction = (function () {
+            if (selectedText === 'Date') {
+                return generateAreaChart;
+            } else {
+                return generateBarChart;
+            }
+        })
+        getMetrics('#dash_placeholderMetrics' + procName, chartFunction(),
+            [selectedText], metrics, filterDict, "", 250,
+            null, null, null, null, null, procName);
     }
+
     function getProcessorBasedOnPage(filterDict=null) {
         if (window.location.pathname === "/explore"){
            getProcessors(1, false, filterDict);
            getOpenRequests(1, false, filterDict);
-           getNotes();
        }
        else {
            getProcessors(1, true, filterDict);
            getOpenRequests(1, true, filterDict);
-           getNotes();
        }
+        addOnClickEvent('#notesTable', getNotes);
     }
-    function loadJS(){
-        getProcessorBasedOnPage();
-    }
-    $(document).ready(function() {
-        loadJS();
+
+    document.addEventListener("DOMContentLoaded", function() {
+         getProcessorBasedOnPage();
     });
 </script>
 {% include "_select_builder.html" %}

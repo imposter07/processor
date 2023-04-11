@@ -5,45 +5,6 @@
     <div id="alertPlaceholder"></div>
     </div>
     <h2 class="">{{ _('{} - {}'.format(title, object_name)) }}</h2>
-    <div class="progress mx-auto" style="height: 20px; width: 50%;">
-        <div id="progressBar"
-             class="progress-bar progress-bar-striped bg-primary"
-             role="progressbar" style="width:{{ edit_progress }}%; opacity: 0.5;"
-             aria-valuenow={{ edit_progress }} aria-valuemin="0"
-             aria-valuemax="100">{{ edit_name }}</div>
-    </div><br>
-    {% if buttons %}
-    <nav aria-label="...">
-        <ul id='listTabs' class="pagination pagination justify-content-center">
-            <li style="opacity: 0.8;" class="page-item{% if not form %} page-item disabled{% endif %}">
-                <button id=loadRefresh type="submit" class="page-link" href="">
-                    <i class="fas fa-sync-alt" href="#" role="button"></i>
-                    {{ _('Save & Refresh') }}
-                </button>
-            </li>
-            {% for button in buttons %}
-                {% for button_name, button_link in button.items() %}
-                    <li style="opacity: 0.8;" class="page-item{% if edit_name == button_name %} active{% endif %}
-                      {% if not object_function_call %} disabled{% endif %}">
-                            <a class="page-link"
-                               href="{% if object_function_call %}
-                                     {{ url_for(button_link, **object_function_call) }}
-                                     {% endif %}">
-                                {{ button_name }}
-                            </a>
-                    </li>
-                {% endfor %}
-            {% endfor %}
-            <li style="opacity: 0.8;" class="page-item{% if not form %} page-item disabled{% endif %}"
-                value="continue">
-                <button id="loadContinue" type="submit" class="page-link" name="continue">
-                    {{ _('Save & Continue') }}
-                    <i class="fas fa-arrow-circle-right" href="#" role="button"></i>
-                </button>
-            </li>
-        </ul>
-    </nav>
-    {% endif %}
     {% include '_view_selector.html' %}
     <!-- Modal -->
     <button id="logModalButton" type="button" class="btn btn-primary"
@@ -413,6 +374,7 @@
 {% endblock %}
 
 {% block app_content %}
+    {% include '_nav_and_progress.html' %}
     {% if form_title %}
         <div class="card-header">
         <h5 class="text-capitalize text-center text-muted">{{ form_title }}
@@ -1314,15 +1276,17 @@
 
         function appendMessage(data, divId, rowNum, title) {
             let elem = document.getElementById(rowNum);
-            let d = data['data']['data']
-            elem.innerHTML +=
-                `<div class="col text-white text-center">
-                 <div id="` + divId + `" class="card">
-                 <div class="card-header bg-` + d['level'] +`" style="opacity: .4"><h4 class="font-weight-bold">`
-                 + title + " - " + d['msg'] + `</h4></div>
-                 </div>
-                 </div>`
-            document.getElementById('downloadProgressBaseClass').remove()
+            let d = data['data']['data'];
+            let lvl = d['level'];
+            let msg = d['msg'];
+            elem.innerHTML += `
+                <div class="col text-white text-center">
+                    <div id="${divId}" class="card">
+                        <div class="card-header bg-${lvl}" style="opacity: .4">
+                            <h4 class="font-weight-bold">${title} - ${msg}</h4>
+                        </div>
+                     </div>
+                </div>`
         }
 
         function changePlanProperty() {
@@ -1417,7 +1381,7 @@
             addOnClickEvent('a[id^="editTable"]', editTableOnClick);
             addOnClickEvent('a[id^="runObject"]', runObjectOnClick);
             addOnClickEvent('button[id^="getLog"]', getLogOnClick);
-            addOnClickEvent('button[id^="load"]', loadButtonOnClick);
+            addOnClickEvent('a[id^="load"]', loadButtonOnClick);
             addOnClickEvent('input[id*="refresh_"], button[id*="refresh_"]', refreshButtonsOnClick);
             addFilePond();
             addFilePondMeta();

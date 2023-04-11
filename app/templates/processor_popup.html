@@ -64,19 +64,13 @@
         <div class="tab-content" id="nav-tabContent-processor{{ processor.id }}">
             <div class="tab-pane fade show active" id="nav-plinks{{ processor.id }}"
                  role="tabpanel" aria-labelledby="nav-plinks-tab{{ processor.id }}">
-                <ul id="listTabs"
-                    class="pagination pagination justify-content-center">
-                    {% for button in processor.get_current_buttons() %}
-                        {% for button_name, button_link in button.items() %}
-                            <li class="page-item">
-                                <a class="page-link"
-                                   href="{{ url_for(button_link, object_name=processor.name) }}">
-                                    {{ button_name }}
-                                </a>
-                            </li>
-                        {% endfor %}
-                    {% endfor %}
-                </ul>
+                <div id='listTabs' class="btn-group btn-block btn-group-sm" style="opacity:.6;">
+                    {% with buttons=processor.get_navigation_buttons() %}
+                        {% with object_function_call=processor.get_object_function_call() %}
+                            {% include '_nav_page_links.html' %}
+                        {% endwith %}
+                    {% endwith %}
+                </div>
             </div>
             <div class="tab-pane fade show" id="nav-appgraph{{ processor.id }}"
                  role="tabpanel" aria-labelledby="nav-appgraph-tab{{ processor.id }}">

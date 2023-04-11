@@ -1,0 +1,10 @@
+{% for button in buttons %}
+    {% for button_name, button_link in button.items() %}
+        <a class="btn btn{% if edit_name != button_name %}-outline{% endif %}-primary
+                    {% if not object_function_call %} disabled{% endif %}"
+           href="{% if object_function_call %}{{ url_for(button_link, **object_function_call) }}
+                        {% endif %}">
+            {{ button_name }}
+        </a>
+    {% endfor %}
+{% endfor %}

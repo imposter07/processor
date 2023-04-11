@@ -1,0 +1,11 @@
+<div class="progress mx-auto" style="height: 20px;">
+    <div id="progressBar"
+         class="progress-bar progress-bar-striped bg-primary"
+         role="progressbar"
+         style="width:{{ edit_progress }}%; opacity: 0.5;"
+         aria-valuenow={{ edit_progress }} aria-valuemin="0"
+         aria-valuemax="100">{{ edit_name }}</div>
+</div>
+{% if buttons %}
+    {% include '_nav_buttons.html' %}
+{% endif %}

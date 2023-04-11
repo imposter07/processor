@@ -648,13 +648,8 @@ class Processor(db.Model):
     def get_notes(self):
         return self.notes.order_by(Notes.created_at.desc()).all()
 
-    @staticmethod
-    def get_current_buttons():
-        buttons = [{'Basic': 'main.edit_processor'},
-                   {'Import': 'main.edit_processor_import'},
-                   {'Clean': 'main.edit_processor_clean'},
-                   {'Export': 'main.edit_processor_export'}]
-        return buttons
+    def get_object_function_call(self):
+        return {'object_name': self.name}
 
     @staticmethod
     def get_plan_properties():
@@ -701,12 +696,13 @@ class Processor(db.Model):
         output_links = self.get_processor_output_links()
         request_links = self.get_processor_request_links(cur_proc.name)
         walk = Walkthrough().get_walk_questions(edit_name)
+        object_function_call = cur_proc.get_object_function_call()
         args = dict(object=cur_proc, processor=cur_proc,
                     posts=posts.items, title=_('Processor'),
                     object_name=cur_proc.name, user=cur_user,
                     edit_progress=edit_progress, edit_name=edit_name,
                     api_imports=api_imports,
-                    object_function_call={'object_name': cur_proc.name},
+                    object_function_call=object_function_call,
                     run_links=run_links, edit_links=edit_links,
                     output_links=output_links, request_links=request_links,
                     next_url=next_url, prev_url=prev_url,
@@ -1233,7 +1229,7 @@ class Uploader(db.Model):
         return url_for('main.uploader_page', object_name=self.name)
 
     @staticmethod
-    def get_current_buttons():
+    def get_navigation_buttons():
         buttons = [{'Basic': 'main.edit_uploader'},
                    {'Campaign': 'main.edit_uploader_campaign'},
                    {'Adset': 'main.edit_uploader_adset'},

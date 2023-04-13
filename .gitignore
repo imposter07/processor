@@ -43,6 +43,7 @@ Thumbs.db
 *.idea
 *.db
 *.json
+*.pdf
 *.rdb
 venv/
 logfile.log

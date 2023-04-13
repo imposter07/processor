@@ -20,7 +20,7 @@ function downloadTableResponse(tableName, pond, vendorKey, data) {
     data.blob().then((data) => {
         let mimeType = 'text/csv';
         let extension = '.csv';
-        if (tableName === 'OutputDataSOW') {
+        if (['OutputDataSOW', 'billingInvoice'].includes(tableName)) {
             mimeType = 'application/pdf';
             extension = '.pdf';
         } else if (tableName === 'OutputDataTopline') {
@@ -40,6 +40,15 @@ function downloadTableResponse(tableName, pond, vendorKey, data) {
             dlBars.forEach(elem => {
                 elem.remove();
             });
+
+        } else if (tableName === 'billingInvoice') {
+            let elem = document.getElementById('billingInvoice');
+            let iframeId = `iframe${elem.id}`;
+            elem.innerHTML = `
+                <iframe id=${iframeId} src="" type="application/pdf" width="100%" height="100%" 
+                style="overflow: auto;">
+                </iframe>`
+            document.getElementById(iframeId).src = URL.createObjectURL(blob);
         } else {
             let jinjaValues = document.getElementById('jinjaValues').dataset;
             let link = document.createElement('a');
@@ -101,13 +110,10 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
 }
 
 function getTableComplete(tableName, pond, vendorKey, data){
-    if ((tableName === 'OutputDataRawDataOutput') ||
-        (tableName === 'download_raw_data') ||
-        (tableName === 'download_pacing_data') ||
-        (tableName === 'OutputDataSOW') ||
-        (tableName === 'OutputDataTopline') ||
-        (tableName === 'screenshotImage' )
-    ) {
+    let dlTables = [
+        'OutputDataRawDataOutput', 'download_raw_data', 'download_pacing_data',
+        'OutputDataSOW', 'OutputDataTopline', 'screenshotImage', 'billingInvoice'];
+    if (dlTables.includes(tableName)) {
         downloadTableResponse(tableName, pond, vendorKey, data);
     }
     else {

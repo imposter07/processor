@@ -61,6 +61,23 @@ def get_col_from_serialize_dict(data, col_name):
     return col_vals
 
 
+def clean_serialize_dict(data, cols):
+    new_dict = {}
+    for col in cols:
+        new_dict[col] = get_col_from_serialize_dict(data, col)
+    filter_idx = [v.replace('static_filters-', '').replace('-filter_col', '')
+                  for k, v in data.items() if 'filter_col' in v and 'name' in k]
+    new_dict['static_filters'] = []
+    for filter_num in filter_idx:
+        filter_dict = {}
+        for col in ['filter_col', 'filter_val']:
+            search_val = 'static_filters-{}-{}'.format(filter_num, col)
+            col_vals = get_col_from_serialize_dict(data, search_val)
+            filter_dict[col] = col_vals
+        new_dict['static_filters'].append(filter_dict)
+    return new_dict
+
+
 def rename_duplicates(old):
     seen = {}
     for x in old:

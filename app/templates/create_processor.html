@@ -502,21 +502,26 @@
 
         function SubmitForm(form_continue, elemId) {
             document.getElementById(elemId).setAttribute("value", form_continue);
+            let jv = document.getElementById('jinjaValues');
+            let editName = jv.dataset['edit_name'];
             let validForm = document.getElementById('base_form_id').reportValidity();
             if (validForm) {
-                if ("{{ edit_name }}" === "Clean") {
+                if (editName === "Clean") {
                     submitCleanForm(form_continue);
                 }
-                else if ("{{ edit_name }}" === "Topline") {
+                else if (editName === "Topline") {
                     submitToplineForm(form_continue, "{{ edit_name }}");
                 }
-                else if ("{{ edit_name }}" === "Plan") {
+                else if (editName === "Plan") {
                     let curPage = window.location.pathname.split("/").pop();
                     let nextPage = curPage.includes('normal') ? 'import' : 'accounts';
                     SendDataTable('modalTable', form_continue, curPage, nextPage);
                 }
+                else if (editName === "Bill") {
+                    saveLiquidTable(form_continue, 'billingTable');
+                }
                 else {
-                    if ("{{ edit_name }}" === "Import") {
+                    if (editName === "Import") {
                         let unnamedImports = emptyVendorKeyNameCheck()
                         if (unnamedImports) {
                             displayAlert('All API cards must be named before saving.', 'danger')
@@ -549,33 +554,28 @@
 
         function sendDataTableResponse(data, kwargs) {
             let tableName = kwargs['tableName'];
-            let oldHtml = kwargs['oldHtml'];
             let newPage = kwargs['newPage'];
             let formContinue = kwargs['formContinue'];
             let oldPage = kwargs['oldPage'];
+            let saveBtnElemId = kwargs['saveBtnElemId'];
             if ("{{ edit_name }}" === 'Import') {
                 reloadPage();
             } else {
                 $('#' + tableName).modal('hide');
                 displayAlert(data['message'], data['level']);
-                $('#loadingBtnModal').replaceWith(oldHtml);
             }
             if (newPage) {
                 completeSave(data, formContinue, oldPage, newPage);
-                $('#loadingBtn').remove();
-                $('#loadRefresh').show();
                 unanimateBar();
             }
+            addElemRemoveLoadingBtn(saveBtnElemId);
         }
 
         function SendDataTable(tableName="modalTable", formContinue = null,
-                               oldPage = '', newPage = '', modal = true, cols = [],
+                               oldPage = '', newPage = '', data = '', cols = [],
                                saveButton = '') {
-            let data = '';
-            let jsonData = '';
-            let sendTable = '';
-            let sendTableName = '';
-            if (modal) {
+            let sendTableName = tableName;
+            if (!data) {
                 let sourceElem = document.querySelectorAll(`table[id^=modalTable]`);
                 if (sourceElem.length === 0) {
                     if (newPage) {
@@ -592,13 +592,13 @@
                 if (sourceElem.includes('change_dictionary_order')) {
                     removeChangeOrderSelectize();
                     data = getTableAsArray(sourceElem, cols);
-                    jsonData = JSON.stringify(data);
                     sendTableName = sourceElem.replace('modalTable', '');
                 } else if (sourceElem.includes('apply_processor_plan')) {
                     completeSave({'message': 'Saved!', 'level': 'success'},
                         formContinue, oldPage, newPage);
                 }
                 else {
+                    let sendTable = '';
                     try {
                         sendTable = $('#' + sourceElem).DataTable();
                     } catch (err) {
@@ -607,51 +607,34 @@
                     sendTableName = sourceElem.replace('modalTable', '');
                     data = sendTable
                         .data().toArray();
-                    jsonData = JSON.stringify(data);
-                    if (sendTableName === 'Vendormatrix'){
-                        $('#refresh_data_sources').parent().html('' +
-                            '<button class="btn btn-primary btn-block" type="button" disabled>' +
-                              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                              'Loading...' +
-                            '</button>');
-                        $('#refresh_imports').parent().html('' +
-                            '<button class="btn btn-primary btn-block" type="button" disabled>' +
-                              '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                              'Loading...' +
-                            '</button>');
-                    }
                 }
-            }
-            else {
-                let tableID = 'Pacing Table'
-                sendTableName = tableName;
-                data = getTableAsArray(tableID, cols);
-                jsonData = JSON.stringify(data);
             }
             let saveExists = (saveButton === '');
             let saveBtnId = (saveExists) ? tableName + 'SaveButton' : saveButton;
             let saveBtnElem = document.getElementById(saveBtnId);
-            let oldHtml = (saveExists) ? saveBtnElem.parentNode.parentNode.innerHTML : saveBtnElem.parentNode.innerHTML;
-            saveBtnElem.parentNode.innerHTML = ('' +
-                    '<button id="loadingBtnModal" class="btn btn-success btn-lg btn-block" type="button" disabled>' +
-                      '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                      'Loading...' +
-                    '</button>');
-            let uploaderType = ("{{ title }}" === "Uploader") ? "{{uploader_type}}" : "None";
+            if (saveBtnElem) {
+                loadingBtn(saveBtnElem);
+            } else {
+                saveBtnElem = document.querySelectorAll('[id^=loadingBtn]')[0];
+                saveBtnElem = document.getElementById(saveBtnElem.id.replace('loadingBtn', ''));
+            }
+            let jv = document.getElementById('jinjaValues');
+            let title = jv.dataset['title'];
+            let uploaderType = (title === "Uploader") ? "{{uploader_type}}" : "None";
             let requestData = {
-                data: jsonData,
-                object_name: "{{ object_name }}",
-                object_type: "{{ title }}",
-                object_level: "{{ edit_name }}",
+                data: JSON.stringify(data),
+                object_name: jv.dataset['object_name'],
+                object_type: title,
+                object_level: jv.dataset['edit_name'],
                 uploader_type: uploaderType,
                 table: sendTableName
             }
             let kwargs = {
                 'tableName': tableName,
-                'oldHtml': oldHtml,
                 'newPage': newPage,
                 'formContinue': formContinue,
-                'oldPage': oldPage
+                'oldPage': oldPage,
+                'saveBtnElemId': saveBtnElem.id
             }
             makeRequest('/post_table', 'POST', requestData, sendDataTableResponse, 'json', kwargs);
         }
@@ -1396,21 +1379,31 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             loadJS();
-            if ("{{ edit_name }}" === 'Clean') {
+            let jv = document.getElementById('jinjaValues');
+            let editName = jv.dataset['edit_name'];
+            if (editName === 'Clean') {
                 getDatasourceTable();
-            } else if ("{{ edit_name }}" === 'Automatic Notes') {
+            } else if (editName === 'Automatic Notes') {
                 getAutoNote();
-            } else if ("{{ edit_name }}" === 'Plan') {
+            } else if (editName === 'Plan') {
                 getPlan();
-            } else if ("{{ edit_name }}" === 'Import') {
+            } else if (editName === 'Import') {
                 removeSpecialChars();
                 checkTestProcessor();
-            } else if ("{{ edit_name }}" === 'Accounts') {
+            } else if (editName === 'Accounts') {
                 removeSpecialChars();
-            } else if ("{{ edit_name }}" === 'All Notes') {
+            } else if (editName === 'All Notes') {
                 getNotesTables();
+            } else if (editName === 'Bill') {
+                let billingTableId = 'billingTable';
+                appendRows();
+                let elem  = document.getElementById('rowOne');
+                elem.id = billingTableId;
+                elem.classList.remove('row')
+                elem.classList.add('col')
+                getTable(billingTableId, billingTableId);
             }
-            if ("{{ title }}" === 'Uploader') {
+            if (jv.dataset['title'] === 'Uploader') {
                 checkDuplicationType();
             }
         });

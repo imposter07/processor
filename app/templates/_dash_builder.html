@@ -1061,9 +1061,9 @@
 
     function overWritePlannedwPacing(tableID, cols) {
         const tableName = 'dictionaryvendorkeyPlan___Net';
-        SendDataTable(tableName, formContinue = null,
-                      oldPage = '', newPage = '', modal = false, cols = cols,
-                      saveButton = 'pacingTableSaveButton')
+        let tid = 'Pacing Table';
+        let data = getTableAsArray(tid, cols);
+        SendDataTable(tableName, null, '', '', data, [], 'pacingTableSaveButton');
     }
 
     function getProgBars(tableName, progCol, paceCol, startCol) {

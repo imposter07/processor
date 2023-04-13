@@ -10,6 +10,10 @@ th, td {
     min-width: 25px;
 }
 
+iframe {
+    min-height: 400px;
+}
+
 .hiddenRow {
     padding: 0 !important;
 }

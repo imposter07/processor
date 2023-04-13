@@ -839,7 +839,8 @@ class Processor(db.Model):
                        {'Plan': 'main.edit_processor_plan_normal'},
                        {'Import': 'main.edit_processor_import'},
                        {'Clean': 'main.edit_processor_clean'},
-                       {'Export': 'main.edit_processor_export'}]
+                       {'Export': 'main.edit_processor_export'},
+                       {'Bill': 'main.edit_processor_billing'}]
         return buttons
 
 

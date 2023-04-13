@@ -790,7 +790,8 @@ def post_table():
                  'import_config': '.write_import_config_file',
                  'raw_file_comparison': '.write_raw_file_from_tmp',
                  'get_plan_property': '.write_plan_property',
-                 'change_dictionary_order': '.write_dictionary_order'}
+                 'change_dictionary_order': '.write_dictionary_order',
+                 'billingTable': '.write_billing_table'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',
                       'dictionary_order']:
@@ -852,7 +853,8 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'Daily Pacing': '.get_daily_pacing',
                  'datasource_table': '.get_processor_data_source_table',
                  'singleNoteTable': '.get_single_notes_table',
-                 'billingTable': '.get_billing_table'}
+                 'billingTable': '.get_billing_table',
+                 'billingInvoice': '.get_billing_invoice'}
     for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
               'uploader_full_relation', 'edit_relation', 'name_creator',
               'uploader_current_name', 'uploader_creative_files',
@@ -938,12 +940,14 @@ def get_table_return(task, table_name, proc_arg, job_name,
             df = job.result[0]
         else:
             df = pd.DataFrame([{'Result': 'AN UNEXPECTED ERROR OCCURRED.'}])
-    if (table_name in ['SOW', 'Topline']) or (
-            'parameter' in proc_arg and (
-            proc_arg['parameter'] == 'RawDataOutput' or
-            proc_arg['parameter'] == 'Download')):
+    dl_table = table_name in ['SOW', 'Topline']
+    dl_table_1 = (
+        'parameter' in proc_arg and (proc_arg['parameter'] == 'RawDataOutput' or
+                                     proc_arg['parameter'] == 'Download'))
+    dl_table_2 = 'billingInvoice' in table_name
+    if dl_table or dl_table_1 or dl_table_2:
         z = zipfile.ZipFile(df)
-        if table_name == 'SOW':
+        if table_name == 'SOW' or dl_table_2:
             file_name = 'sow.pdf'
             mime_type = 'application/pdf'
         elif table_name == 'Topline':
@@ -1063,21 +1067,6 @@ def df_to_html(df, name, job_name='', to_html=True, cols_to_json=True):
     return response
 
 
-def rename_duplicates(old):
-    seen = {}
-    for x in old:
-        if x in seen:
-            seen[x] += 1
-            new_val = '{} {}'.format(x, seen[x])
-            if new_val in old:
-                yield '{}-{}'.format(new_val, 1)
-            else:
-                yield new_val
-        else:
-            seen[x] = 0
-            yield x
-
-
 def get_placement_form(data_source):
     form = PlacementForm()
     ds_dict = data_source.get_form_dict_with_split()
@@ -1158,7 +1147,7 @@ def save_datasource():
                'vm_rules': request.form['rules_table']}
     for col in ['full_placement_columns', 'placement_columns',
                 'auto_dictionary_placement', 'auto_dictionary_order']:
-        new_data = get_col_from_serialize_dict(data, col)
+        new_data = utl.get_col_from_serialize_dict(data, col)
         new_data = '\r\n'.join(new_data)
         ds_dict[col] = new_data
     msg_text = ('Setting data source {} in vendormatrix for {}'
@@ -1285,12 +1274,52 @@ def edit_processor_export(object_name):
                                  running_user=current_user.id)
         db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.processor_page',
-                                    object_name=cur_proc.name))
+            next_page = 'main.edit_processor_billing'
         else:
-            return redirect(url_for('main.edit_processor_export',
-                                    object_name=cur_proc.name))
+            next_page = 'main.edit_processor_export'
+        return redirect(url_for(next_page, object_name=object_name))
     return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<object_name>/edit/billing', methods=['GET', 'POST'])
+@login_required
+def edit_processor_billing(object_name):
+    form_description = """
+    Compare planned, reported and invoiced spends in one table.  
+    Add Invoices to the table with total spend for best results.
+    """
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_billing',
+        edit_progress=100, edit_name='Bill', form_title='BILLING',
+        form_description=form_description)
+    form = ProcessorContinueForm()
+    kwargs['form'] = form
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            next_page = 'main.processor_page'
+        else:
+            next_page = 'main.edit_processor_billing'
+        return redirect(url_for(next_page, object_name=object_name))
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/processor/<object_name>/edit/billing/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_billing_upload_file(object_name):
+    current_key, object_name, object_form, object_level =\
+        utl.parse_upload_file_request(request, object_name)
+    cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
+    msg_text = 'Saving billing invoice.'
+    cur_proc.launch_task(
+        '.write_billing_invoice', _(msg_text),
+        running_user=current_user.id, new_data=mem)
+    db.session.commit()
+    data = 'success'
+    msg = 'SUCCESS: {} invoice has been saved.'.format(cur_proc.name)
+    return jsonify({'data': data, 'message': msg, 'level': data})
 
 
 @bp.route('/processor/<object_name>')
@@ -3174,36 +3203,13 @@ def get_dashboard_properties():
     return jsonify(dash_properties)
 
 
-def get_col_from_serialize_dict(data, col_name):
-    col_keys = [k for k, v in data.items() if v == col_name and 'name' in k]
-    col_val_keys = [x.replace('name', 'value') for x in col_keys]
-    col_vals = [v for k, v in data.items() if k in col_val_keys]
-    return col_vals
-
-
-def clean_serialize_dict(data):
-    new_dict = {}
-    for col in ['name', 'chart_type', 'dimensions', 'metrics']:
-        new_dict[col] = get_col_from_serialize_dict(data, col)
-    filter_idx = [v.replace('static_filters-', '').replace('-filter_col', '')
-                  for k, v in data.items() if 'filter_col' in v and 'name' in k]
-    new_dict['static_filters'] = []
-    for filter_num in filter_idx:
-        filter_dict = {}
-        for col in ['filter_col', 'filter_val']:
-            search_val = 'static_filters-{}-{}'.format(filter_num, col)
-            col_vals = get_col_from_serialize_dict(data, search_val)
-            filter_dict[col] = col_vals
-        new_dict['static_filters'].append(filter_dict)
-    return new_dict
-
-
 @bp.route('/save_dashboard', methods=['GET', 'POST'])
 @login_required
 def save_dashboard():
     dash = Dashboard.query.get(int(request.form['dashboard_id']))
     object_form = request.form.to_dict()
-    object_form = clean_serialize_dict(object_form)
+    cols = ['name', 'chart_type', 'dimensions', 'metrics']
+    object_form = utl.clean_serialize_dict(object_form, cols)
     dash.name = object_form['name'][0]
     dash.chart_type = object_form['chart_type'][0]
     dash.dimensions = object_form['dimensions'][0]

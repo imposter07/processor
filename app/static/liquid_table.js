@@ -238,6 +238,51 @@ function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell") {
     });
 }
 
+function liquidTableToObject(tableName) {
+    let tableId = `${tableName}Table`;
+    let table = document.getElementById(tableId);
+    let cols = getTableHeadElems(tableName);
+    let rows = table.querySelectorAll("tr:not([id*='Hidden']):not([id*='Header'])");
+    let tableDict = {};
+    rows.forEach(row => {
+        let cells = row.cells;
+        for (let j = 0; j < cells.length; j++) {
+            let colName = cols[j].dataset['name'];
+            if (!(colName in tableDict)) {
+                tableDict[colName] = [];
+            }
+            let cell = cells[j];
+            let value = cell.textContent || cell.innerText;
+            tableDict[colName].push(value);
+        }
+    });
+    return tableDict
+}
+
+function saveLiquidTable(formContinue, tableName) {
+    let formTopline = {};
+    let tableId = `${tableName}Table`
+    let topRowIdPrefix = 'topRowHeader' + tableName;
+    let topRowsName = document.getElementById(tableName + 'TableSlideCol').getAttribute('data-value');
+    let rowName = document.getElementById(`${tableId}`).dataset['value'];
+    let topRowElems = document.querySelectorAll(`[id^="${topRowIdPrefix}"]`);
+    topRowsName = (topRowsName === 'null') ? "topRows" : topRowsName;
+    rowName = (rowName === 'null') ? "rows" : rowName;
+    if (topRowElems.length === 0) {
+        formTopline[0] = {rowName: {}}
+        formTopline[0][rowName] = liquidTableToObject(tableName);
+    }
+    Array.prototype.map.call(topRowElems, function (elem) {
+        elem.click();
+        let curIdx = elem.id.replace(topRowIdPrefix, '');
+        formTopline[curIdx] = {topRowsName: {}, rowName: {}}
+        formTopline[curIdx][topRowsName] = $(`[id^=topRowForm${tableName}${curIdx}]`).serializeArray();
+        formTopline[curIdx][rowName] = $(`[id^=form${tableName}]`).serializeArray();
+        elem.click();
+    });
+    SendDataTable(tableName, formContinue, '', '', formTopline);
+}
+
 function buttonColOnClick(tableName, colName, loopIndex) {
     let form = document.createElement("form");
     form.setAttribute('method',"post");
@@ -245,13 +290,15 @@ function buttonColOnClick(tableName, colName, loopIndex) {
 
     let s = document.createElement("input"); //input element, File
     s.setAttribute('type',"file");
-    s.setAttribute('value',"Submit");
+    s.classList.add('filepond');
     form.appendChild(i);
     form.appendChild(s);
 
     let modalId = `modal${tableName}${colName}${loopIndex}`.toUpperCase();
     let titleName = `${tableName} - ${colName} - ${loopIndex}`;
-    createModal(modalId, titleName, form);
+    createModal(modalId, titleName, form, );
+    addFilePond();
+    addFilePondMeta();
 }
 
 function getRowHtml(loopIndex, tableName, rowData = null) {
@@ -398,10 +445,11 @@ function addRowToTable(rowData, tableName) {
         </tr>`;
     let collapseStr = curTable.getAttribute('data-accordion');
     let rowOnClick = curTable.getAttribute('data-rowclick');
-    rowOnClick = (rowOnClick) ? `onclick="${rowOnClick}(this)"` : '';
+    rowOnClick = (rowOnClick) ? `onclick="getTableOnClick(this, '${rowOnClick}')"` : '';
     let rowCard = `
         <tr id="tr${loopIndex}" data-toggle="${collapseStr}" ${rowOnClick}
-            data-target="#collapseRow${loopIndex}" class="accordion-toggle">
+            data-target="#collapseRow${loopIndex}" class="accordion-toggle"
+            data-table="${tableName}">
             ${tableHeaders}
         </tr>
         ${hiddenRowHtml}`;
@@ -1157,6 +1205,18 @@ function createLiquidTableChart(tableName, tableRows) {
         (isNaN(value)) ? xCols.push(cellName) : yCols.push(cellName);
     });
     generateBarChart(`#${chartElem.id}`, tableRows, xCols[0], yCols);
+}
+
+function getTableOnClick(elem, imgToGet) {
+    let tableId = elem.dataset['table'];
+    let table = document.getElementById(tableId);
+    let imgElemId = imgToGet;
+    let rowIndex = elem.id.replace('tr', '');
+    let elemToAdd = `<div id="${imgElemId}"></div>`;
+    table.insertAdjacentHTML('beforebegin', elemToAdd);
+    let imgElem = document.getElementById(imgElemId);
+    imgElem.innerHTML = '';
+    getTable(imgToGet, imgElem.id, 'None', rowIndex);
 }
 
 function createLiquidTable(data, kwargs) {

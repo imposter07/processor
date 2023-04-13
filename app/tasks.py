@@ -5051,7 +5051,7 @@ def get_screenshot_table(processor_id, current_user_id):
         df = pd.DataFrame(data=data, columns=columns)
         df = df.fillna(0)
         lt = app_utl.LiquidTable(df=df, table_name='screenshot',
-                                 row_on_click='getScreenshotImage')
+                                 row_on_click='screenshotImage')
         _set_task_progress(100)
         return [lt.table_dict]
     except:
@@ -5302,17 +5302,70 @@ def get_billing_table(processor_id, current_user_id):
         df = get_data_tables_from_db(
             processor_id, current_user_id,
             dimensions=['campaignname', 'vendorname'],
-            metrics=['netcost', 'plannednetcost'], use_cache=False)[0]
+            metrics=['netcost', 'plannednetcost'], use_cache=True)[0]
         invoice_cost = 'invoicecost'
         df[invoice_cost] = df['netcost']
         df['plan - netcost'] = df['plannednetcost'] - df['netcost']
         df['invoice - plancost'] = df[invoice_cost] - df['plannednetcost']
         lt = app_utl.LiquidTable(df=df, table_name='billingTable',
                                  button_col=[invoice_cost],
-                                 highlight_row=invoice_cost)
+                                 highlight_row=invoice_cost,
+                                 row_on_click='billingInvoice')
         lt = lt.table_dict
         _set_task_progress(100)
         return [lt]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_billing_invoice(processor_id, current_user_id, vk=None):
+    try:
+        _set_task_progress(0)
+        import base64
+        from flask import send_file
+        cur_proc = Processor.query.get(processor_id)
+        file_name = os.path.join(cur_proc.local_path, 'invoice.pdf')
+        pdf_file = get_file_in_memory(file_name, file_name='sow.pdf')
+        _set_task_progress(100)
+        return [pdf_file]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def write_billing_invoice(processor_id, current_user_id, new_data=None):
+    try:
+        _set_task_progress(0)
+        cur_proc = Processor.query.get(processor_id)
+        file_name = os.path.join(cur_proc.local_path, 'invoice.pdf')
+        with open(file_name, 'wb') as f:
+            shutil.copyfileobj(new_data, f, length=131072)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def write_billing_table(processor_id, current_user_id, new_data=None):
+    try:
+        _set_task_progress(0)
+        import ast
+        cur_proc = Processor.query.get(processor_id)
+        file_name = adjust_path(os.path.join(cur_proc.local_path, 'invoices.csv'))
+        df = pd.read_json(new_data)
+        df = pd.DataFrame(ast.literal_eval(df['0'][1]))
+        df.to_csv(file_name)
+        _set_task_progress(100)
     except:
         _set_task_progress(100)
         msg = 'Unhandled exception - Processor {} User {}'.format(

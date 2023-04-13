@@ -88,9 +88,9 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
         } else if (existsInJson(data['data'], 'liquid_table')) {
             let newTableName = data['data']['name'];
             const modalName = 'modal-body-table';
+            let newTable = document.getElementById(newTableName);
+            newTable.innerHTML = "";
             if (newTableName === modalName) {
-                let modalTable = document.getElementById(modalName);
-                modalTable.innerHTML = "";
                 show_modal_table('modalTableButton');
             }
             createLiquidTable(data, {'tableName': newTableName});

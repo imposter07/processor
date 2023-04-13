@@ -46,7 +46,7 @@
                         dataLengthY = 1) {
         const parent = d3.select(elem);
         const size = parent.node().getBoundingClientRect()
-        let margin = {top: 10, right: 10, bottom: bMargin, left: lMargin},
+        let margin = {top: 10, right: lMargin, bottom: bMargin, left: lMargin},
             width = (size.width - margin.left - margin.right) * dataLength,
             height = (maxHeight - margin.top - margin.bottom) * dataLengthY;
         let svgHeight = height + margin.top + margin.bottom
@@ -60,11 +60,11 @@
         return {margin: margin, width: width, height: height, svg: svg}
     }
 
-    function generateSelect(elem, allGroup, selectElem = 'Select') {
+    function generateSelect(elem, allGroup, selectElem = 'Select',
+                            defaultVal=0) {
         let buttonSelector = elem + selectElem;
         let elemToAdd = `
             <select id="${buttonSelector}" class="form-control form-control-sm">
-                <option>Select Metric</option>
             </select>`;
         $(buttonSelector).html(elemToAdd);
         d3.select(buttonSelector)
@@ -81,7 +81,8 @@
         allGroup = allGroup.map(x => {
             return ({text: x});
         });
-        addSelectOptions(allGroup, '', buttonSelector, elem.replace('#', ''));
+        addSelectOptions(allGroup, '', buttonSelector, elem.replace('#', ''),
+            defaultVal);
     }
 
     function wrapText(text, width) {
@@ -108,8 +109,51 @@
         });
     }
 
+    function getUnits(col, precision=',.2f') {
+        let costPer = 'CP';
+        let units = {
+            [costPer]: '$',
+            'Net Cost Final': '$',
+            'CTR': '%',
+            'VTR': '%',
+            'VCR': '%',
+            'eventdate': null
+        };
+        if (col.startsWith(costPer)) {
+            return units[costPer] + precision
+        }
+        if (col in units) {
+            if (units[col]) {
+                return units[col] + precision
+            }
+            else {
+                return units[col]
+            }
+        }
+        return precision
+    }
+
+    function generateY1Axis(data, svg, xAxisType, yAxisType, width, height,
+                          xCol, yCol, timeX = null, y1AxisType=null, y1Col=null) {
+        let y1Unit = getUnits(y1Col);
+        let y1Scale = y1AxisType
+            .domain([0, d3.max(data, function (d) {
+                return +d[y1Col];
+            })])
+            .range([height, 0]);
+        let y1Axis = d3.axisRight(y1Scale);
+        svg.append("g")
+            .attr('class', 'y1axis')
+            .attr("transform", "translate(" + width + " ,0)")
+            .call(y1Axis)
+            .call(y1Axis.ticks(null, y1Unit))
+        return {y1Scale: y1Scale, y1Axis: y1Axis}
+    }
+
     function generateAxis(data, svg, xAxisType, yAxisType, width, height,
-                          xCol, yCol, timeX = null) {
+                          xCol, yCol, timeX = null, y1AxisType=null, y1Col=null) {
+        let xUnit = getUnits(xCol[0]);
+        let yUnit = getUnits(yCol);
 
         let xDomain = function () {
             if (timeX) {
@@ -132,7 +176,8 @@
         svg.append("g")
             .attr("transform", "translate(0," + height + ")")
             .attr('class', 'xaxis')
-            .call(xAxis);
+            .call(xAxis)
+            .call(xAxis.ticks(null, xUnit));
         if (!timeX) {
             svg.selectAll('.xaxis')
                 .selectAll(".tick text")
@@ -147,8 +192,15 @@
         let yAxis = d3.axisLeft(yScale);
         svg.append("g")
             .attr('class', 'yaxis')
-            .call(yAxis);
-        return {x: x, yScale: yScale, yAxis: yAxis, xAxis: xAxis}
+            .call(yAxis)
+            .call(yAxis.ticks(null, yUnit));
+
+        let y1Props = {};
+        if (y1Col) {
+            y1Props = generateY1Axis(data, svg, xAxisType, yAxisType, width, height,
+                          xCol, yCol, timeX, y1AxisType, y1Col)
+        }
+        return {...{x: x, yScale: yScale, yAxis: yAxis, xAxis: xAxis}, ...y1Props}
     }
 
     function getColorPal(allGroup) {
@@ -162,20 +214,30 @@
         return data.sort((a, b) => b[col] - a[col])
     }
 
-    function updateYAxis(axes, data, svg, selectedVar) {
-        axes.yScale.domain([0, d3.max(data, function (d) {
+    function updateYAxis(axes, data, svg, selectedVar, scale=null, axis=null,
+                         axisSelector=".yaxis") {
+        axis = (axis) ? axis :  axes.yAxis;
+        scale = (scale) ? scale :  axes.yScale;
+        let yUnits = getUnits(selectedVar)
+        scale.domain([0, d3.max(data, function (d) {
             return +d[selectedVar]
         })]);
-        svg.selectAll(".yaxis")
+        svg.selectAll(axisSelector)
             .transition().duration(500)
-            .call(axes.yAxis)
+            .call(axis)
+            .call(axis.ticks(null, yUnits))
     }
 
-    function addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, timeX) {
+    function addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, timeX,
+                        scale=null, selectedVar1=null, scale1=null) {
+        scale = (scale) ? scale : axes.yScale;
+        scale1 = (scale1) ? scale1 : axes.yScale;
         let dateFormatter = d3.timeFormat("%m/%d/%y");
-        let formatValue = d3.format(",");
+        let formatValue = d3.format(getUnits(selectedVar, ',.4f'));
         let focus = svg.append("g")
             .attr("class", "focus");
+        let focus1 = svg.append("g")
+            .attr("class", "focus1");
 
         focus.append("circle")
             .attr("r", 5)
@@ -192,15 +254,28 @@
             .style("border-radius", "5px")
             .style("padding", "5px");
 
-        focus.append("text")
-            .attr("class", "tooltip-x")
-            .attr("x", 18)
-            .attr("y", -2);
-
+        let yPos = 18;
         focus.append("text")
             .attr("class", "tooltip-y")
             .attr("x", 18)
-            .attr("y", 18);
+            .attr("y", -2);
+        if (selectedVar1) {
+            focus1.append("circle")
+                .attr("r", 5)
+                .attr("fill", function (d) {
+                    return myColor(selectedVar1)
+                });
+            focus.append("text")
+                .attr("class", "tooltip-y1")
+                .attr("x", 18)
+                .attr("y", yPos);
+            yPos += 20;
+        }
+        focus.append("text")
+            .attr("class", "tooltip-x")
+            .attr("x", 18)
+            .attr("y", yPos);
+
 
         svg.append("rect")
             .attr("class", "overlay")
@@ -209,10 +284,18 @@
             .on("mouseover", function () {
                 focus.attr("display", null);
                 focus.attr("fill-opacity", .7)
+                if (selectedVar1) {
+                    focus1.attr("display", null);
+                    focus1.attr("fill-opacity", .7);
+                }
             })
             .on("mouseout", function () {
                 focus.attr("display", "none");
-                focus.attr("fill-opacity", .3)
+                focus.attr("fill-opacity", .3);
+                if (selectedVar1) {
+                    focus1.attr("display", "none");
+                    focus1.attr("fill-opacity", .3);
+                }
             })
             .on("mousemove", mousemove);
         let bisectDate = d3.bisector(function (d) {
@@ -235,11 +318,29 @@
             }
             let d = dGet(this)
             let xColVal = (timeX) ? dateFormatter(d[xCol]) : d[xCol]
-            focus.attr("transform", "translate(" + axes.x(d[xCol]) + "," + axes.yScale(d[selectedVar]) + ")");
-            focus.select(".tooltip-x").text(xCol + ": " + xColVal);
+            focus.attr("transform", "translate(" + axes.x(d[xCol]) + "," + scale(d[selectedVar]) + ")");
             focus.select(".tooltip-y").text(selectedVar + ": " + formatValue(d[selectedVar]));
+            if (selectedVar1) {
+                let formatValue1 = d3.format(getUnits(selectedVar1, '.4f'));
+                focus1.attr("transform", "translate(" + axes.x(d[xCol]) + "," + scale1(d[selectedVar1]) + ")");
+                focus.select(".tooltip-y1").text(selectedVar1 + ": " + formatValue1(d[selectedVar1]));
+            }
+            focus.select(".tooltip-x").text(xCol + ": " + xColVal);
             focus.style("left", (d3.mouse(this)[0] + 70) + "px");
             focus.style("top", (d3.mouse(this)[1]) + "px");
+            focus.style("margin", "5px");
+            const position = d3.mouse(svg.node());
+            if (position[0] > (svg.node().parentNode.width.baseVal.value/2)) {
+                focus.style("text-anchor", "end");
+                focus.selectAll("text").each(function(d, i) {
+                    d3.select(this).attr('x', '-18');
+                });
+             } else {
+                focus.style("text-anchor", "start");
+                focus.selectAll("text").each(function(d, i) {
+                    d3.select(this).attr('x', '18');
+                });
+             }
         }
     }
 
@@ -251,6 +352,17 @@
             .y0(axes.yScale(0))
             .y1(function (d) {
                 return axes.yScale(d[selectedVar])
+            })
+            .curve(d3.curveMonotoneX)
+    }
+
+    function getLineGenerator(axes, xCol, selectedVar, scale) {
+        return d3.line()
+            .x(function (d) {
+                return axes.x(d[xCol])
+            })
+            .y(function (d) {
+                return scale(d[selectedVar])
             })
             .curve(d3.curveMonotoneX)
     }
@@ -394,6 +506,8 @@
         // A function that update the chart
         function update(selectedVar) {
             updateYAxis(axes, data, svg, selectedVar)
+            let lineGenerator = getLineGenerator(axes, xCol, selectedVar,
+                axes.yScale)
             let u = svg.selectAll(".lineTest")
                 .data([data])
             u
@@ -403,15 +517,7 @@
                 .merge(u)
                 .transition()
                 .duration(1000)
-                .attr("d", d3.line()
-                    .x(function (d) {
-                        return axes.x(d[xCol])
-                    })
-                    .y(function (d) {
-                        return axes.yScale(d[selectedVar])
-                    })
-                    .curve(d3.curveMonotoneX)
-                )
+                .attr("d", lineGenerator)
                 .attr("stroke", function (d) {
                     return myColor(selectedVar)
                 })
@@ -502,6 +608,122 @@
         update(yCol[0])
     }
 
+
+    function generateDualLineChart(elem, data, xCol, yCol, filterCols) {
+        let am = autoMargin(elem, 400, 60, 30);
+        let svg = am.svg;
+        let parseDate = d3.timeParse("%Y-%m-%d");
+        data.forEach(function (d) {
+            d[xCol] = parseDate(d[xCol]);
+        });
+        generateSelect(elem, yCol, "Select0");
+        generateSelect(elem, yCol, "Select1", 1);
+        // generateSelect(elem, filterCols, 'SelectDimension')
+        // A color scale: one color for each group
+        let myColor = getColorPal(yCol);
+        let axes = generateAxis(
+            data, svg, d3.scaleTime(), d3.scaleLinear(), am.width, am.height,
+            xCol, yCol[0], true, d3.scaleLinear(), yCol[1]
+        );
+
+        // A function that update the chart
+        function update(selectedVar, selectedDim = null, yAxis, line, selectedVar1) {
+            let scale = (yAxis === '.yaxis') ? axes.yScale :  axes.y1Scale;
+            let scale1 = (yAxis === '.yaxis') ? axes.y1Scale :  axes.yScale;
+            let axis = (yAxis === '.yaxis') ? axes.yAxis : axes.y1Axis;
+            let fill = (yAxis === '.yaxis') ? .3 : 0;
+            updateYAxis(axes, data, svg, selectedVar, scale, axis, yAxis);
+            let lineGenerator = (yAxis === '.yaxis') ?
+                getAreaGenerator(axes, xCol, selectedVar, scale) :
+                getLineGenerator(axes, xCol, selectedVar, scale);
+            let u = svg.selectAll(''.concat(".", line))
+                .data([data])
+                .attr("clip-path", "url(#clip)");
+            u
+                .enter()
+                .append("path")
+                .attr("class", line)
+                .merge(u)
+                .transition()
+                .duration(1000)
+                .attr("d", lineGenerator)
+                .attr("stroke", function (d) {
+                    return myColor(selectedVar)
+                })
+                .attr("stroke-width", 3)
+                .attr("fill-opacity", fill)
+                .attr("fill", function (d) {
+                    return myColor(selectedVar)
+                })
+            d3.selection.prototype.last = function() {
+              var last = this.size() - 1;
+              return d3.select(this['_groups'][0][last]);
+            };
+            svg.call(g => g.selectAll(yAxis).selectAll('.tick > text')
+                  .attr('fill', "currentColor"));
+            svg.call(g => g.selectAll(yAxis).selectAll('.tick > text').last()
+                  .attr('fill', myColor(selectedVar)));
+            var idleTimeout = null
+
+            function idled() {
+                idleTimeout = null;
+            }
+
+            let clipBrush = addClipBrush(svg, am, idleTimeout,
+                idled, axes, u, xCol, selectedVar);
+            u
+                .enter()
+                .append("g")
+                .attr("class", "brush")
+                .call(clipBrush.brush);
+            addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, true,
+                scale, selectedVar1, scale1)
+        }
+
+        $(elem + 'Select0').on("change", function (e) {
+            let selectedOption = $(e.currentTarget).val();
+            let selectedOption1 = $(elem + 'Select1').val();
+            let color = myColor(selectedOption);
+            let colorOpacity = hexToRgb(color);
+            colorOpacity = colorOpacity.replace('1)', '.3)');
+            let style = ('border-color: ' + color + ' !important;' +
+                'background-color: ' + colorOpacity);
+            update(selectedOption, null, ".yaxis", "line0", selectedOption1);
+            update(selectedOption1, null, ".y1axis", "line1", selectedOption);
+            $(elem + 'Select0Key').attr('style', style);
+        });
+        $(elem + "Select1").on("change", function (e) {
+            let selectedOption1 = $(e.currentTarget).val();
+            let selectedOption = $(elem + 'Select0').val();
+            update(selectedOption, null, ".yaxis", "line0", selectedOption1);
+            update(selectedOption1, null, ".y1axis", "line1", selectedOption);
+            $(elem + 'Select1Key').css('background-color',
+                myColor(selectedOption1))
+        });
+
+        // If user double click, reinitialize the chart
+        svg.on("dblclick", function () {
+            axes.x.domain(d3.extent(data, function (d) {
+                return d[xCol];
+            }))
+            svg.selectAll(".xaxis")
+                .transition().duration(500)
+                .call(axes.xAxis);
+            update(yCol[0], null, ".yaxis", "line0", yCol[1]);
+            update(yCol[1], null, ".y1axis", "line1", yCol[0])
+        });
+        update(yCol[0], null, ".yaxis", "line0", yCol[1]);
+        update(yCol[1], null, ".y1axis", "line1", yCol[0]);
+        let color = myColor(yCol[0]);
+        let colorOpacity = hexToRgb(color);
+        colorOpacity = colorOpacity.replace('1)', '.3)');
+        let style = ('border-color: ' + color + ' !important;' +
+            'background-color: ' + colorOpacity);
+        $(elem + 'Select0Key').attr('style', style);
+        $(elem + 'Select1Key').css('background-color',
+            myColor(yCol[1]));
+    }
+
     function generateLollipopChart(elem, data, xCol, yCol) {
         data = sortData(data, yCol[0])
         let dataLength = (data.length < 20) ? 1 : data.length / 20
@@ -515,13 +737,7 @@
         )
 
         function update(selectedVar) {
-            // Add Y axis
-            axes.yScale.domain([0, d3.max(data, function (d) {
-                return +d[selectedVar]
-            })]);
-            svg.selectAll(".yaxis")
-                .transition().duration(500)
-                .call(axes.yAxis)
+            updateYAxis(axes, data, svg, selectedVar);
             // variable u: map data to existing circle
             var j = svg.selectAll(".myLine")
                 .data(data)
@@ -656,6 +872,8 @@
     }
 
     function generateBarChart(elem, data, xCol, yCol) {
+        elemId = elem.replace('#', '');
+        document.getElementById(elemId).innerHTML='';
         data = sortData(data, yCol[0]);
         let dataLength = (data.length < 10) ? 1 : data.length / 10;
         let am = autoMargin(elem, 250, 60, 30, dataLength);
@@ -669,12 +887,7 @@
 
         function update(selectedVar) {
             // Add Y axis
-            axes.yScale.domain([0, d3.max(data, function (d) {
-                return +d[selectedVar]
-            })]);
-            svg.selectAll(".yaxis")
-                .transition().duration(500)
-                .call(axes.yAxis)
+            updateYAxis(axes, data, svg, selectedVar);
             // variable u: map data to existing circle
             var j = svg.selectAll(".bar")
                 .data(data)
@@ -813,9 +1026,8 @@
 
     function generateProgressBars(elem, data, xCol, yCol) {
         data.sort((a, b) => b[yCol[0]] - a[yCol[0]])
-        generateSelect(elem, yCol)
         let dataLength = (data.length < 5) ? 1 : data.length / 5
-        let am = autoMargin(elem, 250, 5, 5, 1, dataLength)
+        let am = autoMargin(elem, 250, 5, 5, .9, dataLength)
         let xVal = 10
         let barHeight = 20
         let spacing = 50
@@ -904,11 +1116,13 @@
             if (totalCardElem === null) {
                 let curElem = document.getElementById(elem);
                 curElem.innerHTML += `
-                    <div id="totalCard` + d['name'] + `" class="card mb-auto shadow-lg">
+                    <div id="totalCard` + d['name'] + `" class="card mb-auto shadow-sm">
+                    <div class="card-body p-3">
                     <h3 class="text-muted small">` + d['name'].toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ') + `</h3>
                     <h5 id="totalCardValue` + d['name'] + `" class="text-large" style="text-align:center">
                     ` + d['current_value'] + `</h5>
-                    <div class="card-footer">
+                    </div>
+                    <div class="card-footer p-2 d-flex align-items-center justify-content-center">
                     <p id="totalCardChange` + d['name'] + `" class="text-muted small">
                     ` + (d['change'] * 100).toFixed(2) + `% ` + d['msg'] + ` </p>
                     </div>
@@ -921,6 +1135,48 @@
                 animateValue(changeElem, d['change'], 500, (d['change'] * 100).toFixed(2) + `% ` + d['msg'])
             }
         });
+    }
+
+    function generateKpiNotes(elem, data, xCol, yCol) {
+        elem = elem.replace('#', '');
+        document.getElementById(elem).innerHTML = `
+                                    <p id="dailyMetricsNotes0"></p>
+                                    <br>
+                                    <p id="dailyMetricsNotes1"></p>
+                                    <br>`;
+
+        function update(selectedVar, pos) {
+            let curElem = document.getElementById(elem + pos);
+            if (curElem) {
+                curElem.innerHTML = '';
+                data.forEach(function (d) {
+                    if (d['index'] === 'Trend') {
+                        if (d[selectedVar]) {
+                            curElem.innerText += d[selectedVar]
+                        }
+                    } else {
+                        if (d[selectedVar]) {
+                            curElem.innerHTML += `<li>` + d[selectedVar] + `</li>`
+                        }
+                    }
+                })
+            }
+        }
+        
+        let pos0 = '0';
+        let pos1 = '1';
+        let selectorElem = '#' + elem.replace('Notes', '') + 'Select';
+        addOnClickEvent(selectorElem + pos0, function (e) {
+            let selectedOption = $(e.currentTarget).val();
+            update(selectedOption, pos0)
+        }, 'change', true, false);
+        addOnClickEvent(selectorElem + pos1, function (e) {
+            let selectedOption = $(e.currentTarget).val();
+            update(selectedOption, pos1)
+        }, 'change', true, false);
+
+        update(Object.keys(data[0])[0], pos0);
+        update(Object.keys(data[0])[1], pos1);
     }
 
     function getDownloadProgressForRadial(tableName, chart, downloadingProgress,
@@ -956,13 +1212,12 @@
         filterDict, addSelect, elem) {
         chart.update(100);
         if (Array.isArray(data) && data.length) {
-            yCol = (yCol.includes('kpi')) ? (
-                Object.keys(data[0]).filter(function (e) {
-                    return e !== 'index' && e !== xCol
-                })) : yCol
+            yCol = Object.keys(data[0]).filter(function (e) {
+                return e !== 'index' && e !== xCol[0]
+            });
             createVisualFunction(elem, data, xCol, yCol, filterDict);
             if (addSelect) {
-                addSelectOptions(data, xCol)
+                addSelectOptions(data, xCol, false, "", false)
             }
         }
     }
@@ -1377,7 +1632,8 @@
     }
 
 
-    function addSelectOptions(data, xCol, selectDiv=false, baseElemId='') {
+    function addSelectOptions(data, xCol, selectDiv=false, baseElemId='',
+                              defaultValInd=0) {
         let i = 0;
         let newData = $.map(data, function (obj) {
             obj['text'] = obj['text'] || obj[xCol];
@@ -1402,6 +1658,9 @@
         selectizeElem.load(function(callback) {
             callback(newData);
         });
+        if (Number.isInteger(defaultValInd)) {
+            selectizeElem.setValue(data[defaultValInd]['text'])
+        }
     }
 
     $(document).ready(function () {

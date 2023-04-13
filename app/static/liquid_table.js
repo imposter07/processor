@@ -91,7 +91,8 @@ function createTableElements(tableName, rowsName,
                              tableDescription = '', colToggle = '',
                              tableAccordion = '', specifyFormCols = '',
                              rowOnClick = '', newModalBtn = '',
-                             colFilter = '') {
+                             colFilter = '', searchBar='',
+                             chartBtn='') {
     let collapseStr = (tableAccordion) ? 'collapse' : '';
     let title = (tableTitle) ? `
         <div class="card-header">
@@ -136,13 +137,27 @@ function createTableElements(tableName, rowsName,
             Add New Row
         </button>
     ` : '';
-    let showChartBtnHtml = `
+    let showSearchBarHtml = (searchBar) ? `
+        <div class="input-group-prepend">
+                <span class="input-group-text"><i
+                        class="fa-solid fa-magnifying-glass"
+                        href="#"
+                        role="button"></i></span>
+            </div>
+            <input id="tableSearchInput" type="text"
+                   class="form-control"
+                   placeholder="Search"
+                   aria-label="Username"
+                   aria-describedby="basic-addon1"
+                   onkeyup="searchTable('#${tableName}Table')">
+        </div>` : '';
+    let showChartBtnHtml = (chartBtn) ? `
         <button id="showChartBtn${tableName}"
             class="btn btn-outline-success text-left" type="button" href=""
             onclick="showChart('${tableName}');">
             <i class="fas fa-chart-bar" role="button"></i>
         </button>
-    `
+    ` : '';
     let elem = document.getElementById(tableName);
     let elemToAdd = `
     <div class="card shadow outer text-center">
@@ -170,19 +185,7 @@ function createTableElements(tableName, rowsName,
                     </div>
                     <div class="col">
                         <div class="input-group mb-3">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i
-                                        class="fa-solid fa-magnifying-glass"
-                                        href="#"
-                                        role="button"></i></span>
-                            </div>
-                            <input id="tableSearchInput" type="text"
-                                   class="form-control"
-                                   placeholder="Search"
-                                   aria-label="Username"
-                                   aria-describedby="basic-addon1"
-                                   onkeyup="searchTable('#${tableName}Table')">
-                        </div>
+                            ${showSearchBarHtml}
                     </div>
                 </div>
                 <table id="${tableName}Table" data-value="${rowsName}" data-accordion="${collapseStr}"
@@ -1204,7 +1207,9 @@ function createLiquidTableChart(tableName, tableRows) {
         let cellName = elem.id.replace('col', '');
         (isNaN(value)) ? xCols.push(cellName) : yCols.push(cellName);
     });
-    generateBarChart(`#${chartElem.id}`, tableRows, xCols[0], yCols);
+    if (yCols.length) {
+        generateBarChart(`#${chartElem.id}`, tableRows, xCols[0], yCols);
+    }
 }
 
 function getTableOnClick(elem, imgToGet) {
@@ -1237,12 +1242,14 @@ function createLiquidTable(data, kwargs) {
     let rowOnClick = existsInJson(tableData, 'row_on_click');
     let newModalBtn = existsInJson(tableData, 'new_modal_button');
     let colFilter = existsInJson(tableData, 'col_filter');
+    let searchBar = existsInJson(tableData, 'search_bar');
+    let chartBtn = existsInJson(tableData, 'chart_btn');
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
     createTableElements(tableName, rowsName, topRowsName, title,
         description, colToggle, tableAccordion, specifyFormCols, rowOnClick,
-        newModalBtn, colFilter);
+        newModalBtn, colFilter, searchBar, chartBtn);
     addTableColumns(tableCols, tableName);
     if (topRowsName) {
         addCurrentTopRows(tableTopRows, tableName);

@@ -280,9 +280,9 @@ class LiquidTable(object):
                  select_val_dict=None, select_box=None,
                  form_cols=None, metric_cols=None, def_metric_cols=None,
                  header=None, highlight_row=None, new_modal_button=False,
-                 col_filter=True, df=pd.DataFrame(), row_on_click='',
-                 button_col=None, highlight_type='blank',
-                 table_name='liquidTable'):
+                 col_filter=True, search_bar=True, chart_btn=True,
+                 df=pd.DataFrame(), row_on_click='', button_col=None,
+                 highlight_type='blank', table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -303,6 +303,8 @@ class LiquidTable(object):
         self.table_name = table_name
         self.new_modal_button = new_modal_button
         self.col_filter = col_filter
+        self.search_bar = search_bar
+        self.chart_btn = chart_btn
         self.row_on_click = row_on_click
         self.button_col = button_col
         self.highlight_type = highlight_type
@@ -321,7 +323,8 @@ class LiquidTable(object):
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
             self.specify_form_cols, self.col_dict, self.table_name,
-            self.new_modal_button, self.col_filter, self.row_on_click)
+            self.new_modal_button, self.col_filter, self.search_bar,
+            self.chart_btn, self.row_on_click)
 
     def build_from_df(self):
         if not self.df.empty:
@@ -368,7 +371,8 @@ class LiquidTable(object):
 
     def make_table_dict(self, cols, data, top_rows, totals, title, description,
                         columns_toggle, accordion, specify_form_cols, col_dict,
-                        table_name, new_modal_button, col_filter, row_on_click):
+                        table_name, new_modal_button, col_filter, search_bar,
+                        chart_btn, row_on_click):
         table_dict = {
             'data': data, 'rows_name': self.rows_name, 'cols': cols,
             'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
@@ -378,6 +382,7 @@ class LiquidTable(object):
             'col_dict': col_dict, 'name': table_name,
             self.id_col: self.liquid_table,
             'new_modal_button': new_modal_button, 'col_filter': col_filter,
+            'search_bar': search_bar, 'chart_btn': chart_btn,
             'row_on_click': row_on_click}
         return table_dict
 

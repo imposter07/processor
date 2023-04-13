@@ -75,14 +75,20 @@ function sortTable(bodyName, tableHeaderId) {
     addOnClickEvent("th:not([id*='thHidden'])", sortTableEvent, 'click', false);
 }
 
-function addOnClickEvent(elemSelector, clickFunction, type = 'click', preventDefault = true) {
+function addOnClickEvent(elemSelector, clickFunction, type = 'click', preventDefault = true,
+                         remove=true) {
     for (let elm of document.querySelectorAll(elemSelector)) {
         if ((elm.tagName === 'SELECT') && (elm.selectize)) {
-            $('#' + elm.id).unbind().on(type, function (e) {
+            if (remove) {
+                $('#' + elm.id).unbind()
+            }
+            $('#' + elm.id).on(type, function (e) {
                 clickFunction(e);
             });
         } else {
-            elm.removeEventListener(type, clickFunction);
+            if (remove) {
+                elm.removeEventListener(type, clickFunction);
+            }
             if (preventDefault) {
                 elm.addEventListener(type, function (e) {
                     e.preventDefault();
@@ -196,4 +202,20 @@ function setDownloadBar(currentElement, textContent, pond = true) {
 
 function viewSelectorChangeEvent(e) {
     window.location = e.target.selectize.getValue();
+}
+
+function toggleNav () {
+    let elem = document.getElementById("navbarToggler");
+    let main = document.getElementsByTagName("main")[0];
+    main.style.marginLeft = (elem.classList.contains('show')) ?
+         "25%" : "0%";
+}
+
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? `rgba(
+    ${parseInt(result[1], 16).toString()},
+    ${parseInt(result[2], 16).toString()},
+    ${parseInt(result[3], 16.).toString()}, 1)`
+        : null;
 }

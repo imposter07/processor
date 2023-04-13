@@ -3334,6 +3334,7 @@ def get_processor_total_metrics(processor_id, current_user_id,
         cur_processor = Processor.query.get(processor_id)
         topline_analysis = cur_processor.processor_analysis.filter_by(
             key=az.Analyze.topline_col).all()
+        kpis, kpi_cols = get_kpis_for_processor(processor_id, current_user_id)
         if processor_id == 23:
             df = pd.DataFrame(columns=['impressions', 'clicks', 'netcost'])
         elif not topline_analysis:
@@ -3352,16 +3353,16 @@ def get_processor_total_metrics(processor_id, current_user_id,
             df = df.join(tdf)
             df = df.join(twdf)
         if filter_dict:
+            metrics = list(set(list(
+                kpi_cols) + ['impressions', 'clicks', 'netcost']))
             tdf = get_data_tables_from_db(
                 processor_id, current_user_id, dimensions=[],
-                metrics=['impressions', 'clicks', 'netcost'],
-                filter_dict=filter_dict)
-            tdf = tdf[0][['impressions', 'clicks', 'netcost']]
-            tdf = tdf.rename(
-                columns={'impressions': 'Impressions', 'clicks': 'Clicks',
-                         'netcost': 'Net Cost Final'})
-            tdf['CPC'] = tdf['Net Cost Final'] / tdf['Clicks']
+                metrics=metrics, filter_dict=filter_dict)
+            tdf = tdf[0]
+            tdf = az.ValueCalc().calculate_all_metrics(kpis, tdf)
             if df.empty:
+                if tdf.empty:
+                    return [tdf]
                 df = tdf.T
                 df['current_value'] = df[0]
             else:
@@ -3383,12 +3384,13 @@ def get_processor_total_metrics(processor_id, current_user_id,
         tdf = utl.give_df_default_format(tdf)
         df = tdf.T.join(df['change'])
         df = df.rename_axis('name').reset_index()
-        df = df[df['name'].isin(['Net Cost Final', vmc.impressions,
-                                 vmc.clicks, 'CPC'])]
+        df = df[df['name'].isin([cal.NCF, vmc.impressions,
+                                 vmc.clicks] + list(kpis))]
         if filter_dict:
             df['msg'] = 'Of Total'
         else:
             df['msg'] = 'Since Last Week'
+        df = df.iloc[::-1]
         _set_task_progress(100)
         return [df]
     except:
@@ -3398,6 +3400,108 @@ def get_processor_total_metrics(processor_id, current_user_id,
                 processor_id, current_user_id),
             exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_processor_daily_notes(processor_id, current_user_id,
+                              filter_dict=None):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.analyze as az
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.dictcolumns as dctc
+        import processor.reporting.utils as utl
+        kpi_analysis = cur_processor.processor_analysis.filter_by(
+            key=az.Analyze.kpi_col).all()
+        _set_task_progress(80)
+        kpis = set(x.parameter for x in kpi_analysis
+                   if x.parameter not in ['0', 'nan'])
+        param_2s = ['Trend', 'Smallest', 'Largest']
+        data = {}
+        for kpi in kpis:
+            cur_analysis = {
+                x.parameter_2: x.message for x in kpi_analysis
+                if (x.parameter == kpi and
+                    ((x.parameter_2 in param_2s and x.split_col == dctc.VEN) or
+                     (x.parameter_2 == param_2s[0] and x.split_col == vmc.date))
+                    )}
+            data[kpi] = cur_analysis
+        if not data or filter_dict:
+            _set_task_progress(100)
+            return [pd.DataFrame()]
+        df = pd.DataFrame(data=data)
+        df = df.fillna('')
+        df = df.iloc[::-1]
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id),
+            exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_processor_topline_metrics(processor_id, current_user_id, vk=None):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        import processor.reporting.analyze as az
+        import processor.reporting.vmcolumns as vmc
+        import processor.reporting.dictcolumns as dctc
+        import processor.reporting.utils as utl
+        os.chdir(adjust_path(cur_processor.local_path))
+        topline_analysis = cur_processor.processor_analysis.filter_by(
+            key=az.Analyze.topline_col).all()
+        filter_dict = vk
+        if not topline_analysis:
+            _set_task_progress(100)
+            df = pd.DataFrame([{'Result': 'No topline metrics yet'}])
+            lt = app_utl.LiquidTable(df=df, table_name='toplineMetrics')
+            return [lt.table_dict]
+        else:
+            df = pd.DataFrame([x for x in topline_analysis if
+                               x.parameter == az.Analyze.topline_col][0].data)
+        if filter_dict:
+            kpis, kpi_cols = get_kpis_for_processor(
+                processor_id, current_user_id)
+            metrics = az.Analyze.topline_metrics
+            filter_dict = json.loads(filter_dict)
+            base_metrics = [x[0] for x in metrics]
+            base_metrics = list(utl.db_df_translation(
+                base_metrics, adjust_path(cur_processor.local_path)).values())
+            base_metrics = list(set(list(kpi_cols) + base_metrics))
+            tdf = get_data_tables_from_db(
+                processor_id, current_user_id, dimensions=['campaignname'],
+                metrics=base_metrics, filter_dict=filter_dict)[0]
+            cols = utl.db_df_translation(
+                tdf.columns.to_list(), adjust_path(cur_processor.local_path),
+                reverse=True)
+            tdf = tdf.rename(columns=cols)
+            analyze_topline = az.Analyze(df=tdf)
+            df = analyze_topline.generate_topline_metrics()
+        final_metrics = az.Analyze.topline_metrics_final
+        final_metrics = [x for x in final_metrics
+                         if x in df.index.to_list()]
+        df = df.reindex(final_metrics)
+        df = df.replace([np.inf, -np.inf], np.nan)
+        df = df.fillna(0)
+        df = df.reset_index().rename(columns={'index': 'Topline Metrics'})
+        lt = app_utl.LiquidTable(df=df, table_name='toplineMetrics',
+                                 col_filter=False, chart_btn=False,
+                                 search_bar=False)
+        _set_task_progress(100)
+        return [lt.table_dict]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id),
+            exc_info=sys.exc_info())
+        df = pd.DataFrame([{'Result': 'Metrics unable to be loaded.'}])
+        lt = app_utl.LiquidTable(df=df, table_name='toplineMetrics')
+        return [lt.table_dict]
 
 
 # noinspection SqlResolve
@@ -3507,6 +3611,9 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                 metric_names=metric_names, df=df, db_translate=True)
             df = df.replace([np.inf, -np.inf], np.nan)
             df = df.fillna(0)
+        cols = utl.db_df_translation(
+            metrics, adjust_path(cur_processor.local_path), reverse=True)
+        df = df.rename(columns=cols)
         update_analysis_in_db_reporting_cache(
             processor_id, current_user_id, df, dimensions, metrics, filter_dict)
         _set_task_progress(100)
@@ -4360,20 +4467,20 @@ def get_kpis_for_processor(processor_id, current_user_id):
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
         vc = az.ValueCalc()
-        analysis = cur_processor.processor_analysis.all()
-        analysis = [x for x in analysis if x.key in [az.Analyze.kpi_col]]
-        kpis = set(x.parameter for x in analysis
-                   if x.parameter not in ['0', 'nan', 'CPA'])
+        analysis = cur_processor.processor_analysis.filter_by(
+            key=az.Analyze.kpi_col).all()
+        kpis = list(set(x.parameter for x in analysis
+                        if x.parameter not in ['0', 'nan']))
         if not kpis:
             kpis = ['CPC', 'CPLPV', 'CPBC', 'CPV', 'VCR']
         kpi_formula = [vc.calculations[x] for x in vc.calculations
                        if vc.calculations[x][vc.metric_name] in kpis]
         kpi_cols = [x[vc.formula][::2] for x in kpi_formula]
-        kpi_cols = set([x for x in kpi_cols for x in x if x])
-        df = pd.read_csv(os.path.join(adjust_path(cur_processor.local_path),
-                                      'config', 'db_df_translation.csv'))
-        translation = dict(zip(df[exc.translation_df], df[exc.translation_db]))
-        kpi_cols = [translation[x] for x in kpi_cols if x in translation]
+        kpi_cols = list(set([x for x in kpi_cols for x in x if x]))
+        kpi_cols += [x for x in kpis if x in vmc.datacol]
+        kpis = [x for x in kpis if x not in vmc.datacol]
+        kpi_cols = list(utl.db_df_translation(
+            kpi_cols, adjust_path(cur_processor.local_path)).values())
         _set_task_progress(100)
         return kpis, kpi_cols
     except:
@@ -4688,7 +4795,7 @@ def test_api_connection(processor_id, current_user_id, vk):
             df = test.test_api_calls([vk])
             lt = app_utl.LiquidTable(df=df, table_name='modal-body-table',
                                      highlight_row='Success',
-                                     highlight_type='')
+                                     highlight_type='', chart_btn=False)
         _set_task_progress(100)
         return [lt.table_dict]
     except:

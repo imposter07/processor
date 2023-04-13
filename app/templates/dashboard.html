@@ -3,7 +3,7 @@
 {% block app_content %}
     <style type="text/css">
         .widget {
-            height: 25vh;
+            height: 20vh !important;
             width: 175px;
             margin-left: auto;
             margin-right: auto;
@@ -53,11 +53,22 @@
           top: -10%;
           left: 70%;
         }
+
+        .color-square:before{
+            content: "";
+            display: block;
+            padding-top: 100%;  /* initial ratio of 1:1*/
+        }
+
+        div[class*='remove-items-shadow'] div[class*='card'] {
+            box-shadow: none !important;
+            zoom: 0.9;
+        }
     </style>
     <nav>
     {% include '_nav_and_progress.html' %}
     <div class="row">
-        <div class="col-md-12">
+        <div class="col-md-12 p-0">
             <div class="card-header">
                 <div class="nav nav-tabs" id="nav-tab" role="tablist">
                     <a class="nav-link active" id="nav-dash-tab"
@@ -95,7 +106,7 @@
         <div class="tab-pane fade show active" id="nav-dash"
              role="tabpanel" aria-labelledby="nav-dash-tab">
             <div class="row">
-                <div class="col-md-12">
+                <div class="col-md-12 p-0">
                     <div class="card-header">
                         <div class="row" id="navRow">
                             <div class="btn-group btn-group-sm btn-block" role="group">
@@ -161,106 +172,124 @@
             <br>
             <div class="row">
                 <div class="col-md-12 h-50">
-                    <div class="card-deck container-fluid text-center">
+                    <div class="card-deck container-fluid text-center mx-auto mb-2 mt-2">
                         <div id="totalMetricsProgress" class='widget'></div>
-                        <div id="totalMetrics" class="row w-100"></div>
+                        <div id="totalMetrics" class="row w-100 mx-auto"></div>
                     </div>
                 </div>
             </div>
 
             <br>
-            <div class="row">
-                <div class="col-md-3 h-50">
-                    <div class="card-header">
-                        <h7 class="mb-3">Delivery</h7>
-                        <select id="deliveryMetricsSelect"
-                                class="form-control form-control-sm">
-                            <option>Select Campaign</option>
+            <div class="row h-80">
+                <div class="col-md-4 h-80" >
+                    <div id="toplineMetrics"  class="card shadow-sm outer remove-items-shadow"
+                         style="height:692px"></div>
+                    <div class="d-none">
+                    <div id="toplineMetricsProgress"></div>
+                    </div>
+                </div>
+                <div class="col-md-8 h-80  vertical-center">
+                    <div class="card-header d-flex flex-row rounded align-items-center">
+                        <h7 class="pr-2 mr-5">Daily</h7>
+                        <div class="col-sm d-flex align-center">
+                            <div class="col-xs-4  color-square p-2 border" id="dailyMetricsSelect0Key"></div>
+                        </div>
+                        <select id="dailyMetricsSelect0" class="form-control form-control-sm p-1 mr-4">
+                        </select>
+                        <div class="col-sm d-flex align-center">
+                            <div class="col-xs-4  color-square pl-4 pt-1" id="dailyMetricsSelect1Key"></div>
+                        </div>
+                        <select id="dailyMetricsSelect1" class="form-control form-control-sm p-1">
                         </select>
                     </div>
-                    <div class="card container-fluid shadow outer">
+                    <div class="card container-fluid shadow-sm outer p-0">
+                        <div style="height: 420px; width: 97%">
+                            <div id="dailyMetricsProgress" class='widget'></div>
+                            <div id="dailyMetrics"></div>
+                        </div>
+                        <hr class="m-0">
+                        <div class="card-body container-fluid p-0">
+                             <div style="height: 200px" class="p-3">
+                                <div id="dailyMetricsNotesProgress" class='widget'
+                                     style="height: 170px !important;"></div>
+                                <div id="dailyMetricsNotes">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div><br>
+            <div class="row">
+                <div class="col-md-4 h-50">
+                    <div class="card-header d-flex flex-row rounded">
+                        <h7 class="pr-4">Delivery</h7>
+                    </div>
+                    <div class="card container-fluid shadow-sm outer p-0 m-0">
                         <div id="deliveryMetricsProgress" class='widget'></div>
                         <div id="deliveryMetrics" style="height:250px;"></div>
                     </div>
                 </div>
-                <div class="col-md-9 h-50">
-                    <div class="card-header">
-                        <h7 class="mb-3">Daily</h7>
-                        <select id="dailyMetricsSelect" class="form-control form-control-sm">
-                            <option>Select Metric</option>
+                <div class="col-md-8 h-50">
+                    <div class="card-header d-flex flex-row rounded">
+                        <h7 class="pr-4">Partner</h7>
+                        <select id="partnerMetricsSelect"
+                                class="form-control form-control-sm">
                         </select>
                     </div>
-                    <div class="card container-fluid shadow outer">
-                        <div id="dailyMetricsProgress" class='widget'></div>
-                        <div id="dailyMetrics"></div>
+                    <div class="card container-fluid shadow-sm outer">
+                        <div id="partnerMetricsProgress" class='widget'></div>
+                        <div id="partnerMetrics"></div>
                     </div>
                 </div>
             </div>
             <br>
             <div class="row" id="thirdRow" hidden="">
-                <div class="col-md-6 h-50">
-                    <div class="card-header">
-                        <h7 class="mb-3">Partner</h7>
-                        <select id="partnerMetricsSelect"
-                                class="form-control form-control-sm">
-                            <option>Select Metric</option>
-                        </select>
-                    </div>
-                    <div class="card container-fluid shadow outer">
-                        <div id="partnerMetricsProgress" class='widget'></div>
-                        <div id="partnerMetrics"></div>
-                    </div>
-                </div>
-                <div class="col-md-6 h-50">
-                    <div class="card-header">
-                        <h7 class="mb-3">Country</h7>
+                <div class="col-md-7 h-50">
+                    <div class="card-header d-flex flex-row rounded">
+                        <h7 class="pr-4">Country</h7>
                         <select id="countryMetricsSelect"
                                 class="form-control form-control-sm">
-                            <option>Select Metric</option>
                         </select>
                     </div>
-                    <div class="card container-fluid shadow outer">
+                    <div class="card container-fluid shadow-sm outer">
                         <div id="countryMetricsProgress" class='widget'></div>
                         <div id="countryMetrics"></div>
                     </div>
                 </div>
-            </div><br>
-            <div class="row" id="fourthRow" hidden="">
-                <div class="col-md-4 h-50">
-                    <div class="card-header">
-                        <h7 class="mb-3">Campaign</h7>
+                <div class="col-md-5 h-50">
+                    <div class="card-header d-flex flex-row rounded">
+                        <h7 class="pr-4">Campaign</h7>
                         <select id="campaignMetricsSelect"
                                 class="form-control form-control-sm">
-                            <option>Select Metric</option>
                         </select>
                     </div>
-                    <div class="card container-fluid shadow outer">
+                    <div class="card container-fluid shadow-sm outer">
                         <div id="campaignMetricsProgress" class='widget'></div>
                         <div id="campaignMetrics"></div>
                     </div>
                 </div>
-                <div class="col-md-4 h-50">
-                    <div class="card-header">
-                        <h7 class="mb-3">Device</h7>
+            </div><br>
+            <div class="row" id="fourthRow" hidden="">
+                <div class="col-md-5 h-50">
+                    <div class="card-header d-flex flex-row rounded">
+                        <h7 class="pr-4">Device</h7>
                         <select id="environmentMetricsSelect"
                                 class="form-control form-control-sm">
-                            <option>Select Metric</option>
                         </select>
                     </div>
-                    <div class="card container-fluid shadow outer">
+                    <div class="card container-fluid shadow-sm outer">
                         <div id="environmentMetricsProgress" class='widget'></div>
                         <div id="environmentMetrics"></div>
                     </div>
                 </div>
-                <div class="col-md-4 h-50">
-                    <div class="card-header">
-                        <h7 class="mb-3">KPI</h7>
+                <div class="col-md-7 h-50">
+                    <div class="card-header d-flex flex-row rounded">
+                        <h7 class="pr-4">KPI</h7>
                         <select id="kpiMetricsSelect"
                                 class="form-control form-control-sm">
-                            <option>Select Metric</option>
                         </select>
                     </div>
-                    <div class="card container-fluid shadow outer">
+                    <div class="card container-fluid shadow-sm outer">
                         <div id="kpiMetricsProgress" class='widget'></div>
                         <div id="kpiMetrics"></div>
                     </div>
@@ -281,12 +310,20 @@
             let metrics = ['kpi'];
             getMetrics('#totalMetrics', generateTotalCards, ['mpProduct Name'],
                 metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
-            getMetrics('#dailyMetrics', generateAreaChart, ['eventdate'],
+            getMetrics('#dailyMetrics', generateDualLineChart, ['eventdate'],
                 metrics, filterDict);
+            getMetrics('#dailyMetricsNotes', generateKpiNotes, ['mpProduct Name'],
+                metrics, filterDict);
+            getTable('toplineMetrics', 'toplineMetricsProgress', 'None',
+                JSON.stringify(filterDict));
             getMetrics('#deliveryMetrics', generateProgressBars, ['vendorname'],
                 ['netcost', 'plannednetcost'], filterDict);
-            getMetrics('#pacingAlertCount', generateAlertCount, ['vendorname'],
-                ['netcost', 'plannednetcost'], filterDict);
+            if (!allCharts) {
+                getMetrics('#pacingAlertCount', generateAlertCount, ['vendorname'],
+                    ['netcost', 'plannednetcost'], filterDict);
+                getMetrics('#partnerMetrics', generateBarChart, ['vendorname'],
+                    ['kpi'], filterDict);
+            }
             if (allCharts) {
                 getSecondaryCharts(filterDict, clickElem);
             }

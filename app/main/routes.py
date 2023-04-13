@@ -25,8 +25,8 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorPlanForm, UploadTestForm, ScreenshotForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
-    Uploader, Account, RateCard, Conversion, Requests, UploaderObjects,\
-    UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project,\
+    Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
+    UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project, \
     Notes, Tutorial, TutorialStage, Task, Plan, Walkthrough
 from app.translate import translate
 from app.main import bp
@@ -824,6 +824,7 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'Constant': '.get_constant_dict',
                  'Relation': '.get_relational_config',
                  'OutputData': '.get_data_tables',
+                 'toplineMetrics': '.get_processor_topline_metrics',
                  'TestConnection': '.test_api_connection',
                  'dictionary_order': '.get_dict_order',
                  'change_dictionary_order': '.get_change_dict_order',
@@ -921,8 +922,9 @@ def get_table_arguments():
             table_name = table_name + '-' + request.form['fix_id']
     if request.form['vendorkey'] != 'None':
         proc_arg['vk'] = request.form['vendorkey']
-        table_name = '{}vendorkey{}'.format(
-            table_name, request.form['vendorkey'].replace(' ', '___'))
+        if not table_name in ['toplineMetrics']:
+            table_name = '{}vendorkey{}'.format(
+                table_name, request.form['vendorkey'].replace(' ', '___'))
     return table_name, cur_proc, proc_arg, job_name
 
 
@@ -1468,7 +1470,7 @@ def edit_processor(object_name):
         form.cur_campaign.data = form_campaign.name
         form.cur_product.data = form_product.name
         form.cur_client.data = form_client.name
-    return render_template('create_processor.html',  **kwargs)
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/request_processor', methods=['GET', 'POST'])
@@ -1569,7 +1571,7 @@ def edit_request_processor(object_name):
         form.cur_product.data = form_product.name
         form.cur_client.data = form_client.name
     kwargs['form'] = form
-    return render_template('create_processor.html',  **kwargs)
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/processor/<object_name>/edit/plan/upload_file',
@@ -1867,7 +1869,7 @@ def edit_processor_request_fix(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_request_fix_upload_file(object_name):
-    current_key, object_name, object_form, object_level =\
+    current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request, object_name)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     fix_type = [x['value'] for x in object_form if x['name'] == 'fix_type'][0]
@@ -2169,8 +2171,8 @@ def open_note(note_id):
 @login_required
 def edit_processor_auto_notes(object_name):
     kwargs = Processor().get_current_processor(
-        object_name,  current_page='edit_processor_auto_notes',
-        edit_progress=100,  edit_name='Automatic Notes',
+        object_name, current_page='edit_processor_auto_notes',
+        edit_progress=100, edit_name='Automatic Notes',
         buttons='ProcessorNote')
     cur_proc = kwargs['processor']
     form = ProcessorAutoAnalysisForm()
@@ -2542,10 +2544,10 @@ def get_uploader_edit_links():
 
 def get_uploader_request_links(object_name):
     req_links = {
-                 0: {'title': 'Request Duplication',
-                     'href': url_for('main.edit_uploader_duplication',
-                                     object_name=object_name)}
-                 }
+        0: {'title': 'Request Duplication',
+            'href': url_for('main.edit_uploader_duplication',
+                            object_name=object_name)}
+    }
     return req_links
 
 
@@ -2601,7 +2603,7 @@ def uploader_page(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_uploader_upload_file(object_name):
-    current_key, object_name, object_form, object_level =\
+    current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request, object_name)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
@@ -2669,7 +2671,7 @@ def edit_uploader(object_name):
         form.aw_account_id.data = uploader_to_edit.aw_account_id
         form.dcm_account_id.data = uploader_to_edit.dcm_account_id
     kwargs['form'] = form
-    return render_template('create_processor.html',  **kwargs)
+    return render_template('create_processor.html', **kwargs)
 
 
 def set_uploader_relations_in_db(uploader_id, form_relations,
@@ -2690,7 +2692,7 @@ def set_uploader_relations_in_db(uploader_id, form_relations,
 
 
 def uploader_name_file_upload(object_name):
-    current_key, object_name, object_form, object_level =\
+    current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request, object_name)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     up_obj = UploaderObjects.query.filter_by(
@@ -2801,7 +2803,7 @@ def edit_uploader_base_objects(object_name, object_level, next_level='Page',
                     object_level.lower(), route_suffix),
                 object_name=cur_up.name))
     kwargs['form'] = form
-    return render_template('create_processor.html',  **kwargs)
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/uploader/<object_name>/edit/campaign', methods=['GET', 'POST'])
@@ -2835,14 +2837,14 @@ def edit_uploader_creative(object_name):
         else:
             return redirect(url_for('main.edit_uploader_ad',
                                     object_name=uploader_to_edit.name))
-    return render_template('create_processor.html',  **kwargs)
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/uploader/<object_name>/edit/creative/upload_file',
           methods=['GET', 'POST'])
 @login_required
 def uploader_file_upload(object_name):
-    current_key, object_name, object_form, object_level =\
+    current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request, object_name)
     cur_up = Uploader.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
@@ -2989,11 +2991,35 @@ def edit_processor_duplication(object_name):
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/get_metrics', methods=['GET', 'POST'])
-@login_required
-def get_metrics():
+def translate_metrics_name_to_job(metric_name, proc_arg):
+    if metric_name in ['#totalMetrics', '#dailyMetricsNotes']:
+        proc_arg = {x: proc_arg[x] for x in proc_arg
+                    if x in ['running_user', 'filter_dict']}
+    elif metric_name in ['#dash_placeholderMetrics',
+                         '#oldFilePlotMetrics', '#newFilePlotMetrics',
+                         '#deltaFilePlotMetrics']:
+        proc_arg['parameter'] = request.form['vendor_key']
+        if metric_name == '#newFilePlotMetrics':
+            proc_arg['temp'] = True
+    arg_trans = {'#totalMetrics': '.get_processor_total_metrics',
+                 '#pacingAlertCount': '.get_pacing_alert_count',
+                 '#dash_placeholderMetrics': '.get_raw_file_data_table',
+                 '#oldFilePlotMetrics': '.get_raw_file_data_table',
+                 '#newFilePlotMetrics': '.get_raw_file_data_table',
+                 '#deltaFilePlotMetrics': '.get_raw_file_delta_table',
+                 '#dailyMetricsNotes': '.get_processor_daily_notes'
+                 }
+    if metric_name in arg_trans:
+        job_name = arg_trans[metric_name]
+    else:
+        job_name = '.get_data_tables_from_db'
+    return job_name, proc_arg
+
+
+def get_metric_arguments():
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     dimensions = request.form['x_col'].split('|')
+    metric_name = request.form['elem']
     if 'dashboard_id' in request.form and request.form['dashboard_id']:
         dash = Dashboard.query.get(request.form['dashboard_id'])
         metrics = dash.get_metrics()
@@ -3016,35 +3042,31 @@ def get_metrics():
             cur_proc = Processor.query.get(23)
         else:
             cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
+    job_name, proc_arg = translate_metrics_name_to_job(metric_name, proc_arg)
+    return metric_name, cur_proc, proc_arg, job_name
+
+
+def get_metrics_return(task, metric_name, proc_arg, job_name,
+                       force_return=False):
+    job = task.wait_and_get_job(force_return=True)
+    df = job.result[0]
+    data = df.reset_index().to_dict(orient='records')
+    return data
+
+
+@bp.route('/get_metrics', methods=['GET', 'POST'])
+@login_required
+def get_metrics():
+    metric_name, cur_proc, proc_arg, job_name = get_metric_arguments()
     msg_text = 'Getting metric table for {}'.format(cur_proc.name)
-    if request.form['elem'] == '#totalMetrics':
-        job_name = '.get_processor_total_metrics'
-        proc_arg = {x: proc_arg[x] for x in proc_arg
-                    if x in ['running_user', 'filter_dict']}
-    elif request.form['elem'] == '#pacingAlertCount':
-        job_name = '.get_pacing_alert_count'
-    elif request.form['elem'] == '#pacingAlerts':
-        job_name = '.get_pacing_alerts'
-    elif request.form['elem'] in ['#dash_placeholderMetrics',
-                                  '#oldFilePlotMetrics', '#newFilePlotMetrics',
-                                  '#deltaFilePlotMetrics']:
-        job_name = '.get_raw_file_data_table'
-        proc_arg['parameter'] = request.form['vendor_key']
-        if request.form['elem'] == '#newFilePlotMetrics':
-            proc_arg['temp'] = True
-        if request.form['elem'] == '#deltaFilePlotMetrics':
-            job_name = '.get_raw_file_delta_table'
-    else:
-        job_name = '.get_data_tables_from_db'
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
     if ('force_return' in request.form and
             request.form['force_return'] == 'false'):
         data = {'data': 'success', 'task': task.id, 'level': 'success'}
     else:
-        job = task.wait_and_get_job(force_return=True)
-        df = job.result[0]
-        data = df.reset_index().to_dict(orient='records')
+        data = get_metrics_return(task, metric_name, proc_arg, job_name,
+                                  force_return=True)
     return jsonify(data)
 
 
@@ -3280,7 +3302,7 @@ def processor_change_project_number():
 def edit_processor_duplication_from_another(object_name):
     kwargs = Processor().get_current_processor(
         object_name, current_page='edit_processor_duplication',
-        edit_progress=100, edit_name='Duplicate',  buttons='ProcessorDuplicate')
+        edit_progress=100, edit_name='Duplicate', buttons='ProcessorDuplicate')
     cur_proc = kwargs['processor']
     form = ProcessorDuplicateAnotherForm()
     form.new_proc.data = cur_proc.id
@@ -3312,7 +3334,7 @@ def edit_walkthrough():
 @bp.route('/walkthrough/edit/upload_file', methods=['GET', 'POST'])
 @login_required
 def edit_walkthrough_upload_file():
-    current_key, object_name, object_form, object_level =\
+    current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request)
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
@@ -3336,7 +3358,7 @@ def upload_test():
 @bp.route('/upload_test/upload_file', methods=['GET', 'POST'])
 @login_required
 def upload_test_upload_file():
-    current_key, object_name, object_form, object_level =\
+    current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request)
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)

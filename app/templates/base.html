@@ -50,7 +50,8 @@
       <ul class="navbar-nav mr-auto">
           <li class="nav-item">
               <a id="collapseSide" class="nav-link" data-toggle="collapse"
-                 href="#" data-target=".collapse" role="button">
+                 href="#" data-target=".collapse" role="button"
+                 onclick="toggleNav()">
               <i class="fas fa-bars btn btn-secondary" style="color:black"></i></a>
           <li class="nav-item"><a class="nav-link" title={{ _('Explore') }}
                   href="{{ url_for('main.explore') }}">
@@ -128,10 +129,12 @@
 
 <div class="container-fluid"></div>
 <div class="row vh-100 flex-nowrap" style="">
-    <div class="bd-sidebar col-md-3 collapse show" style="overflow-y: auto; max-height: calc(100vh);">
+    <div class="bd-sidebar col-md-3 collapse show" style="overflow-y: auto; max-height: calc(100vh); position: fixed">
         {% block vertical_navbar %}{% endblock %}
     </div>
-    <main class="col" role="main" style="overflow-y: auto; max-height: calc(100vh);">
+    <main class="col" role="main"
+          style="overflow-y: visible; max-height: calc(100vh); margin-left: 25%;
+          transition: margin .18s;">
         <div class="jumbotron text-center shadow outer"
              style="padding-top: 5px; padding-bottom: 5px;">
             <div class="container-fluid">
@@ -176,7 +179,7 @@
                 {% block app_header %}{% endblock %}
             </div>
         </div>
-        <div class="container-fluid shadow outer">
+        <div class="container-fluid shadow-sm outer">
             {% block app_content %}{% endblock %}
             {% block app_content_2 %}{% endblock %}
         </div>

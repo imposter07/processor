@@ -28,8 +28,9 @@
 <div id="jinjaValues"
     {% if title %}data-title="{{ title }}"{% endif %}
     {% if uploader_type %}data-uploader_type="{{ uploader_type }}"{% endif %}
-    {% if title %}data-object_name="{{ object_name }}"{% endif %}
-    {% if title %}data-edit_name="{{ edit_name }}"{% endif %}
+    {% if object_name %}data-object_name="{{ object_name }}"{% endif %}
+    {% if edit_name %}data-edit_name="{{ edit_name }}"{% endif %}
+    {% if current_user %}data-username="{{ current_user.username }}"{% endif %}
 </div>
 </head>
 

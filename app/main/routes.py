@@ -3363,3 +3363,18 @@ def upload_test_upload_file():
     mem, file_name, file_type = \
         utl.get_file_in_memory_from_request(request, current_key)
     return jsonify({'data': 'success'})
+
+
+@bp.route('/chat', methods=['GET', 'POST'])
+@login_required
+def chat():
+    kwargs = {'title': 'LQA CHAT'}
+    return render_template('chat.html', **kwargs)
+
+
+@bp.route('/post_chat', methods=['GET', 'POST'])
+@login_required
+def post_chat():
+    message = request.form['message']
+    response = {'data': 'Thank you for your message: {}'.format(message)}
+    return jsonify(response)

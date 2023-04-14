@@ -4571,12 +4571,15 @@ def get_project_numbers(processor_id, current_user_id):
                 name = pn['Project']
                 for char in ['_', '|', ':', '.', "'", '&', '/']:
                     name = name.replace(char, ' ')
-                new_processor = Processor(
-                    name=name, description=description,
-                    user_id=4, created_at=datetime.utcnow(),
-                    start_date=sd, end_date=ed, campaign_id=form_campaign.id)
-                db.session.add(new_processor)
-                db.session.commit()
+                new_processor = Processor.query.filter_by(name=name).first()
+                if not new_processor:
+                    new_processor = Processor(
+                        name=name, description=description,
+                        user_id=4, created_at=datetime.utcnow(),
+                        start_date=sd, end_date=ed,
+                        ampaign_id=form_campaign.id)
+                    db.session.add(new_processor)
+                    db.session.commit()
                 new_processor.projects.append(new_project)
                 db.session.commit()
         if not ndf.empty:

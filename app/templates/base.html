@@ -24,16 +24,14 @@
         {{ _('Welcome to the  Liquid App') }}{% endif %}
 {% endblock %}
 </title>
-
+</head>
 <div id="jinjaValues"
     {% if title %}data-title="{{ title }}"{% endif %}
     {% if uploader_type %}data-uploader_type="{{ uploader_type }}"{% endif %}
     {% if object_name %}data-object_name="{{ object_name }}"{% endif %}
     {% if edit_name %}data-edit_name="{{ edit_name }}"{% endif %}
-    {% if current_user %}data-username="{{ current_user.username }}"{% endif %}
+    {% if current_user %}data-username="{{ current_user.username }}"{% endif %}>
 </div>
-</head>
-
 {% block navbar %}
 <nav class="navbar navbar-expand-lg bg-secondary fixed-top shadow outer"
      style="padding-top:1px;">
@@ -64,9 +62,9 @@
           </li>
       </ul>
         {% if g.search_form %}
-        <form class="form-inline" method="get" action="{{ url_for('main.search') }}">
+        <form class="form-inline" method="get" action="{{ url_for('main.chat') }}">
             <div class="form-group">
-                {{ g.search_form.q(size=15, class='form-control', placeholder=g.search_form.q.label.text) }}
+                {{ g.search_form.q(size=30, class='form-control', placeholder='Ask questions here....') }}
             </div>
         </form>
         {% endif %}

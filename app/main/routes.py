@@ -1,4 +1,5 @@
 import io
+import os
 import html
 import json
 import zipfile
@@ -32,6 +33,7 @@ from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.calc as cal
+import processor.reporting.analyze as az
 
 
 @bp.before_app_request
@@ -3369,6 +3371,8 @@ def upload_test_upload_file():
 @login_required
 def chat():
     kwargs = {'title': 'LQA CHAT'}
+    if g and g.search_form.q.data:
+        kwargs['initial_chat'] = g.search_form.q.data
     return render_template('chat.html', **kwargs)
 
 
@@ -3376,5 +3380,7 @@ def chat():
 @login_required
 def post_chat():
     message = request.form['message']
-    response = {'data': 'Thank you for your message: {}'.format(message)}
+    config_path = os.path.join('processor', 'config')
+    aly = az.Analyze(load_chat=True, chat_path=config_path)
+    response = {'data': aly.chat.get_response(message)}
     return jsonify(response)

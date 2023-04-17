@@ -5414,9 +5414,9 @@ def get_billing_table(processor_id, current_user_id):
             dimensions=['campaignname', 'vendorname'],
             metrics=['netcost', 'plannednetcost'], use_cache=True)[0]
         invoice_cost = 'invoicecost'
-        df[invoice_cost] = df['netcost']
-        df['plan - netcost'] = df['plannednetcost'] - df['netcost']
-        df['invoice - plancost'] = df[invoice_cost] - df['plannednetcost']
+        df[invoice_cost] = df[cal.NCF]
+        df['plan - netcost'] = df[dctc.PNC] - df[cal.NCF]
+        df['invoice - plancost'] = df[invoice_cost] - df[dctc.PNC]
         lt = app_utl.LiquidTable(df=df, table_name='billingTable',
                                  button_col=[invoice_cost],
                                  highlight_row=invoice_cost,
@@ -5471,7 +5471,8 @@ def write_billing_table(processor_id, current_user_id, new_data=None):
         _set_task_progress(0)
         import ast
         cur_proc = Processor.query.get(processor_id)
-        file_name = adjust_path(os.path.join(cur_proc.local_path, 'invoices.csv'))
+        file_name = os.path.join(cur_proc.local_path, 'invoices.csv')
+        file_name = adjust_path(file_name)
         df = pd.read_json(new_data)
         df = pd.DataFrame(ast.literal_eval(df['0'][1]))
         df.to_csv(file_name)

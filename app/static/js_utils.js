@@ -209,6 +209,8 @@ function toggleNav () {
     let main = document.getElementsByTagName("main")[0];
     main.style.marginLeft = (elem.classList.contains('show')) ?
          "25%" : "0%";
+    main.classList = (elem.classList.contains('show')) ?
+         "col-9" : "col";
 }
 
 function hexToRgb(hex) {

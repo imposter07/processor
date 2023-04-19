@@ -4470,7 +4470,8 @@ def get_kpis_for_processor(processor_id, current_user_id):
         analysis = cur_processor.processor_analysis.filter_by(
             key=az.Analyze.kpi_col).all()
         kpis = list(set(x.parameter for x in analysis
-                        if x.parameter not in ['0', 'nan']))
+                        if x.parameter not in ['0', 'nan'] and
+                        'Conv' not in x.parameter))
         if not kpis:
             kpis = ['CPC', 'CPLPV', 'CPBC', 'CPV', 'VCR']
         kpi_formula = [vc.calculations[x] for x in vc.calculations

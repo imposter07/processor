@@ -221,3 +221,9 @@ function hexToRgb(hex) {
     ${parseInt(result[3], 16.).toString()}, 1)`
         : null;
 }
+
+function setAttributes(elem, attributes) {
+    Object.entries(attributes).forEach(([key, value]) => {
+        elem.setAttribute(key, value);
+    })
+}

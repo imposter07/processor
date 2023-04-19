@@ -88,13 +88,52 @@ function addNewRowModal(tableName) {
         addNewRowSaveBtnFunction, kwargs);
 }
 
+function createSingleButton(buttonObject) {
+    let buttonElem = document.createElement('button');
+    let {classList, content, icon, ...rest} = buttonObject;
+    if (!classList) {
+        classList = ['btn', 'btn-outline-primary'];
+    }
+    if (content) {
+        let textSpan = document.createElement('span');
+        textSpan.textContent = content;
+        buttonElem.appendChild(textSpan);
+    }
+    if (icon) {
+        let iconElem = document.createElement('i');
+        let {classList, left, ...rest} = icon;
+        iconElem.classList.add(...classList);
+        setAttributes(iconElem, rest);
+        buttonElem.appendChild(iconElem);
+        if (left && content) {
+            let textSpan = buttonElem.querySelector('span');
+            buttonElem.appendChild(textSpan);
+        }
+    }
+    buttonElem.classList.add(...classList);
+    setAttributes(buttonElem, rest);
+    return buttonElem
+}
+
+function createButtonsFromArray(buttonArray) {
+    let buttonElems = document.createDocumentFragment();
+    if (!buttonArray) {
+        return buttonElems;
+    }
+    buttonArray.forEach((buttonObject) => {
+        let buttonElem = createSingleButton(buttonObject);
+        buttonElems.appendChild(buttonElem);
+    });
+    return buttonElems
+}
+
 function createTableElements(tableName, rowsName,
                              topRowsName = '', tableTitle = '',
                              tableDescription = '', colToggle = '',
                              tableAccordion = '', specifyFormCols = '',
                              rowOnClick = '', newModalBtn = '',
                              colFilter = '', searchBar='',
-                             chartBtn='') {
+                             chartBtn='', tableButtons = '') {
     let collapseStr = (tableAccordion) ? 'collapse' : '';
     let title = (tableTitle) ? `
         <div class="card-header">
@@ -160,6 +199,7 @@ function createTableElements(tableName, rowsName,
             <i class="fas fa-chart-bar" role="button"></i>
         </button>
     ` : '';
+    let customButtons = createButtonsFromArray(tableButtons);
     let elem = document.getElementById(tableName);
     let elemToAdd = `
     <div class="card shadow outer text-center">
@@ -202,6 +242,7 @@ function createTableElements(tableName, rowsName,
     </div>
     `
     elem.insertAdjacentHTML('beforeend', elemToAdd);
+    elem.querySelector('div.btn-group').appendChild(customButtons);
 }
 
 function addDays(date, days) {
@@ -1246,12 +1287,13 @@ function createLiquidTable(data, kwargs) {
     let colFilter = existsInJson(tableData, 'col_filter');
     let searchBar = existsInJson(tableData, 'search_bar');
     let chartBtn = existsInJson(tableData, 'chart_btn');
+    let tableButtons = existsInJson(tableData, 'table_buttons');
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
     createTableElements(tableName, rowsName, topRowsName, title,
         description, colToggle, tableAccordion, specifyFormCols, rowOnClick,
-        newModalBtn, colFilter, searchBar, chartBtn);
+        newModalBtn, colFilter, searchBar, chartBtn, tableButtons);
     addTableColumns(tableCols, tableName);
     if (topRowsName) {
         addCurrentTopRows(tableTopRows, tableName);

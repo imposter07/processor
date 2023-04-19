@@ -282,7 +282,8 @@ class LiquidTable(object):
                  header=None, highlight_row=None, new_modal_button=False,
                  col_filter=True, search_bar=True, chart_btn=True,
                  df=pd.DataFrame(), row_on_click='', button_col=None,
-                 highlight_type='blank', table_name='liquidTable'):
+                 table_buttons=None, highlight_type='blank',
+                 table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -307,6 +308,7 @@ class LiquidTable(object):
         self.chart_btn = chart_btn
         self.row_on_click = row_on_click
         self.button_col = button_col
+        self.table_buttons = table_buttons
         self.highlight_type = highlight_type
         self.df = df
         self.build_from_df()
@@ -324,10 +326,10 @@ class LiquidTable(object):
             self.description, self.columns_toggle, self.accordion,
             self.specify_form_cols, self.col_dict, self.table_name,
             self.new_modal_button, self.col_filter, self.search_bar,
-            self.chart_btn, self.row_on_click)
+            self.chart_btn, self.row_on_click, self.table_buttons)
 
     def build_from_df(self):
-        if not self.df.empty:
+        if self.df.columns.tolist():
             self.df = self.df.fillna('None')
             self.data = self.df.to_dict(orient='records')
             self.col_list = self.df.columns.tolist()
@@ -372,7 +374,7 @@ class LiquidTable(object):
     def make_table_dict(self, cols, data, top_rows, totals, title, description,
                         columns_toggle, accordion, specify_form_cols, col_dict,
                         table_name, new_modal_button, col_filter, search_bar,
-                        chart_btn, row_on_click):
+                        chart_btn, row_on_click, table_buttons):
         table_dict = {
             'data': data, 'rows_name': self.rows_name, 'cols': cols,
             'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
@@ -383,7 +385,7 @@ class LiquidTable(object):
             self.id_col: self.liquid_table,
             'new_modal_button': new_modal_button, 'col_filter': col_filter,
             'search_bar': search_bar, 'chart_btn': chart_btn,
-            'row_on_click': row_on_click}
+            'row_on_click': row_on_click, 'table_buttons': table_buttons}
         return table_dict
 
 

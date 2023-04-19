@@ -67,7 +67,9 @@
                 <div id='listTabs' class="btn-group btn-block btn-group-sm" style="opacity:.6;">
                     {% with buttons=processor.get_navigation_buttons() %}
                         {% with object_function_call=processor.get_object_function_call() %}
-                            {% include '_nav_page_links.html' %}
+                            {% with icon_only = true %}
+                                {% include '_nav_page_links.html' %}
+                            {% endwith %}
                         {% endwith %}
                     {% endwith %}
                 </div>

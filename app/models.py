@@ -799,49 +799,58 @@ class Processor(db.Model):
     @staticmethod
     def get_navigation_buttons(buttons=None):
         if buttons == 'ProcessorRequest':
-            buttons = [{'Basic': 'main.edit_request_processor'},
-                       {'Plan': 'main.edit_processor_plan'},
-                       {'Accounts': 'main.edit_processor_account'},
-                       {'Fees': 'main.edit_processor_fees'},
-                       {'Conversions': 'main.edit_processor_conversions'},
-                       {'Finish': 'main.edit_processor_finish'}]
+            buttons = [{'Basic': ['main.edit_request_processor']},
+                       {'Plan': ['main.edit_processor_plan']},
+                       {'Accounts': ['main.edit_processor_account']},
+                       {'Fees': ['main.edit_processor_fees']},
+                       {'Conversions': ['main.edit_processor_conversions']},
+                       {'Finish': ['main.edit_processor_finish']}]
         elif buttons == 'ProcessorRequestFix':
-            buttons = [{'New Fix': 'main.edit_processor_request_fix'},
-                       {'Submit Fixes': 'main.edit_processor_submit_fix'},
-                       {'All Fixes': 'main.edit_processor_all_fix'}]
+            buttons = [{'New Fix': ['main.edit_processor_request_fix']},
+                       {'Submit Fixes': ['main.edit_processor_submit_fix']},
+                       {'All Fixes': ['main.edit_processor_all_fix']}]
         elif buttons == 'ProcessorNote':
-            buttons = [{'New Note': 'main.edit_processor_note'},
-                       {'All Notes': 'main.edit_processor_all_notes'},
-                       {'Automatic Notes': 'main.edit_processor_auto_notes'}]
+            buttons = [{'New Note': ['main.edit_processor_note']},
+                       {'All Notes': ['main.edit_processor_all_notes']},
+                       {'Automatic Notes': ['main.edit_processor_auto_notes']}]
         elif buttons == 'ProcessorDuplicate':
-            buttons = [{'Duplicate': 'main.edit_processor_duplication'}]
+            buttons = [{'Duplicate': ['main.edit_processor_duplication']}]
         elif buttons == 'ProcessorDashboard':
-            buttons = [{'Create': 'main.processor_dashboard_create'},
-                       {'View All': 'main.processor_dashboard_all'}]
+            buttons = [{'Create': ['main.processor_dashboard_create']},
+                       {'View All': ['main.processor_dashboard_all']}]
         elif buttons == 'UploaderDCM':
-            buttons = [{'Basic': 'main.edit_uploader'},
-                       {'Campaign': 'main.edit_uploader_campaign_dcm'},
-                       {'Adset': 'main.edit_uploader_adset_dcm'},
-                       {'Ad': 'main.edit_uploader_ad_dcm'}]
+            buttons = [{'Basic': ['main.edit_uploader']},
+                       {'Campaign': ['main.edit_uploader_campaign_dcm']},
+                       {'Adset': ['main.edit_uploader_adset_dcm']},
+                       {'Ad': ['main.edit_uploader_ad_dcm']}]
         elif buttons == 'UploaderFacebook':
-            buttons = [{'Basic': 'main.edit_uploader'},
-                       {'Campaign': 'main.edit_uploader_campaign'},
-                       {'Adset': 'main.edit_uploader_adset'},
-                       {'Creative': 'main.edit_uploader_creative'},
-                       {'Ad': 'main.edit_uploader_ad'}]
+            buttons = [{'Basic': ['main.edit_uploader']},
+                       {'Campaign': ['main.edit_uploader_campaign']},
+                       {'Adset': ['main.edit_uploader_adset']},
+                       {'Creative': ['main.edit_uploader_creative']},
+                       {'Ad': ['main.edit_uploader_ad']}]
         elif buttons == 'UploaderAdwords':
-            buttons = [{'Basic': 'main.edit_uploader'},
-                       {'Campaign': 'main.edit_uploader_campaign_aw'},
-                       {'Adset': 'main.edit_uploader_adset_aw'},
-                       {'Ad': 'main.edit_uploader_ad_aw'}]
+            buttons = [{'Basic': ['main.edit_uploader']},
+                       {'Campaign': ['main.edit_uploader_campaign_aw']},
+                       {'Adset': ['main.edit_uploader_adset_aw']},
+                       {'Ad': ['main.edit_uploader_ad_aw']}]
         else:
-            buttons = [{'Basic': 'main.edit_processor'},
-                       {'Plan': 'main.edit_processor_plan_normal'},
-                       {'Import': 'main.edit_processor_import'},
-                       {'Clean': 'main.edit_processor_clean'},
-                       {'Export': 'main.edit_processor_export'},
-                       {'Bill': 'main.edit_processor_billing'}]
-        return buttons
+            buttons = [
+                {'Basic': ['main.edit_processor', 'list-ol']},
+                {'Plan': ['main.edit_processor_plan_normal', 'plane']},
+                {'Import': ['main.edit_processor_import', 'file-import']},
+                {'Clean': ['main.edit_processor_clean', 'soap']},
+                {'Export': ['main.edit_processor_export', 'file-export']},
+                {'Bill': ['main.edit_processor_billing', 'money-bill']}]
+        new_buttons = []
+        for button in buttons:
+            new_button = {}
+            for k, v in button.items():
+                new_button[k] = {'route': v[0], 'icon': ''}
+                if len(v) > 1:
+                    new_button[k]['icon'] = v[1]
+                new_buttons.append(new_button)
+        return new_buttons
 
 
 class TaskScheduler(db.Model):

@@ -18,13 +18,15 @@ def tutorial():
     """
     u = User.query.all()
     t = Tutorial.query.all()
-    star_dict = {x + 1: [] for x in reversed(range(5))}
+    total_stars = 5
+    star_dict = {x + 1: [] for x in reversed(range(total_stars))}
+    pro_den = ((len(t) * 100) / (total_stars - 1))
     for cu in u:
         if cu.password_hash:
             progress = 0
             for ct in t:
                 progress += ct.get_progress(cu.id)
-            idx = math.ceil(progress / 50) + 1
+            idx = math.ceil(progress / pro_den) + 1
             user_dict = {'user': cu, 'progress': progress}
             star_dict[idx].append(user_dict)
     kwargs = dict(tutorial_progress=star_dict, title='Tutorial',

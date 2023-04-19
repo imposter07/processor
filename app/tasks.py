@@ -5409,12 +5409,22 @@ def get_glossary_definitions(processor_id, current_user_id):
 def get_billing_table(processor_id, current_user_id):
     try:
         _set_task_progress(0)
+        cur_proc = Processor.query.get(processor_id)
+        dimensions = ['campaignname', 'vendorname']
         df = get_data_tables_from_db(
-            processor_id, current_user_id,
-            dimensions=['campaignname', 'vendorname'],
+            processor_id, current_user_id, dimensions=dimensions,
             metrics=['netcost', 'plannednetcost'], use_cache=True)[0]
         invoice_cost = 'invoicecost'
-        df[invoice_cost] = df[cal.NCF]
+        file_name = os.path.join(cur_proc.local_path, 'invoices.csv')
+        file_name = adjust_path(file_name)
+        if os.path.exists(file_name):
+            idf = pd.read_csv('invoices.csv')
+            idf = idf[dimensions + [invoice_cost]]
+            idf[invoice_cost] = idf[invoice_cost].str.split('\n').str[0]
+            idf = utl.data_to_type(idf, float_col=[invoice_cost])
+            df = df.merge(idf, how='left', on=dimensions)
+        else:
+            df[invoice_cost] = 0
         df['plan - netcost'] = df[dctc.PNC] - df[cal.NCF]
         df['invoice - plancost'] = df[invoice_cost] - df[dctc.PNC]
         lt = app_utl.LiquidTable(df=df, table_name='billingTable',
@@ -5474,7 +5484,7 @@ def write_billing_table(processor_id, current_user_id, new_data=None):
         file_name = os.path.join(cur_proc.local_path, 'invoices.csv')
         file_name = adjust_path(file_name)
         df = pd.read_json(new_data)
-        df = pd.DataFrame(ast.literal_eval(df['0'][1]))
+        df = pd.DataFrame(df[0][1])
         df.to_csv(file_name)
         _set_task_progress(100)
     except:

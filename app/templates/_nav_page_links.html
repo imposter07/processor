@@ -2,9 +2,14 @@
     {% for button_name, button_link in button.items() %}
         <a class="btn btn{% if edit_name != button_name %}-outline{% endif %}-primary
                     {% if not object_function_call %} disabled{% endif %}"
-           href="{% if object_function_call %}{{ url_for(button_link, **object_function_call) }}
+           href="{% if object_function_call %}{{ url_for(button_link['route'], **object_function_call) }}
                         {% endif %}">
-            {{ button_name }}
+            {% if button_link['icon'] %}
+                <i class="fas fa-{{ button_link['icon'] }}" href="#" role="button"></i>
+            {% endif %}
+            {% if not icon_only %}
+                {{ button_name }}
+            {% endif %}
         </a>
     {% endfor %}
 {% endfor %}

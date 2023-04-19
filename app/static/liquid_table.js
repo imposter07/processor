@@ -53,6 +53,7 @@ function createModal(modalId='', modalTitleText='', form = null,
         saveBtnFunction(saveBtnFunctionKwargs);
         document.body.removeChild(modal);
         document.querySelector(".modal-backdrop").remove();
+        document.querySelector("body").classList.remove('modal-open');
     });
     modalFooter.appendChild(saveButton);
 
@@ -60,10 +61,11 @@ function createModal(modalId='', modalTitleText='', form = null,
     document.body.appendChild(modal);
 
     // Display the modal
-    $("#" + modalId).modal("show");
+    let modalElem = $("#" + modalId);
+    modalElem.modal("show");
 
     // When the modal is closed, remove it from the body and return the form to its original location
-    $("#" + modalId).on("hidden.bs.modal", function() {
+    modalElem.on("hidden.bs.modal", function() {
         saveBtnFunction(saveBtnFunctionKwargs);
         document.body.removeChild(modal);
     });

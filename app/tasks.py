@@ -5428,10 +5428,9 @@ def get_billing_table(processor_id, current_user_id):
             df[invoice_cost] = 0
         df['plan - netcost'] = df[dctc.PNC] - df[cal.NCF]
         df['invoice - plancost'] = df[invoice_cost] - df[dctc.PNC]
-        lt = app_utl.LiquidTable(df=df, table_name='billingTable',
-                                 button_col=[invoice_cost],
-                                 highlight_row=invoice_cost,
-                                 row_on_click='billingInvoice')
+        lt = app_utl.LiquidTable(
+            df=df, table_name='billingTable', button_col=[invoice_cost],
+            highlight_row=invoice_cost, row_on_click='billingInvoice')
         lt = lt.table_dict
         _set_task_progress(100)
         return [lt]
@@ -5446,10 +5445,14 @@ def get_billing_table(processor_id, current_user_id):
 def get_billing_invoice(processor_id, current_user_id, vk=None):
     try:
         _set_task_progress(0)
-        import base64
-        from flask import send_file
         cur_proc = Processor.query.get(processor_id)
-        file_name = os.path.join(cur_proc.local_path, 'invoice.pdf')
+        file_name = 'invoice_{}.pdf'.format(vk)
+        file_name = os.path.join(cur_proc.local_path, file_name)
+        invoice_name = 'invoice.pdf'
+        if os.path.exists(file_name):
+            invoice_name = os.path.join(cur_proc.local_path, invoice_name)
+            copy_file(file_name, invoice_name)
+        file_name = invoice_name
         pdf_file = get_file_in_memory(file_name, file_name='sow.pdf')
         _set_task_progress(100)
         return [pdf_file]
@@ -5461,11 +5464,20 @@ def get_billing_invoice(processor_id, current_user_id, vk=None):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def write_billing_invoice(processor_id, current_user_id, new_data=None):
+def write_billing_invoice(processor_id, current_user_id, new_data=None,
+                          object_form=None):
     try:
         _set_task_progress(0)
         cur_proc = Processor.query.get(processor_id)
-        file_name = os.path.join(cur_proc.local_path, 'invoice.pdf')
+        dimensions = ['campaignname', 'vendorname']
+        new_file_name = 'invoice_'
+        for col in dimensions:
+            val_to_add = [x for x in object_form if col in x['name']]
+            if val_to_add:
+                val_to_add = str(val_to_add[0]['value'])
+                new_file_name += '{}_'.format(val_to_add)
+        new_file_name += '.pdf'
+        file_name = os.path.join(cur_proc.local_path, new_file_name)
         with open(file_name, 'wb') as f:
             shutil.copyfileobj(new_data, f, length=131072)
         _set_task_progress(100)

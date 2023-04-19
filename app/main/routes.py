@@ -1319,7 +1319,7 @@ def edit_processor_billing_upload_file(object_name):
     msg_text = 'Saving billing invoice.'
     cur_proc.launch_task(
         '.write_billing_invoice', _(msg_text),
-        running_user=current_user.id, new_data=mem)
+        running_user=current_user.id, new_data=mem, object_form=object_form)
     db.session.commit()
     data = 'success'
     msg = 'SUCCESS: {} invoice has been saved.'.format(cur_proc.name)

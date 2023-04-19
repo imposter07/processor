@@ -329,6 +329,22 @@ function saveLiquidTable(formContinue, tableName) {
     SendDataTable(tableName, formContinue, '', '', formTopline);
 }
 
+function returnBaseFormId() {
+    let baseFormId = 'base_form_id';
+    let curBaseForm = document.getElementById(baseFormId);
+    curBaseForm.id = curBaseForm.dataset['originalId'];
+    document.getElementById('base_form_id_original').id = baseFormId;
+}
+
+function switchBaseFormId(tableName, loopIndex) {
+    let baseFormId = 'base_form_id';
+    document.getElementById(baseFormId).id = 'base_form_id_original';
+    let newFormId = `form${tableName}${loopIndex}`;
+    let newForm = document.getElementById(newFormId);
+    newForm.dataset['originalId'] = newForm.id;
+    document.getElementById(newFormId).id = baseFormId;
+}
+
 function buttonColOnClick(tableName, colName, loopIndex) {
     let form = document.createElement("form");
     form.setAttribute('method',"post");
@@ -342,7 +358,8 @@ function buttonColOnClick(tableName, colName, loopIndex) {
 
     let modalId = `modal${tableName}${colName}${loopIndex}`.toUpperCase();
     let titleName = `${tableName} - ${colName} - ${loopIndex}`;
-    createModal(modalId, titleName, form, );
+    switchBaseFormId(tableName, loopIndex);
+    createModal(modalId, titleName, form, returnBaseFormId);
     addFilePond();
     addFilePondMeta();
 }
@@ -1260,11 +1277,17 @@ function getTableOnClick(elem, imgToGet) {
     let table = document.getElementById(tableId);
     let imgElemId = imgToGet;
     let rowIndex = elem.id.replace('tr', '');
+    let uniqueCols = ['campaignname', 'vendorname'];
+    let vk = ''
+    uniqueCols.forEach(col => {
+        vk += document.getElementById(`row${col}${rowIndex}`).textContent;
+        vk += '_'
+    })
     let elemToAdd = `<div id="${imgElemId}"></div>`;
     table.insertAdjacentHTML('beforebegin', elemToAdd);
     let imgElem = document.getElementById(imgElemId);
     imgElem.innerHTML = '';
-    getTable(imgToGet, imgElem.id, 'None', rowIndex);
+    getTable(imgToGet, imgElem.id, 'None', vk);
 }
 
 function createLiquidTable(data, kwargs) {

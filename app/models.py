@@ -155,6 +155,9 @@ class User(UserMixin, db.Model):
         secondaryjoin="user_tutorial.c.tutorial_stage_id == TutorialStage.id",
         backref=db.backref('user_tutorial', lazy='dynamic'),
         lazy='dynamic')
+    conversation = db.relationship(
+        'Conversation', foreign_keys='Conversation.user_id', backref='user',
+        lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -1759,3 +1762,18 @@ class PlanRule(db.Model):
     order = db.Column(db.Integer)
     type = db.Column(db.String(128))
     rule_info = db.Column(db.JSON)
+
+
+class Conversation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Chat(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text)
+    response = db.Column(db.Text)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'))
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)

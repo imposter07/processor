@@ -111,6 +111,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <h2 class="">{{ _('{}'.format(title)) }}</h2>
 {% endblock %}
+
+{% block vertical_navbar %}
+    <div class="card shadow outer">
+    <div class="card-header">
+        <h3>Conversations<i class="fas fa-comments btn btn-secondary"
+                           style="float:right;"></i></h3>
+        <h6 class="card-subtitle mb-2 text-muted">
+            Previous conversations you have had with ALI can be accessed here.
+        </h6>
+    </div>
+    <div class="card-body" id="conversationButtons">
+        <a class="btn btn-outline-success btn-block" href="">
+            <i class="fas fa-plus" href="#" role="button" aria-hidden="true"></i>
+            New Conversation
+        </a>
+        {% for conversation in conversations %}
+            <a class="btn btn-outline-primary btn-block" href=""
+               data-cid="{{ conversation.id }}">
+                <i class="fas fa-message" href="#" role="button" aria-hidden="true"></i>
+                {{ conversation.name }}
+            </a>
+        {% endfor %}
+    </div>
+    </div>
+{% endblock %}
+
 {% block app_content %}
     <div class="row justify-content-center">
         <div class="col">
@@ -159,13 +185,46 @@
             latestMessage.id = '';
         }
 
-        function postChatResponse (data, kwargs) {
+        function addConversationToCard(data) {
+            let conversationId = data['id'];
+            let conversationName = data['name'];
+            let convButtonsElem = document.getElementById('conversationButtons');
+            let elemToAdd = `
+                <a id="currentConv" class="btn btn-primary btn-block" href=""
+                        data-cid="${conversationId}">
+                    <i class="fas fa-message" href="#" role="button" aria-hidden="true"></i>
+                    ${conversationName}
+                </a>`;
+            convButtonsElem.insertAdjacentHTML('beforeend', elemToAdd);
+            postChatRequest(conversationName, conversationId);
+        }
+
+        function postConversation(message) {
+            let data = {
+                'message': message,
+            }
+            makeRequest('/post_conversation', 'POST', data, addConversationToCard);
+        }
+
+        function postChatResponse(data, kwargs) {
             let response = data['data'];
             let message = document.getElementById('chatInput');
             message.value = '';
             let clickElem = kwargs['clickElem'];
             addElemRemoveLoadingBtn(clickElem.id);
             addMessageToChat(response, 'yours');
+        }
+
+        function postChatRequest(message, conversationId) {
+            let chatInputGroup = document.getElementById('chatInputGroup');
+            let data = {
+                'message': message,
+                'conversation_id': conversationId
+            }
+            let kwargs = {
+                'clickElem': chatInputGroup
+            }
+            makeRequest('/post_chat', 'POST', data, postChatResponse, 'json', kwargs);
         }
 
         function postChat(addMessage='') {
@@ -177,13 +236,12 @@
             loadingBtn(chatInputGroup);
             let message = chatInput.value;
             addMessageToChat(message, 'mine');
-            let data = {
-                'message': message
+            let conversation = document.getElementById('currentConv');
+            if (conversation) {
+                postChatRequest(message, conversation.dataset['cid']);
+            } else {
+                postConversation(message);
             }
-            let kwargs = {
-                'clickElem': chatInputGroup
-            }
-            makeRequest('/post_chat', 'POST', data, postChatResponse, 'json', kwargs);
         }
 
         function postChatOnEnter(e) {

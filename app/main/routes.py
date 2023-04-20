@@ -28,7 +28,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project, \
-    Notes, Tutorial, TutorialStage, Task, Plan, Walkthrough
+    Notes, Tutorial, TutorialStage, Task, Plan, Walkthrough, Conversation, Chat
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -3370,7 +3370,8 @@ def upload_test_upload_file():
 @bp.route('/chat', methods=['GET', 'POST'])
 @login_required
 def chat():
-    kwargs = {'title': 'LQA CHAT'}
+    conversations = Conversation.query.filter_by(user_id=current_user.id).all()
+    kwargs = {'title': 'LQA CHAT', 'conversations': conversations}
     if g and g.search_form.q.data:
         kwargs['initial_chat'] = g.search_form.q.data
     return render_template('chat.html', **kwargs)
@@ -3380,7 +3381,26 @@ def chat():
 @login_required
 def post_chat():
     message = request.form['message']
+    conversation_id = request.form['conversation_id']
     config_path = os.path.join('processor', 'config')
     aly = az.Analyze(load_chat=True, chat_path=config_path)
-    response = {'data': aly.chat.get_response(message)}
+    aly_response = aly.chat.get_response(message)
+    new_chat = Chat(text=message, response=aly_response,
+                    conversation_id=conversation_id,
+                    timestamp=datetime.utcnow())
+    db.session.add(new_chat)
+    db.session.commit()
+    response = {'data': new_chat.response}
+    return jsonify(response)
+
+
+@bp.route('/post_conversation', methods=['GET', 'POST'])
+@login_required
+def post_conversation():
+    message = request.form['message']
+    conv = Conversation(name=message, user_id=current_user.id,
+                        created_at=datetime.utcnow())
+    db.session.add(conv)
+    db.session.commit()
+    response = {'id': conv.id, 'name': conv.name}
     return jsonify(response)

@@ -1176,7 +1176,11 @@
 
         function getDatasourceTable(){
             appendRows();
-            getTable('datasource_table', 'rowOne', 'None');
+            let rowZero = document.getElementById('rowZero');
+            let datasourceElem = document.createElement("div");
+            datasourceElem.id = "datasourceTable";
+            rowZero.insertAdjacentElement("beforebegin", datasourceElem);
+            getTable('datasource_table', 'datasourceTable', 'None');
         }
 
         function getAutoNote(noteName='Topline', subNoteName='Total'){

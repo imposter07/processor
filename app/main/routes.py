@@ -1050,7 +1050,7 @@ def utility_functions():
 
 
 def df_to_html(df, name, job_name='', to_html=True, cols_to_json=True):
-    pd.set_option('display.max_colwidth', -1)
+    pd.set_option('display.max_colwidth', None)
     set_index = True
     if 'change_dictionary_order' not in name:
         set_index = False

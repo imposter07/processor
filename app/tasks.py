@@ -1434,7 +1434,7 @@ def get_uploader_relation_values_from_position(rel_pos, df, vk, object_level,
     else:
         impacted_new_value = ''
     cdf['impacted_column_new_value'] = impacted_new_value
-    df = df.append(cdf, ignore_index=True, sort=False)
+    df = pd.concat([df, cdf], ignore_index=True, sort=False)
     df['position'] = '|'.join([str(x) for x in rel_pos])
     return df
 
@@ -1577,7 +1577,7 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
             if vk:
                 odf = pd.read_excel(file_name)
                 odf = odf.loc[odf['impacted_column_name'] != vk]
-                df = odf.append(df, ignore_index=True, sort=False)
+                df = pd.concat([df, odf], ignore_index=True, sort=False)
             u_utl.write_df(df, file_name)
         msg_text = ('{} uploader {} was updated.'
                     ''.format(file_name, cur_up.name))
@@ -1614,7 +1614,7 @@ def set_object_relation_file(uploader_id, current_user_id,
                     {'impacted_column_name': [rel.impacted_column_name],
                      'impacted_column_new_value': [rel.relation_constant],
                      'position': ['Constant']})
-                df = df.append(ndf, ignore_index=True, sort=False)
+                df = pd.concat([df, ndf], ignore_index=True, sort=False)
         u_utl.write_df(df, file_name)
     except:
         _set_task_progress(100)
@@ -2667,7 +2667,7 @@ def set_plan_as_datasource(processor_id, current_user_id, base_matrix):
                         base_matrix.vm_df[vmc.vendorkey] == vmc.api_mp_key]
                     mp_df = mp_df.reset_index(drop=True)
                     mp_df[vmc.firstrow] = 0
-                    vm_df = vm_df.append(mp_df).reset_index(drop=True)
+                    vm_df = pd.concat([vm_df, mp_df]).reset_index(drop=True)
                     matrix.vm_df = vm_df
                     matrix.write()
             else:
@@ -2756,13 +2756,13 @@ def add_plan_fees_to_processor(processor_id, current_user_id):
                 {dctc.DICT_COL_NAME: [dctc.AGF],
                  dctc.DICT_COL_VALUE: [adf[afee_cols].values[0][0]],
                  dctc.DICT_COL_DICTNAME: [None]})
-            df = df.append(adf, ignore_index=True).reset_index(drop=True)
+            df = pd.concat([df, adf], ignore_index=True).reset_index(drop=True)
             write_constant_dict(processor_id, current_user_id, df.to_json())
             df = get_relational_config(processor_id, current_user_id,
                                        parameter='Serving')[0]
             sdf = convert_rate_card_to_relation(sdf)
             df = df[~df[dctc.SRV].isin(sdf[dctc.SRV].to_list())]
-            df = df.append(sdf, ignore_index=True).reset_index(drop=True)
+            df = pd.concat([df, sdf], ignore_index=True).reset_index(drop=True)
             write_relational_config(processor_id, current_user_id, df.to_json(),
                                     parameter='Serving')
         else:
@@ -4062,13 +4062,13 @@ def update_automatic_requests(processor_id, current_user_id):
             processor_id=cur_processor.id, key=fix_type).first()
         if analysis.data:
             df = pd.DataFrame(analysis.data)
-            undefined = (df['mpVendor'] +
-                         ' - ' + df['missing_metrics']).to_list()
-            msg = ('{} {}\n\n'.format(analysis.message, ','.join(undefined)))
+            un = df[az.Analyze.missing_metrics].str.join(',')
+            un = (df[dctc.VEN] + ' - ' + un).to_list()
+            msg = ('{} {}\n\n'.format(analysis.message, ','.join(un)))
             update_single_auto_request(processor_id, current_user_id,
                                        fix_type=fix_type,
                                        fix_description=msg,
-                                       undefined=undefined)
+                                       undefined=un)
         else:
             undefined = []
             msg = '{}'.format(analysis.message)
@@ -4578,7 +4578,7 @@ def get_project_numbers(processor_id, current_user_id):
                         name=name, description=description,
                         user_id=4, created_at=datetime.utcnow(),
                         start_date=sd, end_date=ed,
-                        ampaign_id=form_campaign.id)
+                        campaign_id=form_campaign.id)
                     db.session.add(new_processor)
                     db.session.commit()
                 new_processor.projects.append(new_project)
@@ -4836,7 +4836,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                 tdf, vk, vmc.fullplacename, ds.p[vmc.fullplacename])
             fpn += [vmc.fullplacename]
             tdf = tdf[fpn].drop_duplicates(subset=[vmc.fullplacename])
-            df = df.append(tdf, ignore_index=True, sort=False)
+            df = pd.concat([df, tdf], ignore_index=True, sort=False)
         elif cur_fix.fix_type == az.Analyze.raw_file_update_col:
             df = get_vendormatrix(processor_id, current_user_id)[0]
             os.chdir(adjust_path(cur_processor.local_path))
@@ -4872,7 +4872,7 @@ def apply_quick_fix(processor_id, current_user_id, fix_id, vk=None):
                     idx, vmc.vendorkey][idx[0]].replace('API_', '')
                 old_ed = new_sd - dt.timedelta(days=1)
                 df.loc[idx, vmc.enddate] = old_ed.strftime('%Y-%m-%d')
-                df = df.append(ndf).reset_index(drop=True)
+                df = pd.concat([df, ndf]).reset_index(drop=True)
         elif cur_fix.fix_type == az.Analyze.double_counting_all:
             df = get_vendormatrix(processor_id, current_user_id)[0]
             os.chdir(adjust_path(cur_processor.local_path))

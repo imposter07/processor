@@ -38,5 +38,5 @@ for cur_proc in processors:
     upload_id = ul_df['uploadid'][0]
     cur_dict = {'processor': [cur_proc.name], 'upload_id': [upload_id]}
     tdf = pd.DataFrame(cur_dict)
-    df = df.append(tdf)
+    df = pd.concat([df, tdf])
 df.to_csv(old_path + 'app_processor.csv')

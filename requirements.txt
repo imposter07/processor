@@ -19,14 +19,15 @@ rq-dashboard==0.6.0
 requests-aws4auth==0.9
 xlrd==1.2.0
 werkzeug==2.0.2
-pandas==0.24.2
-Numpy==1.19.5
+numpy==1.24.2
+pandas==2.0.0
 seaborn==0.11.1
 filelock==3.4.1
 async-timeout==4.0.2
 reportlab==3.6.8
 redis== 4.3.3
-openpyxl==3.0.10
+openpyxl==3.1.2
 selenium==3.12.0
 pytest==7.0.0
+openai==0.8.0
 git+https://github.com/jamezzz5/processor.git

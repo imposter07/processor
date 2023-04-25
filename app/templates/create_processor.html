@@ -392,6 +392,22 @@
         </div>
     {% endif %}
     {% if form %}
+        {% if edit_name == 'Import' %}
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text"><i
+                            class="fa-solid fa-magnifying-glass"
+                            href="#"
+                            role="button"></i></span>
+                </div>
+                <input id="formSearchInput" type="text"
+                       class="form-control"
+                       placeholder="Search"
+                       aria-label="Username"
+                       aria-describedby="basic-addon1"
+                       onkeyup="searchForms('base_form_id')">
+            </div>
+        {% endif %}
         {% include '_form.html' %}
     {% endif %}
     {% if fixes %}
@@ -818,6 +834,58 @@
                         '[class*="btn"]:not([style*="visibility:hidden"])',
                         testApiOnClick);
                 }
+            });
+        }
+
+        function addApiOnClick() {
+            let form = document.getElementById('base_form_id');
+            let formData = new FormData(form);
+            makeRequest('/add_processor_import',
+            'POST', formData, addDeleteApiResponse);
+        }
+
+        function addDeleteApiResponse(data) {
+            document.getElementById('base_form_id').innerHTML = data['form'];
+            loadJS();
+            addImportPlaceholders();
+            removeSpecialChars();
+        }
+
+        function deleteApiOnClick(event) {
+            let form = document.getElementById('base_form_id');
+            let formData = new FormData(form);
+            let delete_id = event.currentTarget.id;
+            let url = '/delete_processor_import?delete_id='.concat(delete_id);
+            makeRequest(url, 'POST', formData, addDeleteApiResponse);
+        }
+
+        function changeApiTypeOnChange(elem, apiData) {
+            let accountId = elem.closest('fieldset')
+                    .querySelector('input[id$="account_id"]');
+            accountId.removeAttribute('placeholder');
+            let apiKey = elem.selectize.getValue();
+            if (apiKey in apiData) {
+                let example = apiData[apiKey]['Account ID examples']
+                    .split("|")[0];
+                if (apiKey == 'TDD') {
+                    example = apiData[apiKey]['Account ID examples'];
+                }
+                if (example !== 'None') {
+                    example = 'ex: '.concat(example);
+                    accountId.setAttribute('placeholder', example);
+                }
+            }
+        }
+
+        async function addImportPlaceholders() {
+            let keySelector = 'select[id^="apis-"][id$="-key"]'
+            let response = await fetch('/get_import_placeholders')
+            let apiData = await response.json()
+            document.querySelectorAll(keySelector)
+                .forEach(elem =>
+                    changeApiTypeOnChange(elem, apiData['api_details']));
+            $(keySelector).on('change', function(){
+                changeApiTypeOnChange(this, apiData['api_details']);
             });
         }
 
@@ -1370,6 +1438,10 @@
             addOnClickEvent('button[id^="getLog"]', getLogOnClick);
             addOnClickEvent('a[id^="load"]', loadButtonOnClick);
             addOnClickEvent('input[id*="refresh_"], button[id*="refresh_"]', refreshButtonsOnClick);
+            addOnClickEvent('input[id*="add_child"][value="Add API"]',
+                addApiOnClick);
+            addOnClickEvent('input[id*="apis"][id*="delete"][value="Delete"]',
+                deleteApiOnClick);
             addFilePond();
             addFilePondMeta();
             addSelectize();
@@ -1394,6 +1466,7 @@
             } else if (editName === 'Import') {
                 removeSpecialChars();
                 checkTestProcessor();
+                addImportPlaceholders();
             } else if (editName === 'Accounts') {
                 removeSpecialChars();
             } else if (editName === 'All Notes') {

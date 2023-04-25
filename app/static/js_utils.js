@@ -1,4 +1,7 @@
 function convertDictToFormData(data) {
+    if (data instanceof FormData) {
+        return data
+    }
     const formData = new FormData();
     for (const name in data) {
         formData.append(name, data[name]);
@@ -43,6 +46,30 @@ function searchTable(tableName, selector = ' tr:not(.header)') {
         ])) ? '' : 'none'
     }
     trs.forEach(setTrStyleDisplay);
+}
+
+function searchForms(formID, selector = 'div[class*="card col-"]', query) {
+    const filter = document.querySelector('#formSearchInput').value.trim().toLowerCase();
+    const forms = document.getElementById(formID);
+    const searchableElements = forms.querySelectorAll(selector);
+    for (const element of searchableElements) {
+        let hidden = true;
+        const inputs = element.querySelectorAll('input[class*="form-control"]');
+        for (const input of inputs) {
+            if (input && 'value' in input) {
+                const value = input.value.trim().toLowerCase();
+                if (value.includes(filter)) {
+                    hidden = false;
+                    break
+                }
+            }
+        }
+        if (hidden) {
+            element.style.display = 'none';
+        } else {
+            element.style.display = '';
+        }
+    }
 }
 
 function sortTableEvent() {

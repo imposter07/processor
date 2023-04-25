@@ -897,6 +897,9 @@ class ProcessorDatasources(db.Model):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __lt__(self, other):
+        return self.id < other.id
+
     def get_full_dict(self):
         self.form_dict = self.get_import_form_dict()
         self.ds_dict = self.get_ds_form_dict()

@@ -97,13 +97,14 @@ class APIForm(FlaskForm):
     refresh_import_config = SubmitField('Edit Config File',
                                         render_kw={'type': 'button'})
     raw_file = FileField('Raw File')
-    delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
+    delete = SubmitField('Delete', render_kw={'style': 'background-color:red',
+                                              'type': 'button'})
 
 
 class ImportForm(FlaskForm):
     data_source = SelectField(_l('Processor Data Source Filter'))
     refresh_imports = SubmitField('Refresh From Processor')
-    add_child = SubmitField(label='Add API')
+    add_child = SubmitField(label='Add API', render_kw={'type': 'button'})
     form_continue = HiddenField('form_continue')
     apis = FieldList(FormField(APIForm, label=''))
 
@@ -113,7 +114,8 @@ class ImportForm(FlaskForm):
         imp_dict = []
         proc_imports = data_source.query.filter_by(
             processor_id=cur_proc.id).all()
-        for imp in proc_imports:
+        proc_imports.sort()
+        for imp in reversed(proc_imports):
             if imp.name is not None:
                 form_dict = imp.get_import_form_dict()
                 if [x for x in vmc.test_apis if x in form_dict[db_vk_col]]:

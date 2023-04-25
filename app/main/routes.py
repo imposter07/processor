@@ -13,7 +13,7 @@ from flask_babel import _, get_locale
 from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
-    ProcessorForm, EditProcessorForm, ImportForm, ProcessorCleanForm,\
+    ProcessorForm, EditProcessorForm, ImportForm, APIForm, ProcessorCleanForm,\
     ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
     GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
     GeneralConversionForm, ProcessorRequestFinishForm,\
@@ -28,7 +28,9 @@ from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project, \
-    Notes, Tutorial, TutorialStage, Task, Plan, Walkthrough, Conversation, Chat
+    Notes, Tutorial, TutorialStage, Task, Plan, Walkthrough, Conversation, \
+    Chat, WalkthroughSlide
+
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -683,10 +685,6 @@ def edit_processor_import(object_name):
     form = ImportForm(apis=apis)
     form.set_vendor_key_choices(current_processor_id=cur_proc.id)
     kwargs['form'] = form
-    if form.add_child.data:
-        form.apis.append_entry()
-        kwargs['form'] = form
-        return render_template('create_processor.html', **kwargs)
     for api in form.apis:
         if api.delete.data:
             if api.__dict__['object_data']:
@@ -724,6 +722,41 @@ def edit_processor_import(object_name):
             return redirect(url_for('main.edit_processor_import',
                                     object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/add_processor_import', methods=['GET', 'POST'])
+@login_required
+def add_processor_import():
+    orig_form = ImportForm(request.form)
+    kwargs = orig_form.data
+    new_api = APIForm(formdata=None)
+    kwargs['apis'].insert(0, new_api.data)
+    form = ImportForm(formdata=None, **kwargs)
+    import_form = render_template('_form.html', form=form)
+    return jsonify({'form': import_form})
+
+
+@bp.route('/delete_processor_import', methods=['GET', 'POST'])
+@login_required
+def delete_processor_import():
+    delete_id = int(request.args.get('delete_id').split('-')[1])
+    orig_form = ImportForm(request.form)
+    kwargs = orig_form.data
+    del kwargs['apis'][delete_id]
+    form = ImportForm(formdata=None, **kwargs)
+    import_form = render_template('_form.html', form=form)
+    return jsonify({'form': import_form})
+
+
+@bp.route('/get_import_placeholders', methods=['GET', 'POST'])
+@login_required
+def get_import_placeholders():
+    api_details = {}
+    api_slide = WalkthroughSlide.query.filter_by(
+        walkthrough_id=5, slide_number=2).first()
+    if api_slide:
+        api_details = api_slide.get_data()
+    return jsonify({'api_details': api_details})
 
 
 @bp.route('/get_test_apis', methods=['GET', 'POST'])

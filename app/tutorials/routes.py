@@ -81,7 +81,9 @@ def get_tutorial(tutorial_name, tutorial_level=0):
         buttons[1:1] = ['...']
     if tutorial_stage_num - 1 not in buttons:
         buttons[-1:-1] = ['...']
-    buttons = [{'lvl {}'.format(x): 'tutorials.get_tutorial'} for x in buttons]
+    buttons = [{'lvl {}'.format(x): {'route': 'tutorials.get_tutorial',
+                                     'icon': ''}}
+               for x in buttons]
     kwargs = dict(object_name=cur_tutorial.name, title='Tutorial',
                   tutorial_stage=tutorial_stage, tutorials=all_tutorials,
                   edit_name='lvl {}'.format(tutorial_level), user=current_user,

@@ -271,6 +271,18 @@ def remove_special_characters(string):
     return result
 
 
+def column_contents_to_list(df, cols):
+    un_col = 'undefined'
+    for col in cols:
+        if col in df.columns:
+            if un_col not in df.columns:
+                df[un_col] = df[col].astype('U')
+            else:
+                df[un_col] = df[un_col] + ' - ' + df[col].astype('U')
+    cols_as_list = df[un_col].to_list()
+    return cols_as_list
+
+
 class LiquidTable(object):
     id_col = 'liquid_table'
 

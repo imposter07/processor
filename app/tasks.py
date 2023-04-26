@@ -4099,15 +4099,8 @@ def update_automatic_requests(processor_id, current_user_id):
             processor_id=cur_processor.id, key=fix_type).first()
         if analysis.data:
             df = pd.DataFrame(analysis.data)
-            un_col = 'undefined'
             cols = [dctc.VEN, vmc.vendorkey, az.CheckDoubleCounting.metric_col]
-            for col in cols:
-                if col in df.columns:
-                    if un_col not in df.columns:
-                        df[un_col] = df[col]
-                    else:
-                        df[un_col] = df[un_col] + ' - ' + df[col]
-            undefined = df[un_col].to_list()
+            undefined = app_utl.column_contents_to_list(df, cols)
             msg = (
                 '{} {}\n\n'.format(analysis.message, ','.join(undefined)))
             update_single_auto_request(processor_id, current_user_id,
@@ -4217,9 +4210,8 @@ def update_automatic_requests(processor_id, current_user_id):
         if analysis:
             if analysis.data:
                 df = pd.DataFrame(analysis.data)
-                undefined = (df['Vendor Key'] + ' - ' +
-                             df['mpPlacement Name'] + ' - '
-                             + df['mpServing']).to_list()
+                cols = [vmc.vendorkey, dctc.PN, dctc.SRV]
+                undefined = app_utl.column_contents_to_list(df, cols)
                 msg = ('{} {}\n\n'.format(analysis.message, ', '
                                           .join(undefined)))
                 update_single_auto_request(processor_id, current_user_id,

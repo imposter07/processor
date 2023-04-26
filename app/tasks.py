@@ -4188,9 +4188,8 @@ def update_automatic_requests(processor_id, current_user_id):
         if analysis:
             if analysis.data:
                 df = pd.DataFrame(analysis.data)
-                undefined = (df['mpServing'] + ' - ' +
-                             df['mpAd Model'] + ' - '
-                             + df['mpAd Rate']).to_list()
+                cols = [dctc.SRV, dctc.AM, dctc.AR]
+                undefined = app_utl.column_contents_to_list(df, cols)
                 msg = ('{} {}\n\n'.format(analysis.message, ', '
                                           .join(undefined)))
                 update_single_auto_request(processor_id, current_user_id,

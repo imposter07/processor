@@ -1780,3 +1780,7 @@ class Chat(db.Model):
     response = db.Column(db.Text)
     conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'))
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])

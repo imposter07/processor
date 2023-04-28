@@ -127,11 +127,11 @@
             New Conversation
         </a>
         {% for conversation in conversations %}
-            <a class="btn btn-outline-primary btn-block" href=""
-               data-cid="{{ conversation.id }}">
+            <btn class="btn btn-outline-primary btn-block" id="conversationBtn{{ conversation.id }}"
+               data-cid="{{ conversation.id }}" onclick="getConversation({{ conversation.id }})">
                 <i class="fas fa-message" href="#" role="button" aria-hidden="true"></i>
                 {{ conversation.name }}
-            </a>
+            </btn>
         {% endfor %}
     </div>
     </div>
@@ -185,16 +185,50 @@
             latestMessage.id = '';
         }
 
+        function addConversationToChat(data) {
+            document.getElementById('chatContainer').innerHTML = '';
+            let conversationId = data['id'];
+            let convElem = document.getElementById('conversationBtn' + conversationId);
+            addElemRemoveLoadingBtn(convElem.id);
+            convElem.classList.remove('btn-outline-primary');
+            convElem.classList.add('btn-primary');
+            convElem.id = 'currentConv';
+            let chats = data['chats'];
+            chats.forEach(chat => {
+                addMessageToChat(chat['text']);
+                addMessageToChat(chat['response'], 'yours');
+            });
+        }
+
+        function getConversation(conversationId) {
+            let curConvId = 'currentConv';
+            let convButtonIdPre = 'conversationBtn';
+            let oldConv = document.getElementById(curConvId);
+            if (oldConv) {
+                oldConv.classList.remove('btn-primary');
+                oldConv.classList.add('btn-outline-primary');
+                oldConv.id = convButtonIdPre + oldConv.dataset['cid'];
+            }
+            let convElemId = `${convButtonIdPre}${conversationId}`;
+            let convElem = document.getElementById(convElemId);
+            loadingBtn(convElem);
+            let data = {
+                'conversation_id': conversationId,
+            }
+            makeRequest('/get_conversation', 'POST', data, addConversationToChat);
+        }
+
         function addConversationToCard(data) {
             let conversationId = data['id'];
             let conversationName = data['name'];
             let convButtonsElem = document.getElementById('conversationButtons');
             let elemToAdd = `
-                <a id="currentConv" class="btn btn-primary btn-block" href=""
-                        data-cid="${conversationId}">
+                <btn id="currentConv" class="btn btn-primary btn-block"
+                        data-cid="${conversationId}"
+                        onclick="getConversation(${conversationId})">
                     <i class="fas fa-message" href="#" role="button" aria-hidden="true"></i>
                     ${conversationName}
-                </a>`;
+                </btn>`;
             convButtonsElem.insertAdjacentHTML('beforeend', elemToAdd);
             postChatRequest(conversationName, conversationId);
         }

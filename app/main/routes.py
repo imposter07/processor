@@ -3427,6 +3427,17 @@ def post_chat():
     return jsonify(response)
 
 
+@bp.route('/get_conversation', methods=['GET', 'POST'])
+@login_required
+def get_conversation():
+    conversation_id = request.form['conversation_id']
+    conv = Conversation.query.get(conversation_id)
+    chats = Chat.query.filter_by(conversation_id=conv.id).order_by(
+        Chat.timestamp.desc())
+    response = {'id': conv.id, 'chats': [x.to_dict() for x in chats]}
+    return jsonify(response)
+
+
 @bp.route('/post_conversation', methods=['GET', 'POST'])
 @login_required
 def post_conversation():

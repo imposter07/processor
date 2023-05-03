@@ -164,7 +164,8 @@
 {% block scripts %}
     <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
     <script>
-        function createMessageHtml(message, owner='mine') {
+        function createMessageHtml(message, owner='mine', htmlResponse='') {
+            console.log(message)
             let d = new Date();
             let timeSaid = d.getHours() + ':' + d.getMinutes();
             let speaker = (owner === 'mine') ? document.getElementById('jinjaValues').dataset['username'] : 'ALI';
@@ -172,14 +173,15 @@
                 <div id="latestMessage" class="${owner} messages">
                     <div class="message last">
                         <p class="meta">${speaker} - <span>${timeSaid}</span></p>
-                        <p class="text">${message}</p>
+                        <p class="text">${message}${htmlResponse}</p>
                     </div>
                 </div>`
         }
 
-        function addMessageToChat(message, owner='mine') {
+        function addMessageToChat(message, owner='mine', htmlResponse='') {
             let chatContainer = document.getElementById('chatContainer');
-            chatContainer.insertAdjacentHTML('beforeend', createMessageHtml(message, owner));
+            let messageHtml = createMessageHtml(message, owner, htmlResponse);
+            chatContainer.insertAdjacentHTML('beforeend', messageHtml);
             let latestMessage = document.getElementById('latestMessage');
             latestMessage.scrollIntoView();
             latestMessage.id = '';
@@ -196,7 +198,7 @@
             let chats = data['chats'];
             chats.forEach(chat => {
                 addMessageToChat(chat['text']);
-                addMessageToChat(chat['response'], 'yours');
+                addMessageToChat(chat['response'], 'yours', chat['html_response']);
             });
         }
 
@@ -241,12 +243,13 @@
         }
 
         function postChatResponse(data, kwargs) {
-            let response = data['data'];
+            let response = data['response'];
+            let htmlResponse = data['html_response'];
             let message = document.getElementById('chatInput');
             message.value = '';
             let clickElem = kwargs['clickElem'];
             addElemRemoveLoadingBtn(clickElem.id);
-            addMessageToChat(response, 'yours');
+            addMessageToChat(response, 'yours', htmlResponse);
         }
 
         function postChatRequest(message, conversationId) {

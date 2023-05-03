@@ -25,7 +25,7 @@
 {% endblock %}
 </title>
 </head>
-<div id="jinjaValues"
+<div id="jinjaValues" data-index="{{ url_for('main.index', _external=True) }}"
     {% if title %}data-title="{{ title }}"{% endif %}
     {% if uploader_type %}data-uploader_type="{{ uploader_type }}"{% endif %}
     {% if object_name %}data-object_name="{{ object_name }}"{% endif %}

@@ -3417,13 +3417,14 @@ def post_chat():
     conversation_id = request.form['conversation_id']
     config_path = os.path.join('processor', 'config')
     aly = az.Analyze(load_chat=True, chat_path=config_path)
-    aly_response = aly.chat.get_response(message)
-    new_chat = Chat(text=message, response=aly_response,
+    response, html_response = aly.chat.get_response(message, [Processor])
+    new_chat = Chat(text=message, response=response,
                     conversation_id=conversation_id,
-                    timestamp=datetime.utcnow())
+                    timestamp=datetime.utcnow(), html_response=html_response)
     db.session.add(new_chat)
     db.session.commit()
-    response = {'data': new_chat.response}
+    response = {'response': new_chat.response,
+                'html_response': new_chat.html_response}
     return jsonify(response)
 
 

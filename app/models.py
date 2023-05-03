@@ -1778,6 +1778,7 @@ class Chat(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text)
     response = db.Column(db.Text)
+    html_response = db.Column(db.Text)
     conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'))
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
 

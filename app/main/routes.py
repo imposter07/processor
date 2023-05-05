@@ -3417,7 +3417,9 @@ def post_chat():
     conversation_id = request.form['conversation_id']
     config_path = os.path.join('processor', 'config')
     aly = az.Analyze(load_chat=True, chat_path=config_path)
-    response, html_response = aly.chat.get_response(message, [Processor])
+    models_to_search = [Processor, Plan]
+    response, html_response = aly.chat.get_response(
+        message, models_to_search, db=db, current_user=current_user)
     new_chat = Chat(text=message, response=response,
                     conversation_id=conversation_id,
                     timestamp=datetime.utcnow(), html_response=html_response)
@@ -3434,7 +3436,7 @@ def get_conversation():
     conversation_id = request.form['conversation_id']
     conv = Conversation.query.get(conversation_id)
     chats = Chat.query.filter_by(conversation_id=conv.id).order_by(
-        Chat.timestamp.desc())
+        Chat.timestamp)
     response = {'id': conv.id, 'chats': [x.to_dict() for x in chats]}
     return jsonify(response)
 

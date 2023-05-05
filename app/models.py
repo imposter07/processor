@@ -5,6 +5,8 @@ import pytz
 import json
 import time
 import redis
+import numpy as np
+import pandas as pd
 from datetime import datetime, timedelta
 from datetime import time as datetime_time
 from hashlib import md5
@@ -837,6 +839,11 @@ class Processor(db.Model):
                        {'Campaign': ['main.edit_uploader_campaign_aw']},
                        {'Adset': ['main.edit_uploader_adset_aw']},
                        {'Ad': ['main.edit_uploader_ad_aw']}]
+        elif buttons == 'Plan':
+            buttons = [{'Basic': ['plan.edit_plan']},
+                       {'Topline': ['plan.topline']},
+                       {'SOW': ['plan.edit_sow']},
+                       {'Plan Rules': ['plan.plan_rules']}]
         else:
             buttons = [
                 {'Basic': ['main.edit_processor', 'list-ol']},
@@ -854,6 +861,10 @@ class Processor(db.Model):
                     new_button[k]['icon'] = v[1]
                 new_buttons.append(new_button)
         return new_buttons
+
+    @staticmethod
+    def get_name_list():
+        return ['processor']
 
 
 class TaskScheduler(db.Model):
@@ -1622,10 +1633,7 @@ class Plan(db.Model):
         if object_name:
             cur_obj = Plan.query.filter_by(name=object_name).first_or_404()
             kwargs['object'] = cur_obj
-            kwargs['buttons'] = [{'Basic': 'plan.edit_plan'},
-                                 {'Topline': 'plan.topline'},
-                                 {'SOW': 'plan.edit_sow'},
-                                 {'Plan Rules': 'plan.plan_rules'}]
+            kwargs['buttons'] = Processor.get_navigation_buttons('Plan')
             posts, next_url, prev_url = Post.get_posts_for_objects(
                 cur_obj, None, current_page, 'plan')
             kwargs['posts'] = posts.items
@@ -1657,6 +1665,14 @@ class Plan(db.Model):
     def get_task_in_progress(self, name):
         return Task.query.filter_by(name=name, plan=self,
                                     complete=False).first()
+
+    @staticmethod
+    def get_name_list():
+        return ['plan', 'topline']
+
+    @staticmethod
+    def get_children():
+        return PlanPhase
 
 
 class Sow(db.Model):
@@ -1696,9 +1712,23 @@ class PlanPhase(db.Model):
 
     def set_from_form(self, form, current_plan):
         self.plan_id = current_plan.id
-        self.name = form['phaseSelect']
-        self.start_date = form['start_date']
-        self.end_date = form['end_date']
+        if 'phaseSelect' in form:
+            form_name = 'phaseSelect'
+        else:
+            form_name = 'name'
+        self.name = form[form_name]
+        if 'start_date' in form:
+            self.start_date = form['start_date']
+        if 'end_date' in form:
+            self.end_date = form['end_date']
+
+    @staticmethod
+    def get_name_list():
+        return ['launch', 'pre-launch', 'prelaunch', 'pre-order', 'preorder']
+
+    @staticmethod
+    def get_children():
+        return Partner
 
 
 class Partner(db.Model):
@@ -1737,18 +1767,56 @@ class Partner(db.Model):
         return form_dict
 
     def set_from_form(self, form, current_plan):
+        for k in list(form):
+            if 'Select' in k:
+                form[k.replace('Select', '')] = form[k]
         self.plan_phase_id = current_plan.id
-        self.name = form['partnerSelect']
-        self.partner_type = form['partner_typeSelect']
-        self.total_budget = form['total_budget']
+        self.name = form['partner']
+        self.partner_type = form['partner_type']
         self.estimated_cpm = form['cpm']
         self.estimated_cpc = form['cpc']
         self.cplpv = form['cplpv']
         self.cpbc = form['cpbc']
         self.cpv = form['cpv']
         self.cpcv = form['cpcv']
-        self.start_date = form['start_date']
-        self.end_date = form['end_date']
+        if 'start_date' in form:
+            self.start_date = form['start_date']
+        if 'end_date' in form:
+            self.end_date = form['end_date']
+        if 'total_budget' in form:
+            self.total_budget = form['total_budget']
+
+    @staticmethod
+    def get_name_list():
+        a = ProcessorAnalysis.query.filter_by(
+            processor_id=23, key='database_cache',
+            parameter='vendorname|vendortypename').first()
+        df = pd.read_json(a.data)
+        df = df[df['impressions'] > 0].sort_values('impressions',
+                                                   ascending=False)
+        df['cpm'] = (df['netcost'] / (df['impressions'] / 1000)).round(2)
+        df['cpc'] = (df['netcost'] / df['clicks']).round(2)
+        df['cplpv'] = df['CPLPV'].round(2)
+        df['Landing Page'] = df['landingpage']
+        df['cpbc'] = df['CPBC'].round(2)
+        df['Button Clicks'] = df['buttonclick']
+        df['Views'] = df['videoviews']
+        df['cpv'] = df['CPV'].round(2)
+        df['Video Views 100'] = df['videoviews100']
+        df['cpcv'] = (df['netcost'] / df['videoviews100']).round(2)
+        df = df.replace([np.inf, -np.inf], np.nan)
+        df = df.fillna(0)
+        df = df[['vendorname', 'vendortypename', 'cpm', 'cpc',
+                 'cplpv', 'cpbc', 'cpv', 'cpcv']]
+        partner_name = 'partner'
+        partner_type_name = 'partner_type'
+        df = df.rename(columns={
+            'vendorname': partner_name, 'vendortypename': partner_type_name})
+        partner_list = df.to_dict(orient='records')
+        partner_type_list = pd.DataFrame(
+            df[partner_type_name].unique()).rename(
+            columns={0: partner_type_name}).to_dict(orient='records')
+        return partner_list, partner_type_list
 
 
 class PartnerPlacements(db.Model):

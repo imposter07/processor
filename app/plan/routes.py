@@ -156,32 +156,11 @@ def get_topline():
         partners.extend(
             [x.get_form_dict(phase)
              for x in Partner.query.filter_by(plan_phase_id=phase.id)])
-    a = ProcessorAnalysis.query.filter_by(
-        processor_id=23, key='database_cache',
-        parameter='vendorname|vendortypename').first()
-    df = pd.read_json(a.data)
-    df = df[df['impressions'] > 0].sort_values('impressions', ascending=False)
-    df['cpm'] = (df['netcost'] / (df['impressions'] / 1000)).round(2)
-    df['cpc'] = (df['netcost'] / df['clicks']).round(2)
-    df['cplpv'] = df['CPLPV'].round(2)
-    df['Landing Page'] = df['landingpage']
-    df['cpbc'] = df['CPBC'].round(2)
-    df['Button Clicks'] = df['buttonclick']
-    df['Views'] = df['videoviews']
-    df['cpv'] = df['CPV'].round(2)
-    df['Video Views 100'] = df['videoviews100']
-    df['cpcv'] = (df['netcost'] / df['videoviews100']).round(2)
-    df = df.replace([np.inf, -np.inf], np.nan)
-    df = df.fillna(0)
-    df = df[['vendorname', 'vendortypename', 'cpm', 'cpc',
-             'cplpv', 'cpbc', 'cpv', 'cpcv']]
+    partner_list, partner_type_list = Partner.get_name_list()
     partner_name = 'partner'
     partner_type_name = 'partner_type'
     phase_name = 'Phase'
     total_budget = 'total_budget'
-    df = df.rename(columns={
-        'vendorname': partner_name, 'vendortypename': partner_type_name})
-    partner_list = df.to_dict(orient='records')
     sd = cur_plan.start_date
     ed = cur_plan.end_date
     weeks = [sd + dt.timedelta(days=x)
@@ -194,9 +173,6 @@ def get_topline():
         'cpv', 'Video Views 100', 'cpcv']
     col_list = ([partner_type_name, partner_name, total_budget, phase_name] +
                 weeks_str + metric_cols)
-    partner_type_list = pd.DataFrame(
-        df[partner_type_name].unique()).rename(
-        columns={0: partner_type_name}).to_dict(orient='records')
     phase_list = [{phase_name: x} for x in ['Launch', 'Pre-Launch']]
     select_val_dict = {
         partner_name: partner_list,

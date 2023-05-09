@@ -13,6 +13,7 @@ from hashlib import md5
 from flask import current_app, url_for, request
 from flask_login import UserMixin, current_user
 from flask_babel import _
+import processor.reporting.utils as utl
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.dictcolumns as dctc
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -416,6 +417,28 @@ class Client(db.Model):
                 v['active'] = True
         return view_selector
 
+    @staticmethod
+    def get_model_name_list():
+        return ['client']
+
+    @staticmethod
+    def get_name_list(parameter='clientname'):
+        a = ProcessorAnalysis.query.filter_by(
+            processor_id=23, key='database_cache', parameter=parameter,
+            filter_col='').order_by(ProcessorAnalysis.date).first()
+        df = pd.read_json(a.data)
+        df = df[df[vmc.impressions] > 0].sort_values(vmc.impressions,
+                                                     ascending=False)
+        df = df.to_dict(orient='records')
+        return df
+
+    @staticmethod
+    def get_default_name():
+        return ['Liquid Advertising']
+
+    def set_from_form(self, form, parent_model):
+        self.name = form['name']
+
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -436,6 +459,26 @@ class Product(db.Model):
             db.session.commit()
             product_check = self.check()
         return product_check
+
+    @staticmethod
+    def get_parent():
+        return Client
+
+    @staticmethod
+    def get_model_name_list():
+        return ['product']
+
+    @staticmethod
+    def get_name_list():
+        return Client.get_name_list('productname')
+
+    def set_from_form(self, form, parent_model):
+        self.name = form['name']
+        self.client_id = parent_model.id
+
+    @staticmethod
+    def get_default_name():
+        return ['Liquid Advertising']
 
 
 class Campaign(db.Model):
@@ -463,6 +506,26 @@ class Campaign(db.Model):
 
     def get_objects(self, object_type):
         return self.uploader if object_type == 'Uploader' else self.processor
+
+    @staticmethod
+    def get_parent():
+        return Product
+
+    @staticmethod
+    def get_model_name_list():
+        return ['campaign']
+
+    @staticmethod
+    def get_name_list():
+        return Client.get_name_list('campaignname')
+
+    def set_from_form(self, form, parent_model):
+        self.name = form['name']
+        self.product_id = parent_model.id
+
+    @staticmethod
+    def get_default_name():
+        return ['Liquid Advertising']
 
 
 class RateCard(db.Model):
@@ -863,7 +926,7 @@ class Processor(db.Model):
         return new_buttons
 
     @staticmethod
-    def get_name_list():
+    def get_model_name_list():
         return ['processor']
 
 
@@ -1667,12 +1730,42 @@ class Plan(db.Model):
                                     complete=False).first()
 
     @staticmethod
-    def get_name_list():
+    def get_model_name_list():
         return ['plan', 'topline']
 
     @staticmethod
     def get_children():
         return PlanPhase
+
+    @staticmethod
+    def get_parent():
+        return Campaign
+
+    def set_from_form(self, form, parent_model, current_user_id):
+        self.name = form['name']
+        self.campaign_id = parent_model.id
+        self.user_id = current_user_id
+        self.start_date = utl.check_dict_for_key(
+            form, 'start_date', datetime.today().date())
+        self.end_date = utl.check_dict_for_key(
+            form, 'end_date', datetime.today().date() + timedelta(days=7))
+        self.total_budget = utl.check_dict_for_key(form, 'total_budget', 0)
+
+    def check(self):
+        client_check = Client.query.filter_by(name=self.name).first()
+        return client_check
+
+    @staticmethod
+    def get_first_unique_name(name):
+        name_exists = Plan.query.filter_by(name=name).first()
+        if name_exists:
+            for x in range(100):
+                new_name = '{}_{}'.format(name, x)
+                name_exists = Plan.query.filter_by(name=new_name).first()
+                if not name_exists:
+                    name = new_name
+                    break
+        return name
 
 
 class Sow(db.Model):
@@ -1717,10 +1810,10 @@ class PlanPhase(db.Model):
         else:
             form_name = 'name'
         self.name = form[form_name]
-        if 'start_date' in form:
-            self.start_date = form['start_date']
-        if 'end_date' in form:
-            self.end_date = form['end_date']
+        self.start_date = utl.check_dict_for_key(
+            form, 'start_date', datetime.today().date())
+        self.end_date = utl.check_dict_for_key(
+            form, 'end_date', datetime.today().date() + timedelta(days=7))
 
     @staticmethod
     def get_name_list():
@@ -1779,18 +1872,17 @@ class Partner(db.Model):
         self.cpbc = form['cpbc']
         self.cpv = form['cpv']
         self.cpcv = form['cpcv']
-        if 'start_date' in form:
-            self.start_date = form['start_date']
-        if 'end_date' in form:
-            self.end_date = form['end_date']
-        if 'total_budget' in form:
-            self.total_budget = form['total_budget']
+        self.start_date = utl.check_dict_for_key(
+            form, 'start_date', datetime.today().date())
+        self.end_date = utl.check_dict_for_key(
+            form, 'end_date', datetime.today().date() + timedelta(days=7))
+        self.total_budget = utl.check_dict_for_key(form, 'total_budget', 0)
 
     @staticmethod
-    def get_name_list():
+    def get_name_list(parameter='vendorname|vendortypename'):
         a = ProcessorAnalysis.query.filter_by(
             processor_id=23, key='database_cache',
-            parameter='vendorname|vendortypename').first()
+            parameter=parameter).order_by(ProcessorAnalysis.date).first()
         df = pd.read_json(a.data)
         df = df[df['impressions'] > 0].sort_values('impressions',
                                                    ascending=False)

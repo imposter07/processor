@@ -220,7 +220,7 @@ def update_cached_data_in_processor_run(processor_id, current_user_id):
         _set_task_progress(0)
         dim_list = ['vendorname', 'countryname', 'kpiname',
                     'environmentname', 'productname', 'eventdate',
-                    'campaignname']
+                    'campaignname', 'clientname', 'vendorname|vendortypename']
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         for col in dim_list:
             app.logger.info('Getting db col: {}'.format(col))
@@ -3581,6 +3581,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
             LEFT JOIN lqadb.campaign ON fullplacement.campaignid = campaign.campaignid
             LEFT JOIN lqadb.country ON fullplacement.countryid = country.countryid
             LEFT JOIN lqadb.product ON campaign.productid = product.productid
+            LEFT JOIN lqadb.client ON product.clientid = client.clientid
             LEFT JOIN lqadb.environment ON fullplacement.environmentid = environment.environmentid
             LEFT JOIN lqadb.kpi ON fullplacement.kpiid = kpi.kpiid
             LEFT JOIN lqadb.vendortype ON vendor.vendortypeid = vendortype.vendortypeid

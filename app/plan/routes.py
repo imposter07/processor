@@ -1,7 +1,5 @@
 import json
 from app import db
-import numpy as np
-import pandas as pd
 import datetime as dt
 import app.utils as utl
 from flask_babel import _
@@ -13,7 +11,7 @@ from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
     CreateSowForm
 from app.models import Client, Product, Campaign, Plan, Post, Partner, \
-    ProcessorAnalysis, PlanPhase, Sow, Processor
+    PlanPhase, Sow, Processor
 
 
 @bp.route('/plan', methods=['GET', 'POST'])

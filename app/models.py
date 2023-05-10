@@ -929,6 +929,9 @@ class Processor(db.Model):
     def get_model_name_list():
         return ['processor']
 
+    def get_table_elem(self):
+        return ''
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -1681,7 +1684,7 @@ class Plan(db.Model):
         output_links = {}
         for idx, out_file in enumerate(
                 (('SOW', 'Downloads the SOW.'),
-                 ('Topline', 'Downloads the Topline.'))):
+                 ('ToplineDownload', 'Downloads the Topline.'))):
             output_links[idx] = dict(title=out_file[0], nest=[],
                                      tooltip=out_file[1])
         return output_links
@@ -1766,6 +1769,14 @@ class Plan(db.Model):
                     name = new_name
                     break
         return name
+
+    def get_table_elem(self):
+        elem = """
+            <div id="msgTableElem">
+            <div id='Topline' data-title="Plan" 
+                    data-object_name="{}" data-edit_name="Topline">
+            </div></div>""".format(self.name)
+        return elem
 
 
 class Sow(db.Model):

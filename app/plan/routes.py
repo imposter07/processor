@@ -1,6 +1,5 @@
 import json
 from app import db
-import datetime as dt
 import app.utils as utl
 from flask_babel import _
 from app.plan import bp
@@ -142,53 +141,6 @@ def topline(object_name):
                                      edit_name='Topline')
     kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)
-
-
-@bp.route('/get_topline', methods=['GET', 'POST'])
-@login_required
-def get_topline():
-    obj_name = request.form['object_name']
-    cur_plan = Plan.query.filter_by(name=obj_name).first_or_404()
-    partners = []
-    for phase in cur_plan.phases:
-        partners.extend(
-            [x.get_form_dict(phase)
-             for x in Partner.query.filter_by(plan_phase_id=phase.id)])
-    partner_list, partner_type_list = Partner.get_name_list()
-    partner_name = 'partner'
-    partner_type_name = 'partner_type'
-    phase_name = 'Phase'
-    total_budget = 'total_budget'
-    sd = cur_plan.start_date
-    ed = cur_plan.end_date
-    weeks = [sd + dt.timedelta(days=x)
-             for i, x in enumerate(range((ed-sd).days)) if i % 7 == 0]
-    weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
-    form_cols = [total_budget, 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
-    def_metric_cols = ['cpm', 'Impressions', 'cpc', 'Clicks']
-    metric_cols = def_metric_cols + [
-        'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
-        'cpv', 'Video Views 100', 'cpcv']
-    col_list = ([partner_type_name, partner_name, total_budget, phase_name] +
-                weeks_str + metric_cols)
-    phase_list = [{phase_name: x} for x in ['Launch', 'Pre-Launch']]
-    select_val_dict = {
-        partner_name: partner_list,
-        partner_type_name: partner_type_list,
-        phase_name: phase_list
-    }
-    phases = [x.get_form_dict() for x in cur_plan.phases.all()]
-    description = 'Plan details broken out by partner.'
-    title = 'Plan Table - {}'.format(obj_name)
-    lt = utl.LiquidTable(
-        col_list, data=partners, top_rows=phases, totals=True, title=title,
-        description=description, columns_toggle=True, accordion=True,
-        specify_form_cols=True, select_val_dict=select_val_dict,
-        select_box=partner_name,
-        form_cols=form_cols + [partner_name, partner_type_name],
-        metric_cols=metric_cols, def_metric_cols=def_metric_cols,
-        header=phase_name, highlight_row=total_budget, table_name='Topline')
-    return jsonify({'data': lt.table_dict})
 
 
 @bp.route('/save_topline', methods=['GET', 'POST'])

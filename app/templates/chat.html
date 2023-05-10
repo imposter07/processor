@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block app_header %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='liquid_table.css') }}">
 <style>
 .chat-container {
   position: relative;
@@ -163,9 +164,11 @@
 {% endblock %}
 {% block scripts %}
     <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='liquid_table.js') }}"></script>
+    <script src="{{ url_for('static', filename='get_table.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap-dark/darkModeHelper.js') }}"></script>
     <script>
         function createMessageHtml(message, owner='mine', htmlResponse='') {
-            console.log(message)
             let d = new Date();
             let timeSaid = d.getHours() + ':' + d.getMinutes();
             let speaker = (owner === 'mine') ? document.getElementById('jinjaValues').dataset['username'] : 'ALI';
@@ -178,6 +181,18 @@
                 </div>`
         }
 
+        function clickTableElem() {
+            let elem = document.getElementById('msgTableElem');
+            if (elem) {
+                let jinjaValues = document.getElementById('jinjaValues');
+                let tableElem = elem.children[0];
+                jinjaValues.dataset['title'] = tableElem.dataset['title'];
+                jinjaValues.dataset['edit_name'] = tableElem.dataset['edit_name'];
+                jinjaValues.dataset['object_name'] = tableElem.dataset['object_name'];
+                getTable(tableElem.id, tableElem.id);
+            }
+        }
+
         function addMessageToChat(message, owner='mine', htmlResponse='') {
             let chatContainer = document.getElementById('chatContainer');
             let messageHtml = createMessageHtml(message, owner, htmlResponse);
@@ -185,6 +200,7 @@
             let latestMessage = document.getElementById('latestMessage');
             latestMessage.scrollIntoView();
             latestMessage.id = '';
+            clickTableElem();
         }
 
         function addConversationToChat(data) {
@@ -298,4 +314,6 @@
             }
         });
     </script>
+    {% include "_select_builder.html" %}
+    {% include "_dash_builder.html" %}
 {% endblock %}

@@ -882,6 +882,7 @@ def translate_table_name_to_job(table_name, proc_arg):
                  'get_plan_property': '.get_plan_property',
                  'SOW': '.get_sow',
                  'Topline': '.get_topline',
+                 'ToplineDownload': '.download_topline',
                  'screenshot': '.get_screenshot_table',
                  'screenshotImage': '.get_screenshot_image',
                  'notesTable': '.get_notes_table',
@@ -977,7 +978,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
             df = job.result[0]
         else:
             df = pd.DataFrame([{'Result': 'AN UNEXPECTED ERROR OCCURRED.'}])
-    dl_table = table_name in ['SOW', 'Topline']
+    dl_table = table_name in ['SOW', 'ToplineDownload']
     dl_table_1 = (
         'parameter' in proc_arg and (proc_arg['parameter'] == 'RawDataOutput' or
                                      proc_arg['parameter'] == 'Download'))
@@ -987,7 +988,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
         if table_name == 'SOW' or dl_table_2:
             file_name = 'sow.pdf'
             mime_type = 'application/pdf'
-        elif table_name == 'Topline':
+        elif table_name == 'ToplineDownload':
             file_name = 'topline.xlsx'
             mime_type = 'data:application/vnd.ms-excel'
         else:

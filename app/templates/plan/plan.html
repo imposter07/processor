@@ -164,18 +164,8 @@
         });
 
         document.addEventListener("DOMContentLoaded", function() {
-            let tableName = 'Topline';
-            let data = {
-                object_type: "{{ title }}",
-                object_name: "{{ object_name }}",
-                object_level: "{{ edit_name }}",
-            }
-            let kwargs = {'tableName': tableName}
-            {% if edit_name == 'Topline' %}
-                makeRequest('/get_topline', 'POST', data, createLiquidTable, 'json', kwargs);
-            {% elif edit_name == 'Plan Rules' %}
-                makeRequest('/get_plan_rule', 'POST', data, createLiquidTable, 'json', kwargs);
-            {% endif %}
+            let tableName = document.getElementById('jinjaValues').dataset['edit_name'];
+            getTable(tableName, tableName);
         });
     </script>
 {% endblock %}

@@ -219,9 +219,10 @@ def processor_failed_email(processor_id, current_user_id, exception_text):
 def update_cached_data_in_processor_run(processor_id, current_user_id):
     try:
         _set_task_progress(0)
-        dim_list = ['vendorname', 'countryname', 'kpiname',
-                    'environmentname', 'productname', 'eventdate',
-                    'campaignname', 'clientname', 'vendorname|vendortypename']
+        dim_list = [
+            ['vendorname'], ['countryname'], ['kpiname'], ['environmentname'],
+            ['productname'], ['eventdate'], ['campaignname'], ['clientname'],
+            ['vendorname', 'vendortypename']]
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         for col in dim_list:
             app.logger.info('Getting db col: {}'.format(col))
@@ -236,7 +237,7 @@ def update_cached_data_in_processor_run(processor_id, current_user_id):
             os.chdir(cur_path)
             for filter_dict in filter_dicts:
                 get_data_tables_from_db(
-                    processor_id, current_user_id, dimensions=[col],
+                    processor_id, current_user_id, dimensions=col,
                     metrics=['kpi'], filter_dict=filter_dict, use_cache=False)
         _set_task_progress(100)
         return True

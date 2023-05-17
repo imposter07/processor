@@ -387,6 +387,14 @@ class Task(db.Model):
             job = None
         return job
 
+    @staticmethod
+    def get_table_name_to_task_dict():
+        task_dict = {}
+        for db_model in [Processor, Plan, Uploader]:
+            new_dict = db_model.get_table_name_to_task_dict()
+            task_dict = {**task_dict, **new_dict}
+        return task_dict
+
 
 class Client(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -932,6 +940,45 @@ class Processor(db.Model):
     def get_table_elem(self):
         return ''
 
+    @staticmethod
+    def get_table_name_to_task_dict():
+        arg_trans = {'Translate': '.get_translation_dict',
+                     'Vendormatrix': '.get_vendormatrix',
+                     'Constant': '.get_constant_dict',
+                     'Relation': '.get_relational_config',
+                     'OutputData': '.get_data_tables',
+                     'toplineMetrics': '.get_processor_topline_metrics',
+                     'TestConnection': '.test_api_connection',
+                     'dictionary_order': '.get_dict_order',
+                     'change_dictionary_order': '.get_change_dict_order',
+                     'raw_data': '.get_raw_data',
+                     'download_raw_data': '.get_raw_data',
+                     'download_pacing_data': '.get_processor_pacing_metrics',
+                     'dictionary': '.get_dictionary',
+                     'delete_dict': '.delete_dict',
+                     'rate_card': '.get_rate_card',
+                     'edit_conversions': '.get_processor_conversions',
+                     'data_sources': '.get_processor_sources',
+                     'imports': '.get_processor_sources',
+                     'import_config': '.get_import_config_file',
+                     'all_processors': '.get_all_processors',
+                     'raw_file_comparison': '.get_raw_file_comparison',
+                     'request_table': '.get_request_table',
+                     'quick_fix': '.apply_quick_fix',
+                     'check_processor_plan': '.check_processor_plan',
+                     'apply_processor_plan': '.apply_processor_plan',
+                     'get_plan_property': '.get_plan_property',
+                     'screenshot': '.get_screenshot_table',
+                     'screenshotImage': '.get_screenshot_image',
+                     'notesTable': '.get_notes_table',
+                     'Pacing Table': '.get_processor_pacing_metrics',
+                     'Daily Pacing': '.get_daily_pacing',
+                     'datasource_table': '.get_processor_data_source_table',
+                     'singleNoteTable': '.get_single_notes_table',
+                     'billingTable': '.get_billing_table',
+                     'billingInvoice': '.get_billing_invoice'}
+        return arg_trans
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -1329,6 +1376,16 @@ class Uploader(db.Model):
                    {'Creative': 'main.edit_uploader_creative'},
                    {'Ad': 'main.edit_uploader_ad'}]
         return buttons
+
+    @staticmethod
+    def get_table_name_to_task_dict():
+        arg_trans = {}
+        for x in ['Uploader', 'Campaign', 'Adset', 'Ad', 'Creator',
+                  'uploader_full_relation', 'edit_relation', 'name_creator',
+                  'uploader_current_name', 'uploader_creative_files',
+                  'upload_filter', 'match_table']:
+            arg_trans[x] = '.get_uploader_file'
+        return arg_trans
 
 
 class UploaderObjects(db.Model):
@@ -1777,6 +1834,15 @@ class Plan(db.Model):
                     data-object_name="{}" data-edit_name="Topline">
             </div></div>""".format(self.name)
         return elem
+
+    @staticmethod
+    def get_table_name_to_task_dict():
+        arg_trans = {
+            'SOW': '.get_sow',
+            'Topline': '.get_topline',
+            'ToplineDownload': '.download_topline'
+        }
+        return arg_trans
 
 
 class Sow(db.Model):

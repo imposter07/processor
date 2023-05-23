@@ -937,8 +937,13 @@ class Processor(db.Model):
     def get_model_name_list():
         return ['processor']
 
-    def get_table_elem(self):
-        return ''
+    def get_table_elem(self, table_name):
+        elem = """
+            <div id="msgTableElem">
+            <div id='{}' data-title="Processor" 
+                    data-object_name="{}" data-edit_name="{}">
+            </div></div>""".format(table_name, self.name, table_name)
+        return elem
 
     @staticmethod
     def get_table_name_to_task_dict():
@@ -1827,12 +1832,14 @@ class Plan(db.Model):
                     break
         return name
 
-    def get_table_elem(self):
+    def get_table_elem(self, table_name=''):
+        if not table_name:
+            table_name = 'Topline'
         elem = """
             <div id="msgTableElem">
-            <div id='Topline' data-title="Plan" 
-                    data-object_name="{}" data-edit_name="Topline">
-            </div></div>""".format(self.name)
+            <div id='{}' data-title="Plan" 
+                    data-object_name="{}" data-edit_name="{}">
+            </div></div>""".format(table_name, self.name, table_name)
         return elem
 
     @staticmethod

@@ -48,8 +48,12 @@ function searchTable(tableName, selector = ' tr:not(.header)') {
     trs.forEach(setTrStyleDisplay);
 }
 
-function searchForms(formID, selector = 'div[class*="card col-"]', query) {
-    const filter = document.querySelector('#formSearchInput').value.trim().toLowerCase();
+function searchForms(formID, selector = 'div[class*="card col-"]', query = '') {
+    let filter = document.querySelector('#formSearchInput').value.trim()
+        .toLowerCase();
+    if (query) {
+        filter = query.trim().toLowerCase()
+    }
     const forms = document.getElementById(formID);
     const searchableElements = forms.querySelectorAll(selector);
     for (const element of searchableElements) {

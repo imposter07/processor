@@ -23,7 +23,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
     PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm,\
     ProcessorNoteForm, ProcessorAutoAnalysisForm, WalkthroughUploadForm,\
-    ProcessorPlanForm, UploadTestForm, ScreenshotForm
+    ProcessorPlanForm, UploadTestForm, ScreenshotForm, BrandTrackerImportForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
@@ -677,13 +677,18 @@ def edit_processor_import(object_name):
     Add new, or edit existing data sources for this processor.  New data sources
     may be added with 'Add API'.
     """
+    base_template = 'create_processor.html'
     kwargs = Processor().get_current_processor(
         object_name, 'edit_processor_import', 50, 'Import', form_title='IMPORT',
         form_description=form_description)
     cur_proc = kwargs['processor']
-    apis = ImportForm().set_apis(ProcessorDatasources, kwargs['processor'])
-    form = ImportForm(apis=apis)
-    form.set_vendor_key_choices(current_processor_id=cur_proc.id)
+    form_class = ImportForm
+    if cur_proc.is_brandtracker():
+        base_template = 'brandtracker/processor_brandtracker.html'
+        form_class = BrandTrackerImportForm
+    apis = form_class().set_apis(kwargs['processor'])
+    form = form_class(apis=apis)
+    form.set_vendor_type_choices()
     kwargs['form'] = form
     for api in form.apis:
         if api.delete.data:
@@ -701,12 +706,30 @@ def edit_processor_import(object_name):
                 db.session.commit()
             return redirect(url_for('main.edit_processor_import',
                                     object_name=cur_proc.name))
+    form_imports = form.apis.data
     if request.method == 'POST':
+        if cur_proc.is_brandtracker():
+            if 'table_data' in request.form:
+                table_imports = json.loads(request.form['table_data'])
+                form_imports = form.make_brandtracker_sources(
+                    table_imports, form.apis.data, cur_proc)
+                old_imports = cur_proc.get_requests_processor_analysis(
+                    az.Analyze.brandtracker_imports)
+                if old_imports:
+                    old_imports.data = pd.DataFrame(table_imports).to_dict()
+                    old_imports.date = datetime.today().date()
+                else:
+                    new_imports = ProcessorAnalysis(
+                        key=az.Analyze.brandtracker_imports,
+                        data=pd.DataFrame(table_imports).to_dict(),
+                        processor_id=cur_proc.id, date=datetime.today().date())
+                    db.session.add(new_imports)
+                db.session.commit()
         if cur_proc.get_task_in_progress('.set_processor_imports'):
             flash(_('The data sources are already being set.'))
         else:
             form_imports = set_processor_imports_in_db(
-                processor_id=cur_proc.id, form_imports=form.apis.data)
+                processor_id=cur_proc.id, form_imports=form_imports)
             msg_text = ('Setting imports in '
                         'vendormatrix for {}').format(cur_proc.name)
             task = cur_proc.launch_task(
@@ -721,17 +744,21 @@ def edit_processor_import(object_name):
         else:
             return redirect(url_for('main.edit_processor_import',
                                     object_name=cur_proc.name))
-    return render_template('create_processor.html', **kwargs)
+    return render_template(base_template, **kwargs)
 
 
 @bp.route('/add_processor_import', methods=['GET', 'POST'])
 @login_required
 def add_processor_import():
-    orig_form = ImportForm(request.form)
+    form_class = ImportForm
+    if 'table_data' in request.form:
+        form_class = BrandTrackerImportForm
+    orig_form = form_class(request.form)
     kwargs = orig_form.data
     new_api = APIForm(formdata=None)
     kwargs['apis'].insert(0, new_api.data)
-    form = ImportForm(formdata=None, **kwargs)
+    form = form_class(formdata=None, **kwargs)
+    form.set_vendor_type_choices()
     import_form = render_template('_form.html', form=form)
     return jsonify({'form': import_form})
 
@@ -740,10 +767,14 @@ def add_processor_import():
 @login_required
 def delete_processor_import():
     delete_id = int(request.args.get('delete_id').split('-')[1])
-    orig_form = ImportForm(request.form)
+    form_class = ImportForm
+    if 'table_data' in request.form:
+        form_class = BrandTrackerImportForm
+    orig_form = form_class(request.form)
     kwargs = orig_form.data
     del kwargs['apis'][delete_id]
-    form = ImportForm(formdata=None, **kwargs)
+    form = form_class(formdata=None, **kwargs)
+    form.set_vendor_type_choices()
     import_form = render_template('_form.html', form=form)
     return jsonify({'form': import_form})
 
@@ -1333,6 +1364,9 @@ def processor_page(object_name):
         kwargs['form_title'] = 'SCREENSHOT'
         kwargs['form_description'] = 'Collection of screenshots, click to view.'
         return render_template('screenshot.html', **kwargs)
+    elif kwargs['object'].is_brandtracker():
+        return render_template('brandtracker/processor_brandtracker.html',
+                               **kwargs)
     else:
         return render_template('dashboard.html', **kwargs)
 
@@ -1449,6 +1483,7 @@ def edit_processor(object_name):
     elif request.method == 'GET':
         form.name.data = processor_to_edit.name
         form.description.data = processor_to_edit.description
+        form.brandtracker_toggle.data = processor_to_edit.is_brandtracker()
         form.local_path.data = processor_to_edit.local_path
         form.tableau_workbook.data = processor_to_edit.tableau_workbook
         form.tableau_view.data = processor_to_edit.tableau_view
@@ -1550,6 +1585,7 @@ def edit_request_processor(object_name):
                                     object_name=processor_to_edit.name))
     elif request.method == 'GET':
         form.name.data = processor_to_edit.name
+        form.brandtracker_toggle.data = processor_to_edit.is_brandtracker()
         form.description.data = processor_to_edit.description
         form.plan_path.data = processor_to_edit.plan_path
         form.start_date.data = processor_to_edit.start_date

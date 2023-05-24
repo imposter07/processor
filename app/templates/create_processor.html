@@ -538,6 +538,13 @@
                 }
                 else {
                     if (editName === "Import") {
+                        let btTableId = 'btImportTableTable';
+                        if (document.getElementById(btTableId)) {
+                            let tableData = JSON.stringify(
+                                getTableAsArray(btTableId));
+                            document.getElementById('table_data')
+                                .setAttribute("value", tableData);
+                        }
                         let unnamedImports = emptyVendorKeyNameCheck()
                         if (unnamedImports) {
                             displayAlert('All API cards must be named before saving.', 'danger')
@@ -926,20 +933,11 @@
             })
         });
 
-        $(document).ready(function() {
-            $('#data_source').on('change', function(e){
-                let selectedText = this.options[e.target.selectedIndex].text;
-                let divId  = $('input[value="' + selectedText + '"]')[0].id;
-                let scrollIntoViewOptions = {'behavior': 'smooth'}
-                document.getElementById(divId).scrollIntoView(scrollIntoViewOptions);
-                let element = $('#' + divId).parent().parent().parent().parent()[0];
-                let originalColor = element.style.backgroundColor;
-                element.style.backgroundColor = "#b3ecff";
-                let t = setTimeout(function(){
-                   element.style.backgroundColor = originalColor;
-                },(2 * 1000));
-            });
-        });
+        function changeImportFilter(event) {
+            let selectedText = event.target.selectize.getValue();
+            searchForms('base_form_id', 'div[class*="card col-"]',
+                selectedText);
+        }
 
         function appendMetricTable(dashForm, divId, rowNum, title, asDataTable=true){
             let tableName = dashForm['data']['name'];
@@ -1365,6 +1363,24 @@
             });
         }
 
+        function brandTrackerToggle() {
+            let btCampaign = 'BRANDTRACKER';
+            let isBrandTracker =
+                document.getElementById('brandtracker_toggle').checked;
+            let campaignInput =
+                document.getElementById('cur_campaign');
+            if (isBrandTracker) {
+                campaignInput.selectize.addOption(
+                    {value: btCampaign,
+                     text: btCampaign});
+                campaignInput.selectize.setValue(btCampaign);
+                campaignInput.selectize.lock();
+            } else {
+                campaignInput.selectize.removeOption(btCampaign);
+                campaignInput.selectize.unlock();
+            }
+        }
+
         function removeSpecialChars() {
             $('input[id$=name]').on('blur', function() {
                 const forbiddenChars = /[#&$^@*!%/]/g;
@@ -1442,6 +1458,9 @@
                 addApiOnClick);
             addOnClickEvent('input[id*="apis"][id*="delete"][value="Delete"]',
                 deleteApiOnClick);
+            addOnClickEvent('input[id="brandtracker_toggle"]',
+                            brandTrackerToggle,
+                            'change');
             addFilePond();
             addFilePondMeta();
             addSelectize();
@@ -1451,6 +1470,7 @@
             addPopovers();
             addWalkthrough();
             addOnClickEvent('[id^="viewSelector"]', viewSelectorChangeEvent, 'change');
+            addOnClickEvent('#data_source', changeImportFilter, 'change');
         }
 
         document.addEventListener("DOMContentLoaded", function() {
@@ -1479,6 +1499,8 @@
                 elem.classList.remove('row')
                 elem.classList.add('col')
                 getTable(billingTableId, billingTableId);
+            } else if (editName === "Basic") {
+                brandTrackerToggle();
             }
             if (jv.dataset['title'] === 'Uploader') {
                 checkDuplicationType();

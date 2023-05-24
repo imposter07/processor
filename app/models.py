@@ -755,6 +755,12 @@ class Processor(db.Model):
         kwargs['form'].plan_properties.data = plan_properties
         return kwargs
 
+    def is_brandtracker(self):
+        campaign = Campaign.query.filter_by(id=self.campaign_id).first()
+        if not campaign:
+            return False
+        return campaign.name == 'BRANDTRACKER'
+
     def get_current_processor(
             self, object_name, current_page, edit_progress=0,
             edit_name='Page', buttons=None, fix_id=None, note_id=None,
@@ -981,8 +987,20 @@ class Processor(db.Model):
                      'datasource_table': '.get_processor_data_source_table',
                      'singleNoteTable': '.get_single_notes_table',
                      'billingTable': '.get_billing_table',
-                     'billingInvoice': '.get_billing_invoice'}
+                     'billingInvoice': '.get_billing_invoice',
+                     'brandtracker_imports': '.get_brandtracker_imports'}
         return arg_trans
+
+    def get_import_form_dicts(self, reverse_sort_apis=False):
+        imp_dict = []
+        proc_imports = self.processor_datasources.all()
+        if reverse_sort_apis:
+            proc_imports.sort(reverse=True)
+        for imp in proc_imports:
+            if imp.name is not None:
+                form_dict = imp.get_import_form_dict()
+                imp_dict.append(form_dict)
+        return imp_dict
 
 
 class TaskScheduler(db.Model):

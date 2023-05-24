@@ -389,7 +389,7 @@ function getRowHtml(loopIndex, tableName, rowData = null) {
 
 function getCellContent(rowData, colName) {
     let cellContent = '';
-    if (rowData && rowData[colName]) {
+    if (rowData && rowData[colName] && rowData[colName] !== 'None') {
         cellContent = rowData[colName];
         if (typeof cellContent === 'object') {
             cellContent = JSON.stringify(cellContent);

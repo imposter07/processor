@@ -4313,7 +4313,8 @@ def update_analysis_in_db(processor_id, current_user_id):
                 x[az.Analyze.analysis_dict_param_col] == analysis.parameter and
                 x[az.Analyze.analysis_dict_param_2_col] == analysis.parameter_2]
             if (not analysis_dict_val and
-                    analysis.key != az.Analyze.database_cache):
+                    analysis.key not in [az.Analyze.database_cache,
+                                         az.Analyze.brandtracker_imports]):
                 db.session.delete(analysis)
                 db.session.commit()
         for analysis in analysis_dict:
@@ -5330,6 +5331,31 @@ def update_all_notes_table(processor_id, current_user_id):
                 n.data = df.to_json(orient='records')
                 db.session.commit()
         _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_brandtracker_imports(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_proc = Processor.query.get(processor_id)
+        cur_data = cur_proc.get_requests_processor_analysis(
+            az.Analyze.brandtracker_imports)
+        if cur_data:
+            table_dict = cur_data.data
+        else:
+            table_dict = {col: [] for col in ['GAME TITLE',
+                                              'TWITTER HANDLE']}
+        df = pd.DataFrame(table_dict)
+        lt = app_utl.LiquidTable(table_name='btImportTable', df=df,
+                                 accordion=True, new_modal_button=True,
+                                 col_filter=False, chart_btn=False)
+        _set_task_progress(100)
+        return [lt.table_dict]
     except:
         _set_task_progress(100)
         msg = 'Unhandled exception - Processor {} User {}'.format(

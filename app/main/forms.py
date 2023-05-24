@@ -59,6 +59,7 @@ class ProcessorForm(FlaskForm):
         DataRequired(), Regexp("[^']", message='Remove special characters')])
     description = StringField(_l('Description'), validators=[
         DataRequired()])
+    brandtracker_toggle = BooleanField(_l('Brand Tracker'))
     local_path = StringField(_l('Local Path'), validators=[DataRequired()],
                              render_kw={'readonly': True})
     tableau_workbook = StringField(_l('Tableau Workbook'))
@@ -108,23 +109,16 @@ class ImportForm(FlaskForm):
     form_continue = HiddenField('form_continue')
     apis = FieldList(FormField(APIForm, label=''))
 
-    def set_apis(self, data_source, cur_proc):
-        db_vk_col = 'vendor_key'
+    def set_apis(self, cur_proc):
         test_conn_col = 'test_connection'
-        imp_dict = []
-        proc_imports = data_source.query.filter_by(
-            processor_id=cur_proc.id).all()
-        proc_imports.sort()
-        for imp in reversed(proc_imports):
-            if imp.name is not None:
-                form_dict = imp.get_import_form_dict()
-                if [x for x in vmc.test_apis if x in form_dict[db_vk_col]]:
-                    form_dict[test_conn_col] = True
-                else:
-                    form_dict[test_conn_col] = False
-                imp_dict.append(form_dict)
-        self.apis = imp_dict
-        return imp_dict
+        proc_imports = cur_proc.get_import_form_dicts(reverse_sort_apis=True)
+        for imp in proc_imports:
+            if imp['key'] in vmc.test_apis:
+                imp[test_conn_col] = True
+            else:
+                imp[test_conn_col] = False
+        self.apis = proc_imports
+        return proc_imports
 
     def set_vendor_key_choices(self, current_processor_id):
         choices = [('', '')]
@@ -132,6 +126,60 @@ class ImportForm(FlaskForm):
                         ProcessorDatasources.query.filter_by(
                             processor_id=current_processor_id).all()])
         self.data_source.choices = choices
+
+    def set_vendor_type_choices(self):
+        choices = [('', '')]
+        choices.extend([(x, x) for x in vmc.api_keys])
+        self.data_source.choices = choices
+
+
+class BrandTrackerImportForm(ImportForm):
+    table_data = HiddenField('table_data')
+
+    @staticmethod
+    def make_brandtracker_sources(table_imports, card_imports,
+                                  current_processor):
+        table_cols = ['GAME TITLE', 'TWITTER HANDLE']
+        game_title, tw_handle = table_cols
+        form_imports = [source for source in card_imports if 'BTCard' in
+                        source['name']]
+        if not table_imports:
+            return form_imports
+        start_date = current_processor.start_date
+        shared_input = {'start_date': start_date,
+                        'account_id': '',
+                        'account_filter': '',
+                        'api_fields': ''}
+        col_data = {col: [] for col in table_imports[0].keys()}
+        batch_size = 10
+        for col in col_data:
+            col_data[col] = [x[col] for x in table_imports if x[col]]
+            for batch_num, idx in enumerate(
+                    range(0, len(col_data[col]), batch_size)):
+                batch_data = col_data[col][idx:idx+batch_size]
+                source = shared_input.copy()
+                source['name'] = 'batch{}'.format(batch_num)
+                if col == game_title:
+                    source['key'] = vmc.api_nz_key
+                    source['account_id'] = ','.join(batch_data)
+                    source['account_filter'] = 'US,CA'
+                elif col == tw_handle:
+                    source['key'] = vmc.api_tw_key
+                    source['api_fields'] = 'USER_STATS:{}'.format(
+                        ','.join(batch_data)
+                    )
+                else:
+                    continue
+                vk = '_'.join(['API', source['key'], source['name']])
+                source['vendor_key'] = vk
+                source['original_vendor_key'] = vk
+                card = [x for x in card_imports if x['vendor_key'] == vk]
+                if card:
+                    card = card[0]
+                    source = {k: (v if v else card[k])
+                              for k, v in source.items()}
+                form_imports.append(source)
+        return form_imports
 
 
 class EditProcessorForm(ProcessorForm):
@@ -270,6 +318,7 @@ class ProcessorExportForm(FlaskForm):
 class ProcessorRequestForm(FlaskForm):
     name = StringField(_l('Name'), validators=[
         DataRequired(), Regexp("[^']", message='Remove special characters')])
+    brandtracker_toggle = BooleanField(_l('Brand Tracker'))
     description = StringField(_l('Description'), validators=[
         DataRequired()])
     plan_path = StringField(_l('Media Plan Path'), validators=[DataRequired()])

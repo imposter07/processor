@@ -1,0 +1,24 @@
+{% extends "create_processor.html" %}
+{% block app_content_2 %}
+<div id="btImportTable"></div>
+<br>
+<div id="btCardImports" class="card" style="display: none">
+    <h5 class="card-header font-weight-bold text-primary
+    text-center">EDIT IMPORT CARDS</h5>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let btImportId = 'btImportTable';
+        let rawDataId = 'btCardImports';
+        let jinjaValues = document.getElementById('jinjaValues').dataset;
+        if (jinjaValues['edit_name'] === 'Import') {
+            let form = document.getElementById('base_form_id');
+            let rawDiv = document.getElementById(rawDataId);
+            rawDiv.style.display = 'block';
+            rawDiv.appendChild(form);
+            getTable('brandtracker_imports', btImportId, 'None');
+        }
+    });
+</script>
+{% endblock %}

@@ -344,8 +344,8 @@ function getTableAsArray(tableId, cols=[]) {
         row = {}
         for (var j = 0, col; col = rows[0].cells[j]; j++) {
             if ((cols.length === 0) || (cols.includes(rows[0].cells[j].innerHTML))) {
-            let col_name = rows[0].cells[j].textContent
-            let row_value = rows[i].cells[j].textContent
+            let col_name = rows[0].cells[j].innerText;
+            let row_value = rows[i].cells[j].innerText;
             row[col_name] = row_value
             }
         }

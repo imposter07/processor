@@ -64,7 +64,8 @@ def index():
         return redirect(url_for('main.index'))
     page = request.args.get('page', 1, type=int)
     posts = current_user.followed_posts().paginate(
-        page, current_app.config['POSTS_PER_PAGE'], False)
+        page=page, per_page=current_app.config['POSTS_PER_PAGE'],
+        error_out=False)
     next_url = url_for('main.index', page=posts.next_num) \
         if posts.has_next else None
     prev_url = url_for('main.index', page=posts.prev_num) \
@@ -86,7 +87,8 @@ def explore():
     tutorials = Tutorial.query.all()
     page = request.args.get('page', 1, type=int)
     posts = Post.query.order_by(Post.timestamp.desc()).paginate(
-        page, current_app.config['POSTS_PER_PAGE'], False)
+        page=page, per_page=current_app.config['POSTS_PER_PAGE'],
+        error_out=False)
     next_url = url_for('main.explore', page=posts.next_num) \
         if posts.has_next else None
     prev_url = url_for('main.explore', page=posts.prev_num) \
@@ -139,7 +141,7 @@ def get_live_processors():
             for k, v in d.items():
                 if k == "processors":
                     processors = processors.filter(Processor.name.in_(v))
-    processors = processors.paginate(page, 3, False)
+    processors = processors.paginate(page=page, per_page=3, error_out=False)
     processor_html = [render_template('processor_popup.html', processor=x)
                       for x in processors.items]
     return jsonify({'items': processor_html,
@@ -304,7 +306,8 @@ def user(username):
     user_page = User.query.filter_by(username=username).first_or_404()
     page = request.args.get('page', 1, type=int)
     posts = user_page.posts.order_by(Post.timestamp.desc()).paginate(
-        page, current_app.config['POSTS_PER_PAGE'], False)
+        page=page, per_page=current_app.config['POSTS_PER_PAGE'],
+        error_out=False)
     processors = user_page.processor_followed.filter(
         Processor.end_date > datetime.today().date()).order_by(
         Processor.created_at.desc()).all()
@@ -502,7 +505,8 @@ def messages():
     page = request.args.get('page', 1, type=int)
     user_messages = current_user.messages_received.order_by(
         Message.timestamp.desc()).paginate(
-            page, current_app.config['POSTS_PER_PAGE'], False)
+            page=page, per_page=current_app.config['POSTS_PER_PAGE'],
+            error_out=False)
     next_url = url_for('main.messages', page=user_messages.next_num) \
         if user_messages.has_next else None
     prev_url = url_for('main.messages', page=user_messages.prev_num) \
@@ -989,7 +993,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
         mem.write(df)
         mem.seek(0)
         return send_file(mem, as_attachment=True,
-                         attachment_filename=file_name, mimetype=mime_type)
+                         download_name=file_name, mimetype=mime_type)
     if 'screenshotImage' in table_name:
         return send_file(
             io.BytesIO(df),
@@ -2271,7 +2275,8 @@ def uploader():
     current_clients = Client.query.order_by(Client.name)
     uploaders = current_user.uploader.order_by(
         Uploader.last_run_time.desc()).paginate(
-        page, current_app.config['POSTS_PER_PAGE'], False)
+        page=page, per_page=current_app.config['POSTS_PER_PAGE'],
+        error_out=False)
     next_url = (url_for('main.upload', username=cur_user.username,
                         page=uploaders.next_num)
                 if uploaders.has_next else None)

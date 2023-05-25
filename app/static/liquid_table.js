@@ -188,7 +188,7 @@ function createTableElements(tableName, rowsName,
             <input id="tableSearchInput" type="text"
                    class="form-control"
                    placeholder="Search"
-                   aria-label="Username"
+                   aria-label=""
                    aria-describedby="basic-addon1"
                    onkeyup="searchTable('#${tableName}Table')">
         </div>` : '';

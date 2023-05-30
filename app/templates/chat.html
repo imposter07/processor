@@ -168,10 +168,23 @@
     <script src="{{ url_for('static', filename='get_table.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='bootstrap-dark/darkModeHelper.js') }}"></script>
     <script>
+        function htmlResponseFormat(htmlResponse) {
+            if (htmlResponse) {
+                let oldElem = `<div id="msgTableElem">`;
+                let iconElem = `<i class="fa-solid fa-arrows-rotate"></i>`;
+                let newElem = `
+                    <div class="msgTableElem btn btn-outline-primary btn-block">
+                        ${iconElem}Reload Table`;
+                htmlResponse = htmlResponse.replace(oldElem, newElem);
+            }
+            return htmlResponse
+        }
+
         function createMessageHtml(message, owner='mine', htmlResponse='') {
             let d = new Date();
             let timeSaid = d.getHours() + ':' + d.getMinutes();
             let speaker = (owner === 'mine') ? document.getElementById('jinjaValues').dataset['username'] : 'ALI';
+            htmlResponse = htmlResponseFormat(htmlResponse);
             return `
                 <div id="latestMessage" class="${owner} messages">
                     <div class="message last">
@@ -182,25 +195,39 @@
         }
 
         function clickTableElem() {
-            let elem = document.getElementById('msgTableElem');
-            if (elem) {
-                let jinjaValues = document.getElementById('jinjaValues');
-                let tableElem = elem.children[0];
-                jinjaValues.dataset['title'] = tableElem.dataset['title'];
-                jinjaValues.dataset['edit_name'] = tableElem.dataset['edit_name'];
-                jinjaValues.dataset['object_name'] = tableElem.dataset['object_name'];
-                getTable(tableElem.id, tableElem.id);
-            }
+            let jinjaValues = document.getElementById('jinjaValues');
+            let tableElem = this.children[1];
+            let editName = tableElem.dataset['edit_name'];
+            tableElem.id = editName;
+            jinjaValues.dataset['title'] = tableElem.dataset['title'];
+            jinjaValues.dataset['edit_name'] = editName;
+            jinjaValues.dataset['object_name'] = tableElem.dataset['object_name'];
+            this.replaceWith(tableElem);
+            getTable(editName, editName);
         }
 
-        function addMessageToChat(message, owner='mine', htmlResponse='') {
+        function addMessageToChat(message, owner='mine', htmlResponse='', chatId='',
+                                  clickElem=false) {
             let chatContainer = document.getElementById('chatContainer');
+            let latestMessageId = 'latestMessage';
+            let msgTableElemClass = '.msgTableElem';
+            let latestMessage = document.getElementById(latestMessageId);
+            if (latestMessage) {
+                latestMessage.id = '';
+            }
             let messageHtml = createMessageHtml(message, owner, htmlResponse);
             chatContainer.insertAdjacentHTML('beforeend', messageHtml);
-            let latestMessage = document.getElementById('latestMessage');
+            latestMessage = document.getElementById(latestMessageId);
             latestMessage.scrollIntoView();
-            latestMessage.id = '';
-            clickTableElem();
+            addOnClickEvent(msgTableElemClass, clickTableElem);
+            latestMessage = latestMessage.querySelector(msgTableElemClass);
+            if (latestMessage) {
+                let tableHolder = latestMessage.querySelector('div');
+                tableHolder.id = tableHolder.id + chatId;
+            }
+            if (clickElem) {
+                latestMessage.click();
+            }
         }
 
         function addConversationToChat(data) {
@@ -213,8 +240,8 @@
             convElem.id = 'currentConv';
             let chats = data['chats'];
             chats.forEach(chat => {
-                addMessageToChat(chat['text']);
-                addMessageToChat(chat['response'], 'yours', chat['html_response']);
+                addMessageToChat(chat['text'], 'mine', '', chat['id']);
+                addMessageToChat(chat['response'], 'yours', chat['html_response'], chat['id']);
             });
         }
 
@@ -265,7 +292,7 @@
             message.value = '';
             let clickElem = kwargs['clickElem'];
             addElemRemoveLoadingBtn(clickElem.id);
-            addMessageToChat(response, 'yours', htmlResponse);
+            addMessageToChat(response, 'yours', htmlResponse, data['id'], true);
         }
 
         function postChatRequest(message, conversationId) {

@@ -945,7 +945,7 @@ class Processor(db.Model):
 
     def get_table_elem(self, table_name):
         elem = """
-            <div id="msgTableElem">
+            <div class="msgTableElem">
             <div id='{}' data-title="Processor" 
                     data-object_name="{}" data-edit_name="{}">
             </div></div>""".format(table_name, self.name, table_name)
@@ -1854,7 +1854,7 @@ class Plan(db.Model):
         if not table_name:
             table_name = 'Topline'
         elem = """
-            <div id="msgTableElem">
+            <div class="msgTableElem">
             <div id='{}' data-title="Plan" 
                     data-object_name="{}" data-edit_name="{}">
             </div></div>""".format(table_name, self.name, table_name)
@@ -2050,4 +2050,4 @@ class Chat(db.Model):
 
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
-                     if not k.startswith("_") and k != 'id'])
+                     if not k.startswith("_")])

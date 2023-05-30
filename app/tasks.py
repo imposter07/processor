@@ -5190,6 +5190,51 @@ def download_topline(plan_id, current_user_id):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+def get_plan_rules(plan_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_plan = Plan.query.get(plan_id)
+        df = pd.DataFrame([x.get_form_dict() for x in cur_plan.rules])
+        name = 'PlanRules'
+        name_col = 'column_name'
+        cols = [name_col, 'order', 'type', 'rule_info']
+        select_val_dict = {name_col: [{name_col: x} for x in dctc.COLS]}
+        lt = app_utl.LiquidTable(
+            df=df, title=name, table_name=name,
+            select_val_dict=select_val_dict, select_box=name_col,
+            form_cols=[name_col], specify_form_cols=True)
+        _set_task_progress(100)
+        return [lt.table_dict]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Plan {} User {}'.format(
+                plan_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_plan_placements(plan_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_plan = Plan.query.get(plan_id)
+        data = []
+        for plan_phase in cur_plan.phases:
+            for plan_part in plan_phase.partners:
+                place = [x.get_form_dict() for x in plan_part.placements]
+                data.extend(place)
+        df = pd.DataFrame(data)
+        name = 'PlanPlacements'
+        lt = app_utl.LiquidTable(df=df, title=name, table_name=name)
+        _set_task_progress(100)
+        return [lt.table_dict]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Plan {} User {}'.format(
+                plan_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
 # noinspection SqlResolve
 def get_screenshot_table(processor_id, current_user_id):
     try:

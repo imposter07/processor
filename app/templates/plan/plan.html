@@ -107,7 +107,7 @@
         }
 
     </style>
-    <div id="Topline"></div>
+    <div id="{{ edit_name }}"></div>
     <script>
         function submitToplineForm(formContinue, tableName) {
             let formTopline = {};
@@ -159,13 +159,11 @@
             });
         }
 
-        $('.collapse').on('show.bs.collapse', function () {
-            $('.collapse.in').collapse('hide');
-        });
-
         document.addEventListener("DOMContentLoaded", function() {
             let tableName = document.getElementById('jinjaValues').dataset['edit_name'];
-            getTable(tableName, tableName);
+            if (['Topline', 'PlanRules', 'PlanPlacements'].includes(tableName)) {
+                getTable(tableName, tableName);
+            }
         });
     </script>
 {% endblock %}

@@ -176,6 +176,8 @@
                     <div class="msgTableElem btn btn-outline-primary btn-block">
                         ${iconElem}Reload Table`;
                 htmlResponse = htmlResponse.replace(oldElem, newElem);
+                oldElem = `<div class="msgTableElem">`;
+                htmlResponse = htmlResponse.replace(oldElem, newElem);
             }
             return htmlResponse
         }

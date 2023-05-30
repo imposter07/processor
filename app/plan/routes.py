@@ -255,20 +255,15 @@ def edit_sow(object_name):
 @login_required
 def plan_rules(object_name):
     kwargs = Plan().get_current_plan(
-        object_name, 'edit_plan', edit_progress=100, edit_name='Plan Rules')
+        object_name, 'edit_plan', edit_progress=100, edit_name='PlanRules')
     kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)
 
 
-@bp.route('/get_plan_rule', methods=['GET', 'POST'])
+@bp.route('/plan/<object_name>/plan_placements', methods=['GET', 'POST'])
 @login_required
-def get_plan_rule():
-    name = 'rulesTable'
-    name_col = 'column_name'
-    cols = [name_col, 'order', 'type', 'rule_info']
-    select_val_dict = {name_col: [{name_col: x} for x in dctc.COLS]}
-    lt = utl.LiquidTable(
-        col_list=cols, title=name, table_name='rulesTable',
-        select_val_dict=select_val_dict, select_box=name_col,
-        form_cols=[name_col], specify_form_cols=True)
-    return jsonify({'data': lt.table_dict})
+def plan_placements(object_name):
+    kwargs = Plan().get_current_plan(
+        object_name, 'edit_plan', edit_progress=100, edit_name='PlanPlacements')
+    kwargs['form'] = PlanToplineForm()
+    return render_template('plan/plan.html', **kwargs)

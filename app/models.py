@@ -5,6 +5,7 @@ import pytz
 import json
 import time
 import redis
+import itertools
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
@@ -430,13 +431,13 @@ class Client(db.Model):
         return ['client']
 
     @staticmethod
-    def get_name_list(parameter='clientname'):
+    def get_name_list(parameter='clientname', min_impressions=0):
         a = ProcessorAnalysis.query.filter_by(
             processor_id=23, key='database_cache', parameter=parameter,
             filter_col='').order_by(ProcessorAnalysis.date).first()
         df = pd.read_json(a.data)
-        df = df[df[vmc.impressions] > 0].sort_values(vmc.impressions,
-                                                     ascending=False)
+        df = df[df[vmc.impressions] > min_impressions].sort_values(
+            vmc.impressions, ascending=False)
         df = df.to_dict(orient='records')
         return df
 
@@ -920,7 +921,8 @@ class Processor(db.Model):
             buttons = [{'Basic': ['plan.edit_plan']},
                        {'Topline': ['plan.topline']},
                        {'SOW': ['plan.edit_sow']},
-                       {'Plan Rules': ['plan.plan_rules']}]
+                       {'PlanRules': ['plan.plan_rules']},
+                       {'PlanPlacements': ['plan.plan_placements']}]
         else:
             buttons = [
                 {'Basic': ['main.edit_processor', 'list-ol']},
@@ -1758,6 +1760,7 @@ class Plan(db.Model):
         backref=db.backref('project_number_plan', lazy='dynamic'),
         lazy='dynamic')
     phases = db.relationship('PlanPhase', backref='plan', lazy='dynamic')
+    rules = db.relationship('PlanRule', backref='plan', lazy='dynamic')
 
     @staticmethod
     def get_output_links():
@@ -1865,7 +1868,9 @@ class Plan(db.Model):
         arg_trans = {
             'SOW': '.get_sow',
             'Topline': '.get_topline',
-            'ToplineDownload': '.download_topline'
+            'ToplineDownload': '.download_topline',
+            'PlanRules': '.get_plan_rules',
+            'PlanPlacements': '.get_plan_placements'
         }
         return arg_trans
 
@@ -1942,6 +1947,7 @@ class Partner(db.Model):
     cpcv = db.Column(db.Numeric)
     placements = db.relationship('PartnerPlacements',
                                  backref='partner', lazy='dynamic')
+    rules = db.relationship('PlanRule', backref='partner', lazy='dynamic')
 
     def get_form_dict(self, cur_phase=None):
         form_dict = {
@@ -2022,15 +2028,78 @@ class PartnerPlacements(db.Model):
     name = db.Column(db.Text, index=True)
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
+    country = db.Column(db.Text)
+    environment = db.Column(db.Text)
+    total_budget = db.Column(db.Numeric)
     partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
+
+    def check_col_in_words(self, words, parent_id):
+        parent = Partner.query.get(parent_id)
+        g_parent = PlanPhase.query.get(parent.plan_phase_id)
+        plan_id = g_parent.plan_id
+        cols = [self.country, self.environment]
+        min_impressions = 50000000
+        new_rules = []
+        for col in cols:
+            str_name = col.name
+            db_col = '{}name'.format(str_name)
+            name_list = Client.get_name_list(db_col, min_impressions)
+            name_list = utl.get_dict_values_from_list(words, name_list, True)
+            total_names = len(name_list)
+            rule_info = {x[db_col]: 1 / total_names for x in name_list}
+            new_rule = PlanRule(place_col=str_name, rule_info=rule_info,
+                                partner_id=parent_id, plan_id=plan_id)
+            db.session.add(new_rule)
+            db.session.commit()
+            new_rules.append(new_rule)
+        return new_rules
+
+    def create_from_rules(self, parent_id):
+        parent = Partner.query.get(parent_id)
+        parent_budget = float(parent.total_budget)
+        rules = PlanRule.query.filter_by(partner_id=parent_id).all()
+        rule_dict = {x.place_col: x.rule_info for x in rules}
+        keys = [list(x.keys()) for x in rule_dict.values()]
+        combos = list(itertools.product(*keys))
+        data = []
+        for combo in combos:
+            temp_dict = {}
+            value_product = 1
+            for i, key in enumerate(combo):
+                col_name = list(rule_dict.keys())[i]
+                value = rule_dict[col_name][key]
+                temp_dict[col_name] = key
+                value_product *= value
+            temp_dict[Plan.total_budget.name] = value_product * parent_budget
+            data.append(temp_dict)
+            place = PartnerPlacements(
+                start_date=parent.start_date, end_date=parent.end_date,
+                country=temp_dict[self.country.name],
+                environment=temp_dict[self.environment.name],
+                total_budget=temp_dict[self.total_budget.name],
+                partner_id=parent.id)
+            db.session.add(place)
+            db.session.commit()
+        return data
+
+    def get_form_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])
 
 
 class PlanRule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Text, index=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
+    partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
+    place_col = db.Column(db.Text)
     order = db.Column(db.Integer)
     type = db.Column(db.String(128))
     rule_info = db.Column(db.JSON)
+
+    def get_form_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])
 
 
 class Conversation(db.Model):

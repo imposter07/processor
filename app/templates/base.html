@@ -65,6 +65,8 @@
         <form class="form-inline" method="get" action="{{ url_for('main.chat') }}">
             <div class="form-group">
                 {{ g.search_form.q(size=30, class='form-control', placeholder='Ask questions here....') }}
+                <a class="btn btn-primary" href="{{ url_for('main.chat') }}">CHAT
+                    <i class="fas fa-message"></i></a>
             </div>
         </form>
         {% endif %}

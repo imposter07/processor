@@ -3403,7 +3403,8 @@ def upload_test_upload_file():
 @bp.route('/chat', methods=['GET', 'POST'])
 @login_required
 def chat():
-    conversations = Conversation.query.filter_by(user_id=current_user.id).all()
+    conversations = Conversation.query.filter_by(
+        user_id=current_user.id).order_by(Conversation.created_at.desc()).all()
     kwargs = {'title': 'LQA CHAT', 'conversations': conversations}
     if g and g.search_form.q.data:
         kwargs['initial_chat'] = g.search_form.q.data

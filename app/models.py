@@ -976,7 +976,6 @@ class Processor(db.Model):
                      'import_config': '.get_import_config_file',
                      'all_processors': '.get_all_processors',
                      'raw_file_comparison': '.get_raw_file_comparison',
-                     'request_table': '.get_request_table',
                      'quick_fix': '.apply_quick_fix',
                      'check_processor_plan': '.check_processor_plan',
                      'apply_processor_plan': '.apply_processor_plan',
@@ -990,7 +989,8 @@ class Processor(db.Model):
                      'singleNoteTable': '.get_single_notes_table',
                      'billingTable': '.get_billing_table',
                      'billingInvoice': '.get_billing_invoice',
-                     'brandtracker_imports': '.get_brandtracker_imports'}
+                     'brandtracker_imports': '.get_brandtracker_imports',
+                     'request_table': '.get_request_table'}
         return arg_trans
 
     def get_import_form_dicts(self, reverse_sort_apis=False):

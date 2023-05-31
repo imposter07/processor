@@ -77,7 +77,7 @@
 .mine .message {
   color: white;
   margin-left: 25%;
-  background: linear-gradient(to bottom, #00D0EA 0%, #0085D1 100%);
+  background: linear-gradient(to bottom, #5bc0de 0%, #0275d8 100%);
   background-attachment: fixed;
   position: relative;
 }
@@ -309,11 +309,8 @@
             makeRequest('/post_chat', 'POST', data, postChatResponse, 'json', kwargs);
         }
 
-        function postChat(addMessage='') {
+        function postChat() {
             let chatInput = document.getElementById('chatInput');
-            if (addMessage) {
-                chatInput.value = addMessage;
-            }
             let chatInputGroup = document.getElementById('chatInputGroup');
             loadingBtn(chatInputGroup);
             let message = chatInput.value;
@@ -339,7 +336,9 @@
             addOnClickEvent('#chatInput', postChatOnEnter, 'keyup');
             let initialChat = document.getElementById('chatJinja').dataset['initialchat'];
             if (initialChat) {
-                postChat(initialChat);
+                let chatInput = document.getElementById('chatInput');
+                chatInput.value = initialChat;
+                postChat();
             }
         });
     </script>

@@ -223,17 +223,22 @@ def update_cached_data_in_processor_run(processor_id, current_user_id):
             ['vendorname'], ['countryname'], ['kpiname'], ['environmentname'],
             ['productname'], ['eventdate'], ['campaignname'], ['clientname'],
             ['vendorname', 'vendortypename']]
+        filter_dicts = [[]]
+        if processor_id == 23:
+            today = dt.datetime.today()
+            thirty = today - dt.timedelta(days=30)
+            today = today.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            thirty = thirty.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            filter_dict = [{'eventdate': [thirty, today]}]
+            filter_dicts.append(filter_dict)
+            dims = [[x] for x in
+                    ['placementdescriptionname', 'packagedescriptionname',
+                     'mediachannelname', 'targetingbucketname',
+                     'creativelineitemname', 'copyname']]
+            dim_list.extend(dims)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         for col in dim_list:
             app.logger.info('Getting db col: {}'.format(col))
-            filter_dicts = [[]]
-            if processor_id == 23:
-                today = dt.datetime.today()
-                thirty = today - dt.timedelta(days=30)
-                today = today.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-                thirty = thirty.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-                filter_dict = [{'eventdate': [thirty, today]}]
-                filter_dicts.append(filter_dict)
             os.chdir(cur_path)
             for filter_dict in filter_dicts:
                 get_data_tables_from_db(
@@ -3576,20 +3581,13 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                             w = "{}{}".format("WHERE", w[4:])
                         where_sql += w
         _set_task_progress(30)
+        sb = exp.ScriptBuilder()
+        base_table = [x for x in sb.tables if x.name == 'event'][0]
+        from_script = sb.get_from_script_with_opts(base_table)
         command = """SELECT {0}
-            FROM lqadb.event
-            FULL JOIN lqadb.fullplacement ON event.fullplacementid = fullplacement.fullplacementid
-            LEFT JOIN lqadb.vendor ON fullplacement.vendorid = vendor.vendorid
-            LEFT JOIN lqadb.campaign ON fullplacement.campaignid = campaign.campaignid
-            LEFT JOIN lqadb.country ON fullplacement.countryid = country.countryid
-            LEFT JOIN lqadb.product ON campaign.productid = product.productid
-            LEFT JOIN lqadb.client ON product.clientid = client.clientid
-            LEFT JOIN lqadb.environment ON fullplacement.environmentid = environment.environmentid
-            LEFT JOIN lqadb.kpi ON fullplacement.kpiid = kpi.kpiid
-            LEFT JOIN lqadb.vendortype ON vendor.vendortypeid = vendortype.vendortypeid
-            FULL JOIN lqadb.plan ON plan.fullplacementid = fullplacement.fullplacementid
             {1}
-        """.format(select_sql, where_sql)
+            {2}
+        """.format(select_sql, from_script, where_sql)
         if dimensions_sql:
             command += 'GROUP BY {}'.format(dimensions_sql)
         db_class = exp.DB()

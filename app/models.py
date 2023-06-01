@@ -629,7 +629,7 @@ class Processor(db.Model):
         primaryjoin=(processor_plan.c.processor_id == id),
         secondaryjoin="processor_plan.c.plan_id == Plan.id",
         backref=db.backref('processor_plan', lazy='dynamic'),
-        lazy='dynamic', overlaps="processor_plan,plans")
+        lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -1770,7 +1770,7 @@ class Plan(db.Model):
         primaryjoin=(processor_plan.c.plan_id == id),
         secondaryjoin="processor_plan.c.processor_id == Processor.id",
         backref=db.backref('processor_plan', lazy='dynamic'),
-        lazy='dynamic', overlaps="plans,processor_plan")
+        lazy='dynamic')
     projects = db.relationship(
         'Project', secondary=project_number_plan,
         primaryjoin=(project_number_plan.c.plan_id == id),

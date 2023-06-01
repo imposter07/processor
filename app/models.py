@@ -943,7 +943,7 @@ class Processor(db.Model):
 
     @staticmethod
     def get_model_name_list():
-        return ['processor']
+        return ['processor', 'report', 'data']
 
     def get_table_elem(self, table_name):
         elem = """
@@ -1653,6 +1653,10 @@ class TutorialStage(db.Model):
     question_answers = db.Column(db.Text)
     correct_answer = db.Column(db.Text)
 
+    @property
+    def name(self):
+        return '{} {} {}'.format(self.header, self.sub_header, self. message)
+
     def get_question_answers(self):
         return self.question_answers.split('|')
 
@@ -1679,6 +1683,18 @@ class TutorialStage(db.Model):
             'correct_answer': str(correct_answer)
         }
         return stage
+
+    @staticmethod
+    def get_model_name_list():
+        return ['tutorial', 'help', 'define', 'what']
+
+    @staticmethod
+    def get_url():
+        return ''
+
+    @staticmethod
+    def get_table_name_to_task_dict():
+        return {}
 
 
 class Walkthrough(db.Model):

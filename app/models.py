@@ -432,13 +432,15 @@ class Client(db.Model):
 
     @staticmethod
     def get_name_list(parameter='clientname', min_impressions=0):
+        df = {}
         a = ProcessorAnalysis.query.filter_by(
             processor_id=23, key='database_cache', parameter=parameter,
             filter_col='').order_by(ProcessorAnalysis.date).first()
-        df = pd.read_json(a.data)
-        df = df[df[vmc.impressions] > min_impressions].sort_values(
-            vmc.impressions, ascending=False)
-        df = df.to_dict(orient='records')
+        if a:
+            df = pd.read_json(a.data)
+            df = df[df[vmc.impressions] > min_impressions].sort_values(
+                vmc.impressions, ascending=False)
+            df = df.to_dict(orient='records')
         return df
 
     @staticmethod
@@ -2044,8 +2046,28 @@ class PartnerPlacements(db.Model):
     name = db.Column(db.Text, index=True)
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
+    budget = db.Column(db.Text)
     country = db.Column(db.Text)
+    targeting_bucket = db.Column(db.Text)
+    creative_line_item = db.Column(db.Text)
+    copy = db.Column(db.Text)
+    retailer = db.Column(db.Text)
+    buy_model = db.Column(db.Text)
+    buy_rate = db.Column(db.Text)
+    serving = db.Column(db.Text)
+    ad_rate = db.Column(db.Text)
+    reporting_rate = db.Column(db.Text)
+    kpi = db.Column(db.Text)
+    data_type_1 = db.Column(db.Text)
+    service_fee_rate = db.Column(db.Text)
+    verification_rate = db.Column(db.Text)
+    reporting_source = db.Column(db.Text)
     environment = db.Column(db.Text)
+    size = db.Column(db.Text)
+    ad_type = db.Column(db.Text)
+    placement_description = db.Column(db.Text)
+    package_description = db.Column(db.Text)
+    media_channel = db.Column(db.Text)
     total_budget = db.Column(db.Numeric)
     partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
 
@@ -2053,21 +2075,44 @@ class PartnerPlacements(db.Model):
         parent = Partner.query.get(parent_id)
         g_parent = PlanPhase.query.get(parent.plan_phase_id)
         plan_id = g_parent.plan_id
-        cols = [self.country, self.environment]
+        cols = [self.country, self.environment, self.budget,
+                self.targeting_bucket, self.creative_line_item, self.copy,
+                self.retailer, self.buy_model, self.buy_rate, self.serving,
+                self.ad_rate, self.reporting_rate, self.kpi, self.data_type_1,
+                self.service_fee_rate, self.verification_rate,
+                self.reporting_source, self.size, self.ad_type,
+                self.placement_description, self.package_description,
+                self.media_channel]
         min_impressions = 50000000
         new_rules = []
         for col in cols:
             str_name = col.name
-            db_col = '{}name'.format(str_name)
-            name_list = Client.get_name_list(db_col, min_impressions)
-            name_list = utl.get_dict_values_from_list(words, name_list, True)
-            total_names = len(name_list)
-            rule_info = {x[db_col]: 1 / total_names for x in name_list}
-            new_rule = PlanRule(place_col=str_name, rule_info=rule_info,
-                                partner_id=parent_id, plan_id=plan_id)
-            db.session.add(new_rule)
-            db.session.commit()
-            new_rules.append(new_rule)
+            col_names = str_name.split('_')
+            db_col = '{}name'.format(''.join(col_names))
+            col_names = col_names + [str_name, db_col]
+            col_names = [x for x in col_names if not x.isdigit()]
+            name_in_list = utl.is_list_in_list(col_names, words, True, True)
+            if name_in_list:
+                post_words = words[words.index(name_in_list[0]) + 1:]
+                name_list = ''.join(post_words).split('.')[0].split(',')
+                name_list = [{db_col: x} for x in name_list]
+            else:
+                name_list = Client.get_name_list(db_col, min_impressions)
+                if name_list:
+                    name_list = utl.get_dict_values_from_list(words, name_list,
+                                                              True)
+            if name_list:
+                total_names = len(name_list)
+                rule_info = {x[db_col]: 1 / total_names for x in name_list}
+                new_rule = PlanRule(place_col=str_name, rule_info=rule_info,
+                                    partner_id=parent_id, plan_id=plan_id)
+                db.session.add(new_rule)
+                db.session.commit()
+                new_rules.append(new_rule)
+                words_to_remove = name_list
+                if name_in_list:
+                    words_to_remove = words_to_remove + name_in_list
+                words = [x for x in words if x not in words_to_remove]
         return new_rules
 
     def create_from_rules(self, parent_id):
@@ -2090,10 +2135,11 @@ class PartnerPlacements(db.Model):
             data.append(temp_dict)
             place = PartnerPlacements(
                 start_date=parent.start_date, end_date=parent.end_date,
-                country=temp_dict[self.country.name],
-                environment=temp_dict[self.environment.name],
                 total_budget=temp_dict[self.total_budget.name],
                 partner_id=parent.id)
+            for col in self.__table__.columns:
+                if col.name in temp_dict:
+                    setattr(place, col.name, temp_dict[col.name])
             db.session.add(place)
             db.session.commit()
         return data

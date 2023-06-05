@@ -1911,6 +1911,23 @@ class Sow(db.Model):
     total_project_budget = db.Column(db.Numeric)
     ad_serving = db.Column(db.Numeric)
 
+    def create_from_plan(self, cur_plan):
+        self.plan_id = cur_plan.id
+        self.project_name = cur_plan.name
+        self.date_submitted = datetime.today().date()
+        self.liquid_contact = User.query.get(cur_plan.user_id).username
+        cur_proj = cur_plan.projects.first()
+        self.liquid_project = cur_proj if cur_proj else 0
+        self.start_date = cur_plan.start_date
+        self.end_date = cur_plan.end_date
+        self.client_name = cur_plan.campaign.product.client.name
+        self.campaign = cur_plan.campaign.name
+        self.address = '138 Eucalyptus Drive, El Segundo, CA 90245'
+        self.phone = '310.450.2653'
+        self.fax = '310.450.2658'
+        self.total_project_budget = cur_plan.total_budget
+        self.ad_serving = cur_plan.total_budget * .007
+
 
 class PlanPhase(db.Model):
     id = db.Column(db.Integer, primary_key=True)

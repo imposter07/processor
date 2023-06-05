@@ -169,7 +169,9 @@ def save_topline():
         form_dict=phase_list, old_db_items=old_phase, db_model=PlanPhase,
         relation_db_item=cur_plan, form_search_name='phaseSelect')
     for phase_idx in data:
-        phase_name = data[phase_idx]['Phase'][0]['value']
+        phase_name = [
+            x for x in data[phase_idx]['Phase'] if
+            x['name'] == 'phaseSelect{}'.format(phase_idx)][0]['value']
         cur_phase = PlanPhase.query.filter_by(name=phase_name,
                                               plan_id=cur_plan.id).first()
         partner_data = data[phase_idx]['partner']
@@ -206,13 +208,15 @@ def edit_sow(object_name):
     kwargs['form'] = form
     current_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
     if not current_sow:
-        current_sow = Sow(plan_id=cur_plan.id)
+        current_sow = Sow()
+        current_sow.create_from_plan(cur_plan)
         db.session.add(current_sow)
         db.session.commit()
     if request.method == 'POST':
         form.validate()
         if not current_sow:
-            current_sow = Sow(plan_id=cur_plan.id)
+            current_sow = Sow()
+            current_sow.create_from_plan(cur_plan)
             db.session.add(current_sow)
             db.session.commit()
         current_sow.project_name = form.project_name.data

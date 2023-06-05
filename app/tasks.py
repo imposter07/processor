@@ -4958,6 +4958,11 @@ def get_sow(plan_id, current_user_id):
         from reportlab.lib.units import inch
         cur_plan = Plan.query.get(plan_id)
         cur_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
+        if not cur_sow:
+            cur_sow = Sow()
+            cur_sow.create_from_plan(cur_plan)
+            db.session.add(cur_sow)
+            db.session.commit()
         file_name = "SOW_{}.pdf".format(plan_id)
         c = canvas.Canvas(file_name, pagesize=letter)
         width, height = A4
@@ -4974,8 +4979,8 @@ def get_sow(plan_id, current_user_id):
         c.setFont('Helvetica-Bold', 7)
         c.drawString(100, t_pos - 50, "Project: {}".format(
             cur_sow.project_name))
-        c.drawString(100, t_pos - 60,
-                     "Advertiser project contact: " + cur_sow.project_contact)
+        cont = "Advertiser project contact: {}".format(cur_sow.project_contact)
+        c.drawString(100, t_pos - 60, cont)
         c.drawString(100, t_pos - 70, "Date submitted: {}".format(
             cur_sow.date_submitted.strftime("%m-%d-%Y")))
         c.drawString(100, t_pos - 80, "Total Project Budget: " + "${}".format(
@@ -5017,7 +5022,8 @@ def get_sow(plan_id, current_user_id):
         if 'Traditional' in sum_by_cat:
             trad = sum_by_cat['Traditional'] * 0.045
         ag_fee = digital + trad
-        camp_ttl = net_media + ag_fee + float(cur_sow.ad_serving) + program
+        as_cost = cur_sow.ad_serving if cur_sow.ad_serving else 0
+        camp_ttl = net_media + ag_fee + float(as_cost) + program
         styles = getSampleStyleSheet()
         style_n = styles["BodyText"]
         last_row = Paragraph(
@@ -5029,7 +5035,7 @@ def get_sow(plan_id, current_user_id):
             ["", ""],
             ["Net Media", '${:0,.2f}'.format(net_media)],
             ["Agency Fees", '${:0,.2f}'.format(ag_fee)],
-            ["Adserving Fees", '${:0,.2f}'.format(cur_sow.ad_serving)],
+            ["Adserving Fees", '${:0,.2f}'.format(as_cost)],
             ["Programmatic Agency Fees", '${:0,.2f}'.format(program)],
             ["", ""],
             ["Campaign Total", '${:0,.2f}'.format(camp_ttl)],
@@ -5170,12 +5176,13 @@ def download_topline(plan_id, current_user_id):
                 (199, 199, 199), (219, 219, 141)]
             color_map = [mcolors.rgb2hex([y / 255 for y in x]) for x in
                          color_map]
+
             styled = df.style.apply(
                 lambda x: ['background-color: {}; opacity:.5;'.format(
                     color_map[int(x.name) % 10]) if _ == True else '' for i, _
-                           in x.iteritems()], axis=1)
+                           in x.items()], axis=1)
             styled.to_excel(writer, sheet_name=phase.name, index=False)
-        writer.save()
+        writer.close()
         excel_file = get_file_in_memory(file_name, file_name='topline.xlsx')
         os.remove(file_name)
         _set_task_progress(100)

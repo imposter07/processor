@@ -23,7 +23,7 @@ function downloadTableResponse(tableName, pond, vendorKey, data) {
         if (['OutputDataSOW', 'billingInvoice'].includes(tableName)) {
             mimeType = 'application/pdf';
             extension = '.pdf';
-        } else if (tableName === 'OutputDataTopline') {
+        } else if (tableName === 'OutputDataToplineDownload') {
             mimeType = 'application/vnd.ms-excel';
             extension = '.xlsx';
         } else if (tableName === 'screenshotImage') {
@@ -112,7 +112,7 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
 function getTableComplete(tableName, pond, vendorKey, data){
     let dlTables = [
         'OutputDataRawDataOutput', 'download_raw_data', 'download_pacing_data',
-        'OutputDataSOW', 'OutputDataTopline', 'screenshotImage', 'billingInvoice'];
+        'OutputDataSOW', 'OutputDataToplineDownload', 'screenshotImage', 'billingInvoice'];
     if (dlTables.includes(tableName)) {
         downloadTableResponse(tableName, pond, vendorKey, data);
     }

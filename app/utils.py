@@ -295,7 +295,7 @@ class LiquidTable(object):
                  col_filter=True, search_bar=True, chart_btn=True,
                  df=pd.DataFrame(), row_on_click='', button_col=None,
                  table_buttons=None, highlight_type='blank',
-                 table_name='liquidTable'):
+                 download_table=False, table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -322,6 +322,7 @@ class LiquidTable(object):
         self.button_col = button_col
         self.table_buttons = table_buttons
         self.highlight_type = highlight_type
+        self.download_table = download_table
         self.df = df
         self.build_from_df()
         self.form_cols = self.check_form_cols(
@@ -329,6 +330,7 @@ class LiquidTable(object):
         self.rows_name = None
         self.top_rows_name = None
         self.liquid_table = True
+        self.table_buttons = self.create_buttons()
         self.cols = self.make_columns(
             self.col_list, self.select_val_dict, self.select_box,
             self.form_cols, self.metric_cols, self.def_metric_cols, self.header,
@@ -339,6 +341,15 @@ class LiquidTable(object):
             self.specify_form_cols, self.col_dict, self.table_name,
             self.new_modal_button, self.col_filter, self.search_bar,
             self.chart_btn, self.row_on_click, self.table_buttons)
+
+    def create_buttons(self):
+        if not self.table_buttons:
+            self.table_buttons = []
+        if self.download_table:
+            btn = {'icon': {'classList': ["fa-solid", "fa-download"]},
+                   'id': 'downloadBtn{}'.format(self.table_name)}
+            self.table_buttons.append(btn)
+        return self.table_buttons
 
     def build_from_df(self):
         if self.df.columns.tolist():

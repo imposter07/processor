@@ -1290,6 +1290,10 @@ function getTableOnClick(elem, imgToGet) {
     getTable(imgToGet, imgElem.id, 'None', vk);
 }
 
+function downloadLiquidTable() {
+    getTable('downloadTable', this.id, 'None', this.id);
+}
+
 function createLiquidTable(data, kwargs) {
     let tableName = kwargs['tableName'];
     let tableData = data['data'];
@@ -1337,4 +1341,5 @@ function createLiquidTable(data, kwargs) {
     addDatePicker();
     addOnClickEvent('button[id^=addRows]', addRowsOnClick);
     addOnClickEvent('button[id^=addTopRow]', addTopRowOnClick);
+    addOnClickEvent('button[id^=downloadBtn]', downloadLiquidTable);
 }

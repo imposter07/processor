@@ -5229,7 +5229,8 @@ def get_plan_placements(plan_id, current_user_id):
                 data.extend(place)
         df = pd.DataFrame(data)
         name = 'PlanPlacements'
-        lt = app_utl.LiquidTable(df=df, title=name, table_name=name)
+        lt = app_utl.LiquidTable(df=df, title=name, table_name=name,
+                                 download_table=True)
         _set_task_progress(100)
         return [lt.table_dict]
     except:
@@ -5628,5 +5629,22 @@ def write_billing_table(processor_id, current_user_id, new_data=None):
         _set_task_progress(100)
         msg = 'Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def download_table(object_id, current_user_id, function_name=None, **kwargs):
+    try:
+        _set_task_progress(0)
+        task_name = function_name.replace('.', '')
+        resp = globals()[task_name](object_id, current_user_id)
+        df = pd.DataFrame(resp[0]['data'])
+        download_file = get_file_in_memory(df)
+        _set_task_progress(100)
+        return [download_file]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Obj {} User {}'.format(
+            object_id, current_user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

@@ -992,7 +992,8 @@ class Processor(db.Model):
                      'billingTable': '.get_billing_table',
                      'billingInvoice': '.get_billing_invoice',
                      'brandtracker_imports': '.get_brandtracker_imports',
-                     'request_table': '.get_request_table'}
+                     'request_table': '.get_request_table',
+                     'downloadTable': '.download_table'}
         return arg_trans
 
     def get_import_form_dicts(self, reverse_sort_apis=False):

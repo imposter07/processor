@@ -112,7 +112,8 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
 function getTableComplete(tableName, pond, vendorKey, data){
     let dlTables = [
         'OutputDataRawDataOutput', 'download_raw_data', 'download_pacing_data',
-        'OutputDataSOW', 'OutputDataToplineDownload', 'screenshotImage', 'billingInvoice'];
+        'OutputDataSOW', 'OutputDataToplineDownload', 'screenshotImage', 'billingInvoice',
+        'downloadTable'];
     if (dlTables.includes(tableName)) {
         downloadTableResponse(tableName, pond, vendorKey, data);
     }

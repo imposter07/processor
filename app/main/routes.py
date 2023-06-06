@@ -899,6 +899,7 @@ def get_table_arguments():
     proc_arg = {'running_user': cur_user.id}
     cur_obj = request.form['object_type']
     table_name = request.form['table']
+    vk = request.form['vendorkey']
     if cur_obj == 'Processor':
         cur_obj = Processor
         cur_proc = cur_obj.query.filter_by(
@@ -919,6 +920,11 @@ def get_table_arguments():
     else:
         cur_proc = current_user
         cur_proc.name = cur_proc.username
+    if table_name == 'downloadTable':
+        jn, tn, proc_arg = translate_table_name_to_job(
+            table_name=vk.replace('downloadBtn', ''), proc_arg=proc_arg)
+        proc_arg['function_name'] = jn
+        vk = 'None'
     job_name, table_name, proc_arg = translate_table_name_to_job(
         table_name=table_name, proc_arg=proc_arg)
     if cur_proc.get_task_in_progress(job_name):
@@ -949,7 +955,7 @@ def get_table_arguments():
         if job_name == '.get_request_table':
             proc_arg['fix_id'] = request.form['fix_id']
             table_name = table_name + '-' + request.form['fix_id']
-    if request.form['vendorkey'] != 'None':
+    if vk != 'None':
         proc_arg['vk'] = request.form['vendorkey']
         if not table_name in ['toplineMetrics']:
             table_name = '{}vendorkey{}'.format(
@@ -971,7 +977,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
             df = job.result[0]
         else:
             df = pd.DataFrame([{'Result': 'AN UNEXPECTED ERROR OCCURRED.'}])
-    dl_table = table_name in ['SOW', 'ToplineDownload']
+    dl_table = table_name in ['SOW', 'ToplineDownload', 'downloadTable']
     dl_table_1 = (
         'parameter' in proc_arg and (proc_arg['parameter'] == 'RawDataOutput' or
                                      proc_arg['parameter'] == 'Download'))

@@ -693,7 +693,7 @@ def edit_processor_import(object_name):
         form_class = BrandTrackerImportForm
     apis = form_class().set_apis(kwargs['processor'])
     form = form_class(apis=apis)
-    form.set_vendor_type_choices()
+    form.set_vendor_key_choices(current_processor_id=cur_proc.id)
     kwargs['form'] = form
     for api in form.apis:
         if api.delete.data:
@@ -763,7 +763,6 @@ def add_processor_import():
     new_api = APIForm(formdata=None)
     kwargs['apis'].insert(0, new_api.data)
     form = form_class(formdata=None, **kwargs)
-    form.set_vendor_type_choices()
     import_form = render_template('_form.html', form=form)
     return jsonify({'form': import_form})
 
@@ -779,7 +778,6 @@ def delete_processor_import():
     kwargs = orig_form.data
     del kwargs['apis'][delete_id]
     form = form_class(formdata=None, **kwargs)
-    form.set_vendor_type_choices()
     import_form = render_template('_form.html', form=form)
     return jsonify({'form': import_form})
 

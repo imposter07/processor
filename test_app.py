@@ -5,13 +5,14 @@ import processor.reporting.utils as utl
 from datetime import datetime, timedelta
 from app import create_app, db
 from app.models import User, Post
-from config import Config
+from config import Config, basedir
 from multiprocessing import Process
 
 
 class TestConfig(Config):
-    SQLALCHEMY_DATABASE_URI = 'sqlite://'
-
+    SQLALCHEMY_DATABASE_URI = ('sqlite:///'
+                               + os.path.join(basedir, 'app-test.db'))
+    TESTING = True
 
 def run_server(with_run=True):
     app = create_app(TestConfig)
@@ -146,7 +147,9 @@ class TestUserLogin:
         create_url = '{}create_processor'.format(self.base_url)
         sw.go_to_url(create_url)
         assert sw.browser.current_url == create_url
-        form_names = ['cur_client', 'cur_product', 'cur_campaign', 'description']
+        form_names = ['cur_client-selectized',
+                      'cur_product-selectized',
+                      'cur_campaign-selectized', 'description']
         elem_form = [('test', x) for x in form_names]
         elem_form += [('Base Processor', 'name')]
         sw.send_keys_from_list(elem_form)

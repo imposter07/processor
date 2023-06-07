@@ -55,7 +55,7 @@ class MessageForm(FlaskForm):
 
 
 class ProcessorForm(FlaskForm):
-    name = StringField(_l('Name'), render_kw={'readonly': True}, validators=[
+    name = StringField(_l('Name'), render_kw={'readonly': False}, validators=[
         DataRequired(), Regexp("[^']", message='Remove special characters')])
     description = StringField(_l('Description'), validators=[
         DataRequired()])
@@ -186,6 +186,7 @@ class EditProcessorForm(ProcessorForm):
     def __init__(self, original_name, *args, **kwargs):
         super(EditProcessorForm, self).__init__(*args, **kwargs)
         self.original_name = original_name
+        self.name.render_kw['readonly'] = True
 
     def validate_name(self, name):
         if name.data != self.original_name:

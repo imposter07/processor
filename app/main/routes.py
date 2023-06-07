@@ -551,14 +551,15 @@ def processor():
 @login_required
 def create_processor():
     form = ProcessorForm()
+    form.set_choices()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     if request.method == 'POST':
         form.validate()
-        form_client = Client(name=form.client_name).check_and_add()
-        form_product = Product(
-            name=form.product_name, client_id=form_client.id).check_and_add()
-        form_campaign = Campaign(
-            name=form.campaign_name, product_id=form_product.id).check_and_add()
+        form_client = Client(name=form.cur_client.data).check_and_add()
+        form_product = Product(name=form.cur_product.data,
+                               client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(name=form.cur_campaign.data,
+                                 product_id=form_product.id).check_and_add()
         new_processor = Processor(
             name=form.name.data, description=form.description.data,
             user_id=current_user.id, created_at=datetime.utcnow(),

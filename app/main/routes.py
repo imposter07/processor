@@ -5,6 +5,7 @@ import json
 import zipfile
 import pandas as pd
 import app.utils as utl
+import datetime as dt
 from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, g, \
     jsonify, current_app, send_file
@@ -13,23 +14,24 @@ from flask_babel import _, get_locale
 from guess_language import guess_language
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
-    ProcessorForm, EditProcessorForm, ImportForm, APIForm, ProcessorCleanForm,\
-    ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm,\
+    ProcessorForm, EditProcessorForm, ImportForm, APIForm, ProcessorCleanForm, \
+    ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm, \
     GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
-    GeneralConversionForm, ProcessorRequestFinishForm,\
-    ProcessorContinueForm, ProcessorFixForm, ProcessorRequestCommentForm,\
-    ProcessorDuplicateForm, EditUploaderMediaPlanForm,\
-    EditUploaderNameCreateForm, EditUploaderCreativeForm,\
-    UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm,\
-    PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm,\
-    ProcessorNoteForm, ProcessorAutoAnalysisForm, WalkthroughUploadForm,\
-    ProcessorPlanForm, UploadTestForm, ScreenshotForm, BrandTrackerImportForm
+    GeneralConversionForm, ProcessorRequestFinishForm, \
+    ProcessorContinueForm, ProcessorFixForm, ProcessorRequestCommentForm, \
+    ProcessorDuplicateForm, EditUploaderMediaPlanForm, \
+    EditUploaderNameCreateForm, EditUploaderCreativeForm, \
+    UploaderDuplicateForm, ProcessorDashboardForm, ProcessorCleanDashboardForm, \
+    PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm, \
+    ProcessorNoteForm, ProcessorAutoAnalysisForm, ProcessorReportBuilderForm, \
+    WalkthroughUploadForm, ProcessorPlanForm, UploadTestForm, ScreenshotForm, \
+        BrandTrackerImportForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project, \
-    Notes, Tutorial, TutorialStage, Task, Plan, Walkthrough, Conversation, \
-    Chat, WalkthroughSlide
+    Notes, ProcessorReports, Tutorial, TutorialStage, Task, Plan, Walkthrough, \
+    Conversation, Chat, WalkthroughSlide
 
 from app.translate import translate
 from app.main import bp
@@ -189,7 +191,6 @@ def get_processor_body():
 @login_required
 def get_processor_by_user():
     response = {}
-    import datetime as dt
     processors = Processor.query.order_by(Processor.created_at)
     seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
     if 'filter_dict' in request.form:
@@ -207,7 +208,6 @@ def get_processor_by_user():
 @bp.route('/get_project_numbers', methods=['GET', 'POST'])
 @login_required
 def get_project_numbers():
-    import datetime as dt
     processors = Processor.query.order_by(Processor.created_at)
     seven_days_ago = dt.datetime.today() - dt.timedelta(days=7)
     if 'filter_dict' in request.form:
@@ -860,7 +860,8 @@ def post_table():
                  'raw_file_comparison': '.write_raw_file_from_tmp',
                  'get_plan_property': '.write_plan_property',
                  'change_dictionary_order': '.write_dictionary_order',
-                 'billingTable': '.write_billing_table'}
+                 'billingTable': '.write_billing_table',
+                 'reportBuilder': '.write_report_builder'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',
                       'dictionary_order']:
@@ -1010,7 +1011,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])
             if 'vk' in proc_arg and job_name not in [
-                    '.check_processor_plan' '.apply_processor_plan']:
+                '.check_processor_plan' '.apply_processor_plan']:
                 table_name = '{}vendorkey{}'.format(
                     table_name, request.form['vendorkey'].replace(' ', '___'))
     table_name = "modalTable{}".format(table_name)
@@ -1343,7 +1344,7 @@ def edit_processor_billing(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_billing_upload_file(object_name):
-    current_key, object_name, object_form, object_level =\
+    current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request, object_name)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
@@ -1617,7 +1618,7 @@ def edit_request_processor(object_name):
           methods=['GET', 'POST'])
 @login_required
 def edit_processor_plan_upload_file(object_name):
-    current_key, object_name, object_form, object_level =\
+    current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request, object_name)
     cur_proc = Processor.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
@@ -2233,6 +2234,7 @@ def get_auto_note():
     cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
     note_name = request.form['note_name']
     sub_note_name = request.form['sub_note_name']
+    args = {'email': False}
     form = ProcessorAutoAnalysisForm()
     form = render_template('_form.html', form=form)
     raw_html = ''
@@ -2241,16 +2243,17 @@ def get_auto_note():
     import processor.reporting.analyze as az
     if note_name == 'Topline':
         analysis = ProcessorAnalysis.query.filter_by(
-            processor_id=cur_proc.id, key=az.Analyze.topline_col).first()
+            processor_id=cur_proc.id, key=az.Analyze.topline_col,
+            parameter=az.Analyze.topline_col).first()
         buttons = ['Total', 'Two Week', 'Last Week']
         button_dict = [{'name': x, 'active': x == sub_note_name}
                        for x in buttons]
     elif note_name == 'All':
         task = cur_proc.launch_task(
             '.build_processor_analysis_email', _('Getting processor analysis.'),
-            running_user=current_user.id)
+            running_user=current_user.id, **args)
         db.session.commit()
-        job = task.wait_and_get_job(loops=20)
+        job = task.wait_and_get_job(loops=20, force_return=True)
         job_result = job.result[0]
         raw_html = render_template('processor_auto_analysis.html',
                                    analysis=job_result)
@@ -2270,6 +2273,58 @@ def get_auto_note():
                     'buttons': button_dict,
                     'data_message': analysis,
                     'raw_html': raw_html})
+
+
+@bp.route('/get_report_builder', methods=['GET', 'POST'])
+@login_required
+def get_report_builder():
+    obj_name = request.form['object_name']
+    cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
+    report_name = request.form['name']
+    report_date = request.form['date']
+    processor_reports = ProcessorReports.query.filter_by(
+        processor_id=cur_proc.id, report_date=report_date).all()
+    report_names = [x.report_name for x in processor_reports]
+    processor_report = ProcessorReports.query.filter_by(
+        processor_id=cur_proc.id, report_name=report_name,
+        report_date=report_date).first()
+    report = json.loads(processor_report.report)
+    return jsonify({'data': report, 'report_names': report_names})
+
+
+@bp.route('/processor/<object_name>/edit/report_builder',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_report_builder(object_name):
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='edit_processor_report_builder',
+        edit_progress=100, edit_name='Report Builder',
+        buttons='ProcessorNote')
+    cur_proc = kwargs['processor']
+    today = datetime.utcnow().date()
+    processor_reports = ProcessorReports.query.filter_by(
+        processor_id=cur_proc.id, report_date=today).all()
+    if not processor_reports:
+        processor_reports = ProcessorReports.query.filter_by(
+            processor_id=cur_proc.id).order_by(
+            ProcessorReports.report_date.desc()).first()
+        processor_reports = ProcessorReports.query.filter_by(
+            processor_id=cur_proc.id, report_date=processor_reports.report_date
+        ).all()
+    default = ('Auto' if 'Auto' in [x.report_name for x in processor_reports]
+               else processor_reports[0].report_name)
+    form = ProcessorReportBuilderForm(
+        names=[(x.report_name, x.report_name) for x in processor_reports],
+        default_name=default, default_date=processor_reports[0].report_date)
+    kwargs['form'] = form
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.processor_page',
+                                    object_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_report_builder',
+                                    object_name=cur_proc.name))
+    return render_template('create_processor.html', **kwargs)
 
 
 @bp.route('/uploader')
@@ -2345,7 +2400,6 @@ def check_base_uploader_object(uploader_id, object_level='Campaign',
 
 def check_relation_uploader_objects(uploader_id, object_level='Campaign',
                                     uploader_type='Facebook'):
-    import datetime as dt
     import uploader.upload.fbapi as up_fbapi
     import uploader.upload.awapi as up_awapi
     import uploader.upload.dcapi as up_dcapi

@@ -344,9 +344,9 @@ function getTableAsArray(tableId, cols=[]) {
         row = {}
         for (var j = 0, col; col = rows[0].cells[j]; j++) {
             if ((cols.length === 0) || (cols.includes(rows[0].cells[j].innerHTML))) {
-            let col_name = rows[0].cells[j].innerText;
-            let row_value = rows[i].cells[j].innerText;
-            row[col_name] = row_value
+                let col_name = rows[0].cells[j].innerText.replace(/(\r\n|\n|\r)/gm, "");
+                let row_value = rows[i].cells[j].innerText.replace(/(\r\n|\n|\r)/gm, "");
+                row[col_name] = row_value
             }
         }
         tableArray.push(row)

@@ -70,13 +70,11 @@ class SearchableMixin(db.Model):
 db.event.listen(db.session, 'before_commit', SearchableMixin.before_commit)
 db.event.listen(db.session, 'after_commit', SearchableMixin.after_commit)
 
-
 followers = db.Table(
     'followers',
     db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
     db.Column('followed_id', db.Integer, db.ForeignKey('user.id'))
 )
-
 
 processor_followers = db.Table(
     'processor_followers',
@@ -84,13 +82,11 @@ processor_followers = db.Table(
     db.Column('followed_id', db.Integer, db.ForeignKey('processor.id'))
 )
 
-
 project_number_processor = db.Table(
     'project_number_processor',
     db.Column('project_id', db.Integer, db.ForeignKey('project.id')),
     db.Column('processor_id', db.Integer, db.ForeignKey('processor.id'))
 )
-
 
 user_tutorial = db.Table(
     'user_tutorial',
@@ -99,13 +95,11 @@ user_tutorial = db.Table(
     db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
 )
 
-
 project_number_plan = db.Table(
     'project_number_plan',
     db.Column('project_id', db.Integer, db.ForeignKey('project.id')),
     db.Column('plan_id', db.Integer, db.ForeignKey('plan.id'))
 )
-
 
 processor_plan = db.Table(
     'processor_plan',
@@ -153,6 +147,8 @@ class User(UserMixin, db.Model):
     schedule = db.relationship('TaskScheduler', backref='user', lazy='dynamic')
     dashboard = db.relationship('Dashboard', backref='user', lazy='dynamic')
     notes = db.relationship('Notes', backref='user', lazy='dynamic')
+    processor_reports = db.relationship('ProcessorReports',
+                                        backref='user', lazy='dynamic')
     tutorial_stages_completed = db.relationship(
         'TutorialStage', secondary=user_tutorial,
         primaryjoin=(user_tutorial.c.user_id == id),
@@ -192,12 +188,12 @@ class User(UserMixin, db.Model):
     def followed_posts(self):
         followed = Post.query.join(
             followers, (followers.c.followed_id == Post.user_id)).filter(
-                followers.c.follower_id == self.id)
+            followers.c.follower_id == self.id)
         own = Post.query.filter_by(user_id=self.id)
         processor_followed = Post.query.join(
             processor_followers, (processor_followers.c.followed_id ==
                                   Post.processor_id)).filter(
-                processor_followers.c.follower_id == self.id)
+            processor_followers.c.follower_id == self.id)
         all_posts = followed.union(own).union(processor_followed).order_by(
             Post.timestamp.desc())
         return all_posts
@@ -616,6 +612,8 @@ class Processor(db.Model):
     notes = db.relationship('Notes', backref='processor', lazy='dynamic')
     processor_analysis = db.relationship('ProcessorAnalysis',
                                          backref='processor', lazy='dynamic')
+    processor_reports = db.relationship('ProcessorReports',
+                                       backref='processor', lazy='dynamic')
     dashboard = db.relationship(
         'Dashboard', backref='processor', lazy='dynamic')
     projects = db.relationship(
@@ -897,7 +895,9 @@ class Processor(db.Model):
         elif buttons == 'ProcessorNote':
             buttons = [{'New Note': ['main.edit_processor_note']},
                        {'All Notes': ['main.edit_processor_all_notes']},
-                       {'Automatic Notes': ['main.edit_processor_auto_notes']}]
+                       {'Automatic Notes': ['main.edit_processor_auto_notes']},
+                       {'Report Builder': ['main.edit_processor_report_builder']
+                        }]
         elif buttons == 'ProcessorDuplicate':
             buttons = [{'Duplicate': ['main.edit_processor_duplication']}]
         elif buttons == 'ProcessorDashboard':
@@ -1493,6 +1493,25 @@ class ProcessorAnalysis(db.Model):
     filter_val = db.Column(db.Text)
     split_col = db.Column(db.Text)
 
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k not in [
+                         'id', 'processor_id', 'date']])
+
+
+class ProcessorReports(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    report = db.Column(db.JSON)
+    report_name = db.Column(db.String(128), index=True)
+    report_date = db.Column(db.Date, default=datetime.utcnow().date())
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k not in [
+                         'id', 'processor_id']])
+
 
 class Dashboard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1564,7 +1583,7 @@ class DashboardFilter(db.Model):
     def get_converted_form_dict(self):
         form_dict = {
             self.convert_string_to_list(self.filter_col)[0]:
-            self.convert_string_to_list(self.filter_val)
+                self.convert_string_to_list(self.filter_val)
         }
         return form_dict
 
@@ -1638,7 +1657,7 @@ class Tutorial(db.Model):
     def tutorial_completed(self, tutorial_user):
         last_stage = len(self.tutorial_stage.all())
         user_complete = tutorial_user.tutorial_stages_completed.filter_by(
-            tutorial_level=last_stage-1, tutorial_id=self.id).first()
+            tutorial_level=last_stage - 1, tutorial_id=self.id).first()
         return user_complete
 
 

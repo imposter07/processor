@@ -2,9 +2,11 @@
 <p>Today's campaign analysis for a processor you follow is below.</p>
 <p>This processor can be found at: https://lqadata.com/processor/{{ processor_name }}</p>
 {% for x in analysis %}
-    <p style="margin-left:{{ x['tab'] * 2 }}em;">{{ x['message'] }}</p>
-    {% if 'data' in x %}
-        <p style="margin-left:{{ x['tab'] * 2 }}em;">{{ x['data'].to_html()|safe }}</p>
+    {% if x['selected'] == 'true' %}
+        <p style="margin-left:{{ x['tab'] * 2 }}em;">{{ x['message'] }}</p>
+        {% if 'data' in x %}
+            <p style="margin-left:{{ x['tab'] * 2 }}em;">{{ x['df'].to_html()|safe }}</p>
+        {% endif %}
     {% endif %}
 {% endfor %}
 <p>Sincerely,</p>

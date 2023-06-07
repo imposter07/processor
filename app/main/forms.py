@@ -7,7 +7,7 @@ from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
 from wtforms_sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length, Regexp
 from flask_babel import _, lazy_gettext as _l
-from app.models import User, Processor, Client, Product, Campaign, Uploader,\
+from app.models import User, Processor, Client, Product, Campaign, Uploader, \
     RateCard, ProcessorDatasources, ProcessorAnalysis
 import processor.reporting.dictcolumns as dctc
 import processor.reporting.vmcolumns as vmc
@@ -773,6 +773,19 @@ class ProcessorAutoAnalysisForm(FlaskForm):
         choices=[(x, x) for x in ['Topline', 'Delivery', 'KPI', 'QA', 'All']])
     datasources = FieldList(FormField(DataSourceForm, label=''))
     form_continue = HiddenField('form_continue')
+
+
+class ProcessorReportBuilderForm(FlaskForm):
+    name = SelectField(_('Report Name'))
+    report_date = DateField(_l('Report End Date'), format='%Y-%m-%d')
+    datasources = FieldList(FormField(DataSourceForm, label=''))
+    form_continue = HiddenField('form_continue')
+
+    def __init__(self, names, default_name, default_date, *args, **kwargs):
+        super(ProcessorReportBuilderForm, self).__init__(*args, **kwargs)
+        self.name.choices = names
+        self.name.default = default_name
+        self.report_date.data = default_date
 
 
 class WalkthroughUploadForm(FlaskForm):

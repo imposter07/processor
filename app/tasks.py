@@ -21,7 +21,7 @@ from app.models import User, Post, Task, Processor, Message, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
-    Partner
+    ProcessorReports, Partner
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -273,7 +273,7 @@ def run_processor(processor_id, current_user_id, run_args):
         copy_processor_local(old_file_path, copy_back=True)
         if 'analyze' in run_args:
             task_functions = [get_processor_sources, update_analysis_in_db,
-                              update_automatic_requests]
+                              update_report_in_db, update_automatic_requests]
             for task_function in task_functions:
                 os.chdir(cur_path)
                 task_function(processor_id, current_user_id)
@@ -1167,7 +1167,7 @@ def get_rate_card(processor_id, current_user_id, vk):
         else:
             for row in rate_card.rates:
                 rate_list.append(dict((col, getattr(row, col))
-                                 for col in row.__table__.columns.keys()
+                                      for col in row.__table__.columns.keys()
                                       if 'id' not in col))
         df = pd.DataFrame(rate_list)
         df = df[[Rates.type_name.name, Rates.adserving_fee.name,
@@ -1426,10 +1426,10 @@ def get_uploader_relation_values_from_position(rel_pos, df, vk, object_level,
         df = pd.DataFrame([
             {'Result': 'RELATION VALUE {} IS GREATER THAN THE MAX {}.  '
                        'CHANGE RELATION POSITIONS'.format(
-                            max(rel_pos), max_split)}])
+                max(rel_pos), max_split)}])
         return df
     new_values = list(itertools.product(*[cdf[x].dropna().unique().tolist()
-                      for x in rel_pos]))
+                                          for x in rel_pos]))
     new_values = ['|'.join(map(str, x)) for x in new_values]
     new_values = [x for x in new_values
                   if x not in df['column_value'].unique().tolist()]
@@ -1483,7 +1483,7 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
                     uploader_type=uploader_type)
             else:
                 df = pd.DataFrame([
-                    {'Result': 'RELATION DOES NOT HAVE A POSITION SET ONE ' 
+                    {'Result': 'RELATION DOES NOT HAVE A POSITION SET ONE '
                                'AND REMOVE CONSTANT'}])
         _set_task_progress(100)
         return [df]
@@ -1981,28 +1981,31 @@ def set_conversions(processor_id, current_user_id):
                     if key == vmc.api_dc_key:
                         total_conv = '|'.join(
                             ['{} : {}: Total Conversions'.format(
-                             x.dcm_category, x.conversion_name) for x in conv])
+                                x.dcm_category, x.conversion_name) for x in
+                                conv])
                         matrix.vm_change(idx, col, total_conv)
                         pc_conv = '|'.join(
                             ['{} : {}: Click-through Conversions'.format(
-                             x.dcm_category, x.conversion_name) for x in conv])
+                                x.dcm_category, x.conversion_name) for x in
+                                conv])
                         matrix.vm_change(idx, col + vmc.postclick, pc_conv)
                         pi_conv = '|'.join(
                             ['{} : {}: View-through Conversions'.format(
-                             x.dcm_category, x.conversion_name) for x in conv])
+                                x.dcm_category, x.conversion_name) for x in
+                                conv])
                         matrix.vm_change(idx, col + vmc.postimp, pi_conv)
                     elif key == vmc.api_szk_key:
                         total_conv = '|'.join(
                             ['{} Total Conversions'.format(
-                             x.conversion_name) for x in conv])
+                                x.conversion_name) for x in conv])
                         matrix.vm_change(idx, col, total_conv)
                         pc_conv = '|'.join(
                             ['{} Post Click Conversions'.format(
-                             x.conversion_name) for x in conv])
+                                x.conversion_name) for x in conv])
                         matrix.vm_change(idx, col + vmc.postclick, pc_conv)
                         pi_conv = '|'.join(
                             ['{} Post Impression Conversions'.format(
-                             x.conversion_name) for x in conv])
+                                x.conversion_name) for x in conv])
                         matrix.vm_change(idx, col + vmc.postimp, pi_conv)
                     else:
                         total_conv = '|'.join(['{}'.format(
@@ -2338,15 +2341,15 @@ def send_app_monthly_email(processor_id, current_user_id):
             text_body = build_app_monthly_email(cur_user.id)
             send_email('[Liquid App] | Monthly Update | {}'.format(
                 datetime.today().date().strftime('%Y-%m-%d')),
-                       sender=app.config['ADMINS'][0],
-                       recipients=[cur_user.email],
-                       text_body=render_template(
-                           'email/app_monthly_updates.txt', user=cur_user,
-                           analysis=text_body),
-                       html_body=render_template(
-                           'email/app_monthly_updates.html', user=cur_user,
-                           analysis=text_body),
-                       sync=True)
+                sender=app.config['ADMINS'][0],
+                recipients=[cur_user.email],
+                text_body=render_template(
+                    'email/app_monthly_updates.txt', user=cur_user,
+                    analysis=text_body),
+                html_body=render_template(
+                    'email/app_monthly_updates.html', user=cur_user,
+                    analysis=text_body),
+                sync=True)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
@@ -3216,9 +3219,9 @@ def duplicate_uploader_objects(uploader_id, current_user_id, old_uploader_id):
         create_base_uploader_objects(uploader_id)
         for object_level in ['Campaign', 'Adset', 'Ad']:
             upo = UploaderObjects.query.filter_by(
-                uploader_id=uploader_id,  object_level=object_level).first()
+                uploader_id=uploader_id, object_level=object_level).first()
             old_upo = UploaderObjects.query.filter_by(
-                uploader_id=old_uploader_id,  object_level=object_level).first()
+                uploader_id=old_uploader_id, object_level=object_level).first()
             old_up_dict = old_upo.to_dict()
             for k, v in old_up_dict.items():
                 upo.__setattr__(k, v)
@@ -3298,12 +3301,12 @@ def get_processor_total_metrics_file(processor_id, current_user_id):
         df = df.join(tdf)
         df = df.join(twdf)
         df['change'] = (
-            (df['new_value'].str.replace(',', '').str.replace(
-                '$', '').astype(float) -
-             df['old_value'].str.replace(',', '').str.replace(
-                 '$', '').astype(float)) /
-            df['old_value'].str.replace(',', '').str.replace(
-                 '$', '').astype(float))
+                (df['new_value'].str.replace(',', '').str.replace(
+                    '$', '').astype(float) -
+                 df['old_value'].str.replace(',', '').str.replace(
+                     '$', '').astype(float)) /
+                df['old_value'].str.replace(',', '').str.replace(
+                    '$', '').astype(float))
         df['change'] = df['change'].round(4)
         df = df.replace([np.inf, -np.inf], np.nan)
         df = df.fillna(0)
@@ -3488,13 +3491,6 @@ def get_processor_topline_metrics(processor_id, current_user_id, vk=None):
             tdf = tdf.rename(columns=cols)
             analyze_topline = az.Analyze(df=tdf)
             df = analyze_topline.generate_topline_metrics()
-        final_metrics = az.Analyze.topline_metrics_final
-        final_metrics = [x for x in final_metrics
-                         if x in df.index.to_list()]
-        df = df.reindex(final_metrics)
-        df = df.replace([np.inf, -np.inf], np.nan)
-        df = df.fillna(0)
-        df = df.reset_index().rename(columns={'index': 'Topline Metrics'})
         lt = app_utl.LiquidTable(df=df, table_name='toplineMetrics',
                                  col_filter=False, chart_btn=False,
                                  search_bar=False)
@@ -4358,28 +4354,46 @@ def update_analysis_in_db(processor_id, current_user_id):
         return False
 
 
-def add_text_body(text_body, msg, tab, data=pd.DataFrame()):
-    text_dict = {'message': '{}\n'.format(msg), 'tab': tab}
-    if not data.empty:
-        text_dict['data'] = data
+def add_text_body(text_body, msg, tab, key=None, param=None, param2=None,
+                  split=None, style=None):
+    text_dict = {'key': key, 'parameter': param, 'parameter_2': param2,
+                 'split_col': split, 'message': '{}\n'.format(msg), 'tab': tab,
+                 'format': style}
     text_body.append(text_dict)
     return text_body
 
 
+def add_analysis_to_text_body(text_body, analysis, tab, header=None, table=True,
+                              email=True):
+    analysis_dict = analysis.to_dict()
+    analysis_dict['message'] = '{}\n'.format(analysis_dict['message'])
+    analysis_dict['tab'] = tab
+    if analysis.data and table:
+        df = pd.DataFrame(analysis.data)
+        if not df.empty:
+            lt = app_utl.LiquidTable(df=df, table_name=header,
+                                     col_filter=False, chart_btn=False,
+                                     search_bar=False)
+            analysis_dict['data'] = lt.table_dict
+            if email:
+                analysis_dict['df'] = df
+    else:
+        del analysis_dict['data']
+    text_body.append(analysis_dict)
+    return text_body
+
+
 def analysis_email_basic(processor_id, current_user_id, text_body, header,
-                         full_analysis, analysis_keys, tab=0, param='key'):
+                         full_analysis, analysis_keys, tab=0, param='key',
+                         email=True):
     try:
         analysis = [
             x for x in full_analysis if x.__dict__[param] in analysis_keys]
-        text_body = add_text_body(text_body, header, tab=tab)
+        text_body = add_text_body(text_body, header, tab=tab,
+                                  key=analysis_keys, style='HEADING_1')
         for a in analysis:
-            if not a.data:
-                text_body = add_text_body(text_body, a.message, tab=tab + 1)
-            else:
-                df = pd.DataFrame(a.data)
-                if not df.empty:
-                    text_body = add_text_body(text_body, a.message,
-                                              tab=tab+1, data=df)
+            text_body = add_analysis_to_text_body(text_body, a, tab, header,
+                                                  email=email)
         return text_body
     except:
         _set_task_progress(100)
@@ -4390,31 +4404,40 @@ def analysis_email_basic(processor_id, current_user_id, text_body, header,
 
 
 def analysis_email_kpi(processor_id, current_user_id, text_body, header,
-                       full_analysis, analysis_keys):
+                       full_analysis, analysis_keys, email=True):
     try:
         analysis = [x for x in full_analysis if x.key in analysis_keys]
-        text_body = add_text_body(text_body, header, tab=0)
+        text_body = add_text_body(text_body, header, tab=0, key=analysis_keys,
+                                  style='HEADING_1')
         kpis = set(x.parameter for x in analysis
                    if x.parameter not in ['0', 'nan'])
         for kpi in kpis:
-            text_body = add_text_body(text_body, kpi, tab=1)
+            text_body = add_text_body(text_body, kpi, tab=1,
+                                      key=analysis_keys[0], style='HEADING_2')
             cur_analysis = [x for x in analysis if x.parameter == kpi]
-            text_body = add_text_body(text_body, 'Partner', tab=2)
+            text_body = add_text_body(text_body, 'Partner', tab=2,
+                                      key=analysis_keys[0], param=kpi,
+                                      style='HEADING_2')
             par_analysis = [x for x in cur_analysis if x.split_col == dctc.VEN]
             for a in par_analysis:
-                df = pd.DataFrame(a.data)
-                text_body = add_text_body(text_body, a.message, 3, df)
+                text_body = add_analysis_to_text_body(text_body, a, 3, header,
+                                                      email=email)
                 partners = pd.DataFrame(a.data)[dctc.VEN].to_list()
                 for p in partners:
-                    text_body = add_text_body(text_body, p, 3)
+                    text_body = add_text_body(text_body, p, 3,
+                                              key=a.key, param=a.parameter,
+                                              param2=a.parameter_2,
+                                              split=a.split_col,
+                                              style='HEADING_3')
                     ind_par_anlaysis = [x for x in cur_analysis
                                         if x.filter_val == p
                                         and x.parameter_2 == a.parameter_2]
                     for ind_par in ind_par_anlaysis:
-                        text_body = add_text_body(text_body, ind_par.message, 4)
+                        text_body = add_analysis_to_text_body(
+                            text_body, ind_par, 4, table=False, email=email)
             analysis_email_basic(
                 processor_id, current_user_id, text_body, vmc.date,
-                cur_analysis, [vmc.date], tab=2, param='split_col')
+                cur_analysis, [vmc.date], tab=2, param='split_col', email=email)
         return text_body
     except:
         _set_task_progress(100)
@@ -4424,7 +4447,7 @@ def analysis_email_kpi(processor_id, current_user_id, text_body, header,
         return []
 
 
-def build_processor_analysis_email(processor_id, current_user_id):
+def build_processor_analysis_email(processor_id, current_user_id, email=True):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
@@ -4435,16 +4458,17 @@ def build_processor_analysis_email(processor_id, current_user_id):
             ('DELIVERY',
              [az.Analyze.delivery_col, az.Analyze.delivery_comp_col],
              analysis_email_basic),
-            ('KPI ANALYSIS', [az.Analyze.kpi_col], analysis_email_kpi),
-            ('REPORTING QA',
-             [az.Analyze.unknown_col, az.Analyze.raw_file_update_col],
-             analysis_email_basic)
+            ('KPI ANALYSIS', [az.Analyze.kpi_col], analysis_email_kpi)
         ]
+        if email:
+            arguments.append(('REPORTING QA', [az.Analyze.unknown_col,
+                                               az.Analyze.raw_file_update_col],
+                              analysis_email_basic))
         for arg in arguments:
             text_body = arg[2](
                 processor_id, current_user_id, text_body=text_body,
                 header=arg[0], full_analysis=analysis,
-                analysis_keys=arg[1])
+                analysis_keys=arg[1], email=email)
         _set_task_progress(100)
         return [text_body]
     except:
@@ -4453,6 +4477,90 @@ def build_processor_analysis_email(processor_id, current_user_id):
             'Unhandled exception - Processor {} User {}'.format(
                 processor_id, current_user_id), exc_info=sys.exc_info())
         return []
+
+
+def update_report_in_db(processor_id, current_user_id,
+                        new_data=None, report_name='Auto',
+                        report_date=datetime.utcnow().date()):
+    try:
+        _set_task_progress(0)
+        if not new_data:
+            text_body = build_processor_analysis_email(
+                processor_id, current_user_id, email=False)
+            new_data = json.dumps({'report': text_body})
+            report_date = datetime.utcnow().date()
+        old_report = ProcessorReports.query.filter_by(
+            processor_id=processor_id, report_name=report_name,
+            report_date=report_date).first()
+        if old_report:
+            old_report.report = new_data
+        else:
+            processor_report = ProcessorReports(
+                processor_id=processor_id, user_id=current_user_id,
+                report_name=report_name, report=new_data,
+                report_date=report_date)
+            db.session.add(processor_report)
+        db.session.commit()
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Processor {} User {}'.format(
+            processor_id, current_user_id), exc_info=sys.exc_info())
+        processor_to_run = Processor.query.get(processor_id)
+        user_that_ran = User.query.get(current_user_id)
+        msg_text = ("{} run failed.".format(processor_to_run.name))
+        processor_post_message(processor_to_run, user_that_ran, msg_text)
+        processor_failed_email(processor_id, current_user_id, sys.exc_info())
+        return False
+
+
+def write_report_builder(processor_id, current_user_id, new_data=None):
+    try:
+        _set_task_progress(0)
+        cur_processor = Processor.query.get(processor_id)
+        os.chdir(adjust_path(cur_processor.local_path))
+        new_report = json.loads(new_data)
+        report_name = new_report['name']
+        report_date = new_report['report_date']
+        report_data = new_report['report'][0]
+        update_report_in_db(processor_id, current_user_id, new_data,
+                            report_name, report_date)
+        if 'sendEmail' in new_report['saveOptions']:
+            for ind in range(len(report_data)):
+                if 'data' in report_data[ind]:
+                    report_data[ind]['df'] = pd.DataFrame(
+                        data=report_data[ind]['data']['data'])
+            user = User.query.get(current_user_id)
+            send_email('[Liquid App] {} | Analysis | {}'.format(
+                cur_processor.name,
+                datetime.today().date().strftime('%Y-%m-%d')),
+                sender=app.config['ADMINS'][0],
+                recipients=[user.email],
+                text_body=render_template(
+                    'email/processor_analysis.txt', user=user,
+                    processor_name=cur_processor.name,
+                    analysis=report_data),
+                html_body=render_template(
+                    'email/processor_analysis.html', user=user,
+                    processor_name=cur_processor.name,
+                    analysis=report_data),
+                sync=True)
+        if 'saveGoogleDoc' in new_report['saveOptions']:
+            gs = gsapi.GsApi()
+            gs.input_config(gs.default_config)
+            gs.get_client()
+            doc_id = gs.create_google_doc(cur_processor.name + "-" + dt.
+                                          datetime.today().strftime('%Y-%m-%d'))
+            r = gs.add_text(doc_id, report_data)
+        _set_task_progress(100)
+        return
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return
 
 
 def get_kpis_for_processor(processor_id, current_user_id):
@@ -5500,7 +5608,7 @@ def get_glossary_definitions(processor_id, current_user_id):
                 n.note_text = content
                 db.session.commit()
             stage = TutorialStage.create_dict(
-                tutorial_level=idx+tutorial_questions, header=header,
+                tutorial_level=idx + tutorial_questions, header=header,
                 message=content, alert_level='info',
                 alert="Press 'Save & Continue' to get to the next level!")
             tutorial_stages.append(stage)

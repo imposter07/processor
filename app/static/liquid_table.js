@@ -1335,8 +1335,10 @@ function createLiquidTable(data, kwargs) {
     if (colFilter) {
         createTableFilter(tableName + 'Table');
     }
-    createLiquidTableChart(tableName, tableRows);
-    showChart(tableName);
+    if (chartBtn) {
+        createLiquidTableChart(tableName, tableRows);
+        showChart(tableName);
+    }
     addSelectize();
     addDatePicker();
     addOnClickEvent('button[id^=addRows]', addRowsOnClick);

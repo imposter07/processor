@@ -1,0 +1,413 @@
+
+<style>
+    .h2 {
+      min-height: 46px;
+    }
+    .checkbox {
+        vertical-align: middle;
+    }
+    .hover {
+        opacity: .5;
+    }
+    .d-none{
+        display: none !important;
+    }
+    .bi-grip-vertical {
+        align-self: center !important;
+        vertical-align: middle;
+        cursor: move;
+        transform: scale(1.5);
+    }
+    .btn:focus {
+        outline: none;
+        box-shadow: none;
+    }
+</style>
+<script>
+
+    function toggleCheckbox(elem, checkbox, hover=false, leave=false) {
+        if (hover && checkbox.checked) return;
+        if ((!checkbox.checked && !hover) || (!checkbox.checked && leave)) {
+            if (!hover) elem.dataset.selected = "false";
+            elem.parentNode.childNodes.forEach(child => {
+                child.childNodes.forEach(grandchild => {
+                    if (grandchild.classList &&
+                        grandchild.type !== "checkbox") {
+                        grandchild.classList.add("d-none");
+                        if (!hover) grandchild.dataset.selected = "false";
+                    }
+                });
+            });
+        } else {
+            elem.dataset.selected = "true";
+            elem.parentNode.childNodes.forEach(child => {
+                child.childNodes.forEach(grandchild => {
+                    if (grandchild.classList) {
+                        grandchild.classList.remove("d-none");
+                        if (hover) {
+                            grandchild.classList.add("hover");
+                            let checkbox = grandchild.querySelector('input[type="checkbox"]');
+                            if (checkbox) checkbox.checked = false;
+                        }
+                        else {
+                            grandchild.dataset.selected = "true";
+                            grandchild.classList.remove("hover");
+                            let checkbox = grandchild.querySelector('input[type="checkbox"]');
+                            if (checkbox) checkbox.checked = true;
+                        }
+                    }
+                });
+            });
+        }
+    }
+
+    function addCheckBox(elem) {
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.classList.add("checkbox");
+        checkbox.checked = true;
+        checkbox.addEventListener("change", () => {
+            toggleCheckbox(elem, checkbox)
+        });
+        checkbox.addEventListener("mouseover", () => {
+            toggleCheckbox(elem, checkbox, true)
+        });
+        checkbox.addEventListener("mouseleave", () => {
+            toggleCheckbox(elem, checkbox, true, true)
+        });
+        elem.appendChild(checkbox);
+        return checkbox
+    }
+
+
+    function findPos(event) {
+        let id = JSON.parse(event.dataTransfer.types[0]);
+        let draggableElement = document.getElementById(id);
+        let dropzone = event.currentTarget;
+        if (id.includes("header")) {
+            draggableElement = draggableElement.parentNode;
+            id = draggableElement.id.toString().toLowerCase();
+            dropzone = dropzone.closest("[id*='section']");
+        }
+        let children = dropzone.parentNode.childNodes;
+        for (let i=0; i < children.length; i++) {
+            if (children[i].id.toString().toLowerCase() === id) {
+                return [draggableElement, dropzone, "afterend"];
+            }
+            if (children[i].id.toString().toLowerCase() === dropzone.id) {
+                return [draggableElement, dropzone, "beforebegin"];
+            }
+        }
+    }
+
+    function onDrop(event) {
+        event.currentTarget.classList.remove("border-top");
+        event.currentTarget.classList.remove("border-bottom");
+        const position = findPos(event);
+        position[1].insertAdjacentElement(position[2], position[0]);
+        event.dataTransfer.clearData();
+    }
+
+    function onDragLeave(event){
+        event.currentTarget.classList.remove("border-top");
+        event.currentTarget.classList.remove("border-bottom");
+    }
+
+    function preventDrag(event) {
+        event.preventDefault();
+    }
+
+    function onDragOver(event) {
+        preventDrag(event);
+        const position = findPos(event);
+        let border = (position[2] === "beforebegin") ?
+           "border-top" : "border-bottom";
+        event.currentTarget.classList.add(border);
+    }
+
+    function onDragEnd(event) {
+        event.currentTarget.classList.remove('bg-light');
+    }
+
+    function onDragStart(event) {
+        event.currentTarget.childNodes.forEach(child => {
+            if (!child.draggable === true){
+                child.ondragstart = "preventDrag(event)"
+            }
+        });
+        event.dataTransfer.setData(JSON.stringify(event.currentTarget.id),
+            event.currentTarget.id);
+        event.currentTarget.classList.add('bg-light');
+        event.currentTarget.opacity = '1';
+    }
+
+    function addGrip(elem) {
+        const grip = document.createElement('i');
+        grip.classList = "bi bi-grip-vertical m-1";
+        elem.appendChild(grip);
+    }
+
+    function addDragDrop(elem) {
+        elem.draggable = true;
+        elem.addEventListener('dragstart', function(e) {onDragStart(e)}, false);
+        elem.addEventListener('dragend', function(e) {onDragEnd(e)}, false);
+        elem.addEventListener('dragover', function(e) {onDragOver(e)}, false);
+        elem.addEventListener('dragleave', function(e) {onDragLeave(e)}, false);
+        elem.addEventListener('drop', function(e) {onDrop(e)}, false);
+    }
+
+    function storeJsonAsDataAttr(data, elem) {
+        for (let key in data) {
+            if (!(['data', 'message'].includes(key))) {
+                elem.setAttribute('data-' + key, data[key]);
+            }
+        }
+        if (!('selected' in data)) elem.setAttribute('data-selected', 'true');
+    }
+
+    function checkHideHeaders(elem) {
+        elem.childNodes.forEach(child => {
+            if (child.id === 'saveRow') return;
+            if (child.firstChild.dataset.selected === 'false') {
+                let checkbox = child.firstChild.firstChild;
+                checkbox.checked = false;
+                toggleCheckbox(child.firstChild, checkbox);
+            }
+        });
+    }
+
+    function buildReportElem(data) {
+        if (data['format'] === "HEADING_1") {
+            let newSection = document.createElement('div');
+            newSection.id = ('section' + data['key']).toLowerCase();
+            newSection.classList.add('mb-3');
+            let newHeader = document.createElement('div');
+            newHeader.id = ("header" + data['key']).toLowerCase();
+            newHeader.classList.add('d-flex');
+            newHeader.classList.add('align-items-center"');
+            let checkbox = addCheckBox(newHeader);
+            checkbox.classList.add('mt-3');
+            checkbox.classList.add('mb-3');
+            addGrip(newHeader);
+            addDragDrop(newHeader);
+            newSection.appendChild(newHeader);
+            let header = document.createElement('h2');
+            header.classList.add('pl-2');
+            header.classList.add('m-0');
+            header.contentEditable = 'true';
+            header.style.display = "inline";
+            header.innerHTML = data['message'];
+            header.id = (data['key'] + 'text').toLowerCase();
+            newHeader.appendChild(header);
+            storeJsonAsDataAttr(data, newHeader);
+            let reportElem = document.getElementById("reportBuilder");
+            reportElem.appendChild(newSection)
+        }
+        else {
+            let key = data["key"];
+            let dataId = (data['key'] + data['parameter'] + data['parameter_2']
+                + data['split_col']).toLowerCase();
+            let header = document.querySelector('[id*="' + key + '"]');
+            let newBullet = document.createElement('div');
+            newBullet.id = dataId;
+            let newAnalysis = document.createElement('div');
+            let checkbox = addCheckBox(newAnalysis);
+            addGrip(newAnalysis);
+            addDragDrop(newBullet);
+            newBullet.appendChild(newAnalysis);
+            let text = document.createElement('span');
+            text.classList.add('pl-2');
+            text.classList.add('pr-2');
+            text.classList.add('align-middle');
+            text.contentEditable = 'true';
+            text.innerHTML += data['message'];
+            text.id = (data['key'] + data['parameter'] + data['parameter_2']
+                + data['split_col'] + 'text').toLowerCase();
+            newAnalysis.appendChild(text);
+            header.appendChild(newBullet);
+            if (data['data']) {
+                let tableId = dataId + 'data';
+                let tableDiv = document.createElement('div');
+                tableDiv.id = tableId;
+                newBullet.append(tableDiv);
+                tableDiv.innerHTML = "";
+                createLiquidTable(data, {'tableName': tableId});
+                let table = newBullet.querySelector(".card");
+                table.classList.remove("shadow");
+                table.classList.add("m-4");
+                table.style.lineHeight = .9;
+            }
+            storeJsonAsDataAttr(data, newAnalysis);
+            if (newAnalysis.dataset.selected === 'false') {
+                checkbox.checked = false;
+                toggleCheckbox(newAnalysis, checkbox);
+            }
+        }
+    }
+
+    function getAnalysisJson(elem) {
+        let analysisJson = {};
+        for (let key in elem.firstChild.dataset) {
+          analysisJson[key] = elem.firstChild.dataset[key];
+        }
+        let tableDiv = elem.querySelector('#' + elem.id + "data");
+        let tableElem = elem.querySelector('#' + elem.id + "dataTable");
+        if (tableDiv) {
+            if (!tableElem) {
+                analysisJson['message'] = '';
+            }
+            else {
+                let textElem = elem.querySelector('#' + elem.id + "text");
+                if (textElem) analysisJson['message'] = textElem.textContent;
+                let data = getTableAsArray(elem.id + "dataTable");
+                let cols = Object.keys(data[0]);
+                analysisJson['data'] = {'data': data, 'cols': cols};
+            }
+        }
+        else {
+            analysisJson['message'] = elem.textContent;
+        }
+        return analysisJson
+    }
+
+    function getSectionJson(elem) {
+        let sectionJson = [];
+        elem.childNodes.forEach(child => {
+            let bulletJson = {};
+            for (let key in child.dataset) {
+              bulletJson[key] = child.dataset[key];
+            }
+            if (Object.keys(bulletJson).length === 0) {
+                bulletJson = getAnalysisJson(child);
+            }
+            else bulletJson['message'] = child.textContent;
+            sectionJson.push(bulletJson);
+        });
+        return sectionJson
+    }
+
+    function saveReportBuilder() {
+        let name = document.getElementById("name").value;
+        let date = document.getElementById("report_date").value;
+        let report = [];
+        let reportBuilder = document.getElementById("reportBuilder");
+        reportBuilder.childNodes.forEach(child => {
+            if (child.id === "saveRow") return;
+            report = report.concat(getSectionJson(child));
+        });
+        let results = {'report': [report], 'name': name, 'report_date': date,
+            'saveOptions': []};
+        let saveRow = document.getElementById("saveRow");
+        saveRow.childNodes.forEach(child => {
+            if (child.dataset) {
+                if (child.dataset['selected'] === "true") {
+                    results['saveOptions'].push(child.dataset['saveopt'])
+                }
+            }
+        });
+        SendDataTable('reportBuilder', null, '', '', results);
+    }
+    
+    function toggleSaveOption(e) {
+        let selected = e.currentTarget.dataset['selected'];
+        e.currentTarget.classList = (selected === "true") ? "btn btn-outline-primary rounded-pill" :
+            "btn btn-primary rounded-pill";
+        selected = (selected === "true") ? "false" : "true";
+        e.currentTarget.classList.add("ml-1");
+        e.currentTarget.classList.add("mr-1");
+        e.currentTarget.setAttribute('data-selected', selected);
+    }
+    
+    function addSaveOption(elem, id, text, saveOpt, selected="false") {
+        let saveBtn = document.createElement('button');
+        let saveId = id;
+        let classList = (selected === "true") ? "btn btn-primary rounded-pill" :
+            "btn btn-outline-primary rounded-pill";
+        saveBtn.type = "button";
+        saveBtn.classList = classList;
+        saveBtn.classList.add("ml-1");
+        saveBtn.classList.add("mr-1");
+        saveBtn.id = saveId;
+        saveBtn.innerText = text;
+        saveBtn.setAttribute('data-selected', selected);
+        saveBtn.setAttribute('data-saveopt', saveOpt);
+        elem.appendChild(saveBtn);
+        addOnClickEvent("#" + id, toggleSaveOption);
+    }
+
+    function addSaveOptions(elem) {
+        addSaveOption(elem, "saveDocBtn", "Save As Google Doc", "saveGoogleDoc", "true");
+        addSaveOption(elem, "saveEmailBtn", "Send As Email", "sendEmail");
+    }
+
+    function addSaveButton(elem) {
+        let id = "reportBuilderSaveButton";
+        let saveBtn = document.createElement('button');
+        saveBtn.type = "button";
+        saveBtn.classList = "btn btn-success ml-auto";
+        saveBtn.id =id;
+        saveBtn.innerText = "Save Selected Options";
+        elem.appendChild(saveBtn);
+        addOnClickEvent("#" + id, saveReportBuilder);
+    }
+
+    function addSaveRow(elem) {
+        let saveRow = document.createElement("div");
+        saveRow.classList = "d-flex pt-3 pb-3";
+        saveRow.id = "saveRow";
+        elem.appendChild(saveRow);
+        addSaveOptions(saveRow);
+        addSaveButton(saveRow);
+    }
+
+    function updateNames(names) {
+        let nameField = document.getElementById('name');
+        names.forEach(function(name) {
+            var optionElement = document.createElement('option');
+            optionElement.textContent = name;
+            optionElement.value = name;
+            nameField.appendChild(optionElement);
+            nameField.dataset.options += ('-' + name)
+        });
+    }
+
+    function checkNames(id, val) {
+        let select = document.getElementById(id);
+        if (select.dataset.options) {
+            let options = select.dataset.options.split('-');
+            for (let i = 0; i < options.length; i++) {
+                if (val === options[i]) return true
+            }
+            return false
+        }
+        return true
+    }
+
+    async function buildReportElems() {
+        let nameId = "name";
+        let dateId = "report_date";
+        let name = document.getElementById(nameId).value;
+        let date = document.getElementById(dateId).value;
+        if (!(checkNames(nameId, name))) return;
+        let baseRow = document.getElementById("baseRow");
+        if (baseRow) baseRow.innerHTML = "";
+        appendRows();
+        let response = await getReportBuilder(date, name);
+        updateNames(response['report_names']);
+        let analysis = response['data']['report'][0];
+        let reportBuilder = document.createElement('div');
+        reportBuilder.id = 'reportBuilder';
+        reportBuilder.classList.add('p-3');
+        reportBuilder.classList.add('col-md-12');
+        let rowZero = document.getElementById("rowZero");
+        rowZero.appendChild(reportBuilder);
+        addSaveRow(reportBuilder);
+        analysis.forEach(item => {
+            buildReportElem(item);
+        });
+        checkHideHeaders(reportBuilder);
+        loadJS();
+        addOnClickEvent("select[id*='" + nameId + "']", buildReportElems, 'change');
+        addOnClickEvent("input[id*='" + dateId + "']", buildReportElems, 'change');
+    }
+</script>

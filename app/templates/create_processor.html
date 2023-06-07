@@ -422,7 +422,7 @@
     {% endif %}
     {% if processor_analysis %}
         {% for analysis in processor_analysis %}
-            {% include 'processor_auto_analysis.html' %}
+            {% include '_report_builder.html' %}
         {% endfor %}
     {% endif %}
     {% if dashboards %}
@@ -1259,6 +1259,29 @@
             getTable('datasource_table', 'datasourceTable', 'None');
         }
 
+        function getReportBuilder(date='', name=''){
+            setDownloadBarAndLoadingBtn('rowZero');
+            let response = $.ajax({
+                type: "POST",
+                url: "/get_report_builder",
+                data: {
+                    object_name: "{{ object_name }}",
+                    object_type:  "{{ title }}",
+                    object_level: "{{ edit_name }}",
+                    date: date,
+                    name: name
+                },
+            }).done(function(data, status) {
+                console.log('hit');
+                response = data['data']
+            }).fail(function(jqXHR, textStatus ) {
+                response = []
+            }).always(function(){
+                addElemRemoveLoadingBtn('rowZero')
+            });
+            return response
+        }
+
         function getAutoNote(noteName='Topline', subNoteName='Total'){
             $.ajax({
                 type: "POST",
@@ -1277,23 +1300,24 @@
                     $('#rowThree').append(data['raw_html'])
                 }
                 else {
-                    addMessageButtons(data['data_message'], data['buttons'])
+                    addMessageButtons(data['data_message'], data['buttons']);
                     appendCardAsTable(data['data'], "dsCardCol",
                         "#rowOne", noteName + ' Table');
-                    appendCleanDashboard('<div></div>')
+                    appendCleanDashboard('<div></div>');
                     addSelectize();
                     generateBarChart('#dash_placeholderMetrics',
-                        data['raw_data'], 'index', data['raw_data_columns'])
+                        data['raw_data'], 'index', data['raw_data_columns']);
                     $('#dash_placeholderMetricsProgress').remove()
                 }
                 loadJS()
             }).fail(function(jqXHR, textStatus ) {
 
             }).always(function(){
-                $('#loadingBtn').remove()
+                $('#loadingBtn').remove();
                 unanimateBar()
             });
         }
+
 
         function changeAutoNote() {
             $('#auto_analysis_select').on('change', function(e){
@@ -1506,6 +1530,8 @@
                 removeSpecialChars();
             } else if (editName === 'All Notes') {
                 getNotesTables();
+            } else if (editName === 'Report Builder') {
+                buildReportElems();
             } else if (editName === 'Bill') {
                 let billingTableId = 'billingTable';
                 appendRows();
@@ -1525,6 +1551,7 @@
     </script>
     {% include "_dash_builder.html" %}
     {% include "_table_builder.html" %}
+    {% include "_report_builder.html" %}
     {% include "_select_builder.html" %}
     {% include "_rawfile_check.html" %}
 {% endblock %}

@@ -4513,11 +4513,6 @@ def update_report_in_db(processor_id, current_user_id,
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
-        processor_to_run = Processor.query.get(processor_id)
-        user_that_ran = User.query.get(current_user_id)
-        msg_text = ("{} run failed.".format(processor_to_run.name))
-        processor_post_message(processor_to_run, user_that_ran, msg_text)
-        processor_failed_email(processor_id, current_user_id, sys.exc_info())
         return False
 
 

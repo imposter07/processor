@@ -98,7 +98,7 @@
 <script>
     if (("{{ edit_name }}" === 'Clean') || ("{{ edit_name }}" === 'Import')) {
         document.addEventListener('FilePond:processfile', (e) => {
-            show_modal_table('modalRawFileButton');
+            showModalTable('modalRawFileButton');
             let rawFileTableBodyId = 'rawFileTableBody';
             let elem = document.getElementById(rawFileTableBodyId);
             if ("{{ edit_name }}" === 'Clean') {

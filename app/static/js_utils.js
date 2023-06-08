@@ -258,3 +258,75 @@ function setAttributes(elem, attributes) {
         elem.setAttribute(key, value);
     })
 }
+
+function showModalTable(destElemId) {
+    let destElem = document.getElementById(destElemId);
+    if (!(destElem)) {
+        let jinjaValues = document.getElementById('jinjaValues').dataset;
+        let modalElemId = destElemId + 'modalTable';
+        let modalHtml = `
+            <button id="${destElemId}" type="button" class="btn btn-primary"
+            data-toggle="modal" data-target="#${modalElemId}" style="display: none;">
+            </button>
+            <div class="modal fade bd-example-modal-xl" id="${modalElemId}" tabindex="-1"
+                 role="dialog" aria-labelledby="exampleModalLabel">
+              <div class="modal-dialog modal-xl mw-100 w-90" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">
+                        Data Tables - ${jinjaValues['object_name']}</h5>
+                    <button type="button" class="close" data-dismiss="modal"
+                            aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body">
+                      <div id="modal-body-table"></div>
+                  </div>
+                  <div class="modal-footer">
+                    <div class="btn-group btn-group-lg btn-block" role="group" aria-label="Basic example">
+                        <button type="button" class="btn btn-success"
+                                id="modalTableSaveButton"
+                                onclick="SendDataTable()">Save</button>
+                        <button type="button" class="btn btn-secondary"
+                                data-dismiss="modal">Close</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        `
+        document.getElementsByTagName('body')[0].insertAdjacentHTML('beforeend', modalHtml);
+        destElem = document.getElementById(destElemId);
+    }
+    destElem.click();
+}
+
+function fadeInElement(element) {
+    element.style.opacity = '0';
+    element.style.display = 'block';
+    element.style.transition = 'opacity 0.5s';
+    setTimeout(function () {
+        element.style.opacity = '1';
+    }, 10);
+}
+
+function displayAlert(message, level) {
+    let alertPlaceholderId = 'alertPlaceholder';
+    let alertPlaceholderElem = document.getElementById(alertPlaceholderId);
+    if (!(alertPlaceholderElem)) {
+        let alertContainer = document.getElementById('alertContainer');
+        alertContainer.insertAdjacentHTML('beforeend', '<div id="alertPlaceholder"></div>');
+        alertPlaceholderElem = document.getElementById(alertPlaceholderId);
+    }
+    alertPlaceholderElem.classList.add('alert');
+    alertPlaceholderElem.classList.add('alert-' + level);
+    alertPlaceholderElem.innerHTML = message;
+    let btnHtml = `
+        <button type="button" class="close" data-dismiss="alert"
+            aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>`;
+    alertPlaceholderElem.insertAdjacentHTML('beforeend', btnHtml);
+    fadeInElement(alertPlaceholderElem);
+}

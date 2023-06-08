@@ -574,7 +574,7 @@ def get_data_tables(processor_id, current_user_id, parameter=None,
             _set_task_progress(100)
             return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
         file_name = os.path.join(adjust_path(cur_processor.local_path),
-                                 'Raw Data Output.csv')
+                                 vmc.output_file)
         _set_task_progress(15)
         tables = utl.import_read_csv(file_name)
         tables = tables.fillna('None')
@@ -713,16 +713,22 @@ def delete_dict(processor_id, current_user_id, vk):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def get_raw_data(processor_id, current_user_id, vk, parameter=None):
+def get_raw_data(processor_id, current_user_id, vk=None, parameter=None):
     try:
         cur_processor = Processor.query.get(processor_id)
         _set_task_progress(20)
         os.chdir(adjust_path(cur_processor.local_path))
         _set_task_progress(40)
-        matrix = vm.VendorMatrix()
-        data_source = matrix.get_data_source(vk)
+        if vk:
+            matrix = vm.VendorMatrix()
+            data_source = matrix.get_data_source(vk)
+            tables = data_source.get_raw_df()
+        else:
+            file_name = os.path.join(adjust_path(cur_processor.local_path),
+                                     vmc.output_file)
+            tables = utl.import_read_csv(file_name)
+            tables = tables.fillna('None')
         _set_task_progress(60)
-        tables = data_source.get_raw_df()
         if parameter:
             tables = get_file_in_memory(tables)
         tables = [tables]

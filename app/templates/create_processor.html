@@ -1,9 +1,6 @@
 {% extends "base.html" %}
 {% block app_header %}
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='liquid_table.css') }}">
-    <div id="alertContainer">
-    <div id="alertPlaceholder"></div>
-    </div>
     <h2 class="">{{ _('{} - {}'.format(title, object_name)) }}</h2>
     {% include '_view_selector.html' %}
     <!-- Modal -->
@@ -148,9 +145,6 @@
       </div>
     </div>
     <script>
-        function show_modal_table(destElem) {
-            document.getElementById(destElem).click();
-        }
         $('.modal').on('shown.bs.modal', function () {
             $("body").addClass("modal-open")
         });
@@ -438,7 +432,7 @@
     {% if tables %}
         <script type="text/javascript">
             $(document).ready(function() {
-                show_modal_table('modalTableButton');
+                showModalTable('modalTableButton');
             });</script>
     {% endif %}
     {% if tableau_workbook %}
@@ -575,118 +569,15 @@
              }
         }
 
-        function sendDataTableResponse(data, kwargs) {
-            let tableName = kwargs['tableName'];
-            let newPage = kwargs['newPage'];
-            let formContinue = kwargs['formContinue'];
-            let oldPage = kwargs['oldPage'];
-            let saveBtnElemId = kwargs['saveBtnElemId'];
-            if ("{{ edit_name }}" === 'Import') {
-                reloadPage();
-            } else {
-                $('#' + tableName).modal('hide');
-                displayAlert(data['message'], data['level']);
-            }
-            if (newPage) {
-                completeSave(data, formContinue, oldPage, newPage);
-                unanimateBar();
-            }
-            addElemRemoveLoadingBtn(saveBtnElemId);
-        }
-
-        function SendDataTable(tableName="modalTable", formContinue = null,
-                               oldPage = '', newPage = '', data = '', cols = [],
-                               saveButton = '') {
-            let sendTableName = tableName;
-            if (!data) {
-                let sourceElem = document.querySelectorAll(`table[id^=modalTable]`);
-                if (sourceElem.length === 0) {
-                    if (newPage) {
-                        completeSave({'message': 'Saved!', 'level': 'success'},
-                            formContinue, oldPage, newPage);
-                    }
-                    else {
-                        return false
-                    }
-                }
-                else {
-                    sourceElem = sourceElem[0].id;
-                }
-                if (sourceElem.includes('change_dictionary_order')) {
-                    removeChangeOrderSelectize();
-                    data = getTableAsArray(sourceElem, cols);
-                    sendTableName = sourceElem.replace('modalTable', '');
-                } else if (sourceElem.includes('apply_processor_plan')) {
-                    completeSave({'message': 'Saved!', 'level': 'success'},
-                        formContinue, oldPage, newPage);
-                }
-                else {
-                    let sendTable = '';
-                    try {
-                        sendTable = $('#' + sourceElem).DataTable();
-                    } catch (err) {
-                        sendTable = $('#' + sourceElem).DataTable();
-                    }
-                    sendTableName = sourceElem.replace('modalTable', '');
-                    data = sendTable
-                        .data().toArray();
-                }
-            }
-            let saveExists = (saveButton === '');
-            let saveBtnId = (saveExists) ? tableName + 'SaveButton' : saveButton;
-            let saveBtnElem = document.getElementById(saveBtnId);
-            if (saveBtnElem) {
-                loadingBtn(saveBtnElem);
-            } else {
-                saveBtnElem = document.querySelectorAll('[id^=loadingBtn]')[0];
-                saveBtnElem = document.getElementById(saveBtnElem.id.replace('loadingBtn', ''));
-            }
-            let jv = document.getElementById('jinjaValues');
-            let title = jv.dataset['title'];
-            let uploaderType = (title === "Uploader") ? "{{uploader_type}}" : "None";
-            let requestData = {
-                data: JSON.stringify(data),
-                object_name: jv.dataset['object_name'],
-                object_type: title,
-                object_level: jv.dataset['edit_name'],
-                uploader_type: uploaderType,
-                table: sendTableName
-            }
-            let kwargs = {
-                'tableName': tableName,
-                'newPage': newPage,
-                'formContinue': formContinue,
-                'oldPage': oldPage,
-                'saveBtnElemId': saveBtnElem.id
-            }
-            makeRequest('/post_table', 'POST', requestData, sendDataTableResponse, 'json', kwargs);
-        }
-
         function runObjectOnClick() {
             let runType = this.id.replace('runObject', '');
             if (runType === 'Import') {
-                show_modal_table('importRunButton');
+                showModalTable('importRunButton');
             }
             else {
                 loadingBtn(this, this.style, this.className);
                 runObject(runType, this.id);
             }
-        }
-
-        function displayAlert(message, level) {
-            let alertPlaceholderId = '#alertPlaceholder'
-            if ($(alertPlaceholderId).length === 0) {
-                $('#alertContainer').append('<div id="alertPlaceholder"></div>')
-            }
-            let alertPlaceholder = $(alertPlaceholderId)
-            alertPlaceholder.addClass('alert alert-' + level);
-            alertPlaceholder.html(message);
-            alertPlaceholder.append('' +
-                '<button type="button" class="close" data-dismiss="alert"' +
-                ' aria-label="Close">\n' +
-                '    <span aria-hidden="true">&times;</span>\n' +
-                '  </button>')
-            alertPlaceholder.fadeIn('slow');
         }
 
         function runObjectResponse(data, kwargs) {
@@ -754,7 +645,7 @@
             $('#logModal p:contains("ERROR]")').css('color', 'red')
             $('#logModal p:contains("WARNING]")').css('color', 'orange')
             if (clickElem) {
-                show_modal_table('logModalButton');
+                showModalTable('logModalButton');
                 addElemRemoveLoadingBtn(clickElem);
             }
         }

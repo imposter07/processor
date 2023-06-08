@@ -1710,9 +1710,8 @@ class TutorialStage(db.Model):
     def get_model_name_list():
         return ['tutorial', 'help', 'define', 'what']
 
-    @staticmethod
-    def get_url():
-        return ''
+    def get_url(self):
+        return url_for('main.app_help') + '#{}'.format(self.header)
 
     @staticmethod
     def get_table_name_to_task_dict():
@@ -1946,7 +1945,7 @@ class Sow(db.Model):
         self.phone = '310.450.2653'
         self.fax = '310.450.2658'
         self.total_project_budget = cur_plan.total_budget
-        self.ad_serving = cur_plan.total_budget * .007
+        self.ad_serving = float(cur_plan.total_budget) * .007
 
 
 class PlanPhase(db.Model):
@@ -2128,7 +2127,7 @@ class PartnerPlacements(db.Model):
             db_col = '{}name'.format(''.join(col_names))
             col_names = col_names + [str_name, db_col]
             col_names = [x for x in col_names if not x.isdigit()]
-            name_in_list = utl.is_list_in_list(col_names, words, True, True)
+            name_in_list = utl.is_list_in_list(col_names, words, False, True)
             if name_in_list:
                 post_words = words[words.index(name_in_list[0]) + 1:]
                 name_list = ''.join(post_words).split('.')[0].split(',')

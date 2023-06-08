@@ -81,7 +81,7 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
             let title = 'PLAN PROPERTY - ' + vendorKey;
             appendCardAsTable(data, "planPropertyCardCol", "#rowTwo", title, true);
         } else if (tableName === 'change_dictionary_order') {
-            show_modal_table('modalTableButton');
+            showModalTable('modalTableButton');
             let newTableName = data['data']['name'];
             createChangeDictOrder(data['data']['cols'], data['data']['data'],
                 newTableName, data['dict_cols'], data['relational_cols']);
@@ -91,7 +91,7 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
             let newTable = document.getElementById(newTableName);
             newTable.innerHTML = "";
             if (newTableName === modalName) {
-                show_modal_table('modalTableButton');
+                showModalTable('modalTableButton');
             }
             createLiquidTable(data, {'tableName': newTableName});
         } else if (tableName === 'Pacing Table') {
@@ -100,7 +100,7 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
             generateDailyPacing(tableName, data['data']['data'], data['data']['plan_cols'])
         }
         else {
-            show_modal_table('modalTableButton');
+            showModalTable('modalTableButton');
             let newTableName = data['data']['name'];
             let tableCols = data['data']['cols'];
             let tableData = data['data']['data'];
@@ -114,7 +114,10 @@ function getTableComplete(tableName, pond, vendorKey, data){
         'OutputDataRawDataOutput', 'download_raw_data', 'download_pacing_data',
         'OutputDataSOW', 'OutputDataToplineDownload', 'screenshotImage', 'billingInvoice',
         'downloadTable'];
-    if (dlTables.includes(tableName)) {
+
+    let outputTableName = 'OutputData' + tableName;
+    tableName = (dlTables.includes(outputTableName)) ? outputTableName : tableName;
+    if (dlTables.includes(tableName) || (dlTables.includes(tableName))) {
         downloadTableResponse(tableName, pond, vendorKey, data);
     }
     else {
@@ -275,4 +278,91 @@ async function getTable(tableName, clickElem, oldHtml = 'None', vendorKey= 'None
     }
     makeRequest('/get_table', 'POST', data, getTableResponse, 'json',
         kwargs, getTableError);
+}
+
+function sendDataTableResponse(data, kwargs) {
+    let tableName = kwargs['tableName'];
+    let newPage = kwargs['newPage'];
+    let formContinue = kwargs['formContinue'];
+    let oldPage = kwargs['oldPage'];
+    let saveBtnElemId = kwargs['saveBtnElemId'];
+    if ("{{ edit_name }}" === 'Import') {
+        reloadPage();
+    } else {
+        $('#' + tableName).modal('hide');
+        displayAlert(data['message'], data['level']);
+    }
+    if (newPage) {
+        completeSave(data, formContinue, oldPage, newPage);
+        unanimateBar();
+    }
+    addElemRemoveLoadingBtn(saveBtnElemId);
+}
+
+function SendDataTable(tableName="modalTable", formContinue = null,
+                       oldPage = '', newPage = '', data = '', cols = [],
+                       saveButton = '') {
+    let sendTableName = tableName;
+    if (!data) {
+        let sourceElem = document.querySelectorAll(`table[id^=modalTable]`);
+        if (sourceElem.length === 0) {
+            if (newPage) {
+                completeSave({'message': 'Saved!', 'level': 'success'},
+                    formContinue, oldPage, newPage);
+            }
+            else {
+                return false
+            }
+        }
+        else {
+            sourceElem = sourceElem[0].id;
+        }
+        if (sourceElem.includes('change_dictionary_order')) {
+            removeChangeOrderSelectize();
+            data = getTableAsArray(sourceElem, cols);
+            sendTableName = sourceElem.replace('modalTable', '');
+        } else if (sourceElem.includes('apply_processor_plan')) {
+            completeSave({'message': 'Saved!', 'level': 'success'},
+                formContinue, oldPage, newPage);
+        }
+        else {
+            let sendTable = '';
+            try {
+                sendTable = $('#' + sourceElem).DataTable();
+            } catch (err) {
+                sendTable = $('#' + sourceElem).DataTable();
+            }
+            sendTableName = sourceElem.replace('modalTable', '');
+            data = sendTable
+                .data().toArray();
+        }
+    }
+    let saveExists = (saveButton === '');
+    let saveBtnId = (saveExists) ? tableName + 'SaveButton' : saveButton;
+    let saveBtnElem = document.getElementById(saveBtnId);
+    if (saveBtnElem) {
+        loadingBtn(saveBtnElem);
+    } else {
+        saveBtnElem = document.querySelectorAll('[id^=loadingBtn]')[0];
+        saveBtnElem = document.getElementById(saveBtnElem.id.replace('loadingBtn', ''));
+    }
+    let jv = document.getElementById('jinjaValues');
+    let title = jv.dataset['title'];
+    let uploaderType = (title === "Uploader") ? "{{uploader_type}}" : "None";
+    let requestData = {
+        data: JSON.stringify(data),
+        object_name: jv.dataset['object_name'],
+        object_type: title,
+        object_level: jv.dataset['edit_name'],
+        uploader_type: uploaderType,
+        table: sendTableName
+    }
+    let kwargs = {
+        'tableName': tableName,
+        'newPage': newPage,
+        'formContinue': formContinue,
+        'oldPage': oldPage,
+        'saveBtnElemId': saveBtnElem.id
+    }
+    makeRequest('/post_table', 'POST', requestData, sendDataTableResponse, 'json', kwargs);
 }

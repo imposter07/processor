@@ -200,6 +200,10 @@
             let jinjaValues = document.getElementById('jinjaValues');
             let tableElem = this.children[1];
             let editName = tableElem.dataset['edit_name'];
+            let elems = document.querySelectorAll(`[id='${editName}']`);
+            elems.forEach(elem => {
+                elem.remove();
+            })
             tableElem.id = editName;
             jinjaValues.dataset['title'] = tableElem.dataset['title'];
             jinjaValues.dataset['edit_name'] = editName;
@@ -344,4 +348,5 @@
     </script>
     {% include "_select_builder.html" %}
     {% include "_dash_builder.html" %}
+    {% include "_table_builder.html" %}
 {% endblock %}

@@ -1,9 +1,6 @@
 {% extends "base.html" %}
 
 {% block app_header %}
-    <div id="alertContainer">
-        <div id="alertPlaceholder"></div>
-    </div>
     <h1 class="text-muted font-weight-bolder">{{ _('Client Calendar') }}</h1>
     {% include '_view_selector.html' %}
 {% endblock %}
@@ -230,22 +227,6 @@
                     $(clickElem).html(oldHtml);
                 }
             });
-        }
-
-        function displayAlert(message, level) {
-            let alertPlaceholderId = '#alertPlaceholder'
-            if ($(alertPlaceholderId).length === 0) {
-                $('#alertContainer').append('<div id="alertPlaceholder"></div>')
-            }
-            let alertPlaceholder = $(alertPlaceholderId)
-            alertPlaceholder.addClass('alert alert-' + level);
-            alertPlaceholder.html(message);
-            alertPlaceholder.append('' +
-                '<button type="button" class="close" data-dismiss="alert"' +
-                ' aria-label="Close">\n' +
-                '    <span aria-hidden="true">&times;</span>\n' +
-                '  </button>')
-            alertPlaceholder.fadeIn('slow');
         }
 
         function getFilters(colName, filterDict) {

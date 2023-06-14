@@ -50,10 +50,13 @@
                             if (checkbox) checkbox.checked = false;
                         }
                         else {
-                            grandchild.dataset.selected = "true";
                             grandchild.classList.remove("hover");
                             let checkbox = grandchild.querySelector('input[type="checkbox"]');
-                            if (checkbox) checkbox.checked = true;
+                            let analysis = grandchild.querySelector('span');
+                            if (checkbox && !analysis.classList.contains("d-none")) {
+                                checkbox.checked = true;
+                                grandchild.dataset.selected = "true";
+                            }
                         }
                     }
                 });
@@ -360,15 +363,19 @@
         addSaveButton(saveRow);
     }
 
-    function updateNames(names) {
+    function updateNames(id, names) {
         let nameField = document.getElementById('name');
+        delete nameField.dataset.options;
+        nameField.selectize.clearOptions();
         names.forEach(function(name) {
-            var optionElement = document.createElement('option');
-            optionElement.textContent = name;
-            optionElement.value = name;
-            nameField.appendChild(optionElement);
+            nameField.selectize.addOption(
+                {
+                    value: name,
+                    text: name
+                });
             nameField.dataset.options += ('-' + name)
         });
+        nameField.selectize.setValue('Auto', true);
     }
 
     function checkNames(id, val) {
@@ -383,18 +390,24 @@
         return true
     }
 
-    async function buildReportElems() {
+    function updateDate(id, date) {
+        let dateField = document.getElementById(id);
+        delete dateField.dataset.prev;
+        dateField.dataset.prev = date;
+    }
+
+    function buildReportElems(data, kwargs) {
+        addElemRemoveLoadingBtn(kwargs['clickElem']);
         let nameId = "name";
         let dateId = "report_date";
-        let name = document.getElementById(nameId).value;
-        let date = document.getElementById(dateId).value;
-        if (!(checkNames(nameId, name))) return;
-        let baseRow = document.getElementById("baseRow");
-        if (baseRow) baseRow.innerHTML = "";
-        appendRows();
-        let response = await getReportBuilder(date, name);
-        updateNames(response['report_names']);
-        let analysis = response['data']['report'][0];
+        let nameQuery = "select[id*='" + nameId + "']";
+        let dateQuery = "input[id*='" + dateId + "']";
+        let date = document.getElementById(dateId);
+        if (date.dataset.prev !== date.value) {
+            updateNames(nameId, data['report_names']);
+            updateDate(dateId, date.value)
+        }
+        let analysis = data['data']['report'][0];
         let reportBuilder = document.createElement('div');
         reportBuilder.id = 'reportBuilder';
         reportBuilder.classList.add('p-3');
@@ -407,7 +420,31 @@
         });
         checkHideHeaders(reportBuilder);
         loadJS();
-        addOnClickEvent("select[id*='" + nameId + "']", buildReportElems, 'change');
-        addOnClickEvent("input[id*='" + dateId + "']", buildReportElems, 'change');
+        addOnClickEvent(nameQuery, getReportBuilder, 'change');
+        addOnClickEvent(dateQuery, getReportBuilder, 'change');
+    }
+
+    function getReportBuilder() {
+        let nameId = "name";
+        let dateId = "report_date";
+        let name = document.getElementById(nameId).value;
+        let date = document.getElementById(dateId).value;
+        if (!(checkNames(nameId, name)) || !name) return;
+        let baseRow = document.getElementById("baseRow");
+        if (baseRow) baseRow.innerHTML = "";
+        appendRows();
+        let clickElem = 'rowZero';
+        let kwargs = {'clickElem': clickElem};
+        setDownloadBarAndLoadingBtn(clickElem);
+        let url = '/get_report_builder';
+        let jv = document.getElementById('jinjaValues');
+        let requestData = {
+            object_name: jv.dataset['object_name'],
+            object_type: jv.dataset['title'],
+            object_level: jv.dataset['edit_name'],
+            date: date,
+            name: name
+        };
+        makeRequest(url, 'POST', requestData, buildReportElems, 'json', kwargs);
     }
 </script>

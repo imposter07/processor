@@ -1150,29 +1150,6 @@
             getTable('datasource_table', 'datasourceTable', 'None');
         }
 
-        function getReportBuilder(date='', name=''){
-            setDownloadBarAndLoadingBtn('rowZero');
-            let response = $.ajax({
-                type: "POST",
-                url: "/get_report_builder",
-                data: {
-                    object_name: "{{ object_name }}",
-                    object_type:  "{{ title }}",
-                    object_level: "{{ edit_name }}",
-                    date: date,
-                    name: name
-                },
-            }).done(function(data, status) {
-                console.log('hit');
-                response = data['data']
-            }).fail(function(jqXHR, textStatus ) {
-                response = []
-            }).always(function(){
-                addElemRemoveLoadingBtn('rowZero')
-            });
-            return response
-        }
-
         function getAutoNote(noteName='Topline', subNoteName='Total'){
             $.ajax({
                 type: "POST",
@@ -1422,7 +1399,7 @@
             } else if (editName === 'All Notes') {
                 getNotesTables();
             } else if (editName === 'Report Builder') {
-                buildReportElems();
+                getReportBuilder();
             } else if (editName === 'Bill') {
                 let billingTableId = 'billingTable';
                 appendRows();

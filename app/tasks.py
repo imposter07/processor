@@ -4364,7 +4364,7 @@ def add_text_body(text_body, msg, tab, key=None, param=None, param2=None,
                   split=None, style=None):
     text_dict = {'key': key, 'parameter': param, 'parameter_2': param2,
                  'split_col': split, 'message': '{}\n'.format(msg), 'tab': tab,
-                 'format': style}
+                 'format': style, 'selected': 'true'}
     text_body.append(text_dict)
     return text_body
 
@@ -4374,6 +4374,7 @@ def add_analysis_to_text_body(text_body, analysis, tab, header=None, table=True,
     analysis_dict = analysis.to_dict()
     analysis_dict['message'] = '{}\n'.format(analysis_dict['message'])
     analysis_dict['tab'] = tab
+    analysis_dict['selected'] = 'true'
     if analysis.data and table:
         df = pd.DataFrame(analysis.data)
         if not df.empty:
@@ -4548,20 +4549,20 @@ def write_report_builder(processor_id, current_user_id, new_data=None):
                     analysis=report_data),
                 sync=True)
         if 'saveGoogleDoc' in new_report['saveOptions']:
+            title = '-'.join([cur_processor.name, report_name, report_date])
             gs = gsapi.GsApi()
             gs.input_config(gs.default_config)
             gs.get_client()
-            doc_id = gs.create_google_doc(cur_processor.name + "-" + dt.
-                                          datetime.today().strftime('%Y-%m-%d'))
+            doc_id = gs.create_google_doc(title)
             r = gs.add_text(doc_id, report_data)
         _set_task_progress(100)
-        return
+        return True
     except:
         _set_task_progress(100)
         app.logger.error(
             'Unhandled exception - Processor {} User {}'.format(
                 processor_id, current_user_id), exc_info=sys.exc_info())
-        return
+        return False
 
 
 def get_kpis_for_processor(processor_id, current_user_id):

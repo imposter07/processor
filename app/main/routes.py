@@ -2234,7 +2234,6 @@ def get_auto_note():
     cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
     note_name = request.form['note_name']
     sub_note_name = request.form['sub_note_name']
-    args = {'email': False}
     form = ProcessorAutoAnalysisForm()
     form = render_template('_form.html', form=form)
     raw_html = ''
@@ -2251,9 +2250,9 @@ def get_auto_note():
     elif note_name == 'All':
         task = cur_proc.launch_task(
             '.build_processor_analysis_email', _('Getting processor analysis.'),
-            running_user=current_user.id, **args)
+            running_user=current_user.id)
         db.session.commit()
-        job = task.wait_and_get_job(loops=20, force_return=True)
+        job = task.wait_and_get_job(loops=20)
         job_result = job.result[0]
         raw_html = render_template('processor_auto_analysis.html',
                                    analysis=job_result)
@@ -2288,6 +2287,10 @@ def get_report_builder():
     processor_report = ProcessorReports.query.filter_by(
         processor_id=cur_proc.id, report_name=report_name,
         report_date=report_date).first()
+    if processor_report is None:
+        processor_report = ProcessorReports.query.filter_by(
+            processor_id=cur_proc.id, report_name='Auto',
+            report_date=report_date).first()
     report = json.loads(processor_report.report)
     return jsonify({'data': report, 'report_names': report_names})
 

@@ -467,7 +467,7 @@ function getRowFormNames(tableName){
     return tableHeadElems.filter(col => col.dataset['form'] === 'true').map(col => col.id.replace('col', ''));
 }
 
-function addRowToTable(rowData, tableName) {
+function addRowToTable(rowData, tableName, customTableCols) {
     let curTable = document.getElementById(tableName + 'Table');
     let bodyId = tableName + 'Body';
     let d1 = document.getElementById(bodyId);
@@ -521,6 +521,11 @@ function addRowToTable(rowData, tableName) {
     addSelectize(`[id$='Select${loopIndex}']`);
     addOnClickEvent('[id^=topRowHeader]', editTopRowOnClick);
     sortTable(bodyId, tableName + 'TableHeader');
+    if (customTableCols) {
+        for (let customFunc of customTableCols) {
+            applyCustomFunction(customFunc, loopIndex)
+        }
+    }
     return loopIndex
 }
 
@@ -571,18 +576,25 @@ function deleteRow(loopIndex, tableName) {
     populateTotalCards(tableName);
 }
 
-function addRow(rowData = null, tableName) {
+function applyCustomFunction(customFunc, loopIndex) {
+    let func = customFunc['func'];
+    let args = customFunc['args'].slice();
+    args.push(loopIndex);
+    window[func].apply(null, args);
+}
+
+function addRow(rowData = null, tableName, customTableCols) {
     let loopIndex = '';
     if (rowData) {
         let rowName = document.getElementById(`${tableName}Table`).getAttribute('data-value');
         loopIndex = findInQuerySelectorAll(rowData[rowName.toLowerCase()], `row${rowName}`);
         if (!loopIndex) {
-            loopIndex = addRowToTable(rowData, tableName);
+            loopIndex = addRowToTable(rowData, tableName, customTableCols);
         }
         addRowDetailsToForm(rowData, loopIndex, tableName);
     }
     else {
-        loopIndex = addRowToTable(rowData, tableName);
+        loopIndex = addRowToTable(rowData, tableName, customTableCols);
     }
     toggleMetrics(tableName);
     return loopIndex;
@@ -795,9 +807,9 @@ function addDatePicker(selector = '[id^=datePicker]') {
     });
 }
 
-function addRows(rows, tableName) {
+function addRows(rows, tableName, customTableCols) {
     rows.forEach(row => {
-        addRow(row, tableName);
+        addRow(row, tableName, customTableCols);
     });
 }
 
@@ -1236,6 +1248,22 @@ function createTableFilter(tableId) {
     }
 }
 
+function addProgressBars(progCol, color, loopIndex) {
+    let cell = document.querySelector(`#row${progCol}${loopIndex}`);
+    let value = (cell.textContent) ? cell.textContent : '0';
+    cell.classList.add('table-progress');
+    cell.classList.add('p-0');
+    cell.textContent = '';
+    value = value.replace('%', '');
+    value = value.replace(/^\s+|\s+$|\n/g, '');
+    let progBar = `<div class="progress table-progress-cell m-0">
+                        <div class="progress-bar" role="progressbar"
+                           style="width: ${value}%;" aria-valuenow="${value}" 
+                           aria-valuemin="0" aria-valuemax="100">${value}</div>
+                   </div>`;
+    cell.innerHTML += progBar;
+}
+
 function showChart(tableName) {
     let elem = document.getElementById(`${tableName}ChartCol`);
     let tableElem = document.getElementById(`${tableName}TableBaseCol`);
@@ -1306,6 +1334,7 @@ function createLiquidTable(data, kwargs) {
     let tableRows = existsInJson(tableData, 'data');
     let tableTopRows = existsInJson(tableData, 'top_rows');
     let tableCols = existsInJson(tableData, 'cols');
+    let customTableCols = existsInJson(tableData, 'custom_cols');
     let tableAccordion = existsInJson(tableData, 'accordion');
     let specifyFormCols = existsInJson(tableData, 'specify_form_cols');
     let colDict = existsInJson(tableData, 'col_dict');
@@ -1326,7 +1355,7 @@ function createLiquidTable(data, kwargs) {
         addCurrentTopRows(tableTopRows, tableName);
     }
     if (tableRows) {
-        addRows(tableRows, tableName);
+        addRows(tableRows, tableName, customTableCols);
     }
     if (totalCards) {
         createTotalCards(tableName);

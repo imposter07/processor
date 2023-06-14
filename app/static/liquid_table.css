@@ -133,3 +133,22 @@ tr:hover td {
     opacity: 0.5;
     transition: all 1s;
 }
+
+.progress-bar {
+    color: black;
+}
+
+.table-progress {
+    height: 100%;
+    position: relative;
+}
+
+.table-progress-cell {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    height: 100%;
+}

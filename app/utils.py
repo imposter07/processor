@@ -294,7 +294,7 @@ class LiquidTable(object):
                  header=None, highlight_row=None, new_modal_button=False,
                  col_filter=True, search_bar=True, chart_btn=True,
                  df=pd.DataFrame(), row_on_click='', button_col=None,
-                 table_buttons=None, highlight_type='blank',
+                 table_buttons=None, custom_cols=None, highlight_type='blank',
                  download_table=False, table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
@@ -321,6 +321,7 @@ class LiquidTable(object):
         self.row_on_click = row_on_click
         self.button_col = button_col
         self.table_buttons = table_buttons
+        self.custom_cols = custom_cols
         self.highlight_type = highlight_type
         self.download_table = download_table
         self.df = df
@@ -340,7 +341,8 @@ class LiquidTable(object):
             self.description, self.columns_toggle, self.accordion,
             self.specify_form_cols, self.col_dict, self.table_name,
             self.new_modal_button, self.col_filter, self.search_bar,
-            self.chart_btn, self.row_on_click, self.table_buttons)
+            self.chart_btn, self.row_on_click, self.table_buttons,
+            self.custom_cols)
 
     def create_buttons(self):
         if not self.table_buttons:
@@ -397,7 +399,7 @@ class LiquidTable(object):
     def make_table_dict(self, cols, data, top_rows, totals, title, description,
                         columns_toggle, accordion, specify_form_cols, col_dict,
                         table_name, new_modal_button, col_filter, search_bar,
-                        chart_btn, row_on_click, table_buttons):
+                        chart_btn, row_on_click, table_buttons, custom_cols):
         table_dict = {
             'data': data, 'rows_name': self.rows_name, 'cols': cols,
             'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
@@ -408,7 +410,8 @@ class LiquidTable(object):
             self.id_col: self.liquid_table,
             'new_modal_button': new_modal_button, 'col_filter': col_filter,
             'search_bar': search_bar, 'chart_btn': chart_btn,
-            'row_on_click': row_on_click, 'table_buttons': table_buttons}
+            'row_on_click': row_on_click, 'table_buttons': table_buttons,
+            'custom_cols': custom_cols}
         return table_dict
 
 

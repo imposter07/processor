@@ -3768,8 +3768,11 @@ def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
         adf = adf.fillna("")
         if parameter:
             adf = get_file_in_memory(adf)
+        lt = app_utl.LiquidTable(
+            df=adf, table_name='pacingMetrics', specify_form_cols=False,
+            custom_cols=[{'func': 'addProgressBars', 'args': ['Delivery', '']}])
         _set_task_progress(100)
-        return [adf, plan_cols]
+        return [lt.table_dict]
     except:
         _set_task_progress(100)
         app.logger.error(

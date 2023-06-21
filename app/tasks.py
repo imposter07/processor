@@ -5509,11 +5509,13 @@ def get_brandtracker_imports(processor_id, current_user_id):
         cur_proc = Processor.query.get(processor_id)
         cur_data = cur_proc.get_requests_processor_analysis(
             az.Analyze.brandtracker_imports)
+        table_cols = ['GAME TITLE', 'TWITTER HANDLE']
         if cur_data:
             table_dict = cur_data.data
+            table_dict = {col: table_dict[col] if col in table_dict else {}
+                          for col in table_cols}
         else:
-            table_dict = {col: [] for col in ['GAME TITLE',
-                                              'TWITTER HANDLE']}
+            table_dict = {col: [] for col in table_cols}
         df = pd.DataFrame(table_dict)
         lt = app_utl.LiquidTable(table_name='btImportTable', df=df,
                                  accordion=True, new_modal_button=True,

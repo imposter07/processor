@@ -1859,6 +1859,9 @@ class Plan(db.Model):
     def get_children():
         return PlanPhase
 
+    def get_current_children(self):
+        return self.phases.all()
+
     @staticmethod
     def get_parent():
         return Campaign
@@ -1978,6 +1981,9 @@ class PlanPhase(db.Model):
     @staticmethod
     def get_name_list():
         return ['launch', 'pre-launch', 'prelaunch', 'pre-order', 'preorder']
+
+    def get_current_children(self):
+        return self.partners.all()
 
     @staticmethod
     def get_children():

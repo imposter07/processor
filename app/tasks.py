@@ -5647,6 +5647,90 @@ def get_glossary_definitions(processor_id, current_user_id):
         return pd.DataFrame()
 
 
+def get_post_mortems(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        os.chdir('processor')
+        aly = az.Analyze(load_chat=True, chat_path='config')
+        api = gsapi.GsApi()
+        api.input_config('gsapi_googledoc.json')
+        api.get_client()
+        r = api.client.get(api.drive_url)
+        drive = [x for x in r.json()['drives'] if x['name'] == 'Liquid']
+        drive_id = drive[0]['id']
+        folder_name = 'Post Mortems'
+        q = """
+            mimeType = 'application/vnd.google-apps.folder' and
+            name contains '{}'""".format(folder_name)
+        params = {
+            'q': q, 'driveId': drive_id, 'includeItemsFromAllDrives': True,
+            'corpora': 'drive', 'supportsAllDrives': True}
+        r = api.client.get(api.files_url, params=params)
+        folder_id = [x for x in r.json()['files']
+                     if x['name'] == folder_name][0]['id']
+        params = {
+            'q': """'{}' in parents""".format(folder_id),
+            'driveId': drive_id, 'includeItemsFromAllDrives': True,
+            'corpora': 'drive', 'supportsAllDrives': True}
+        r = api.client.get(api.files_url, params=params)
+        for presentation in r.json()['files']:
+            presentation_id = presentation['id']
+            cur_id = cur_file['id']
+            url = '{}/{}'.format(api.slides_url, cur_id)
+            r = api.client.get(url)
+            slides = r.json()['slides']
+            for slide in slides:
+                elems = slide['pageElements']
+                slide_text = ''
+                slide_header = ''
+                for elem in elems:
+                    if 'shape' in elem and 'text' in elem['shape']:
+                        text_elements = elem['shape']['text']['textElements']
+                        for te in text_elements:
+                            if 'textRun' in te:
+                                text = te['textRun']['content']
+                                if slide_header:
+                                    slide_text += text
+                                else:
+                                    slide_header = text
+                    if 'table' in elem:
+                        table_rows = elem['table']['tableRows']
+                        for table_row in table_rows:
+                            for cell in table_row['tableCells']:
+                                if 'text' in cell:
+                                    text_elements = cell['text']['textElements']
+                                    for te in text_elements:
+                                        if 'textRun' in te:
+                                            text = te['textRun']['content']
+                                            slide_text += text
+                if slide_text:
+                    slide_id = slide['slideProperties']['notesPage']['objectId']
+                    base_url = 'https://docs.google.com/presentation/d/'
+                    url = '{}{}/edit#slide=id.{}'.format(
+                        base_url, presentation_id, slide_id)
+                    n = Notes.query.filter_by(link=url).first()
+                    if not n:
+                        n = Note(note_type=folder_name, link=url, user_id=4,
+                                 note_text=slide_text, header=slide_header)
+                        db.session.add(n)
+                        db.session.commit()
+                    else:
+                        if n.note_text != slide_text:
+                            n.note_text = slide_text
+                            db.session.commit()
+                        if n.note_header != note_header:
+                            n.note_header = slide_header
+                            db.session.commit()
+        _set_task_progress(100)
+        return []
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return pd.DataFrame()
+
+
 def get_billing_table(processor_id, current_user_id):
     try:
         _set_task_progress(0)

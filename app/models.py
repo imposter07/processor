@@ -1297,6 +1297,10 @@ class Notes(db.Model):
     link = db.Column(db.Text)
     posts = db.relationship('Post', backref='notes', lazy='dynamic')
 
+    @property
+    def name(self):
+        return '{} {} {}'.format(self.header, self.note_text, self.note_type)
+
     def get_form_dict(self):
         form_dict = {
             'processor_id': self.processor_id,
@@ -1338,6 +1342,23 @@ class Notes(db.Model):
 
     def mark_unresolved(self):
         self.complete = False
+
+    @staticmethod
+    def get_model_name_list():
+        return ['note', 'mortem']
+
+    @staticmethod
+    def get_table_name_to_task_dict():
+        return {}
+
+    def get_url(self):
+        if self.link:
+            url = self.link
+        else:
+            cur_proc = Processor.query.get(self.processor_id)
+            url = url_for('main.edit_processor_view_note',
+                          object_name=cur_proc.name, note_id=self.id)
+        return url
 
 
 class Uploader(db.Model):
@@ -1761,11 +1782,29 @@ class WalkthroughSlide(db.Model):
     show_me_element = db.Column(db.Text)
     data = db.Column(db.Text)
 
+    @property
+    def name(self):
+        walk = Walkthrough.query.get(self.walkthrough_id)
+        return '{} {}'.format(walk.title, self.slide_text)
+
     def get_data(self):
         string_value = ''
         if self.data:
             string_value = ast.literal_eval(self.data)
         return string_value
+
+    @staticmethod
+    def get_model_name_list():
+        return ['walkthrough']
+
+    @staticmethod
+    def get_table_name_to_task_dict():
+        return {}
+
+    @staticmethod
+    def get_url():
+        return url_for('main.app_help')
+
 
 
 class Plan(db.Model):

@@ -279,10 +279,13 @@ def run_processor(processor_id, current_user_id, run_args):
                 task_function(processor_id, current_user_id)
         if 'exp' in run_args:
             os.chdir(cur_path)
+            """
             update_cached_data_in_processor_run(processor_id, current_user_id)
             update_all_notes_table(processor_id, current_user_id)
+            """
             if processor_id == 23:
-                task_functions = [get_project_numbers, get_glossary_definitions]
+                task_functions = [get_project_numbers, get_glossary_definitions,
+                                  get_post_mortems]
                 for task_function in task_functions:
                     os.chdir(cur_path)
                     task_function(processor_id, current_user_id)
@@ -5673,11 +5676,14 @@ def get_post_mortems(processor_id, current_user_id):
             'driveId': drive_id, 'includeItemsFromAllDrives': True,
             'corpora': 'drive', 'supportsAllDrives': True}
         r = api.client.get(api.files_url, params=params)
-        for presentation in r.json()['files']:
+        presentations = r.json()['files']
+        for presentation in presentations:
             presentation_id = presentation['id']
-            cur_id = cur_file['id']
-            url = '{}/{}'.format(api.slides_url, cur_id)
+            app.logger.info('Getting presentation: {}'.format(presentation_id))
+            url = '{}/{}'.format(api.slides_url, presentation_id)
             r = api.client.get(url)
+            if 'slides' not in r.json():
+                continue
             slides = r.json()['slides']
             for slide in slides:
                 elems = slide['pageElements']
@@ -5696,6 +5702,8 @@ def get_post_mortems(processor_id, current_user_id):
                     if 'table' in elem:
                         table_rows = elem['table']['tableRows']
                         for table_row in table_rows:
+                            if 'tableCells' not in table_row:
+                                continue
                             for cell in table_row['tableCells']:
                                 if 'text' in cell:
                                     text_elements = cell['text']['textElements']
@@ -5705,21 +5713,22 @@ def get_post_mortems(processor_id, current_user_id):
                                             slide_text += text
                 if slide_text:
                     slide_id = slide['slideProperties']['notesPage']['objectId']
+                    slide_id = slide_id.replace(':notes', '')
                     base_url = 'https://docs.google.com/presentation/d/'
                     url = '{}{}/edit#slide=id.{}'.format(
                         base_url, presentation_id, slide_id)
                     n = Notes.query.filter_by(link=url).first()
                     if not n:
-                        n = Note(note_type=folder_name, link=url, user_id=4,
-                                 note_text=slide_text, header=slide_header)
+                        n = Notes(note_type=folder_name, link=url, user_id=4,
+                                  note_text=slide_text, header=slide_header)
                         db.session.add(n)
                         db.session.commit()
                     else:
                         if n.note_text != slide_text:
                             n.note_text = slide_text
                             db.session.commit()
-                        if n.note_header != note_header:
-                            n.note_header = slide_header
+                        if n.header != slide_header:
+                            n.header = slide_header
                             db.session.commit()
         _set_task_progress(100)
         return []

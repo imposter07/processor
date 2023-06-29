@@ -3480,7 +3480,7 @@ def post_chat():
     conversation_id = request.form['conversation_id']
     config_path = os.path.join('processor', 'config')
     aly = az.Analyze(load_chat=True, chat_path=config_path)
-    models_to_search = [Processor, Plan, TutorialStage]
+    models_to_search = [Processor, Plan, TutorialStage, Notes, WalkthroughSlide]
     response, html_response = aly.chat.get_response(
         message, models_to_search, db=db, current_user=current_user)
     new_chat = Chat(text=message, response=response,

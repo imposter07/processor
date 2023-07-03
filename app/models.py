@@ -1669,7 +1669,10 @@ class Tutorial(db.Model):
         total_stages = len(self.tutorial_stage.all())
         completed_stages = len(cu.tutorial_stages_completed.filter_by(
             tutorial_id=self.id).all())
-        return int((completed_stages / total_stages) * 100)
+        p = 0
+        if total_stages:
+            p = int((completed_stages / total_stages) * 100)
+        return p
 
     def get_stages(self):
         total_stages = self.tutorial_stage.all()

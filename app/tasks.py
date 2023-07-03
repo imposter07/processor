@@ -279,13 +279,11 @@ def run_processor(processor_id, current_user_id, run_args):
                 task_function(processor_id, current_user_id)
         if 'exp' in run_args:
             os.chdir(cur_path)
-            """
             update_cached_data_in_processor_run(processor_id, current_user_id)
             update_all_notes_table(processor_id, current_user_id)
-            """
             if processor_id == 23:
                 task_functions = [get_project_numbers, get_glossary_definitions,
-                                  get_post_mortems]
+                                  get_post_mortems, get_time_savers]
                 for task_function in task_functions:
                     os.chdir(cur_path)
                     task_function(processor_id, current_user_id)
@@ -5637,6 +5635,69 @@ def get_glossary_definitions(processor_id, current_user_id):
                     header='Glossary', alert_level='success')
                 tutorial_stages.append(stage)
         g_tut_name = 'Glossary of Advertising and Gaming Abbreviations'
+        tutorial_stages = pd.DataFrame(tutorial_stages)
+        update_tutorial(current_user_id, current_user_id, g_tut_name,
+                        new_data=tutorial_stages, new_data_is_df=True)
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return pd.DataFrame()
+
+
+def get_time_savers(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        os.chdir('processor')
+        api = gsapi.GsApi()
+        api.input_config('gsapi_googledoc.json')
+        api.sheet_id = '1QbKl6SSgm1DG7pYpXO76gGiuPQ5cV3umYgePkHwKf8Y'
+        df = api.get_data(fields=[api.doc_str])
+        df = df[df[api.head_str].notnull()]
+        time_savers = df.to_dict(orient='records')
+        tutorial_stages = []
+        stages_before_question = 5
+        tutorial_questions = 0
+        note_type = 'Time Savers'
+        for idx, x in enumerate(time_savers):
+            header = x[api.head_str]
+            content = x[api.cont_str]
+            n = Notes.query.filter_by(header=header,
+                                      note_type=note_type).first()
+            if not n:
+                new_note = Notes(header=header, note_type=note_type,
+                                 created_at=datetime.utcnow(),
+                                 note_text=content, user_id=current_user_id)
+                db.session.add(new_note)
+                db.session.commit()
+            elif n.note_text != content:
+                n.note_text = content
+                db.session.commit()
+            stage = TutorialStage.create_dict(
+                tutorial_level=idx + tutorial_questions, header=header,
+                message=content, alert_level='info',
+                alert="Press 'Save & Continue' to get to the next level!")
+            tutorial_stages.append(stage)
+            if (idx % stages_before_question) == 0 and idx != 0:
+                tutorial_questions += 1
+                first_idx = (idx - stages_before_question) + 1
+                correct_answer = random.randint(0, stages_before_question - 1)
+                choices = '|'.join(
+                    '{}. {}'.format(yidx + 1, y['header']) for yidx, y in
+                    enumerate(tutorial_stages[first_idx:idx + 1]))
+                question = 'Which time saver is described as:\n {}'.format(
+                    time_savers[correct_answer + first_idx]['content'])
+                stage = TutorialStage.create_dict(
+                    tutorial_level=idx + tutorial_questions,
+                    question=question, question_answers=choices,
+                    correct_answer=correct_answer + 1, alert='CORRECT!',
+                    sub_header='Question', header=note_type,
+                    alert_level='success')
+                tutorial_stages.append(stage)
+        g_tut_name = 'Time Savers - Software Helpers'
         tutorial_stages = pd.DataFrame(tutorial_stages)
         update_tutorial(current_user_id, current_user_id, g_tut_name,
                         new_data=tutorial_stages, new_data_is_df=True)

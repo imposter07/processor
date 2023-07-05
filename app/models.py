@@ -1360,6 +1360,10 @@ class Notes(db.Model):
                           object_name=cur_proc.name, note_id=self.id)
         return url
 
+    @staticmethod
+    def get_current_children():
+        return []
+
 
 class Uploader(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1741,6 +1745,10 @@ class TutorialStage(db.Model):
     def get_table_name_to_task_dict():
         return {}
 
+    @staticmethod
+    def get_current_children():
+        return []
+
 
 class Walkthrough(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1808,6 +1816,9 @@ class WalkthroughSlide(db.Model):
     def get_url():
         return url_for('main.app_help')
 
+    @staticmethod
+    def get_current_children():
+        return []
 
 
 class Plan(db.Model):

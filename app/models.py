@@ -1355,9 +1355,11 @@ class Notes(db.Model):
         if self.link:
             url = self.link
         else:
+            url = url_for('main.app_help')
             cur_proc = Processor.query.get(self.processor_id)
-            url = url_for('main.edit_processor_view_note',
-                          object_name=cur_proc.name, note_id=self.id)
+            if cur_proc:
+                url = url_for('main.edit_processor_view_note',
+                              object_name=cur_proc.name, note_id=self.id)
         return url
 
     @staticmethod

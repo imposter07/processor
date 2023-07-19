@@ -4,7 +4,7 @@
 {% for x in analysis %}
     {% if x['selected'] == 'true' %}
         <p style="margin-left:{{ x['tab'] * 2 }}em;">{{ x['message'] }}</p>
-        {% if 'data' in x %}
+        {% if 'df' in x %}
             <p style="margin-left:{{ x['tab'] * 2 }}em;">{{ x['df'].to_html()|safe }}</p>
         {% endif %}
     {% endif %}

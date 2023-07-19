@@ -7,7 +7,7 @@ This processor can be found at: https://lqadata.com/processor/{{ processor_name 
 {% for x in analysis %}
     {% if x['selected'] == 'true' %}
         {{ x['message'] }}
-        {% if 'data' in x %}
+        {% if 'df' in x %}
             {{ x['df'].to_string() }}
         {% endif %}
     {% endif %}

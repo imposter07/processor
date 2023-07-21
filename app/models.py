@@ -2169,8 +2169,9 @@ class PartnerPlacements(db.Model):
     partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
 
     def check_col_in_words(self, words, parent_id):
-        parent = Partner.query.get(parent_id)
-        g_parent = PlanPhase.query.get(parent.plan_phase_id)
+        response = ''
+        parent = db.session.get(Partner, parent_id)
+        g_parent = db.session.get(PlanPhase, parent.plan_phase_id)
         plan_id = g_parent.plan_id
         cols = [self.country, self.environment, self.budget,
                 self.targeting_bucket, self.creative_line_item, self.copy,
@@ -2184,6 +2185,9 @@ class PartnerPlacements(db.Model):
         new_rules = []
         for col in cols:
             str_name = col.name
+            old_rule = PlanRule.query.filter_by(
+                place_col=str_name, partner_id=parent_id,
+                plan_id=plan_id).first()
             col_names = str_name.split('_')
             db_col = '{}name'.format(''.join(col_names))
             col_names = col_names + [str_name, db_col]
@@ -2198,19 +2202,46 @@ class PartnerPlacements(db.Model):
                 if name_list:
                     name_list = utl.get_dict_values_from_list(words, name_list,
                                                               True)
+            if old_rule:
+                comp_list = [x[db_col] for x in name_list]
+                for x in old_rule.rule_info:
+                    if x not in comp_list:
+                        name_list.append({db_col: x})
             if name_list:
-                total_names = len(name_list)
-                rule_info = {x[db_col]: 1 / total_names for x in name_list}
-                new_rule = PlanRule(place_col=str_name, rule_info=rule_info,
-                                    partner_id=parent_id, plan_id=plan_id)
-                db.session.add(new_rule)
-                db.session.commit()
-                new_rules.append(new_rule)
+                rule_info = {}
+                rem_percent = 1
+                name_no_number = []
+                for x in name_list:
+                    name = x[db_col]
+                    num = None
+                    if name.lower() in words:
+                        num = utl.get_next_number_from_list(
+                            words, name.lower(), '')
+                    if num:
+                        num = float(num) * .01
+                        rem_percent -= num
+                        rule_info[name] = num
+                    else:
+                        name_no_number.append(name)
+                for x in name_no_number:
+                    rule_info[x] = rem_percent / len(name_no_number)
+                if old_rule:
+                    old_rule.rule_info = rule_info
+                    db.session.commit()
+                else:
+                    old_rule = PlanRule(place_col=str_name, rule_info=rule_info,
+                                        partner_id=parent_id, plan_id=plan_id)
+                    db.session.add(old_rule)
+                    db.session.commit()
+                new_rules.append(old_rule)
                 words_to_remove = name_list
                 if name_in_list:
                     words_to_remove = words_to_remove + name_in_list
                 words = [x for x in words if x not in words_to_remove]
-        return new_rules
+        if new_rules:
+            response = 'Added rules for {} for columns {}'.format(
+                parent.name, ','.join([x.place_col for x in new_rules]))
+        return response
 
     def create_from_rules(self, parent_id):
         parent = Partner.query.get(parent_id)

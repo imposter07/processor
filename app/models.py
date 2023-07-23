@@ -1029,7 +1029,7 @@ class ProcessorDatasources(db.Model):
     account_filter = db.Column(db.Text)
     start_date = db.Column(db.Date)
     api_fields = db.Column(db.String(128))
-    vendor_key = db.Column(db.String(128))
+    vendor_key = db.Column(db.Text)
     full_placement_columns = db.Column(db.Text)
     placement_columns = db.Column(db.Text)
     auto_dictionary_placement = db.Column(db.Text)

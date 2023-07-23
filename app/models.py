@@ -1022,7 +1022,7 @@ class TaskScheduler(db.Model):
 
 class ProcessorDatasources(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), index=True)
+    name = db.Column(db.Text, index=True)
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
     key = db.Column(db.String(64))
     account_id = db.Column(db.Text)

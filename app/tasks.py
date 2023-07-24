@@ -21,7 +21,7 @@ from app.models import User, Post, Task, Processor, Message, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
-    ProcessorReports, Partner
+    ProcessorReports, Partner, PlanRule
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -5317,12 +5317,13 @@ def get_plan_rules(plan_id, current_user_id):
         df = pd.DataFrame([x.get_form_dict() for x in cur_plan.rules])
         name = 'PlanRules'
         name_col = 'column_name'
-        cols = [name_col, 'order', 'type', 'rule_info']
+        cols = [name_col, PlanRule.order.name, PlanRule.type.name, PlanRule.rule_info.name]
         select_val_dict = {name_col: [{name_col: x} for x in dctc.COLS]}
         lt = app_utl.LiquidTable(
             df=df, title=name, table_name=name,
             select_val_dict=select_val_dict, select_box=name_col,
-            form_cols=[name_col], specify_form_cols=True)
+            form_cols=[name_col], specify_form_cols=True,
+            slider_edit_col=PlanRule.rule_info.name)
         _set_task_progress(100)
         return [lt.table_dict]
     except:

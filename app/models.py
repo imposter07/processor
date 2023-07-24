@@ -2288,8 +2288,14 @@ class PlanRule(db.Model):
     rule_info = db.Column(db.JSON)
 
     def get_form_dict(self):
-        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
-                     if not k.startswith("_") and k != 'id'])
+        fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                   if not k.startswith("_") and k != 'id'])
+        cur_partner = 'ALL'
+        if self.partner_id:
+            cur_partner = db.session.get(Partner, self.partner_id)
+            cur_partner = cur_partner.name
+        fd[Partner.__name__] = cur_partner
+        return fd
 
 
 class Conversation(db.Model):

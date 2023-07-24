@@ -295,7 +295,8 @@ class LiquidTable(object):
                  col_filter=True, search_bar=True, chart_btn=True,
                  df=pd.DataFrame(), row_on_click='', button_col=None,
                  table_buttons=None, custom_cols=None, highlight_type='blank',
-                 download_table=False, table_name='liquidTable'):
+                 download_table=False, slider_edit_col='',
+                 table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -324,6 +325,9 @@ class LiquidTable(object):
         self.custom_cols = custom_cols
         self.highlight_type = highlight_type
         self.download_table = download_table
+        self.slider_edit_col = slider_edit_col
+        if self.slider_edit_col:
+            self.accordion = True
         self.df = df
         self.build_from_df()
         self.form_cols = self.check_form_cols(
@@ -335,7 +339,8 @@ class LiquidTable(object):
         self.cols = self.make_columns(
             self.col_list, self.select_val_dict, self.select_box,
             self.form_cols, self.metric_cols, self.def_metric_cols, self.header,
-            self.highlight_row, self.button_col, self.highlight_type)
+            self.highlight_row, self.button_col, self.highlight_type,
+            self.slider_edit_col)
         self.table_dict = self.make_table_dict(
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
@@ -367,7 +372,7 @@ class LiquidTable(object):
 
     def make_columns(self, col_list, select_val_dict, select_box, form_cols,
                      metric_cols, def_metric_cols, header, highlight_row,
-                     button_col, highlight_type):
+                     button_col, highlight_type, slider_edit_col):
         cols = []
         if col_list:
             for x in col_list:
@@ -390,6 +395,9 @@ class LiquidTable(object):
                 if highlight_row and x == highlight_row:
                     ht = cur_col.parse_highlight_type(highlight_type)
                     cur_col.highlight_row = ht
+                if slider_edit_col and x == slider_edit_col:
+                    cur_col.form = True
+                    cur_col.type = cur_col.slider_edit_col_str
                 if button_col and x in button_col:
                     cur_col.type = 'button_col'
                 cur_col.update_dict()
@@ -424,9 +432,11 @@ class LiquidTableColumn(object):
     header_str = 'header'
     form_str = 'form'
     highlight_row_str = 'highlight_row'
+    slider_edit_col_str = 'slider_edit_col'
 
     def __init__(self, name, col_type='', values=None, add_select_box=False,
-                 hidden=False, header=False, form=False, highlight_row=''):
+                 hidden=False, header=False, form=False, highlight_row='',
+                 slider_edit_col=''):
         self.name = name
         self.type = col_type
         self.values = values
@@ -435,6 +445,7 @@ class LiquidTableColumn(object):
         self.header = header
         self.form = form
         self.highlight_row = highlight_row
+        self.slider_edit_col = slider_edit_col
         self.col_dict = self.update_dict()
 
     def update_dict(self):
@@ -446,7 +457,8 @@ class LiquidTableColumn(object):
             self.hidden_str: self.hidden,
             self.header_str: self.header,
             self.form_str: self.form,
-            self.highlight_row_str: self.highlight_row}
+            self.highlight_row_str: self.highlight_row,
+            self.slider_edit_col_str: self.slider_edit_col}
         return self.col_dict
 
     def make_select(self):

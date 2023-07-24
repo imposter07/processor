@@ -411,6 +411,115 @@ function getDateForm(loopIndex) {
         </div>`
 }
 
+function changeSliderValues(slider, newValue) {
+    slider.value = newValue;
+    slider.previousElementSibling.style.width = `${newValue}%`;
+    slider.nextElementSibling.value = newValue;
+    let dataCellId = slider.dataset['datacell'];
+    let dataCell = document.getElementById(dataCellId);
+    let data = JSON.parse(dataCell.value);
+    let key = slider.dataset['key'];
+    data[key] = newValue / 100;
+    dataCell.value = JSON.stringify(data);
+    dataCell.onchange();
+}
+
+function adjustOtherSliders(changedSlider) {
+    let total = 0;
+    let sliders = changedSlider.parentElement.parentElement.querySelectorAll(".slider");
+    let lockedSliders = 0;
+    let lockButtonId = changedSlider.id.replace('Slider', 'Lock');
+    let lockButton = document.getElementById(lockButtonId);
+    sliders.forEach(slider => {
+        total += Number(slider.value);
+        lockButtonId = slider.id.replace('Slider', 'Lock');
+        lockButton = document.getElementById(lockButtonId);
+        if (lockButton.textContent === "Unlock") {
+            lockedSliders += 1;
+        }
+    });
+    let difference = total - 100;
+    let change = difference / (sliders.length - 1 - lockedSliders);
+    sliders.forEach(slider => {
+        lockButtonId = slider.id.replace('Slider', 'Lock');
+        lockButton = document.getElementById(lockButtonId);
+        if (slider !== changedSlider && lockButton.textContent !== "Unlock") {
+            let newValue = slider.value - change;
+            if (newValue < 0) {
+                let changeSliderNewValue = changedSlider.value + newValue;
+                changeSliderValues(changedSlider, changeSliderNewValue);
+                newValue = 0;
+            }
+            changeSliderValues(slider, newValue);
+        }
+    });
+}
+
+function sliderValueEditOnInput() {
+    let sliderValueInput = this;
+    let progressBarId = sliderValueInput.id.replace('Value', 'Slider');
+    let progressBar = document.getElementById(progressBarId);
+    let lockButtonId = progressBar.id.replace('Slider', 'Lock');
+    let lockButton = document.getElementById(lockButtonId);
+    if (lockButton.textContent === "Unlock") {
+        this.value = sliderValueInput.value;
+        return;
+    }
+    changeSliderValues(progressBar, this.value);
+    adjustOtherSliders(sliderValueInput, this.value);
+}
+
+function sliderEditOnInput() {
+    let progressBar = this;
+    let sliderValueInputId = progressBar.id.replace('Slider', 'Value');
+    let sliderValueInput = document.getElementById(sliderValueInputId);
+    let lockButtonId = progressBar.id.replace('Slider', 'Lock');
+    let lockButton = document.getElementById(lockButtonId);
+    if (lockButton.textContent === "Unlock") {
+        this.value = sliderValueInput.value;
+        return;
+    }
+    changeSliderValues(progressBar, this.value);
+    adjustOtherSliders(this, this.value);
+}
+
+function lockButtonOnClick() {
+    if (this.textContent === "Lock") {
+        this.textContent = "Unlock";
+        this.classList.remove('btn-outline-primary');
+        this.classList.add('btn-primary');
+    } else {
+        this.textContent = "Lock";
+        this.classList.remove('btn-primary');
+        this.classList.add('btn-outline-primary');
+    }
+}
+
+function buildSliderEditCol(elem, newValue, inputElemId) {
+    console.log(elem.id)
+    let data = JSON.parse(newValue);
+    let progHtml = '<br>';
+    for (let key in data) {
+        progHtml += `
+            <div class="col">
+            <span>${key}</span>
+            <input id="${inputElemId}${key}Slider" class="slider" 
+                data-key="${key}" data-datacell="${inputElemId}"
+                type="range" min="0" max="100" value="${data[key] * 100}">
+            <input id="${inputElemId}${key}Value" class="slider-value"
+                data-key="${key}" data-datacell="${inputElemId}"
+                type="number" min="0" max="100" value="${data[key] * 100}">
+            <button id="${inputElemId}${key}Lock" class="lock-button btn btn-outline-primary">Lock</button>
+            </div>
+        `;
+    }
+    elem.insertAdjacentHTML('beforeend', progHtml);
+    addOnClickEvent('.slider', sliderEditOnInput, 'input');
+    addOnClickEvent('.slider-value', sliderValueEditOnInput, 'input');
+    addOnClickEvent('.lock-button', lockButtonOnClick)
+    return progHtml
+}
+
 function buildFormFromCols(loopIndex, formNames, tableName) {
     let fromFromCols = '';
     let dateCols = ['start_date', 'end_date'];
@@ -433,16 +542,17 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
             topRowData += ' data-' + topRowId + '=""'
         });
         let displayColNames = generateDisplayColumnName(formName);
-        fromFromCols += `
-        <div class="col-4 form-group" id="${formName}FormGroupCol">
-            <label class="control-label" for="${inputIdHtml}">${displayColNames}</label>
-                   ${inputStartHtml} class="form-control form-control-sm"
-                   id="${inputIdHtml}" name="${inputIdHtml}"
-                   onchange="syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')"
-                   oninput="syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')"
-                   ${topRowData}>
-            ${inputInnerHtml}${inputEndHtml}
-        </div>`
+        let formColHtml = `
+            <div class="col-4 form-group" id="${formName}FormGroupCol">
+                <label class="control-label" for="${inputIdHtml}">${displayColNames}</label>
+                       ${inputStartHtml} class="form-control form-control-sm"
+                       id="${inputIdHtml}" name="${inputIdHtml}"
+                       onchange="syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')"
+                       oninput="syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')"
+                       ${topRowData}>
+                ${inputInnerHtml}${inputEndHtml}
+            </div>`;
+        fromFromCols += formColHtml;
     });
     return fromFromCols
 }
@@ -523,7 +633,7 @@ function addRowToTable(rowData, tableName, customTableCols) {
     sortTable(bodyId, tableName + 'TableHeader');
     if (customTableCols) {
         for (let customFunc of customTableCols) {
-            applyCustomFunction(customFunc, loopIndex)
+            applyCustomFunction(customFunc, loopIndex);
         }
     }
     return loopIndex
@@ -561,6 +671,10 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
             curElem.selectize.setValue(newValue);
         } else {
             curElem.value = newValue;
+        }
+        if (colElem.dataset['type'] === 'slider_edit_col') {
+            curElem.style.display = 'none';
+            buildSliderEditCol(curElem.parentElement, newValue, curElem.id);
         }
     });
     syncTableWithForm(loopIndex, rowFormNames, tableName);

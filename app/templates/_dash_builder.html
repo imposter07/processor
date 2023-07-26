@@ -33,6 +33,25 @@
     .outer {
         overflow: auto;
     }
+
+    .bubble circle {
+        stroke-width: 2px;
+        stroke: white;
+        opacity: 0.4;
+    }
+
+    .bubble:hover circle {
+        stroke: black;
+        opacity: 1;
+    }
+
+    .bubble-label {
+        alignment-baseline: central;
+        paint-order: stroke;
+        stroke: white;
+        stroke-width: 3px;
+        font-weight: 600;
+    }
 </style>
 
 <script src="https://d3js.org/d3.v5.min.js"></script>
@@ -43,9 +62,12 @@
 
 <script>
     function autoMargin(elem, maxHeight, lMargin, bMargin, dataLength = 1,
-                        dataLengthY = 1) {
+                        dataLengthY = 1, equalSides = false) {
         const parent = d3.select(elem);
         const size = parent.node().getBoundingClientRect()
+        if (equalSides) {
+            maxHeight = size.width;
+        }
         let margin = {top: 10, right: lMargin, bottom: bMargin, left: lMargin},
             width = (size.width - margin.left - margin.right) * dataLength,
             height = (maxHeight - margin.top - margin.bottom) * dataLengthY;
@@ -151,12 +173,15 @@
     }
 
     function generateAxis(data, svg, xAxisType, yAxisType, width, height,
-                          xCol, yCol, timeX = null, y1AxisType=null, y1Col=null) {
+                          xCol, yCol, timeX = null, y1AxisType=null, y1Col=null,
+                          domainX = null, domainY = null, centerAxis = false) {
         let xUnit = getUnits(xCol[0]);
         let yUnit = getUnits(yCol);
 
         let xDomain = function () {
-            if (timeX) {
+            if (domainX) {
+                return domainX;
+            } else if (timeX) {
                 return d3.extent(data, function (d) {
                     return d[xCol];
                 })
@@ -166,31 +191,45 @@
                 })
             }
         }
+        let yDomain = function () {
+            if (domainY) {
+                return domainY;
+            } else {
+                return [0, d3.max(data, function (d) {
+                    return +d[yCol];
+                })]
+            }
+        }
         let x = xAxisType
             .domain(xDomain())
             .range([0, width])
-        if (!timeX) {
+        if (!timeX && x.name === 'i') {
             x.padding(1)
         }
         let xAxis = d3.axisBottom(x)
+        let transHeight = height;
+        let transWidth = 0;
+        if (centerAxis) {
+            transHeight = 0.5*height;
+            transWidth = 0.5*width;
+        }
         svg.append("g")
-            .attr("transform", "translate(0," + height + ")")
+            .attr("transform", "translate(0," + transHeight + ")")
             .attr('class', 'xaxis')
             .call(xAxis)
             .call(xAxis.ticks(null, xUnit));
-        if (!timeX) {
+        if (!timeX && x.name === 'i') {
             svg.selectAll('.xaxis')
                 .selectAll(".tick text")
                 .call(wrapText, x.bandwidth());
         }
 
         let yScale = yAxisType
-            .domain([0, d3.max(data, function (d) {
-                return +d[yCol];
-            })])
+            .domain(yDomain())
             .range([height, 0]);
         let yAxis = d3.axisLeft(yScale);
         svg.append("g")
+            .attr("transform", "translate(" + transWidth + ", 0)")
             .attr('class', 'yaxis')
             .call(yAxis)
             .call(yAxis.ticks(null, yUnit));
@@ -869,6 +908,104 @@
             d.price = +d.price;
             return d;
         }
+    }
+
+    function generateBubbleChart(elem, data, xCol, yCol, labelCol,
+                                 domainX = null, domainY = null,
+                                 centerAxis = false) {
+        const elemId = elem.replace('#', '');
+        document.getElementById(elemId).innerHTML = '';
+        let am = autoMargin(elem, 768, 60, 60, 1, 1, true);
+        let svg = am.svg;
+        let myColor = getColorPal(yCol);
+        let axes = generateAxis(
+            data, svg, d3.scaleLinear(), d3.scaleLinear(), am.width, am.height,
+            xCol, yCol[0], false, null, null, domainX, domainY, centerAxis
+        );
+        svg.append("g")
+            .append("text")
+            .attr("transform",
+                "translate(" + [am.width*0.5 + 10, 10] + ")")
+            .text(yCol);
+        svg.append("g")
+            .append("text")
+            .attr("transform",
+                "translate(" + [am.width - 60, am.height*0.5 - 10] + ")")
+            .text(xCol);
+        let tooltip = d3.select(elem)
+            .append("div")
+              .style("opacity", 0)
+              .attr("class", "tooltip")
+              .style("background-color", "white")
+              .style("border", "solid")
+              .style("border-width", "2px")
+              .style("border-radius", "5px")
+              .style("padding", "5px");
+
+        let showTooltip = function(d) {
+            tooltip
+              .transition()
+              .duration(200)
+            tooltip
+              .style("opacity", 1)
+              .style("pointer-events", "none")
+              .html(xCol + ": " + d[xCol].toPrecision(2) + "<br>"
+                + yCol[0] + ": " + d[yCol[0]].toPrecision(2))
+              .style("left", (d3.mouse(this)[0]+50) + "px")
+              .style("top", (d3.mouse(this)[1]+100) + "px")
+        }
+
+        let moveTooltip = function(d) {
+            tooltip
+              .style("left", (d3.mouse(this)[0]+50) + "px")
+              .style("top", (d3.mouse(this)[1]+100) + "px")
+        }
+
+        let hideTooltip = function(d) {
+            tooltip
+              .transition()
+              .duration(200)
+              .style("opacity", 0)
+        }
+
+        function update(selectedVar) {
+            var j = svg.selectAll("circle")
+                .data(data)
+
+            let enterElem = j
+                .enter()
+                .append("g")
+                    .attr("class", "bubble")
+                    .on("mouseover", showTooltip )
+                    .on("mousemove", moveTooltip )
+                    .on("mouseleave", hideTooltip );
+
+            enterElem
+                .append("circle")
+                    .attr("cx", function (d) {
+                        return axes.x(d[xCol]);
+                    })
+                    .attr("cy", function (d) {
+                        return axes.yScale(d[selectedVar]);
+                    })
+                    .attr("r", 24)
+                    .attr("fill", function (d) {
+                        return myColor(selectedVar);
+                    });
+
+            enterElem
+                .append("text")
+                    .attr("class", "bubble-label")
+                    .attr("x", function(d) {
+                        return axes.x(d[xCol]);
+                    })
+                    .attr("y", function(d) {
+                        return axes.yScale(d[selectedVar]);
+                    })
+                    .attr("text-anchor", "middle")
+                    .text(function(d) {return d[labelCol];});
+        }
+        update(yCol[0]);
     }
 
     function generateBarChart(elem, data, xCol, yCol) {

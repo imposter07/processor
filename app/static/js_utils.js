@@ -9,6 +9,41 @@ function convertDictToFormData(data) {
     return formData
 }
 
+function convertFormDataToDict(formData) {
+    if (!(formData instanceof FormData)) {
+        return formData
+    }
+    let data = {};
+    for (const key of formData.keys()) {
+        data[key] = formData.getAll(key);
+        if (data[key].length === 1) {
+            data[key] = data[key][0];
+        }
+    }
+    return data
+}
+
+function prepareFormsForRequest(formIds) {
+    let data = {};
+    formIds.forEach(formId => {
+        let form = document.getElementById(formId);
+        let formData = new FormData(form);
+        data[form.id] = JSON.stringify(
+            convertFormDataToDict(formData));
+    })
+    return data
+}
+
+function validateFormsById(formIds) {
+    let valid = true;
+    formIds.forEach(formId => {
+        if (!document.getElementById(formId).reportValidity()) {
+            valid = false;
+        }
+    })
+    return valid
+}
+
 function makeRequest(url, method, data, responseFunction,
                      responseType = 'json', kwargs = {},
                      errorFunction = '') {

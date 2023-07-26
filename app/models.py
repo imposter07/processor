@@ -2316,3 +2316,55 @@ class Chat(db.Model):
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                      if not k.startswith("_")])
+
+
+class Brandtracker(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    primary_date = db.Column(db.Date)
+    comparison_date = db.Column(db.Date)
+    titles = db.Column(db.Text)
+    dimensions = db.relationship('BrandtrackerDimensions',
+                                 backref="brandtracker", lazy='dynamic')
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_")])
+
+    def get_dimension_form_dicts(self):
+        form_dicts = []
+        for comp in self.dimensions:
+            form_dicts.append(comp.get_form_dict())
+        return form_dicts
+
+    @staticmethod
+    def get_calculated_fields(c_str='_comparison'):
+        calculated_cols = {
+            'MAU Growth':
+                lambda x: (x[vmc.month_avg_user]
+                           - x['{}{}'.format(vmc.month_avg_user, c_str)]),
+            'Twitch Concurrent Viewers Trend':
+                lambda x: ((x[vmc.twitch_viewers]
+                           - x['{}{}'.format(vmc.twitch_viewers, c_str)])
+                           / x[vmc.twitch_viewers])
+        }
+        return calculated_cols
+
+
+class BrandtrackerDimensions(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    dimension = db.Column(db.Text)
+    brandtracker_id = db.Column(db.Integer, db.ForeignKey('brandtracker.id'))
+    metric_column = db.Column(db.Text)
+    weight = db.Column(db.Numeric)
+
+    def get_form_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])
+
+    def set_from_form(self, form, current_brandtracker):
+        self.dimension = form['dimension_name']
+        self.brandtracker_id = current_brandtracker.id
+        self.metric_column = form['data_column']
+        self.weight = form['weight']

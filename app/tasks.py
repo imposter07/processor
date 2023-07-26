@@ -21,7 +21,7 @@ from app.models import User, Post, Task, Processor, Message, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
-    ProcessorReports, Partner, PlanRule
+    ProcessorReports, Partner, PlanRule, Brandtracker, BrandtrackerDimensions
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -3587,7 +3587,9 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         _set_task_progress(30)
         sb = exp.ScriptBuilder()
         base_table = [x for x in sb.tables if x.name == 'event'][0]
-        from_script = sb.get_from_script_with_opts(base_table)
+        append_tables = sb.get_active_event_tables(metrics)
+        from_script = sb.get_from_script_with_opts(base_table,
+                                                   event_tables=append_tables)
         command = """SELECT {0}
             {1}
             {2}
@@ -5529,6 +5531,74 @@ def get_brandtracker_imports(processor_id, current_user_id):
         _set_task_progress(100)
         msg = 'Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_brandtracker_data(current_user_id, running_user, form_data):
+    try:
+        _set_task_progress(0)
+        campaign = Campaign.query.filter_by(name='BRANDTRACKER').first()
+        bt_procs = Processor.query.filter_by(campaign_id=campaign.id).all()
+        df = pd.DataFrame()
+        metric_cols = ['media_spend', 'youtube_subscribers',
+                       'twitter_followers', 'twitch_views', 'twitch_viewers',
+                       'subreddit_members', 'player_share', 'nz_awareness',
+                       'np_score', 'coverage', 'month_avg_user', 'stickiness',
+                       'days_played', 'play_intent']
+        for proc in bt_procs:
+            tdf = get_data_tables_from_db(
+                proc.id, current_user_id,
+                dimensions=['productname', 'eventdate'],
+                metrics=metric_cols, use_cache=True)[0]
+            if not tdf.empty:
+                df = pd.concat([df, tdf], ignore_index=True)
+
+        c_str = '_comparison'
+        date = form_data['primary_date']
+        cdate = form_data['comparison_date']
+        titles = form_data['titles']
+        df = utl.data_to_type(df, date_col=['eventdate'])
+        cdf = df[(df['eventdate'].dt.month == cdate.month)
+                 & (df['productname'].isin(titles))]
+        cdf = cdf.drop(['eventdate'], axis=1)
+        cdf = cdf.groupby(['productname']).mean().fillna(0)
+        df = df[(df['eventdate'].dt.month == date.month)
+                & (df['productname'].isin(titles))]
+        df = df.drop(['eventdate'], axis=1)
+        df = df.groupby(['productname']).mean().fillna(0)
+        df = df.merge(cdf, how='left', left_index=True,
+                      right_index=True, suffixes=(None, c_str))
+        calculated_cols = Brandtracker.get_calculated_fields(c_str=c_str)
+        df = df.assign(**calculated_cols)
+
+        columns = {}
+        weights_dict = {}
+        brandtracker_dimensions = ['Influence', 'Engagement', 'Momentum']
+        for dim in brandtracker_dimensions:
+            weights_dict[dim] = {x['data_column']: float(x['weight'])
+                                 for x in form_data[dim] if dim in form_data}
+        output_df = cal.calculate_weight_z_score(
+            df, weights_dict).reset_index().fillna('None')
+        result = [output_df]
+        for dim in brandtracker_dimensions:
+            columns[dim] = [x for x in weights_dict[dim].keys()
+                            if x in output_df]
+            columns[dim].extend(['{}_zscore'.format(x) for x
+                                 in columns[dim]])
+            columns[dim].sort()
+            columns[dim] = ['productname'] + columns[dim] + [dim]
+            table_name = '{}Table'.format(dim)
+            lt = app_utl.LiquidTable(
+                table_name=table_name, df=output_df[columns[dim]],
+                col_filter=False, chart_btn=False, specify_form_cols=False)
+            result.append(lt.table_dict)
+        _set_task_progress(100)
+        return result
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - User {}'.format(
+            current_user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 

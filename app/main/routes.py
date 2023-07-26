@@ -832,6 +832,8 @@ def post_table():
     cur_obj = request.form['object_type']
     if cur_obj == 'Processor':
         cur_obj = Processor
+    elif cur_obj == 'Plan':
+        cur_obj = Plan
     else:
         cur_obj = Uploader
         proc_arg['object_level'] = request.form['object_level']
@@ -861,7 +863,8 @@ def post_table():
                  'get_plan_property': '.write_plan_property',
                  'change_dictionary_order': '.write_dictionary_order',
                  'billingTable': '.write_billing_table',
-                 'reportBuilder': '.write_report_builder'}
+                 'reportBuilder': '.write_report_builder',
+                 'PlanRules': '.write_plan_rules'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',
                       'dictionary_order']:

@@ -496,7 +496,6 @@ function lockButtonOnClick() {
 }
 
 function buildSliderEditCol(elem, newValue, inputElemId) {
-    console.log(elem.id)
     let data = JSON.parse(newValue);
     let progHtml = '<br>';
     for (let key in data) {

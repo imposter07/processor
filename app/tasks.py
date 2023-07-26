@@ -98,9 +98,10 @@ def adjust_path(path):
     return path
 
 
-def get_processor_and_user_from_id(processor_id, current_user_id):
-    processor_to_run = Processor.query.get(processor_id)
-    user_that_ran = User.query.get(current_user_id)
+def get_processor_and_user_from_id(processor_id, current_user_id,
+                                   db_model=Processor):
+    processor_to_run = db.session.get(db_model, processor_id)
+    user_that_ran = db.session.get(User, current_user_id)
     return processor_to_run, user_that_ran
 
 
@@ -114,8 +115,10 @@ def processor_post_message(proc, usr, text, run_complete=False,
         msg = Message(author=usr, recipient=usr, body=msg_body)
         db.session.add(msg)
         usr.add_notification('unread_message_count', usr.new_messages())
-        if object_name == 'Uploader':
+        if object_name == Uploader.__name__:
             post = Post(body=text, author=usr, uploader_id=proc.id)
+        elif object_name == Plan.__name__:
+            post = Post(body=text, author=usr, plan_id=proc.id)
         else:
             post = Post(body=text, author=usr, processor_id=proc.id)
         if request_id:
@@ -1888,12 +1891,17 @@ def get_uploader_creative(uploader_id, current_user_id):
             uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
-def set_processor_values(processor_id, current_user_id, form_sources, table):
-    cur_processor, user_that_ran = get_processor_and_user_from_id(
-        processor_id=processor_id, current_user_id=current_user_id)
-    old_items = table.query.filter_by(
-        processor_id=cur_processor.id).all()
+def set_processor_values(processor_id, current_user_id, form_sources, table,
+                         parent_model=Processor):
     _set_task_progress(0)
+    cur_processor, user_that_ran = get_processor_and_user_from_id(
+        processor_id=processor_id, current_user_id=current_user_id,
+        db_model=parent_model)
+    if parent_model == Plan:
+        key = table.plan_id.name
+    else:
+        key = table.processor_id.name
+    old_items = table.query.filter_by(**{key: processor_id}).all()
     if old_items:
         for item in old_items:
             db.session.delete(item)
@@ -1903,9 +1911,10 @@ def set_processor_values(processor_id, current_user_id, form_sources, table):
         t.set_from_form(form_source, cur_processor)
         db.session.add(t)
     db.session.commit()
-    msg_text = "Processor {} {} set.".format(cur_processor.name,
-                                             table.__name__)
-    processor_post_message(cur_processor, user_that_ran, msg_text)
+    msg_text = "{} {} {} set.".format(
+        parent_model.__name__, cur_processor.name, table.__name__)
+    processor_post_message(cur_processor, user_that_ran, msg_text,
+                           object_name=parent_model.name)
 
 
 def set_processor_accounts(processor_id, current_user_id, form_sources):
@@ -5960,6 +5969,23 @@ def write_billing_table(processor_id, current_user_id, new_data=None):
         _set_task_progress(100)
         msg = 'Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def write_plan_rules(plan_id, current_user_id, new_data=None):
+    try:
+        _set_task_progress(0)
+        cur_plan = Plan.query.get(plan_id)
+        df = pd.read_json(new_data)
+        df = pd.DataFrame(df[0][1])
+        df = df.to_dict(orient='records')
+        set_processor_values(plan_id, current_user_id, df, PlanRule, Plan)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Plan {} User {}'.format(
+            plan_id, current_user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 

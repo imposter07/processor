@@ -2297,6 +2297,14 @@ class PlanRule(db.Model):
         fd[Partner.__name__] = cur_partner
         return fd
 
+    def set_from_form(self, form, current_object):
+        self.name = form[PlanRule.name.name].strip()
+        self.plan_id = int(form[PlanRule.plan_id.name].strip())
+        self.partner_id = int(form[PlanRule.partner_id.name].strip())
+        self.place_col = form[PlanRule.place_col.name].strip()
+        self.type = form[PlanRule.type.name].strip()
+        self.rule_info = form[PlanRule.rule_info.name].strip()
+
 
 class Conversation(db.Model):
     id = db.Column(db.Integer, primary_key=True)

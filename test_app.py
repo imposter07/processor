@@ -1,6 +1,7 @@
 import os
 import time
 import pytest
+import urllib
 import processor.reporting.utils as utl
 from datetime import datetime, timedelta
 from app import create_app, db
@@ -9,10 +10,14 @@ from config import Config, basedir
 from multiprocessing import Process
 
 
+base_url = 'http://127.0.0.1:5000/'
+
+
 class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = ('sqlite:///'
                                + os.path.join(basedir, 'app-test.db'))
     TESTING = True
+
 
 def run_server(with_run=True):
     app = create_app(TestConfig)
@@ -46,6 +51,19 @@ def sw():
     sw.quit()
     p.terminate()
     p.join()
+
+
+@pytest.fixture(scope='module')
+def login(sw):
+    def _login():
+        sw.go_to_url(base_url)
+        login_url = '{}auth/login?next=%2F'.format(base_url)
+        if sw.browser.current_url == login_url:
+            user_pass = [('test', 'username'), ('test', 'password')]
+            sw.send_keys_from_list(user_pass)
+            sw.xpath_from_id_and_click('submit', 1)
+    yield _login
+    sw.click_on_xpath('//*[@id="navbarToggler"]/ul[2]/li[6]/a')
 
 
 @pytest.mark.usefixtures("app_fixture")
@@ -129,35 +147,43 @@ class TestUserModelCase:
         assert f4 == [p4]
 
 
-@pytest.mark.usefixtures("sw")
 class TestUserLogin:
-    base_url = 'http://127.0.0.1:5000/'
 
-    def test_login(self, sw):
+    def test_login(self, login, sw):
         time.sleep(5)
-        sw.go_to_url(self.base_url, 1)
-        login_url = '{}auth/login?next=%2F'.format(self.base_url)
+        sw.go_to_url(base_url, 1)
+        login_url = '{}auth/login?next=%2F'.format(base_url)
         assert sw.browser.current_url == login_url
-        user_pass = [('test', 'username'), ('test', 'password')]
-        sw.send_keys_from_list(user_pass)
-        sw.xpath_from_id_and_click('submit', 1)
-        assert sw.browser.current_url == self.base_url
+        login()
+        assert sw.browser.current_url == base_url
 
-    def test_create_processor(self, sw):
-        create_url = '{}create_processor'.format(self.base_url)
+
+class TestProcessor:
+
+    @pytest.fixture()
+    def set_up(self, login):
+        login()
+
+    def test_create_processor(self, sw, set_up):
+        create_url = '{}create_processor'.format(base_url)
+        name = 'Base Processor'
+
         sw.go_to_url(create_url)
         assert sw.browser.current_url == create_url
         form_names = ['cur_client-selectized',
                       'cur_product-selectized',
                       'cur_campaign-selectized', 'description']
         elem_form = [('test', x) for x in form_names]
-        elem_form += [('Base Processor', 'name')]
+        elem_form += [(name, 'name')]
         sw.send_keys_from_list(elem_form)
         sw.xpath_from_id_and_click('loadContinue')
-        sw.go_to_url('{}explore'.format(self.base_url))
         time.sleep(3)
+        assert sw.browser.current_url == (
+            '{}processor/{}/edit/import'.format(base_url,
+                                                urllib.parse.quote(name))
+        )
 
-    def test_processor_page(self, sw):
+    def test_processor_page(self, sw, set_up):
         proc_link = '//*[@id="navLinkProcessor"]'
         sw.click_on_xpath(proc_link, 1)
-        assert sw.browser.current_url == '{}processor'.format(self.base_url)
+        assert sw.browser.current_url == '{}processor'.format(base_url)

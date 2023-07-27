@@ -21,7 +21,8 @@ from app.models import User, Post, Task, Processor, Message, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
-    ProcessorReports, Partner, PlanRule, Brandtracker, BrandtrackerDimensions
+    ProcessorReports, Partner, PlanRule, Brandtracker, BrandtrackerDimensions, \
+    PartnerPlacements
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -5355,6 +5356,9 @@ def get_plan_placements(plan_id, current_user_id):
                 place = [x.get_form_dict() for x in plan_part.placements]
                 data.extend(place)
         df = pd.DataFrame(data)
+        cols = PartnerPlacements.get_col_order()
+        cols = cols + [x for x in df.columns if x not in cols]
+        df = df[cols]
         name = 'PlanPlacements'
         lt = app_utl.LiquidTable(df=df, title=name, table_name=name,
                                  download_table=True)
@@ -5981,6 +5985,28 @@ def write_plan_rules(plan_id, current_user_id, new_data=None):
         df = pd.DataFrame(df[0][1])
         df = df.to_dict(orient='records')
         set_processor_values(plan_id, current_user_id, df, PlanRule, Plan)
+        for phase in cur_plan.phases:
+            for part in phase.partners:
+                PartnerPlacements.create_from_rules(PartnerPlacements,
+                                                    part.id)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Plan {} User {}'.format(
+            plan_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def write_plan_placements(plan_id, current_user_id, new_data=None):
+    try:
+        _set_task_progress(0)
+        cur_plan = Plan.query.get(plan_id)
+        df = pd.read_json(new_data)
+        df = pd.DataFrame(df[0][1])
+        df = df.to_dict(orient='records')
+        set_processor_values(plan_id, current_user_id, df, PartnerPlacements,
+                             Plan)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

@@ -864,7 +864,8 @@ def post_table():
                  'change_dictionary_order': '.write_dictionary_order',
                  'billingTable': '.write_billing_table',
                  'reportBuilder': '.write_report_builder',
-                 'PlanRules': '.write_plan_rules'}
+                 'PlanRules': '.write_plan_rules',
+                 'PlanPlacements': '.write_plan_placements'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',
                       'dictionary_order']:

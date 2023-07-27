@@ -2168,6 +2168,30 @@ class PartnerPlacements(db.Model):
     total_budget = db.Column(db.Numeric)
     partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
 
+    @property
+    def partner(self):
+        return db.session.get(Partner, self.partner_id).name
+
+    @property
+    def plan_phase(self):
+        part = db.session.get(Partner, self.partner_id)
+        phase = db.session.get(PlanPhase, part.plan_phase_id)
+        return phase.name
+
+    @staticmethod
+    def get_col_order():
+        p = PartnerPlacements
+        cols = [
+            p.budget, Partner.__table__, p.country, p.targeting_bucket,
+            p.creative_line_item, p.copy, p.retailer, p.buy_model, p.buy_rate,
+            p.start_date, p.serving, p.ad_rate, p.reporting_rate, p.kpi,
+            p.data_type_1, PlanPhase.__table__, p.service_fee_rate,
+            p.verification_rate, p.reporting_source, p.environment, p.size,
+            p.ad_type, p.placement_description, p.package_description,
+            p.media_channel]
+        cols = [x.name for x in cols]
+        return cols
+
     def check_col_in_words(self, words, parent_id):
         response = ''
         parent = db.session.get(Partner, parent_id)
@@ -2244,13 +2268,14 @@ class PartnerPlacements(db.Model):
         return response
 
     def create_from_rules(self, parent_id):
-        parent = Partner.query.get(parent_id)
+        parent = db.session.get(Partner, parent_id)
         parent_budget = float(parent.total_budget)
         rules = PlanRule.query.filter_by(partner_id=parent_id).all()
-        rule_dict = {x.place_col: x.rule_info for x in rules}
+        rule_dict = {x.place_col: json.loads(x.rule_info) for x in rules}
         keys = [list(x.keys()) for x in rule_dict.values()]
         combos = list(itertools.product(*keys))
         data = []
+        col_order = self.get_col_order()
         for combo in combos:
             temp_dict = {}
             value_product = 1
@@ -2268,13 +2293,40 @@ class PartnerPlacements(db.Model):
             for col in self.__table__.columns:
                 if col.name in temp_dict:
                     setattr(place, col.name, temp_dict[col.name])
+            pname = []
+            for col in col_order:
+                if col in place.__dict__:
+                    val = place.__dict__[col]
+                    if col in [self.start_date.name, self.end_date.name]:
+                        val = datetime.strftime(val, '%Y%m%d')
+                else:
+                    val = ''
+                pname.append(val)
+            pname = '_'.join(pname)
+            setattr(place, self.name.name, pname)
             db.session.add(place)
             db.session.commit()
         return data
 
     def get_form_dict(self):
-        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
-                     if not k.startswith("_") and k != 'id'])
+        fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                   if not k.startswith("_") and k != 'id'])
+        cur_partner = ''
+        cur_phase = ''
+        if self.partner_id:
+            cur_partner = db.session.get(Partner, self.partner_id)
+            if cur_partner:
+                cur_phase = db.session.get(PlanPhase, cur_partner.plan_phase_id)
+                cur_phase = cur_phase.name
+            cur_partner = cur_partner.name
+        fd[Partner.__table__.name] = cur_partner
+        fd[PlanPhase.__table__.name] = cur_phase
+        return fd
+
+    def set_from_form(self, form, current_object):
+        for col in self.__table__.columns:
+            if col.name in form:
+                setattr(self, col.name, form[col.name].strip())
 
 
 class PlanRule(db.Model):

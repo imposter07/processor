@@ -4,7 +4,7 @@ import app.utils as utl
 from flask_babel import _
 from app.plan import bp
 from datetime import datetime
-import processor.reporting.dictcolumns as dctc
+import processor.reporting.analyze as az
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
@@ -194,6 +194,9 @@ def save_topline():
         utl.sync_new_form_data_with_database(
             form_dict=topline_list, old_db_items=old_part, db_model=Partner,
             relation_db_item=cur_phase, form_search_name='partnerSelect')
+        new_part = Partner.query.filter_by(plan_phase_id=cur_phase.id).all()
+        for part in new_part:
+            az.AliChat.check_gg_children([], part)
     return jsonify({'message': 'This data source {} was saved!'.format(
         obj_name), 'level': 'success'})
 

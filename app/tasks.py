@@ -240,6 +240,8 @@ def update_cached_data_in_processor_run(processor_id, current_user_id):
                      'mediachannelname', 'targetingbucketname',
                      'creativelineitemname', 'copyname']]
             dim_list.extend(dims)
+            cols = PartnerPlacements.get_cols_for_db()
+            dim_list.extend(cols)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         for col in dim_list:
             app.logger.info('Getting db col: {}'.format(col))
@@ -5980,7 +5982,7 @@ def write_billing_table(processor_id, current_user_id, new_data=None):
 def write_plan_rules(plan_id, current_user_id, new_data=None):
     try:
         _set_task_progress(0)
-        cur_plan = Plan.query.get(plan_id)
+        cur_plan = db.session.get(Plan, plan_id)
         df = pd.read_json(new_data)
         df = pd.DataFrame(df[0][1])
         df = df.to_dict(orient='records')

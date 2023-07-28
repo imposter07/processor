@@ -2179,6 +2179,16 @@ class PartnerPlacements(db.Model):
         return phase.name
 
     @staticmethod
+    def get_cols_for_db():
+        cols = ['vendorname', 'countryname', 'targetingbucketname',
+                'creativelineitemname', 'copyname', 'retailername',
+                'buymodelname', 'servingname', 'kpiname', 'datatype1name',
+                'environmentname', 'adsizename', 'adtypename',
+                'placementdescriptionname', 'packagedescriptionname',
+                'mediachannelname']
+        return cols
+
+    @staticmethod
     def get_col_order():
         p = PartnerPlacements
         cols = [
@@ -2207,6 +2217,12 @@ class PartnerPlacements(db.Model):
                 self.media_channel]
         min_impressions = 50000000
         new_rules = []
+        parameter = self.get_cols_for_db()
+        parameter = '|'.join(parameter)
+        total_db = ProcessorAnalysis.query.filter_by(
+            processor_id=23, key='database_cache', parameter=parameter,
+            filter_col='').order_by(ProcessorAnalysis.date).first()
+        total_db = pd.read_json(total_db.data)
         for col in cols:
             str_name = col.name
             old_rule = PlanRule.query.filter_by(
@@ -2228,6 +2244,8 @@ class PartnerPlacements(db.Model):
                                                               True)
             if old_rule:
                 comp_list = [x[db_col] for x in name_list]
+                if type(old_rule.rule_info) == str:
+                    old_rule.rule_info = json.loads(old_rule.rule_info)
                 for x in old_rule.rule_info:
                     if x not in comp_list:
                         name_list.append({db_col: x})
@@ -2262,6 +2280,18 @@ class PartnerPlacements(db.Model):
                 if name_in_list:
                     words_to_remove = words_to_remove + name_in_list
                 words = [x for x in words if x not in words_to_remove]
+            elif not name_list and not old_rule:
+                filtered_df = total_db[total_db['vendorname'] == parent.name]
+                exclude_values = [0, 'None', None, '0', '0.0', 0.0]
+                if db_col in filtered_df.columns:
+                    filtered_df = filtered_df[~filtered_df[db_col].isin(exclude_values)]
+                    grouped = filtered_df.groupby(db_col)[vmc.impressions].sum()
+                    g_max = grouped.idxmax()
+                    rule_info = {g_max: 1}
+                    new_rule = PlanRule(place_col=str_name, rule_info=rule_info,
+                                        partner_id=parent_id, plan_id=plan_id)
+                    db.session.add(new_rule)
+                    db.session.commit()
         if new_rules:
             response = 'Added rules for {} for columns {}'.format(
                 parent.name, ','.join([x.place_col for x in new_rules]))
@@ -2271,7 +2301,8 @@ class PartnerPlacements(db.Model):
         parent = db.session.get(Partner, parent_id)
         parent_budget = float(parent.total_budget)
         rules = PlanRule.query.filter_by(partner_id=parent_id).all()
-        rule_dict = {x.place_col: json.loads(x.rule_info) for x in rules}
+        rule_dict = {x.place_col: json.loads(x.rule_info) if type(
+            x.rule_info) != dict else x.rule_info for x in rules}
         keys = [list(x.keys()) for x in rule_dict.values()]
         combos = list(itertools.product(*keys))
         data = []

@@ -103,7 +103,8 @@ def get_sd_ed_in_dict(dict_to_add, sd_ed_value):
 
 
 def sync_new_form_data_with_database(form_dict, old_db_items, db_model,
-                                     relation_db_item, form_search_name='name'):
+                                     relation_db_item, form_search_name='name',
+                                     delete_children=False):
     if old_db_items:
         for p in old_db_items:
             new_p = [x for x in form_dict if p.name == x[form_search_name]]
@@ -114,6 +115,13 @@ def sync_new_form_data_with_database(form_dict, old_db_items, db_model,
                 form_dict = [x for x in form_dict
                              if p.name != x[form_search_name]]
             else:
+                if delete_children:
+                    all_children = p.get_current_children()
+                    for c in all_children:
+                        gcs = c.get_current_children()
+                        for gc in gcs:
+                            db.session.delete(gc)
+                        db.session.delete(c)
                 db.session.delete(p)
     for p in form_dict:
         new_p = db_model()

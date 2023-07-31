@@ -10,7 +10,7 @@ from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
     CreateSowForm
 from app.models import Client, Product, Campaign, Plan, Post, Partner, \
-    PlanPhase, Sow, Processor
+    PlanPhase, Sow, Processor, PartnerPlacements
 
 
 @bp.route('/plan', methods=['GET', 'POST'])
@@ -167,7 +167,8 @@ def save_topline():
     old_phase = PlanPhase.query.filter_by(plan_id=cur_plan.id).all()
     utl.sync_new_form_data_with_database(
         form_dict=phase_list, old_db_items=old_phase, db_model=PlanPhase,
-        relation_db_item=cur_plan, form_search_name='phaseSelect')
+        relation_db_item=cur_plan, form_search_name='phaseSelect',
+        delete_children=True)
     for phase_idx in data:
         phase_name = [
             x for x in data[phase_idx]['Phase'] if
@@ -193,10 +194,12 @@ def save_topline():
         old_part = Partner.query.filter_by(plan_phase_id=cur_phase.id).all()
         utl.sync_new_form_data_with_database(
             form_dict=topline_list, old_db_items=old_part, db_model=Partner,
-            relation_db_item=cur_phase, form_search_name='partnerSelect')
+            relation_db_item=cur_phase, form_search_name='partnerSelect',
+            delete_children=True)
         new_part = Partner.query.filter_by(plan_phase_id=cur_phase.id).all()
+        db_df = PartnerPlacements().get_reporting_db_df()
         for part in new_part:
-            az.AliChat.check_gg_children([], part)
+            az.AliChat.check_gg_children([], part, db_df)
     return jsonify({'message': 'This data source {} was saved!'.format(
         obj_name), 'level': 'success'})
 

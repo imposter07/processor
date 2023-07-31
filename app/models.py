@@ -427,7 +427,7 @@ class Client(db.Model):
 
     @staticmethod
     def get_name_list(parameter='clientname', min_impressions=0):
-        df = {}
+        df = []
         a = ProcessorAnalysis.query.filter_by(
             processor_id=23, key='database_cache', parameter=parameter,
             filter_col='').order_by(ProcessorAnalysis.date).first()
@@ -2137,6 +2137,9 @@ class Partner(db.Model):
     def get_children():
         return PartnerPlacements
 
+    def get_current_children(self):
+        return self.placements.all() + self.rules.all()
+
 
 class PartnerPlacements(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2189,7 +2192,7 @@ class PartnerPlacements(db.Model):
         return cols
 
     @staticmethod
-    def get_col_order():
+    def get_col_order(for_loop=False, as_string=True):
         p = PartnerPlacements
         cols = [
             p.budget, Partner.__table__, p.country, p.targeting_bucket,
@@ -2199,30 +2202,40 @@ class PartnerPlacements(db.Model):
             p.verification_rate, p.reporting_source, p.environment, p.size,
             p.ad_type, p.placement_description, p.package_description,
             p.media_channel]
-        cols = [x.name for x in cols]
+        if for_loop:
+            front_cols = [p.country.name, p.environment.name]
+            del_cols = [Partner.__table__.name, PlanPhase.__table__.name]
+            for idx, x in enumerate(cols):
+                for fc in front_cols:
+                    if x.name == fc:
+                        cols.insert(0, cols.pop(idx))
+                for dc in del_cols:
+                    if x.name == dc:
+                        cols.pop(idx)
+        if as_string:
+            cols = [x.name for x in cols]
         return cols
 
-    def check_col_in_words(self, words, parent_id):
-        response = ''
-        parent = db.session.get(Partner, parent_id)
-        g_parent = db.session.get(PlanPhase, parent.plan_phase_id)
-        plan_id = g_parent.plan_id
-        cols = [self.country, self.environment, self.budget,
-                self.targeting_bucket, self.creative_line_item, self.copy,
-                self.retailer, self.buy_model, self.buy_rate, self.serving,
-                self.ad_rate, self.reporting_rate, self.kpi, self.data_type_1,
-                self.service_fee_rate, self.verification_rate,
-                self.reporting_source, self.size, self.ad_type,
-                self.placement_description, self.package_description,
-                self.media_channel]
-        min_impressions = 50000000
-        new_rules = []
-        parameter = self.get_cols_for_db()
+    @staticmethod
+    def get_reporting_db_df():
+        parameter = PartnerPlacements.get_cols_for_db()
         parameter = '|'.join(parameter)
         total_db = ProcessorAnalysis.query.filter_by(
             processor_id=23, key='database_cache', parameter=parameter,
             filter_col='').order_by(ProcessorAnalysis.date).first()
         total_db = pd.read_json(total_db.data)
+        return total_db
+
+    def check_col_in_words(self, words, parent_id, total_db=pd.DataFrame()):
+        response = ''
+        parent = db.session.get(Partner, parent_id)
+        g_parent = db.session.get(PlanPhase, parent.plan_phase_id)
+        plan_id = g_parent.plan_id
+        cols = self.get_col_order(for_loop=True, as_string=False)
+        min_impressions = 50000000
+        new_rules = []
+        if total_db.empty:
+            total_db = self.get_reporting_db_df()
         for col in cols:
             str_name = col.name
             old_rule = PlanRule.query.filter_by(
@@ -2307,6 +2320,9 @@ class PartnerPlacements(db.Model):
         combos = list(itertools.product(*keys))
         data = []
         col_order = self.get_col_order()
+        old_placements = PartnerPlacements.query.filter_by(partner_id=parent_id).all()
+        for p in old_placements:
+            db.session.delete(p)
         for combo in combos:
             temp_dict = {}
             value_product = 1
@@ -2319,7 +2335,7 @@ class PartnerPlacements(db.Model):
             data.append(temp_dict)
             place = PartnerPlacements(
                 start_date=parent.start_date, end_date=parent.end_date,
-                total_budget=temp_dict[self.total_budget.name],
+                total_budget=temp_dict[PartnerPlacements.total_budget.name],
                 partner_id=parent.id)
             for col in self.__table__.columns:
                 if col.name in temp_dict:
@@ -2330,6 +2346,10 @@ class PartnerPlacements(db.Model):
                     val = place.__dict__[col]
                     if col in [self.start_date.name, self.end_date.name]:
                         val = datetime.strftime(val, '%Y%m%d')
+                elif col == Partner.__table__.name:
+                    val = parent.name
+                elif col == PlanPhase.__table__.name:
+                    val = parent.plan.name
                 else:
                     val = ''
                 pname.append(val)
@@ -2359,6 +2379,10 @@ class PartnerPlacements(db.Model):
             if col.name in form:
                 setattr(self, col.name, form[col.name].strip())
 
+    @staticmethod
+    def get_current_children():
+        return []
+
 
 class PlanRule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2387,6 +2411,10 @@ class PlanRule(db.Model):
         self.place_col = form[PlanRule.place_col.name].strip()
         self.type = form[PlanRule.type.name].strip()
         self.rule_info = form[PlanRule.rule_info.name].strip()
+
+    @staticmethod
+    def get_current_children():
+        return []
 
 
 class Conversation(db.Model):

@@ -5352,15 +5352,7 @@ def get_plan_placements(plan_id, current_user_id):
     try:
         _set_task_progress(0)
         cur_plan = Plan.query.get(plan_id)
-        data = []
-        for plan_phase in cur_plan.phases:
-            for plan_part in plan_phase.partners:
-                place = [x.get_form_dict() for x in plan_part.placements]
-                data.extend(place)
-        df = pd.DataFrame(data)
-        cols = PartnerPlacements.get_col_order()
-        cols = cols + [x for x in df.columns if x not in cols]
-        df = df[cols]
+        df = cur_plan.get_placements_as_df()
         name = 'PlanPlacements'
         lt = app_utl.LiquidTable(df=df, title=name, table_name=name,
                                  download_table=True)

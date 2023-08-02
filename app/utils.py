@@ -254,12 +254,16 @@ def convert_media_plan_to_df(current_file):
 
 
 def check_and_add_media_plan(media_plan_data, processor_to_edit,
-                             object_type=Processor, current_user=None):
+                             object_type=Processor, current_user=None,
+                             is_df=False):
     plan_saved = False
-    if media_plan_data:
+    if is_df or media_plan_data:
         if not current_user:
             current_user = User.query.get(processor_to_edit.user_id)
-        df = convert_media_plan_to_df(media_plan_data)
+        if is_df:
+            df = media_plan_data
+        else:
+            df = convert_media_plan_to_df(media_plan_data)
         if df.empty:
             return plan_saved
         msg_text = ('Attempting to save media plan for processor: {}'

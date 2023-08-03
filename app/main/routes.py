@@ -2448,8 +2448,8 @@ def get_current_uploader(object_name, current_page, edit_progress=0,
     nav_buttons = Processor().get_navigation_buttons(buttons + uploader_type)
     args = {'object': cur_up, 'posts': posts.items, 'title': _('Uploader'),
             'object_name': cur_up.name, 'user': cur_user,
-            'edit_progress': edit_progress, 'edit_name': edit_name,
-            'buttons': nav_buttons,
+            'object_id': cur_up.id, 'edit_progress': edit_progress,
+            'edit_name': edit_name, 'buttons': nav_buttons,
             'object_function_call': {'object_name': cur_up.name},
             'run_links': run_links, 'edit_links': edit_links,
             'request_links': request_links,
@@ -2506,18 +2506,7 @@ def edit_uploader(object_name):
         uploader_to_edit.aw_account_id = form.aw_account_id.data
         uploader_to_edit.dcm_account_id = form.dcm_account_id.data
         db.session.commit()
-        create_base_uploader_objects(uploader_to_edit.id)
-        flash(_('Your changes have been saved.'))
-        post_body = ('Create Uploader {}...'.format(uploader_to_edit.name))
-        uploader_to_edit.launch_task('.create_uploader', _(post_body),
-                                     current_user.id,
-                                     current_app.config['BASE_UPLOADER_PATH'])
-        creation_text = 'Uploader was requested for creation.'
-        flash(_(creation_text))
-        post = Post(body=creation_text, author=current_user,
-                    uploader_id=uploader_to_edit.id)
-        db.session.add(post)
-        db.session.commit()
+        uploader_to_edit.create_object(None)
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.edit_uploader_campaign',
                                     object_name=uploader_to_edit.name))

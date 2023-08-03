@@ -1007,6 +1007,13 @@ class Processor(db.Model):
                 imp_dict.append(form_dict)
         return imp_dict
 
+    @staticmethod
+    def get_children():
+        return ProcessorDatasources
+
+    def get_current_children(self):
+        return self.processor_datasources.all()
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -1192,6 +1199,14 @@ class ProcessorDatasources(db.Model):
                 else:
                     form_dict[x] = form_dict[x].split('\n')
         return form_dict
+
+    @staticmethod
+    def get_children():
+        return None
+
+    @staticmethod
+    def get_current_children():
+        return []
 
 
 class Account(db.Model):
@@ -1424,13 +1439,12 @@ class Uploader(db.Model):
     def get_url(self):
         return url_for('main.uploader_page', object_name=self.name)
 
+    def get_object_function_call(self):
+        return {'object_name': self.name}
+
     @staticmethod
     def get_navigation_buttons():
-        buttons = [{'Basic': 'main.edit_uploader'},
-                   {'Campaign': 'main.edit_uploader_campaign'},
-                   {'Adset': 'main.edit_uploader_adset'},
-                   {'Creative': 'main.edit_uploader_creative'},
-                   {'Ad': 'main.edit_uploader_ad'}]
+        buttons = Processor.get_navigation_buttons('UploaderFacebook')
         return buttons
 
     @staticmethod
@@ -1688,6 +1702,11 @@ class Uploader(db.Model):
     def create_object(self, media_plan_data, is_df=False):
         import app.utils as app_utl
         self.create_base_uploader_objects(self.id)
+        new_path = '/mnt/c/clients/{}/{}/{}/{}/uploader'.format(
+            self.campaign.product.client.name, self.campaign.product.name,
+            self.campaign.name, self.name)
+        self.local_path = new_path
+        db.session.commit()
         post_body = 'Create Uploader {}...'.format(self.name)
         self.launch_task('.create_uploader', _(post_body),
                          current_user.id,
@@ -1705,6 +1724,14 @@ class Uploader(db.Model):
             self.media_plan = True
             db.session.commit()
 
+    def get_table_elem(self, table_name):
+        elem = """
+            <div class="msgTableElem">
+            <div id='{}' data-title="Uploader" 
+                    data-object_name="{}" data-edit_name="{}">
+            </div></div>""".format(table_name, self.name, table_name)
+        return elem
+
 
 class UploaderObjects(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1721,6 +1748,10 @@ class UploaderObjects(db.Model):
     uploader_relations = db.relationship(
         'UploaderRelations', backref='uploader_objects', lazy='dynamic')
 
+    @property
+    def name(self):
+        return '{} {}'.format(self.uploader_type, self.object_level)
+
     @staticmethod
     def string_to_list(string_value):
         return UploaderRelations.convert_string_to_list(string_value)
@@ -1728,6 +1759,14 @@ class UploaderObjects(db.Model):
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                      if not k.startswith("_") and k != 'id'])
+
+    @staticmethod
+    def get_children():
+        return None
+
+    @staticmethod
+    def get_current_children():
+        return []
 
 
 class UploaderRelations(db.Model):

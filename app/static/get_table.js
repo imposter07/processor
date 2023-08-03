@@ -129,10 +129,12 @@ function getCompletedTask(tableName, procId = null, task = null,
                           pond = 'None', vendorKey = 'None',
                           fixId = 'None') {
     let jinjaValues = document.getElementById('jinjaValues').dataset;
+    let uploaderType = (jinjaValues['title'] === "Uploader") ? jinjaValues['uploader_type'] : "None";
     let data = {
         object_type: jinjaValues['title'],
         object_name: jinjaValues['object_name'],
         object_level: jinjaValues['edit_name'],
+        uploader_type: uploaderType,
         task_name: tableName,
         object_id: procId,
         task: task,
@@ -348,7 +350,7 @@ function SendDataTable(tableName="modalTable", formContinue = null,
     }
     let jv = document.getElementById('jinjaValues');
     let title = jv.dataset['title'];
-    let uploaderType = (title === "Uploader") ? "{{uploader_type}}" : "None";
+    let uploaderType = (jv['title'] === "Uploader") ? jv['uploader_type'] : "None";
     let requestData = {
         data: JSON.stringify(data),
         object_name: jv.dataset['object_name'],

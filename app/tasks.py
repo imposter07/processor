@@ -1,4 +1,5 @@
 import os
+import ast
 import sys
 import json
 import yaml
@@ -1636,6 +1637,19 @@ def set_object_relation_file(uploader_id, current_user_id,
                      'impacted_column_new_value': [rel.relation_constant],
                      'position': ['Constant']})
                 df = pd.concat([df, ndf], ignore_index=True, sort=False)
+            else:
+                ndf = df[df['impacted_column_name'] == rel.impacted_column_name]
+                ndf = ndf.reset_index(drop=True)
+                pos_list = rel.position.strip("{}").split(",")
+                pos = '|'.join(pos_list)
+                if len(ndf['position']) > 0 and pos != ndf['position'][0]:
+                    ndf['position'] = pos
+                    col_name = ndf['column_name'][0].split('|')[0]
+                    cols = '|'.join([col_name for _ in pos_list])
+                    ndf['column_name'] = cols
+                    df = df.loc[df['impacted_column_name'] !=
+                                rel.impacted_column_name]
+                    df = pd.concat([df, ndf], ignore_index=True, sort=False)
         u_utl.write_df(df, file_name)
     except:
         _set_task_progress(100)
@@ -5955,7 +5969,6 @@ def write_billing_invoice(processor_id, current_user_id, new_data=None,
 def write_billing_table(processor_id, current_user_id, new_data=None):
     try:
         _set_task_progress(0)
-        import ast
         cur_proc = Processor.query.get(processor_id)
         file_name = os.path.join(cur_proc.local_path, 'invoices.csv')
         file_name = adjust_path(file_name)

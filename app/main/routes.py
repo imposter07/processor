@@ -2591,6 +2591,24 @@ def uploader_ad_name_file_upload(object_name):
     return uploader_name_file_upload(object_name)
 
 
+@bp.route('/get_uploader_relation_position', methods=['GET', 'POST'])
+@login_required
+def get_uploader_relation_position():
+    object_name = request.form['object_name']
+    object_level = request.form['object_level']
+    uploader_type = request.form['uploader_type']
+    column_name = request.form['column_name']
+    cur_up = Uploader.query.filter_by(name=object_name).first()
+    up_obj = UploaderObjects.query.filter_by(
+        uploader_id=cur_up.id, object_level=object_level,
+        uploader_type=uploader_type).first()
+    rel = up_obj.uploader_relations.filter_by(
+        impacted_column_name=column_name).first()
+    pos_list = rel.position
+    response = {'position': pos_list, 'column_name': column_name}
+    return jsonify(response)
+
+
 def edit_uploader_base_objects(object_name, object_level, next_level='Page',
                                uploader_type='Facebook'):
     kwargs = get_current_uploader(object_name, 'edit_uploader',

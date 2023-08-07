@@ -794,11 +794,13 @@
         }
 
         function refreshButtonsOnClick() {
+            let jv = document.getElementById('jinjaValues');
             let refreshId = 'refresh_';
             let tableName = this.id.split(refreshId)[1];
             let vendorKeyId = this.id.split(refreshId)[0] + 'vendor_key';
             vendorKeyId = (tableName === 'rate_card') ? tableName : vendorKeyId;
-            vendorKeyId = ("{{ edit_name }}" === 'Clean') ? 'data_source_clean': vendorKeyId;
+            vendorKeyId = (jv.dataset['edit_name'] === 'Clean') ? 'data_source_clean': vendorKeyId;
+            vendorKeyId = (tableName === 'edit_relation') ? vendorKeyId.replace('vendor_key', 'impacted_column_name'): vendorKeyId;
             let vendorKeyElem = document.getElementById(vendorKeyId);
             let vendorKey = (vendorKeyElem) ? vendorKeyElem.value : 'None';
             getTable(tableName, this.id, 'None', vendorKey);
@@ -1315,21 +1317,60 @@
            return unnamedImports
         }
 
-        $(document).ready(function(){
-            $('input[id*="unresolved_relations"]').each(function(index){
-                if (($(this)[0].value === '0') || ($(this)[0].value === '')
-                    || ($(this)[0].value === 'ALL DEFINED')){
-                    $(this).css("background-color", "#00cc44")
-                    $(this)[0].value = 'ALL DEFINED'
-                }
-                else {
-                    $(this).css("background-color", "#ff6666")
-                    if (!($(this)[0].value.includes('UNDEFINED'))){
-                        $(this)[0].value = $(this)[0].value + ' UNDEFINED'
+        function getUnresolvedRelations() {
+            let elems = document.querySelectorAll('input[id*="unresolved_relations"]');
+            elems.forEach(elem => {
+                if ((elem.value === '0') || (elem.value === '') || (elem.value === 'ALL DEFINED')) {
+                    elem.style.backgroundColor = "#00cc44";
+                    elem.value = 'ALL DEFINED';
+                } else {
+                    elem.style.backgroundColor = "#ff6666";
+                    if (!elem.value.includes('UNDEFINED')) {
+                        elem.value = elem.value + ' UNDEFINED'
                     }
+                    elem = elem.parentElement.parentElement.parentElement.parentElement.parentElement;
+                    let parent = elem.parentElement;
+                    parent.insertBefore(elem, parent.firstChild);
                 }
-            })
-        })
+            });
+        }
+
+        function parseUploaderRelationPosition(data, kwargs) {
+            let elemId = kwargs['clickElem'];
+            let elem = document.getElementById(elemId);
+            let sortOrder = data['position'];
+            sortOrder = JSON.parse(sortOrder.replace('{', '[').replace('}', ']'));
+            elem.selectize.clear();
+            sortOrder.forEach(option => {
+                elem.selectize.addItem(option,);
+            });
+        }
+
+        function getUploaderRelationPosition(colName, elemId) {
+            let jv = document.getElementById('jinjaValues');
+            let requestData = {
+                object_type: jv.dataset['title'],
+                object_name: jv.dataset['object_name'],
+                uploader_type: jv.dataset['uploader_type'],
+                object_level: jv.dataset['edit_name'],
+                column_name: colName
+            }
+            let kwargs = {'clickElem': elemId}
+            makeRequest('/get_uploader_relation_position', 'POST', requestData,
+                parseUploaderRelationPosition, 'json', kwargs);
+        }
+
+        function checkUploaderPositionOrder() {
+            let elems = document.querySelectorAll('select[id*="position"]');
+            elems.forEach(elem => {
+                let val = elem.selectize.getValue();
+                if (val.length > 1) {
+                    let colNameId = elem.id.replace('position', 'impacted_column_name');
+                    let colName = document.getElementById(colNameId).value;
+                    getUploaderRelationPosition(colName, elem.id);
+                }
+            });
+        }
 
         function checkHideElem(elem){
             if ($('#upload_filter').length > 0) {
@@ -1419,6 +1460,8 @@
             }
             if (jv.dataset['title'] === 'Uploader') {
                 checkDuplicationType();
+                getUnresolvedRelations();
+                checkUploaderPositionOrder();
             }
         });
 

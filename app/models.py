@@ -904,21 +904,24 @@ class Processor(db.Model):
             buttons = [{'Create': ['main.processor_dashboard_create']},
                        {'View All': ['main.processor_dashboard_all']}]
         elif buttons == 'UploaderDCM':
-            buttons = [{'Basic': ['main.edit_uploader']},
-                       {'Campaign': ['main.edit_uploader_campaign_dcm']},
-                       {'Adset': ['main.edit_uploader_adset_dcm']},
-                       {'Ad': ['main.edit_uploader_ad_dcm']}]
+            buttons = [
+                {'Basic': ['main.edit_uploader', 'upload']},
+                {'Campaign': ['main.edit_uploader_campaign_dcm', 'champagne-glasses']},
+                {'Adset': ['main.edit_uploader_adset_dcm', 'bullseye']},
+                {'Ad': ['main.edit_uploader_ad_dcm', 'rectangle-ad']}]
         elif buttons == 'UploaderFacebook':
-            buttons = [{'Basic': ['main.edit_uploader']},
-                       {'Campaign': ['main.edit_uploader_campaign']},
-                       {'Adset': ['main.edit_uploader_adset']},
-                       {'Creative': ['main.edit_uploader_creative']},
-                       {'Ad': ['main.edit_uploader_ad']}]
+            buttons = [
+                {'Basic': ['main.edit_uploader', 'upload']},
+                {'Campaign': ['main.edit_uploader_campaign', 'champagne-glasses']},
+                {'Adset': ['main.edit_uploader_adset', 'bullseye']},
+                {'Creative': ['main.edit_uploader_creative', 'palette']},
+                {'Ad': ['main.edit_uploader_ad', 'rectangle-ad']}]
         elif buttons == 'UploaderAdwords':
-            buttons = [{'Basic': ['main.edit_uploader']},
-                       {'Campaign': ['main.edit_uploader_campaign_aw']},
-                       {'Adset': ['main.edit_uploader_adset_aw']},
-                       {'Ad': ['main.edit_uploader_ad_aw']}]
+            buttons = [
+                {'Basic': ['main.edit_uploader', 'upload']},
+                {'Campaign': ['main.edit_uploader_campaign_aw', 'champagne-glasses']},
+                {'Adset': ['main.edit_uploader_adset_aw', 'bullseye']},
+                {'Ad': ['main.edit_uploader_ad_aw', 'rectangle-ad']}]
         elif buttons == 'Plan':
             buttons = [{'Basic': ['plan.edit_plan']},
                        {'Topline': ['plan.topline']},

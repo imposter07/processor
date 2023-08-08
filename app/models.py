@@ -1532,9 +1532,9 @@ class Uploader(db.Model):
         import uploader.upload.awapi as up_awapi
         import uploader.upload.dcapi as up_dcapi
         new_uploader = Uploader.query.get(uploader_id)
-        upo = UploaderObjects.query.filter_by(uploader_id=new_uploader.id,
-                                              object_level=object_level,
-                                              uploader_type=uploader_type).first()
+        upo = UploaderObjects.query.filter_by(
+            uploader_id=new_uploader.id, object_level=object_level,
+            uploader_type=uploader_type).first()
         constant_col = 'relation_constant'
         position_col = 'position'
         default_sd = dt.datetime.today().strftime('%m/%d/%Y')
@@ -1735,6 +1735,44 @@ class Uploader(db.Model):
             </div></div>""".format(table_name, self.name, table_name)
         return elem
 
+    def get_types_from_words(self, words, up_types):
+        cur_up = utl.is_list_in_list(words, up_types, False, True)
+        if not cur_up:
+            cur_up = up_types
+        return cur_up[0]
+
+    def run_object(self, words):
+        response = ''
+        uploader_types = ['facebook', 'dcm', 'adwords']
+        cur_type = self.get_types_from_words(words, uploader_types)
+        object_levels = ['campaign', 'adset', 'ad']
+        cur_level = self.get_types_from_words(words, object_levels)
+        upo = self.uploader_objects.filter_by(
+            uploader_type=cur_type.capitalize(),
+            object_level=cur_level.capitalize()).first()
+        for x in upo.uploader_relations:
+            if not x.relation_constant and x.unresolved_relations:
+                response += x.get_table_elem()
+        if response:
+            pre = 'The following must be filled in prior to running:<br>'
+            response = pre + response
+        else:
+            response = self.run(cur_level)
+        return response
+
+    def run(self, run_type):
+        task_name = '.run_uploader'
+        arg_trans = {'create': '--create',
+                     'campaign': '--api fb --upload c',
+                     'adset': '--api fb --upload as',
+                     'ad': '--api fb --upload ad'}
+        post_body = ('Running {} for: {}...'.format(run_type, self.name))
+        self.launch_task(task_name, _(post_body), running_user=current_user.id,
+                         run_args=arg_trans[run_type.lower()])
+        self.last_run_time = datetime.utcnow()
+        db.session.commit()
+        return post_body
+
 
 class UploaderObjects(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1810,6 +1848,20 @@ class UploaderRelations(db.Model):
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                      if not k.startswith("_") and k != 'id'])
+
+    def get_table_elem(self):
+        table_name = 'edit_relation'
+        elem = """
+                <div class="msgTableElem">
+                <div></div>
+                <div id='{}' data-title="Uploader" 
+                        data-object_name="{}" data-edit_name="{}"
+                        data-vendor_key="{}" data-uploader_type="{}">
+                </div></div>""".format(
+            table_name, self.uploader_objects.uploader.name,
+            self.uploader_objects.object_level,  self.impacted_column_name,
+            self.uploader_objects.uploader_type)
+        return elem
 
 
 class ProcessorAnalysis(db.Model):

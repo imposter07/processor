@@ -208,8 +208,11 @@
             jinjaValues.dataset['title'] = tableElem.dataset['title'];
             jinjaValues.dataset['edit_name'] = editName;
             jinjaValues.dataset['object_name'] = tableElem.dataset['object_name'];
+            jinjaValues.dataset['uploader_type'] = tableElem.dataset['uploader_type']
+            let vk = (tableElem.dataset['vendor_key']);
+            vk = (vk) ? vk : 'None';
             this.replaceWith(tableElem);
-            getTable(editName, editName);
+            getTable(editName, editName, 'None', vk);
         }
 
         function addMessageToChat(message, owner='mine', htmlResponse='', chatId='',

@@ -1642,7 +1642,8 @@ def set_object_relation_file(uploader_id, current_user_id,
                 ndf = ndf.reset_index(drop=True)
                 pos_list = rel.position.strip("{}").split(",")
                 pos = '|'.join(pos_list)
-                if len(ndf['position']) > 0 and pos != ndf['position'][0]:
+                if (len(ndf['position']) > 0 and pos != ndf['position'][0] and
+                        pos):
                     ndf['position'] = pos
                     col_name = ndf['column_name'][0].split('|')[0]
                     cols = '|'.join([col_name for _ in pos_list])

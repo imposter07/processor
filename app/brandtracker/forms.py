@@ -4,7 +4,7 @@ from wtforms import SelectField, HiddenField, DecimalField, \
     SelectMultipleField, FieldList, FormField, SubmitField, MonthField
 from wtforms.validators import DataRequired
 from flask_babel import lazy_gettext as _l
-from app.models import Campaign, Processor, Brandtracker
+from app.models import Campaign, Processor, Brandtracker, ProcessorAnalysis
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.analyze as az
 
@@ -55,7 +55,8 @@ class BrandtrackerForm(FlaskForm):
         for proc in bt_procs:
             proc_data = proc.processor_analysis.filter_by(
                 key=az.Analyze.database_cache,
-                parameter='productname|eventdate').first()
+                parameter='productname|eventdate').order_by(
+                ProcessorAnalysis.date.desc()).first()
             if not proc_data:
                 continue
             proc_data = json.loads(proc_data.data)

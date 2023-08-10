@@ -1476,7 +1476,17 @@ class Uploader(db.Model):
         return Campaign
 
     @staticmethod
-    def check_base_uploader_object(uploader_id, object_level='Campaign',
+    def get_default_cols(object_level='Campaign'):
+        cols = [
+            cre.MediaPlan.campaign_phase, cre.MediaPlan.partner_name,
+            PartnerPlacements.country.name.capitalize()]
+        if object_level == 'Adset':
+            as_cols = [PartnerPlacements.targeting_bucket.name,
+                       PartnerPlacements.environment.name]
+            cols = cols + as_cols
+        return cols
+
+    def check_base_uploader_object(self, uploader_id, object_level='Campaign',
                                    uploader_type='Facebook'):
         new_uploader = Uploader.query.get(uploader_id)
         upo = UploaderObjects.query.filter_by(
@@ -1486,46 +1496,46 @@ class Uploader(db.Model):
             upo = UploaderObjects(uploader_id=new_uploader.id,
                                   object_level=object_level,
                                   uploader_type=uploader_type)
+            camp_cols = self.get_default_cols()
+            as_cols = self.get_default_cols('Adset')
+            fb_filter = 'Facebook|Instagram|Meta|Facebook/Instagram'
+            aw_filter = 'Google SEM|Search|GDN'
             if object_level == 'Campaign':
-                upo.media_plan_columns = [
-                    'Campaign ID', 'Placement Phase (If Needed) ',
-                    'Partner Name', 'Country', 'Creative (If Needed)']
-                upo.file_filter = 'Facebook|Instagram'
+                upo.media_plan_columns = camp_cols
+                upo.partner_filter = 'Facebook|Instagram'
                 upo.name_create_type = 'Media Plan'
                 if uploader_type == 'Facebook':
-                    upo.file_filter = 'Facebook|Instagram'
+                    upo.partner_filter = fb_filter
                 elif uploader_type == 'Adwords':
-                    upo.file_filter = 'Google SEM|Search|GDN'
+                    upo.partner_filter = aw_filter
                 else:
-                    upo.file_filter = ''
+                    upo.partner_filter = ''
             elif object_level == 'Adset':
-                upo.media_plan_columns = ['Placement Name']
+                upo.media_plan_columns = as_cols
                 upo.name_create_type = 'Media Plan'
                 if uploader_type == 'Facebook':
-                    upo.file_filter = 'Facebook|Instagram'
+                    upo.partner_filter = fb_filter
                 elif uploader_type == 'Adwords':
-                    upo.file_filter = 'Google SEM|Search|GDN'
+                    upo.partner_filter = aw_filter
                 else:
-                    upo.file_filter = ''
+                    upo.partner_filter = ''
             elif object_level == 'Ad':
-                upo.media_plan_columns = ['Placement Name']
-                upo.name_create_type = 'File'
-                upo.duplication_type = 'All'
+                upo.media_plan_columns = [cre.MediaPlan.placement_name]
+                upo.name_create_type = 'Media Plan'
                 if uploader_type == 'Facebook':
-                    upo.file_filter = 'Facebook|Instagram'
+                    upo.partner_filter = fb_filter
                 elif uploader_type == 'Adwords':
-                    upo.file_filter = 'Google SEM|Search|GDN'
+                    upo.partner_filter = aw_filter
                 else:
-                    upo.file_filter = ''
+                    upo.partner_filter = ''
             else:
                 pass
             db.session.add(upo)
             db.session.commit()
         return True
 
-    @staticmethod
     def check_relation_uploader_objects(
-            uploader_id, object_level='Campaign',
+            self, uploader_id, object_level='Campaign',
             uploader_type='Facebook'):
         import datetime as dt
         import uploader.upload.fbapi as up_fbapi
@@ -1541,6 +1551,8 @@ class Uploader(db.Model):
         default_ed = (dt.datetime.today()
                       + dt.timedelta(days=7)).strftime('%m/%d/%Y')
         relation_column_names = []
+        camp_cols = list(range(len(self.get_default_cols())))
+        as_cols = self.get_default_cols('Adset')
         if object_level == 'Campaign':
             if uploader_type == 'Facebook':
                 fb_cu = up_fbapi.CampaignUpload
@@ -1575,17 +1587,21 @@ class Uploader(db.Model):
                     dcm_cu.defaultLandingPage: {constant_col: ''},
                 }
         elif object_level == 'Adset':
+            target_col = as_cols.index(PartnerPlacements.targeting_bucket.name)
+            cou_col = as_cols.index(PartnerPlacements.country.name.capitalize())
+            ven_col = as_cols.index(cre.MediaPlan.partner_name)
+            dev_col = as_cols.index(PartnerPlacements.environment.name)
             if uploader_type == 'Facebook':
                 fb_asu = up_fbapi.AdSetUpload
                 relation_column_names = {
-                    fb_asu.cam_name: {position_col: [0, 15, 1, 2, 4]},
-                    fb_asu.target: {position_col: [22]},
-                    fb_asu.country: {position_col: [2]},
+                    fb_asu.cam_name: {position_col: camp_cols},
+                    fb_asu.target: {position_col: [target_col]},
+                    fb_asu.country: {position_col: [cou_col]},
                     fb_asu.age_min: {constant_col: '18'},
                     fb_asu.age_max: {constant_col: '44'},
                     fb_asu.genders: {constant_col: 'M'},
-                    fb_asu.device: {position_col: [19]},
-                    fb_asu.pubs: {position_col: [1]},
+                    fb_asu.device: {position_col: [dev_col]},
+                    fb_asu.pubs: {position_col: [ven_col]},
                     fb_asu.pos: {constant_col: ''},
                     fb_asu.budget_type: {constant_col: 'lifetime'},
                     fb_asu.budget_value: {constant_col: '10'},
@@ -1600,8 +1616,8 @@ class Uploader(db.Model):
             elif uploader_type == 'DCM':
                 dcm_asu = up_dcapi.PlacementUpload
                 relation_column_names = {
-                    dcm_asu.campaignId: {position_col: [0, 15, 1, 2, 4]},
-                    dcm_asu.siteId: {position_col: [1]},
+                    dcm_asu.campaignId: {position_col: camp_cols},
+                    dcm_asu.siteId: {position_col: [ven_col]},
                     dcm_asu.compatibility: {position_col: [21]},
                     dcm_asu.size: {position_col: [20]},
                     dcm_asu.paymentSource: {
@@ -1614,7 +1630,7 @@ class Uploader(db.Model):
             elif uploader_type == 'Adwords':
                 aw_asu = up_awapi.AdGroupUpload
                 relation_column_names = {
-                    aw_asu.cam_name: {position_col: [0, 15, 1, 2, 4]},
+                    aw_asu.cam_name: {position_col: camp_cols},
                     aw_asu.status: {constant_col: 'PAUSED'},
                     aw_asu.bid_type: {position_col: [7]},
                     aw_asu.bid_val: {constant_col: '2'},
@@ -1627,19 +1643,25 @@ class Uploader(db.Model):
                     aw_asu.in_market: {constant_col: ''},
                 }
         elif object_level == 'Ad':
+            col_order = PartnerPlacements.get_col_order()
+            camp_cols = [col_order.index(PlanPhase.__table__.name),
+                         col_order.index(Partner.__table__.name),
+                         col_order.index(PartnerPlacements.country.name)]
+            cre_col = col_order.index(PartnerPlacements.creative_line_item.name)
+            cop_col = col_order.index(PartnerPlacements.copy.name)
             if uploader_type == 'Facebook':
                 fb_adu = up_fbapi.AdUpload
                 relation_column_names = {
-                    fb_adu.cam_name: {},
+                    fb_adu.cam_name: {position_col: camp_cols},
                     fb_adu.adset_name: {},
-                    fb_adu.filename: {position_col: [3, 0]},
+                    fb_adu.filename: {position_col: [cre_col]},
                     fb_adu.prom_page: {constant_col: '_'},
                     fb_adu.ig_id: {constant_col: '_'},
                     fb_adu.link: {position_col: ''},
                     fb_adu.d_link: {constant_col: 'liquidadvertising.com'},
-                    fb_adu.title: {position_col: [3, 1]},
-                    fb_adu.body: {position_col: [3, 1]},
-                    fb_adu.desc: {position_col: [3, 1]},
+                    fb_adu.title: {position_col: [cop_col]},
+                    fb_adu.body: {position_col: [cop_col]},
+                    fb_adu.desc: {position_col: [cop_col]},
                     fb_adu.cta: {constant_col: 'DOWNLOAD'},
                     fb_adu.view_tag: {constant_col: ''},
                     fb_adu.status: {constant_col: 'PAUSED'},
@@ -1697,8 +1719,12 @@ class Uploader(db.Model):
         args = None
         if other_obj.__table__.name == Plan.__table__.name:
             args = other_obj.get_placements_as_df()
-            col_dict = {Partner.__table__.name: cre.MediaPlan.partner_name,
-                        PlanPhase.__table__.name: cre.MediaPlan.campaign_phase}
+            col_dict = {
+                PlanPhase.__table__.name: cre.MediaPlan.campaign_phase,
+                Partner.__table__.name: cre.MediaPlan.partner_name,
+                PartnerPlacements.name.name: cre.MediaPlan.placement_name}
+            for col in [PartnerPlacements.country.name]:
+                col_dict[col] = col.capitalize()
             args = args.rename(columns=col_dict)
         return [args, True]
 
@@ -1750,9 +1776,15 @@ class Uploader(db.Model):
         upo = self.uploader_objects.filter_by(
             uploader_type=cur_type.capitalize(),
             object_level=cur_level.capitalize()).first()
-        for x in upo.uploader_relations:
-            if not x.relation_constant and x.unresolved_relations:
-                response += x.get_table_elem()
+        if upo.uploader_type == 'Facebook' and not self.fb_account_id:
+            response = 'Change {} uploader facebook account id to 12345'.format(
+                self.name)
+            response = 'Facebook account ID<br>Ex prompt: {}'.format(response)
+        else:
+            for x in upo.uploader_relations:
+                if (not x.relation_constant and x.unresolved_relations
+                        and x.unresolved_relations != '0'):
+                    response += x.get_table_elem()
         if response:
             pre = 'The following must be filled in prior to running:<br>'
             response = pre + response
@@ -1792,6 +1824,18 @@ class UploaderObjects(db.Model):
     @property
     def name(self):
         return '{} {}'.format(self.uploader_type, self.object_level)
+
+    @property
+    def campaign(self):
+        return 'Campaign'
+
+    @property
+    def ad_set(self):
+        return 'Adset'
+
+    @property
+    def ad(self):
+        return 'Ad'
 
     @staticmethod
     def string_to_list(string_value):
@@ -1857,10 +1901,10 @@ class UploaderRelations(db.Model):
                 <div id='{}' data-title="Uploader" 
                         data-object_name="{}" data-edit_name="{}"
                         data-vendor_key="{}" data-uploader_type="{}">
-                </div></div>""".format(
+                </div>{}</div>""".format(
             table_name, self.uploader_objects.uploader.name,
             self.uploader_objects.object_level,  self.impacted_column_name,
-            self.uploader_objects.uploader_type)
+            self.uploader_objects.uploader_type, self.impacted_column_name)
         return elem
 
 
@@ -2006,6 +2050,9 @@ class Project(db.Model):
         backref=db.backref('project_number_processor', lazy='dynamic'),
         lazy='dynamic', viewonly=True)
 
+    @property
+    def name(self):
+        return '{} {}'.format(self.project_number, self.project_name)
 
     @staticmethod
     def get_model_name_list():
@@ -2022,6 +2069,14 @@ class Project(db.Model):
     @staticmethod
     def get_parent():
         return Client
+
+    @staticmethod
+    def get_table_name_to_task_dict():
+        return {}
+
+    @staticmethod
+    def get_url():
+        return url_for('main.clients')
 
 
 class ProjectNumberMax(db.Model):
@@ -2355,6 +2410,12 @@ class Plan(db.Model):
         df = df[cols]
         return df
 
+    def get_create_args_from_other(self, other_obj):
+        return []
+
+    def create_object(self):
+        return True
+
 
 class Sow(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2622,6 +2683,7 @@ class PartnerPlacements(db.Model):
         new_rules = []
         if total_db.empty:
             total_db = self.get_reporting_db_df()
+        words = [x for x in words if x != parent.name.lower()]
         for col in cols:
             str_name = col.name
             old_rule = PlanRule.query.filter_by(
@@ -2652,6 +2714,7 @@ class PartnerPlacements(db.Model):
                 rule_info = {}
                 rem_percent = 1
                 name_no_number = []
+                words_to_remove = [x[db_col].lower() for x in name_list]
                 for x in name_list:
                     name = x[db_col]
                     num = None
@@ -2659,9 +2722,14 @@ class PartnerPlacements(db.Model):
                         num = utl.get_next_number_from_list(
                             words, name.lower(), '')
                     if num:
-                        num = float(num) * .01
+                        idx = words.index(num)
+                        num_mult = .01
+                        if (idx > 0) and (words[idx - 1] == '.'):
+                            num_mult = .1
+                        num = float(num) * num_mult
                         rem_percent -= num
                         rule_info[name] = num
+                        words.pop(idx)
                     else:
                         name_no_number.append(name)
                 for x in name_no_number:
@@ -2675,10 +2743,11 @@ class PartnerPlacements(db.Model):
                     db.session.add(old_rule)
                     db.session.commit()
                 new_rules.append(old_rule)
-                words_to_remove = name_list
                 if name_in_list:
                     words_to_remove = words_to_remove + name_in_list
-                words = [x for x in words if x not in words_to_remove]
+                for word_to_remove in words_to_remove:
+                    if word_to_remove and word_to_remove in words:
+                        words.pop(words.index(word_to_remove.lower()))
             elif not name_list and not old_rule:
                 filtered_df = total_db[total_db['vendorname'] == parent.name]
                 exclude_values = [0, 'None', None, '0', '0.0', 0.0]

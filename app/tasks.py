@@ -35,6 +35,7 @@ import processor.reporting.vendormatrix as vm
 import processor.reporting.dictcolumns as dctc
 import processor.reporting.importhandler as ih
 import processor.reporting.gsapi as gsapi
+from processor.reporting.vendormatrix import full_placement_creation
 import uploader.upload.utils as u_utl
 import uploader.upload.creator as cre
 
@@ -1411,6 +1412,20 @@ def get_primary_column(object_level, uploader_type='Facebook'):
         col = ''
     return col
 
+def get_spend_column(object_level, uploader_type='Facebook'):
+    if uploader_type == 'Facebook':
+        if object_level == 'Campaign':
+            col = 'campaign_spend_cap'
+        elif object_level == 'Adset':
+            col = 'adset_budget_value'
+        elif object_level == 'Ad':
+            col = 'ad_name'
+        else:
+            col = ''
+    else:
+        col = ''
+    return col
+
 
 def get_current_uploader_obj_names(uploader_id, current_user_id, cur_path,
                                    file_path, file_name, object_level,
@@ -1640,8 +1655,11 @@ def set_object_relation_file(uploader_id, current_user_id,
             else:
                 ndf = df[df['impacted_column_name'] == rel.impacted_column_name]
                 ndf = ndf.reset_index(drop=True)
-                pos_list = rel.position.strip("{}").split(",")
-                pos = '|'.join(pos_list)
+                pos_list = rel.convert_string_to_list(rel.position)
+                if not pos_list:
+                    pos = ''
+                else:
+                    pos = '|'.join(pos_list)
                 if (len(ndf['position']) > 0 and pos != ndf['position'][0] and
                         pos):
                     ndf['position'] = pos
@@ -2908,6 +2926,62 @@ def apply_processor_plan(processor_id, current_user_id, vk):
         return [df]
 
 
+def uploader_add_plan_costs(uploader_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        u = db.session.get(Uploader, uploader_id)
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        os.chdir(adjust_path(u.local_path))
+        uploader_type = 'Facebook'
+        object_levels = ['Campaign', 'Adset']
+        mp_df = utl.import_read_csv('mediaplan.xlsx')
+        budget_col = PartnerPlacements.total_budget.name
+        if budget_col not in mp_df.columns:
+            return True
+        for object_level in object_levels:
+            os.chdir(adjust_path(u.local_path))
+            upo = UploaderObjects.query.filter_by(
+                uploader_id=u.id, object_level=object_level,
+                uploader_type=uploader_type).first()
+            spend_col = get_spend_column(object_level, uploader_type)
+            rel = upo.uploader_relations.filter_by(
+                impacted_column_name=spend_col).first()
+            name_list = upo.string_to_list(upo.media_plan_columns)
+            name_list = [x.strip() for x in name_list]
+            ndf = full_placement_creation(mp_df, '', vmc.fullplacename,
+                                            name_list)
+            ndf = mp_df.groupby(vmc.fullplacename)[budget_col].sum()
+            ndf = ndf.reset_index()
+            p_col = get_primary_column(object_level, uploader_type)
+            ndf['column_name'] = p_col
+            ndf['position'] = ''
+            ndf['impacted_column_name'] = rel.impacted_column_name
+            new_cols = {
+                vmc.fullplacename: 'column_value',
+                budget_col: 'impacted_column_new_value'}
+            ndf = ndf.rename(columns=new_cols)
+            rel.relation_constant = ''
+            db.session.commit()
+            file_name = uploader_file_translation(
+                'uploader_full_relation', object_level=object_level,
+                uploader_type=uploader_type)
+            df = pd.read_excel(file_name)
+            df = df.loc[df['impacted_column_name'] !=
+                        rel.impacted_column_name]
+            df = pd.concat([df, ndf], ignore_index=True, sort=False)
+            u_utl.write_df(df, file_name)
+            os.chdir(cur_path)
+            uploader_create_objects(
+                uploader_id, current_user_id, object_level, uploader_type)
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
+            upoloader_id, current_user_id), exc_info=sys.exc_info())
+        return False
+
+
 def save_media_plan(processor_id, current_user_id, media_plan,
                     object_type=Processor):
     try:
@@ -2926,6 +3000,7 @@ def save_media_plan(processor_id, current_user_id, media_plan,
             u_utl.write_df(df=media_plan,
                            file_name=os.path.join(base_path, 'mediaplan.xlsx'),
                            sheet_name='Media Plan')
+            uploader_add_plan_costs(processor_id, current_user_id)
         msg_text = ('{} media plan was updated.'
                     ''.format(cur_obj.name))
         processor_post_message(cur_obj, cur_user, msg_text,

@@ -8,7 +8,7 @@ from wtforms_sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length, Regexp
 from flask_babel import _, lazy_gettext as _l
 from app.models import User, Processor, Client, Product, Campaign, Uploader, \
-    RateCard, ProcessorDatasources, ProcessorAnalysis
+    RateCard, ProcessorDatasources, ProcessorAnalysis, PartnerPlacements
 import processor.reporting.dictcolumns as dctc
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.export as exp
@@ -626,13 +626,13 @@ class EditUploaderMediaPlanForm(FlaskForm):
         _l('Name Creation Type'),
         choices=[(x, x) for x in ['Media Plan', 'File', 'Match Table']])
     media_plan_column_choices = [
-        (x, x) for x in [cre.MediaPlan.campaign_id,
-                         cre.MediaPlan.campaign_name,
-                         cre.MediaPlan.placement_phase,
-                         cre.MediaPlan.campaign_phase,
-                         cre.MediaPlan.partner_name,
-                         cre.MediaPlan.country_name,
-                         cre.MediaPlan.placement_name]]
+        (x, x) for x in [
+            cre.MediaPlan.campaign_id, cre.MediaPlan.campaign_name,
+            cre.MediaPlan.placement_phase, cre.MediaPlan.campaign_phase,
+            cre.MediaPlan.partner_name, cre.MediaPlan.country_name,
+            cre.MediaPlan.placement_name,
+            PartnerPlacements.targeting_bucket.name,
+            PartnerPlacements.environment.name]]
     media_plan_columns = SelectMultipleField(
         _l('Media Plan Columns'), choices=media_plan_column_choices,
         default=[(x, x) for x in

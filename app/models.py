@@ -2416,6 +2416,11 @@ class Plan(db.Model):
     def create_object(self):
         return True
 
+    def to_dict(self):
+        return dict(
+            [(k.name, getattr(self, k.name)) for k in Plan.__table__.columns
+             if not k.name.startswith("_") and k.name != 'id'])
+
 
 class Sow(db.Model):
     id = db.Column(db.Integer, primary_key=True)

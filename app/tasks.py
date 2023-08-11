@@ -243,7 +243,7 @@ def update_cached_data_in_processor_run(processor_id, current_user_id):
                      'creativelineitemname', 'copyname']]
             dim_list.extend(dims)
             cols = PartnerPlacements.get_cols_for_db()
-            dim_list.extend(cols)
+            dim_list.append(cols)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         for col in dim_list:
             app.logger.info('Getting db col: {}'.format(col))

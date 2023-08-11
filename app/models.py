@@ -1782,7 +1782,14 @@ class Uploader(db.Model):
             response = 'Facebook account ID<br>Ex prompt: {}'.format(response)
         else:
             for x in upo.uploader_relations:
-                if (not x.relation_constant and x.unresolved_relations
+                if (x.impacted_column_name == 'adset_page_id' and
+                        x.relation_constant == '_'):
+                    response = (
+                        'Change {} uploader relation {} to 12345').format(
+                        self.name, x.impacted_column_name)
+                    response = '{}<br>Ex prompt: {}'.format(
+                        x.impacted_column_name, response)
+                elif (not x.relation_constant and x.unresolved_relations
                         and x.unresolved_relations != '0'):
                     response += x.get_table_elem()
         if response:

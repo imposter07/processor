@@ -1248,6 +1248,7 @@ def create_uploader(uploader_id, current_user_id, base_path):
     try:
         new_uploader = Uploader.query.get(uploader_id)
         user_create = User.query.get(current_user_id)
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
         old_path = adjust_path(base_path)
         new_path = adjust_path(new_uploader.local_path)
         if not os.path.exists(new_path):
@@ -1257,6 +1258,8 @@ def create_uploader(uploader_id, current_user_id, base_path):
         processor_post_message(new_uploader, user_create, msg_text,
                                object_name='Uploader')
         set_uploader_config_files(uploader_id, current_user_id)
+        os.chdir(cur_path)
+        uploader_add_plan_costs(uploader_id, current_user_id)
         _set_task_progress(100)
         return True
     except:
@@ -2926,6 +2929,16 @@ def apply_processor_plan(processor_id, current_user_id, vk):
         return [df]
 
 
+def uploader_full_placement_creation(upo, mp_df, budget_col):
+    name_list = upo.string_to_list(upo.media_plan_columns)
+    name_list = [x.strip() for x in name_list]
+    ndf = full_placement_creation(mp_df, '', vmc.fullplacename,
+                                  name_list)
+    ndf = ndf.groupby(vmc.fullplacename)[budget_col].sum()
+    ndf = ndf.reset_index()
+    return ndf
+
+
 def uploader_add_plan_costs(uploader_id, current_user_id):
     try:
         _set_task_progress(0)
@@ -2938,7 +2951,7 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
         budget_col = PartnerPlacements.total_budget.name
         if budget_col not in mp_df.columns:
             return True
-        for object_level in object_levels:
+        for idx, object_level in enumerate(object_levels):
             os.chdir(adjust_path(u.local_path))
             upo = UploaderObjects.query.filter_by(
                 uploader_id=u.id, object_level=object_level,
@@ -2946,12 +2959,7 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
             spend_col = get_spend_column(object_level, uploader_type)
             rel = upo.uploader_relations.filter_by(
                 impacted_column_name=spend_col).first()
-            name_list = upo.string_to_list(upo.media_plan_columns)
-            name_list = [x.strip() for x in name_list]
-            ndf = full_placement_creation(mp_df, '', vmc.fullplacename,
-                                            name_list)
-            ndf = mp_df.groupby(vmc.fullplacename)[budget_col].sum()
-            ndf = ndf.reset_index()
+            ndf = uploader_full_placement_creation(upo, mp_df, budget_col)
             p_col = get_primary_column(object_level, uploader_type)
             ndf['column_name'] = p_col
             ndf['position'] = ''
@@ -2970,6 +2978,15 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
                         rel.impacted_column_name]
             df = pd.concat([df, ndf], ignore_index=True, sort=False)
             u_utl.write_df(df, file_name)
+            prev_levels = object_levels[:idx]
+            for prev_level in prev_levels:
+                prev_primary = get_primary_column(prev_level)
+                ndf = get_uploader_file(
+                    23, 3, object_level=object_level, parameter='edit_relation',
+                    uploader_type=uploader_type, vk=prev_primary)[0]
+                df = df.loc[df['impacted_column_name'] != prev_primary]
+                df = pd.concat([df, ndf], ignore_index=True, sort=False)
+                u_utl.write_df(df, file_name)
             os.chdir(cur_path)
             uploader_create_objects(
                 uploader_id, current_user_id, object_level, uploader_type)
@@ -2978,7 +2995,7 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            upoloader_id, current_user_id), exc_info=sys.exc_info())
+            uploader_id, current_user_id), exc_info=sys.exc_info())
         return False
 
 

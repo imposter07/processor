@@ -350,7 +350,7 @@ function SendDataTable(tableName="modalTable", formContinue = null,
     }
     let jv = document.getElementById('jinjaValues');
     let title = jv.dataset['title'];
-    let uploaderType = (jv['title'] === "Uploader") ? jv['uploader_type'] : "None";
+    let uploaderType = (title === "Uploader") ? jv.dataset['uploader_type'] : "None";
     let requestData = {
         data: JSON.stringify(data),
         object_name: jv.dataset['object_name'],

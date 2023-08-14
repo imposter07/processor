@@ -1415,14 +1415,13 @@ def get_primary_column(object_level, uploader_type='Facebook'):
         col = ''
     return col
 
+
 def get_spend_column(object_level, uploader_type='Facebook'):
     if uploader_type == 'Facebook':
         if object_level == 'Campaign':
             col = 'campaign_spend_cap'
         elif object_level == 'Adset':
             col = 'adset_budget_value'
-        elif object_level == 'Ad':
-            col = 'ad_name'
         else:
             col = ''
     else:
@@ -1624,6 +1623,8 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
         processor_post_message(cur_up, user_that_ran, msg_text,
                                object_name='Uploader')
         os.chdir(cur_path)
+        uploader_create_objects(
+            uploader_id, current_user_id, object_level, uploader_type)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -2946,7 +2947,7 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(u.local_path))
         uploader_type = 'Facebook'
-        object_levels = ['Campaign', 'Adset']
+        object_levels = ['Campaign', 'Adset', 'Ad']
         mp_df = utl.import_read_csv('mediaplan.xlsx')
         budget_col = PartnerPlacements.total_budget.name
         if budget_col not in mp_df.columns:
@@ -2956,34 +2957,36 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
             upo = UploaderObjects.query.filter_by(
                 uploader_id=u.id, object_level=object_level,
                 uploader_type=uploader_type).first()
-            spend_col = get_spend_column(object_level, uploader_type)
-            rel = upo.uploader_relations.filter_by(
-                impacted_column_name=spend_col).first()
-            ndf = uploader_full_placement_creation(upo, mp_df, budget_col)
-            p_col = get_primary_column(object_level, uploader_type)
-            ndf['column_name'] = p_col
-            ndf['position'] = ''
-            ndf['impacted_column_name'] = rel.impacted_column_name
-            new_cols = {
-                vmc.fullplacename: 'column_value',
-                budget_col: 'impacted_column_new_value'}
-            ndf = ndf.rename(columns=new_cols)
-            rel.relation_constant = ''
-            db.session.commit()
             file_name = uploader_file_translation(
                 'uploader_full_relation', object_level=object_level,
                 uploader_type=uploader_type)
             df = pd.read_excel(file_name)
-            df = df.loc[df['impacted_column_name'] !=
-                        rel.impacted_column_name]
-            df = pd.concat([df, ndf], ignore_index=True, sort=False)
-            u_utl.write_df(df, file_name)
+            spend_col = get_spend_column(object_level, uploader_type)
+            if spend_col:
+                rel = upo.uploader_relations.filter_by(
+                    impacted_column_name=spend_col).first()
+                ndf = uploader_full_placement_creation(upo, mp_df, budget_col)
+                p_col = get_primary_column(object_level, uploader_type)
+                ndf['column_name'] = p_col
+                ndf['position'] = ''
+                ndf['impacted_column_name'] = rel.impacted_column_name
+                new_cols = {
+                    vmc.fullplacename: 'column_value',
+                    budget_col: 'impacted_column_new_value'}
+                ndf = ndf.rename(columns=new_cols)
+                rel.relation_constant = ''
+                db.session.commit()
+                df = df.loc[df['impacted_column_name'] !=
+                            rel.impacted_column_name]
+                df = pd.concat([df, ndf], ignore_index=True, sort=False)
+                u_utl.write_df(df, file_name)
             prev_levels = object_levels[:idx]
             for prev_level in prev_levels:
                 prev_primary = get_primary_column(prev_level)
                 ndf = get_uploader_file(
-                    23, 3, object_level=object_level, parameter='edit_relation',
-                    uploader_type=uploader_type, vk=prev_primary)[0]
+                    uploader_id, current_user_id, object_level=object_level,
+                    parameter='edit_relation', uploader_type=uploader_type,
+                    vk=prev_primary)[0]
                 df = df.loc[df['impacted_column_name'] != prev_primary]
                 df = pd.concat([df, ndf], ignore_index=True, sort=False)
                 u_utl.write_df(df, file_name)
@@ -3342,8 +3345,8 @@ def duplicate_uploader_in_db(uploader_id, current_user_id, form_data):
 
 def duplicate_uploader_objects(uploader_id, current_user_id, old_uploader_id):
     try:
-        from app.main.routes import create_base_uploader_objects
-        create_base_uploader_objects(uploader_id)
+        u = db.session.get(Uploader, uploader_id)
+        u.create_base_uploader_objects(uploader_id)
         for object_level in ['Campaign', 'Adset', 'Ad']:
             upo = UploaderObjects.query.filter_by(
                 uploader_id=uploader_id, object_level=object_level).first()

@@ -200,11 +200,12 @@
             let jinjaValues = document.getElementById('jinjaValues');
             let tableElem = this.children[1];
             let editName = tableElem.dataset['edit_name'];
-            let elems = document.querySelectorAll(`[id='${editName}']`);
+            let origId = tableElem.id;
+            let elems = document.querySelectorAll(`[id='${origId}']`);
             elems.forEach(elem => {
                 elem.remove();
-            })
-            tableElem.id = editName;
+            });
+            tableElem.id = origId;
             jinjaValues.dataset['title'] = tableElem.dataset['title'];
             jinjaValues.dataset['edit_name'] = editName;
             jinjaValues.dataset['object_name'] = tableElem.dataset['object_name'];
@@ -212,7 +213,7 @@
             let vk = (tableElem.dataset['vendor_key']);
             vk = (vk) ? vk : 'None';
             this.replaceWith(tableElem);
-            getTable(editName, editName, 'None', vk);
+            getTable(origId, origId, 'None', vk);
         }
 
         function addMessageToChat(message, owner='mine', htmlResponse='', chatId='',

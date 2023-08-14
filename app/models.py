@@ -1785,8 +1785,9 @@ class Uploader(db.Model):
                 if (x.impacted_column_name == 'adset_page_id' and
                         x.relation_constant == '_'):
                     response = (
-                        'Change {} uploader relation {} to 12345').format(
-                        self.name, x.impacted_column_name)
+                        'Change {} uploader {} {} to 12345').format(
+                        self.name, UploaderRelations.relation_constant.name,
+                        x.impacted_column_name)
                     response = '{}<br>Ex prompt: {}'.format(
                         x.impacted_column_name, response)
                 elif (not x.relation_constant and x.unresolved_relations
@@ -1854,11 +1855,10 @@ class UploaderObjects(db.Model):
 
     @staticmethod
     def get_children():
-        return None
+        return UploaderRelations
 
-    @staticmethod
-    def get_current_children():
-        return []
+    def get_current_children(self):
+        return self.uploader_relations.all()
 
 
 class UploaderRelations(db.Model):
@@ -1869,6 +1869,10 @@ class UploaderRelations(db.Model):
     relation_constant = db.Column(db.Text)
     position = db.Column(db.Text)
     unresolved_relations = db.Column(db.Text)
+
+    @property
+    def name(self):
+        return '{}'.format(self.impacted_column_name)
 
     def get_form_dict(self):
         form_dict = {
@@ -1904,14 +1908,15 @@ class UploaderRelations(db.Model):
         table_name = 'edit_relation'
         elem = """
                 <div class="msgTableElem">
-                <div></div>
+                <div>{}</div>
                 <div id='{}' data-title="Uploader" 
                         data-object_name="{}" data-edit_name="{}"
                         data-vendor_key="{}" data-uploader_type="{}">
-                </div>{}</div>""".format(
-            table_name, self.uploader_objects.uploader.name,
+                </div></div>""".format(
+            self.impacted_column_name.upper(), table_name,
+            self.uploader_objects.uploader.name,
             self.uploader_objects.object_level,  self.impacted_column_name,
-            self.uploader_objects.uploader_type, self.impacted_column_name)
+            self.uploader_objects.uploader_type)
         return elem
 
 

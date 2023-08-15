@@ -236,7 +236,9 @@
                 tableHolder.id = tableHolder.id + chatId;
             }
             if (clickElem) {
-                latestMessage.click();
+                if (latestMessage) {
+                    latestMessage.click();
+                }
             }
         }
 
@@ -253,6 +255,7 @@
                 addMessageToChat(chat['text'], 'mine', '', chat['id']);
                 addMessageToChat(chat['response'], 'yours', chat['html_response'], chat['id']);
             });
+            addExamplePrompt();
         }
 
         function getConversation(conversationId) {
@@ -303,6 +306,7 @@
             let clickElem = kwargs['clickElem'];
             addElemRemoveLoadingBtn(clickElem.id);
             addMessageToChat(response, 'yours', htmlResponse, data['id'], true);
+            addExamplePrompt();
         }
 
         function postChatRequest(message, conversationId) {
@@ -337,11 +341,31 @@
             }
         }
 
+        function copyExamplePrompt() {
+            let chatInput = document.getElementById('chatInput');
+            chatInput.value = this.dataset['prompt'];
+        }
+
+        function addExamplePrompt() {
+            let elemSelector = '.examplePrompt';
+            let elems = document.querySelectorAll(elemSelector);
+            let copyHtml = '<div class="btn btn-outline-primary">';
+            copyHtml = copyHtml + '<i class="fa-solid fa-copy"></i>';
+            elems.forEach(elem => {
+                if (!(elem.children[0])) {
+                    elem.dataset['prompt'] = elem.innerHTML;
+                    elem.innerHTML = copyHtml + elem.innerHTML + '</div>';
+                }
+            });
+            addOnClickEvent(elemSelector, copyExamplePrompt);
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
             let introMsg = 'Hello I am ALI (Artificial Liquid Interface) what can I help you with today?';
             addMessageToChat(introMsg, 'yours');
             addOnClickEvent('#chatInputBtn', postChat);
             addOnClickEvent('#chatInput', postChatOnEnter, 'keyup');
+            addExamplePrompt();
             let initialChat = document.getElementById('chatJinja').dataset['initialchat'];
             if (initialChat) {
                 let chatInput = document.getElementById('chatInput');

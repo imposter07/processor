@@ -1649,11 +1649,14 @@ class Uploader(db.Model):
                          col_order.index(PartnerPlacements.country.name)]
             cre_col = col_order.index(PartnerPlacements.creative_line_item.name)
             cop_col = col_order.index(PartnerPlacements.copy.name)
+            as_cols = [col_order.index(PartnerPlacements.targeting_bucket.name),
+                       col_order.index(PartnerPlacements.environment.name)]
+            as_cols = camp_cols + as_cols
             if uploader_type == 'Facebook':
                 fb_adu = up_fbapi.AdUpload
                 relation_column_names = {
                     fb_adu.cam_name: {position_col: camp_cols},
-                    fb_adu.adset_name: {},
+                    fb_adu.adset_name: {position_col: as_cols},
                     fb_adu.filename: {position_col: [cre_col]},
                     fb_adu.prom_page: {constant_col: '_'},
                     fb_adu.ig_id: {constant_col: '_'},
@@ -1767,6 +1770,23 @@ class Uploader(db.Model):
             cur_up = up_types
         return cur_up[0]
 
+    @staticmethod
+    def wrap_example_prompt(response):
+        example_prompt = "<br>Ex. prompt: <div class='examplePrompt'>"
+        response = '{}{}</div>'.format(example_prompt, response)
+        return response
+
+    def get_create_prompt(self, next_level='campaign'):
+        response = 'Run {} {} {}'.format(
+            Uploader.__table__.name, self.name, next_level)
+        response = self.wrap_example_prompt(response)
+        if next_level == 'campaign':
+            pre = 'To be guided on uploading use the below example prompt.'
+        else:
+            pre = 'To upload next level: '
+        response = '{}{}'.format(pre, response)
+        return response
+
     def run_object(self, words):
         response = ''
         uploader_types = ['facebook', 'dcm', 'adwords']
@@ -1777,19 +1797,20 @@ class Uploader(db.Model):
             uploader_type=cur_type.capitalize(),
             object_level=cur_level.capitalize()).first()
         if upo.uploader_type == 'Facebook' and not self.fb_account_id:
-            response = 'Change {} uploader facebook account id to 12345'.format(
-                self.name)
-            response = 'Facebook account ID<br>Ex prompt: {}'.format(response)
+            response = 'Change {} {} {} to 12345'.format(
+                self.name, Uploader.__table__.name, Uploader.fb_account_id.name)
+            response = self.wrap_example_prompt(response)
+            response = '{}{}'.format(Uploader.fb_account_id.name, response)
         else:
             for x in upo.uploader_relations:
                 if (x.impacted_column_name == 'adset_page_id' and
                         x.relation_constant == '_'):
-                    response = (
-                        'Change {} uploader {} {} to 12345').format(
-                        self.name, UploaderRelations.relation_constant.name,
+                    response = 'Change {} {} {} {} to 12345'.format(
+                        self.name, Uploader.__table__.name,
+                        UploaderRelations.relation_constant.name,
                         x.impacted_column_name)
-                    response = '{}<br>Ex prompt: {}'.format(
-                        x.impacted_column_name, response)
+                    response = self.wrap_example_prompt(response)
+                    response = '{}{}'.format(x.impacted_column_name, response)
                 elif (not x.relation_constant and x.unresolved_relations
                         and x.unresolved_relations != '0'):
                     response += x.get_table_elem()
@@ -1797,21 +1818,25 @@ class Uploader(db.Model):
             pre = 'The following must be filled in prior to running:<br>'
             response = pre + response
         else:
-            response = self.run(cur_level)
+            cur_idx = object_levels.index(cur_level)
+            if cur_idx < (len(object_levels) - 1):
+                next_level = object_levels[cur_idx + 1]
+                response = self.get_create_prompt(next_level)
+            else:
+                response = 'All objects uploaded/uploading!'
+            run_resp = self.run(cur_type.capitalize(), cur_level.capitalize())
+            response = '{} {}'.format(response, run_resp)
         return response
 
-    def run(self, run_type):
-        task_name = '.run_uploader'
-        arg_trans = {'create': '--create',
-                     'campaign': '--api fb --upload c',
-                     'adset': '--api fb --upload as',
-                     'ad': '--api fb --upload ad'}
-        post_body = ('Running {} for: {}...'.format(run_type, self.name))
-        self.launch_task(task_name, _(post_body), running_user=current_user.id,
-                         run_args=arg_trans[run_type.lower()])
-        self.last_run_time = datetime.utcnow()
+    def run(self, uploader_type, object_level):
+        msg_text = 'Creating and uploading {} for {}.'.format(
+            object_level, Uploader.__table__.name)
+        self.launch_task(
+            '.uploader_create_and_upload_objects', _(msg_text),
+            running_user=current_user.id, object_level=object_level,
+            uploader_type=uploader_type)
         db.session.commit()
-        return post_body
+        return msg_text
 
 
 class UploaderObjects(db.Model):
@@ -2432,6 +2457,15 @@ class Plan(db.Model):
         return dict(
             [(k.name, getattr(self, k.name)) for k in Plan.__table__.columns
              if not k.name.startswith("_") and k.name != 'id'])
+
+    def get_create_prompt(self):
+        p = ['download sow'
+             'change budget for partner_name to new_budget'
+             'create an uploader']
+        p = [Uploader.wrap_example_prompt(
+            '{} {} {}'.format(Plan.__table__.name, self.name, x)) for x in p]
+        p = '<br>'.join(p)
+        return p
 
 
 class Sow(db.Model):

@@ -1017,6 +1017,12 @@ class Processor(db.Model):
     def get_current_children(self):
         return self.processor_datasources.all()
 
+    def get_example_prompt(self):
+        r = 'Download data for the {} {}'.format(
+            Processor.__table__.name, self.name)
+        r = Uploader.wrap_example_prompt(r)
+        return r
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -1803,8 +1809,9 @@ class Uploader(db.Model):
             response = '{}{}'.format(Uploader.fb_account_id.name, response)
         else:
             for x in upo.uploader_relations:
-                if (x.impacted_column_name == 'adset_page_id' and
-                        x.relation_constant == '_'):
+                page_id_cols = ['adset_page_id', 'ad_page_id']
+                is_page_id = x.impacted_column_name in page_id_cols
+                if is_page_id and x.relation_constant == '_':
                     response = 'Change {} {} {} {} to 12345'.format(
                         self.name, Uploader.__table__.name,
                         UploaderRelations.relation_constant.name,
@@ -1837,6 +1844,10 @@ class Uploader(db.Model):
             uploader_type=uploader_type)
         db.session.commit()
         return msg_text
+
+    def get_example_prompt(self):
+        r = self.get_create_prompt(Uploader)
+        return r
 
 
 class UploaderObjects(db.Model):
@@ -2115,6 +2126,11 @@ class Project(db.Model):
     def get_url():
         return url_for('main.clients')
 
+    def get_example_prompt(self):
+        prompts = ['Project number 206196?']
+        r = ''.join(Uploader.wrap_example_prompt(x) for x in prompts)
+        return r
+
 
 class ProjectNumberMax(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2216,6 +2232,12 @@ class TutorialStage(db.Model):
     @staticmethod
     def get_current_children():
         return []
+
+    def get_example_prompt(self):
+        prompts = ['Define cpa.', 'How do I upload raw file?',
+                   'Best sites for for an mmorpg free trial?']
+        r = ''.join(Uploader.wrap_example_prompt(x) for x in prompts)
+        return r
 
 
 class Walkthrough(db.Model):
@@ -2459,13 +2481,22 @@ class Plan(db.Model):
              if not k.name.startswith("_") and k.name != 'id'])
 
     def get_create_prompt(self):
-        p = ['download sow'
-             'change budget for partner_name to new_budget'
-             'create an uploader']
-        p = [Uploader.wrap_example_prompt(
-            '{} {} {}'.format(Plan.__table__.name, self.name, x)) for x in p]
-        p = '<br>'.join(p)
+        prompt_list = ['download sow',
+                       'change budget for partner_name to new_budget',
+                       'create an uploader']
+        p = ''
+        for x in prompt_list:
+            x = '{} {} {}'.format(Plan.__table__.name, self.name, x)
+            p += Uploader.wrap_example_prompt(x)
         return p
+
+    def get_example_prompt(self):
+        r = self.get_create_prompt(Plan)
+        x = ('Create a plan with Facebook 20K split US 50% UK 30% CA 20%. '
+             'Mobile, Desktop. Creative ciri, yen, geralt, triss. '
+             'Targeting aaa, jrpg, mmorpg. Copy x, y.')
+        r += Uploader.wrap_example_prompt(x)
+        return r
 
 
 class Sow(db.Model):

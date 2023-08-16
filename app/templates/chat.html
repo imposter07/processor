@@ -107,7 +107,9 @@
   border-bottom-left-radius: 10px;
 }
 </style>
-<div id="chatJinja" {% if initial_chat %}data-initialchat="{{ initial_chat }}"{% endif %}></div>
+<div id="chatJinja"
+     {% if initial_chat %}data-initialchat="{{ initial_chat }}"{% endif %}
+     {% if intro_message %}data-intromessage="{{ intro_message }}"{% endif %}></div>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <h2 class="">{{ _('{}'.format(title)) }}</h2>
@@ -361,12 +363,13 @@
         }
 
         document.addEventListener("DOMContentLoaded", function() {
-            let introMsg = 'Hello I am ALI (Artificial Liquid Interface) what can I help you with today?';
+            let chatJinja = document.getElementById('chatJinja');
+            let introMsg = chatJinja.dataset['intromessage'];
             addMessageToChat(introMsg, 'yours');
             addOnClickEvent('#chatInputBtn', postChat);
             addOnClickEvent('#chatInput', postChatOnEnter, 'keyup');
             addExamplePrompt();
-            let initialChat = document.getElementById('chatJinja').dataset['initialchat'];
+            let initialChat = chatJinja.dataset['initialchat'];
             if (initialChat) {
                 let chatInput = document.getElementById('chatInput');
                 chatInput.value = initialChat;

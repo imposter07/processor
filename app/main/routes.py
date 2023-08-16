@@ -3246,7 +3246,16 @@ def upload_test_upload_file():
 def chat():
     conversations = Conversation.query.filter_by(
         user_id=current_user.id).order_by(Conversation.created_at.desc()).all()
-    kwargs = {'title': 'LQA CHAT', 'conversations': conversations}
+    intro_message = ('Hello I am ALI (Artificial Liquid Interface) '
+                     'what can I help you with today?<br>')
+    models_to_search = [Processor, Plan, TutorialStage, Notes, WalkthroughSlide,
+                        Uploader, Project]
+    for db_model in models_to_search:
+        if hasattr(db_model, 'get_example_prompt'):
+            ex_prompt = db_model.get_example_prompt(db_model)
+            intro_message += ex_prompt
+    kwargs = {'title': 'LQA CHAT', 'conversations': conversations,
+              'intro_message': intro_message}
     if g and g.search_form.q.data:
         kwargs['initial_chat'] = g.search_form.q.data
     return render_template('chat.html', **kwargs)

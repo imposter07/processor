@@ -1870,6 +1870,9 @@ def uploader_create_and_upload_objects(uploader_id, current_user_id,
                                        object_level='Campaign',
                                        uploader_type='Facebook'):
     try:
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
+        set_uploader_config_files(uploader_id, current_user_id)
+        os.chdir(cur_path)
         uploader_create_objects(uploader_id, current_user_id,
                                 object_level=object_level,
                                 uploader_type=uploader_type)

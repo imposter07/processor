@@ -2963,7 +2963,7 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
             file_name = uploader_file_translation(
                 'uploader_full_relation', object_level=object_level,
                 uploader_type=uploader_type)
-            df = pd.read_excel(file_name)
+            df = utl.import_read_csv(file_name)
             spend_col = get_spend_column(object_level, uploader_type)
             if spend_col:
                 rel = upo.uploader_relations.filter_by(

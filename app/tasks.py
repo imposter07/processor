@@ -2990,6 +2990,8 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
                     uploader_id, current_user_id, object_level=object_level,
                     parameter='edit_relation', uploader_type=uploader_type,
                     vk=prev_primary)[0]
+                if 'Result' in ndf.columns:
+                    continue
                 df = df.loc[df['impacted_column_name'] != prev_primary]
                 df = pd.concat([df, ndf], ignore_index=True, sort=False)
                 u_utl.write_df(df, file_name)

@@ -5871,7 +5871,7 @@ def get_google_doc_for_tutorial(processor_id, current_user_id, sheet_id=None,
                 correct_answer = random.randint(0, stages_before_question - 1)
                 choices = '|'.join(
                     '{}. {}'.format(yidx + 1, y['header']) for yidx, y in
-                    enumerate(tutorial_stages[first_idx:idx + 1]))
+                    enumerate(df_dict[first_idx:idx + 1]))
                 question = 'Which {} is described as:\n {}'.format(
                     note_type, df_dict[correct_answer + first_idx]['content'])
                 stage = TutorialStage.create_dict(

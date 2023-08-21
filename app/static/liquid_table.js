@@ -1370,7 +1370,7 @@ function addProgressBars(progCol, color, loopIndex) {
     value = value.replace('%', '');
     value = value.replace(/^\s+|\s+$|\n/g, '');
     let progBar = `<div class="progress table-progress-cell m-0">
-                        <div class="progress-bar" role="progressbar"
+                        <div class="progress-bar bg-${color}" role="progressbar"
                            style="width: ${value}%;" aria-valuenow="${value}" 
                            aria-valuemin="0" aria-valuemax="100">${value}</div>
                    </div>`;

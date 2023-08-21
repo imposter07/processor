@@ -334,19 +334,16 @@
     function getSelectedDashboard(e) {
         let selectedText = e.target.options[e.target.selectedIndex].text;
         let procName = e.target.id.replace('dashSelect', '');
+        let dashName = 'dash_placeholderMetrics' + procName;
         document.getElementById('dashFooter' + procName).removeAttribute('style');
         let metrics = ['kpi'];
-        let filterDict = {}
-        let chartFunction = (function () {
-            if (selectedText === 'Date') {
-                return generateAreaChart;
-            } else {
-                return generateBarChart;
-            }
-        })
-        getMetrics('#dash_placeholderMetrics' + procName, chartFunction(),
-            [selectedText], metrics, filterDict, "", 250,
-            null, null, null, null, null, procName);
+        let filterDict = {};
+        let chartFunction = (selectedText === 'Date') ?  'generateAreaChart' :
+            'generateBarChart';
+        let dash_metric_args = getDataTableArgsDict(chartFunction, [selectedText],
+            metrics, filterDict, true, procName);
+        getTable(dashName, dashName + 'Progress', 'None', 'None', 'None', true,
+            'None', false, dash_metric_args);
     }
 
     function getProcessorBasedOnPage(filterDict=null) {

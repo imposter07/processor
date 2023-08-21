@@ -92,6 +92,7 @@
     <link href="{{ url_for('static', filename='fullcalendar/main.css') }}" rel='stylesheet' />
     <script src="{{ url_for('static', filename='fullcalendar/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='get_table.js') }}"></script>
     <script>
         function addCalendar() {
             let calendarEl = document.getElementById('calendar');
@@ -280,21 +281,19 @@
 
         function getSelectedDashboard(){
             $('[id^=dashSelect]').unbind().on('change', function(e){
-                let selectedText = this.options[e.target.selectedIndex].text
-                let procName = this.id.replace('dashSelect', '')
-                $('#dashFooter' + procName).removeAttr('style')
-                let metrics = ['kpi']
-                let filterDict = {}
-                let chartFunction = (function () {
-                    if (selectedText === 'Date') {
-                        return generateAreaChart;
-                    } else {
-                        return generateBarChart;
-                    }
-                })
-                getMetrics('#dash_placeholderMetrics' + procName, chartFunction(),
-                    selectedText, metrics,
-                    filterDict, "", 250, null, null, null, null, null, procName);
+                let selectedText = this.options[e.target.selectedIndex].text;
+                let procName = this.id.replace('dashSelect', '');
+                $('#dashFooter' + procName).removeAttr('style');
+                let dashName = 'dash_placeholderMetrics' + procName;
+                document.getElementById('dashFooter' + procName).removeAttribute('style');
+                let metrics = ['kpi'];
+                let filterDict = {};
+                let chartFunction = (selectedText === 'Date') ? 'generateAreaChart' :
+                    'generateBarChart';
+                let dash_metric_args = getDataTableArgsDict(chartFunction, [selectedText],
+                    metrics, filterDict, true, procName);
+                getTable(dashName, dashName + 'Progress', 'None', 'None', 'None', true,
+                    'None', false, dash_metric_args);
             });
         }
 

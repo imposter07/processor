@@ -38,26 +38,26 @@
         }
 
         .icon-badge-container {
-          position: relative;
+            position: relative;
         }
 
         .icon-badge {
-          display: inline-block;
-          background-color: red;
-          font-size: 12px;
-          color: white;
-          text-align: center;
-          position: absolute;
-          width: 35%;
-          border-radius: 35%;
-          top: -10%;
-          left: 70%;
+            display: inline-block;
+            background-color: red;
+            font-size: 12px;
+            color: white;
+            text-align: center;
+            position: absolute;
+            width: 35%;
+            border-radius: 35%;
+            top: -10%;
+            left: 70%;
         }
 
-        .color-square:before{
+        .color-square:before {
             content: "";
             display: block;
-            padding-top: 100%;  /* initial ratio of 1:1*/
+            padding-top: 100%; /* initial ratio of 1:1*/
         }
 
         div[class*='remove-items-shadow'] div[class*='card'] {
@@ -66,41 +66,49 @@
         }
     </style>
     <nav>
-    {% include '_nav_and_progress.html' %}
-    <div class="row">
-        <div class="col-md-12 p-0">
-            <div class="card-header">
-                <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                    <a class="nav-link active" id="nav-dash-tab"
-                       data-toggle="tab" href="#nav-dash" role="tab"
-                       aria-controls="nav-dash" aria-selected="true">
-                        <h4>
-                            <i class="fas fa-solid fa-chart-column btn btn-secondary"
-                               style="float:right;" aria-hidden="true"></i></h4>
-                    </a>
-                    <a class="nav-link" id="nav-pacing-tab" data-toggle="tab" href="#nav-pacing" role="tab" aria-controls="nav-pacing" aria-selected="false"
-                        onclick="setTimeout(getMetrics, 1000, '#pacingAlerts', generateAlerts, ['vendorname', 'campaignname'], ['netcost', 'adservingcost']);
-                                 setTimeout(getPacingTable, 1000, 'pacingMetrics');
+        {% include '_nav_and_progress.html' %}
+        <div class="row">
+            <div class="col-md-12 p-0">
+                <div class="card-header">
+                    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                        <a class="nav-link active" id="nav-dash-tab"
+                           data-toggle="tab" href="#nav-dash" role="tab"
+                           aria-controls="nav-dash" aria-selected="true">
+                            <h4>
+                                <i class="fas fa-solid fa-chart-column btn btn-secondary"
+                                   style="float:right;" aria-hidden="true"></i>
+                            </h4>
+                        </a>
+                        <a class="nav-link" id="nav-pacing-tab"
+                           data-toggle="tab" href="#nav-pacing" role="tab"
+                           aria-controls="nav-pacing" aria-selected="false"
+                           onclick="setTimeout(getPartnerMetrics, 1000);
                                  this.onclick=null;">
-                        <h4>
-                            <div class="icon-badge-container">
-                            <i class="fas fa-solid fa-table-cells btn btn-secondary" style="float:right;" aria-hidden="true"></i>
-                            <div class="icon-badge" id="pacingAlertCount"></div>
-                            </div>
-                            <div id="pacingAlertCountProgress" style="height:50px; width:100px;" hidden></div>
-                        </h4>
-                    </a>
-                    <a class="nav-link" id="nav-billing-tab"
-                       data-toggle="tab" href="#nav-billing" role="tab"
-                       aria-controls="nav-billing" aria-selected="true">
-                        <h4>
-                            <i class="fas fa-solid fa-money-bill btn btn-secondary"
-                               style="float:right;" aria-hidden="true"></i></h4>
-                    </a>
+                            <h4>
+                                <div class="icon-badge-container">
+                                    <i class="fas fa-solid fa-table-cells btn btn-secondary"
+                                       style="float:right;"
+                                       aria-hidden="true"></i>
+                                    <div class="icon-badge"
+                                         id="pacingAlertCount"></div>
+                                </div>
+                                <div hidden>
+                                    <div id="pacingAlertCountProgress"></div>
+                                </div>
+                            </h4>
+                        </a>
+                        <a class="nav-link" id="nav-billing-tab"
+                           data-toggle="tab" href="#nav-billing" role="tab"
+                           aria-controls="nav-billing" aria-selected="true">
+                            <h4>
+                                <i class="fas fa-solid fa-money-bill btn btn-secondary"
+                                   style="float:right;" aria-hidden="true"></i>
+                            </h4>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
     </nav>
     <div class="tab-content" id="nav-dash-tabContent">
         <div class="tab-pane fade show active" id="nav-dash"
@@ -109,10 +117,12 @@
                 <div class="col-md-12 p-0">
                     <div class="card-header">
                         <div class="row" id="navRow">
-                            <div class="btn-group btn-group-sm btn-block" role="group">
+                            <div class="btn-group btn-group-sm btn-block"
+                                 role="group">
                                 <button id="getAllCharts"
                                         class="btn btn-outline-primary"><i
-                                        class="fas fa-chart-bar" href="#" role="button"
+                                        class="fas fa-chart-bar" href="#"
+                                        role="button"
                                         aria-hidden="true"></i>Get All Charts
                                 </button>
                             </div>
@@ -173,7 +183,7 @@
             <div class="row">
                 <div class="col-md-12 h-50">
                     <div class="card-deck container-fluid text-center mx-auto mb-2 mt-2">
-                        <div id="totalMetricsProgress" class='widget'></div>
+                        <div id="totalMetricsProgress"></div>
                         <div id="totalMetrics" class="row w-100 mx-auto"></div>
                     </div>
                 </div>
@@ -181,51 +191,56 @@
 
             <br>
             <div class="row h-80">
-                <div class="col-md-4 h-80" >
-                    <div id="toplineMetrics"  class="card shadow-sm outer remove-items-shadow"
+                <div class="col-md-4 h-80">
+                    <div id="toplineMetrics"
+                         class="card shadow-sm outer remove-items-shadow"
                          style="height:692px"></div>
                     <div class="d-none">
-                    <div id="toplineMetricsProgress"></div>
+                        <div id="toplineMetricsProgress"></div>
                     </div>
                 </div>
                 <div class="col-md-8 h-80  vertical-center">
                     <div class="card-header d-flex flex-row rounded align-items-center">
                         <h7 class="pr-2 mr-5">Daily</h7>
                         <div class="col-sm d-flex align-center">
-                            <div class="col-xs-4  color-square p-2 border" id="dailyMetricsSelect0Key"></div>
+                            <div class="col-xs-4  color-square p-2 border"
+                                 id="dailyMetricsSelect0Key"></div>
                         </div>
-                        <select id="dailyMetricsSelect0" class="form-control form-control-sm p-1 mr-4">
+                        <select id="dailyMetricsSelect0"
+                                class="form-control form-control-sm p-1 mr-4">
                         </select>
                         <div class="col-sm d-flex align-center">
-                            <div class="col-xs-4  color-square pl-4 pt-1" id="dailyMetricsSelect1Key"></div>
+                            <div class="col-xs-4  color-square pl-4 pt-1"
+                                 id="dailyMetricsSelect1Key"></div>
                         </div>
-                        <select id="dailyMetricsSelect1" class="form-control form-control-sm p-1">
+                        <select id="dailyMetricsSelect1"
+                                class="form-control form-control-sm p-1">
                         </select>
                     </div>
                     <div class="card container-fluid shadow-sm outer p-0">
                         <div style="height: 420px; width: 97%">
-                            <div id="dailyMetricsProgress" class='widget'></div>
+                            <div id="dailyMetricsProgress"></div>
                             <div id="dailyMetrics"></div>
                         </div>
                         <hr class="m-0">
                         <div class="card-body container-fluid p-0">
-                             <div style="height: 200px" class="p-3">
-                                <div id="dailyMetricsNotesProgress" class='widget'
-                                     style="height: 170px !important;"></div>
+                            <div style="height: 200px" class="p-3">
+                                <div id="dailyMetricsNotesProgress"></div>
                                 <div id="dailyMetricsNotes">
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div><br>
+            </div>
+            <br>
             <div class="row">
                 <div class="col-md-4 h-50">
                     <div class="card-header d-flex flex-row rounded">
                         <h7 class="pr-4">Delivery</h7>
                     </div>
                     <div class="card container-fluid shadow-sm outer p-0 m-0">
-                        <div id="deliveryMetricsProgress" class='widget'></div>
+                        <div id="deliveryMetricsProgress"></div>
                         <div id="deliveryMetrics" style="height:250px;"></div>
                     </div>
                 </div>
@@ -237,7 +252,7 @@
                         </select>
                     </div>
                     <div class="card container-fluid shadow-sm outer">
-                        <div id="partnerMetricsProgress" class='widget'></div>
+                        <div id="partnerMetricsProgress"></div>
                         <div id="partnerMetrics"></div>
                     </div>
                 </div>
@@ -252,7 +267,7 @@
                         </select>
                     </div>
                     <div class="card container-fluid shadow-sm outer">
-                        <div id="countryMetricsProgress" class='widget'></div>
+                        <div id="countryMetricsProgress"></div>
                         <div id="countryMetrics"></div>
                     </div>
                 </div>
@@ -264,11 +279,12 @@
                         </select>
                     </div>
                     <div class="card container-fluid shadow-sm outer">
-                        <div id="campaignMetricsProgress" class='widget'></div>
+                        <div id="campaignMetricsProgress"></div>
                         <div id="campaignMetrics"></div>
                     </div>
                 </div>
-            </div><br>
+            </div>
+            <br>
             <div class="row" id="fourthRow" hidden="">
                 <div class="col-md-5 h-50">
                     <div class="card-header d-flex flex-row rounded">
@@ -278,7 +294,7 @@
                         </select>
                     </div>
                     <div class="card container-fluid shadow-sm outer">
-                        <div id="environmentMetricsProgress" class='widget'></div>
+                        <div id="environmentMetricsProgress"></div>
                         <div id="environmentMetrics"></div>
                     </div>
                 </div>
@@ -290,7 +306,7 @@
                         </select>
                     </div>
                     <div class="card container-fluid shadow-sm outer">
-                        <div id="kpiMetricsProgress" class='widget'></div>
+                        <div id="kpiMetricsProgress"></div>
                         <div id="kpiMetrics"></div>
                     </div>
                 </div>
@@ -299,37 +315,49 @@
         {% include 'pacing.html' %}
         <div class="tab-pane fade show" id="nav-billing" role="tabpanel"
              aria-labelledby="nav-dash-tab"></div>
-            <div class="row">
-                <div id="billingTable"></div>
-            </div>
+        <div class="row">
+            <div id="billingTable"></div>
+        </div>
     </div>
 
     <script>
         function getAllCharts(filterDict, clickElem = null, oldHtml = null,
                               allCharts = false) {
             let metrics = ['kpi'];
-            getMetrics('#totalMetrics', generateTotalCards, ['mpProduct Name'],
-                metrics, filterDict, "row w-100", 125, clickElem, oldHtml);
-            getMetrics('#dailyMetrics', generateDualLineChart, ['eventdate'],
-                metrics, filterDict);
-            getMetrics('#dailyMetricsNotes', generateKpiNotes, ['mpProduct Name'],
-                metrics, filterDict);
-            getTable('toplineMetrics', 'toplineMetricsProgress', 'None',
-                JSON.stringify(filterDict));
-            getMetrics('#deliveryMetrics', generateProgressBars, ['vendorname'],
-                ['netcost', 'plannednetcost'], filterDict);
+            filterDict = (filterDict) ? filterDict : [];
+            let total_metric_args = getDataTableArgsDict(
+                'generateTotalCards', ['mpProduct Name'], metrics, filterDict);
+            getTable('totalMetrics', 'totalMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, total_metric_args);
+            let daily_metric_args = getDataTableArgsDict(
+                'generateDualLineChart', ['eventdate'], metrics, filterDict, true);
+            getTable('dailyMetrics', 'dailyMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, daily_metric_args);
+            let kpi_notes_args = getDataTableArgsDict(
+                'generateKpiNotes', ['mpProduct Name'], metrics, filterDict);
+            getTable('dailyMetricsNotes', 'dailyMetricsNotesProgress', 'None', 'None',
+                'None', true, 'None', false, kpi_notes_args);
+            getTable('toplineMetrics', 'toplineMetricsProgress', 'None', filterDict);
+            let delivery_metric_args = getDataTableArgsDict(
+                'generateProgressBars', ['vendorname'], ['netcost', 'plannednetcost'], filterDict, true);
+            getTable('deliveryMetrics', 'deliveryMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, delivery_metric_args);
             if (!allCharts) {
-                getMetrics('#pacingAlertCount', generateAlertCount, ['vendorname'],
-                    ['netcost', 'plannednetcost'], filterDict);
-                getMetrics('#partnerMetrics', generateBarChart, ['vendorname'],
-                    ['kpi'], filterDict);
+                let pacing_alert_args = getDataTableArgsDict(
+                    'generateAlertCount', ['vendorname'], ['netcost', 'plannednetcost'], filterDict);
+                getTable('pacingAlertCount', 'pacingAlertCountProgress', 'None', 'None',
+                    'None', false, 'None', false, pacing_alert_args);
+                let partner_metric_args = getDataTableArgsDict(
+                    'generateBarChart', ['vendorname'], metrics, filterDict, true);
+                getTable('partnerMetrics', 'partnerMetricsProgress', 'None', 'None',
+                    'None', true, 'None', false, partner_metric_args);
             }
             if (allCharts) {
                 getSecondaryCharts(filterDict, clickElem);
             }
         }
 
-        function getSecondaryCharts(filterDict, clickElem=null) {
+        function getSecondaryCharts(filterDict, clickElem = null) {
             let addSelect = !(clickElem);
             let metrics = ['kpi'];
             let rowIds = ['thirdRow', 'fourthRow', 'filterRow'];
@@ -338,13 +366,27 @@
             });
             let cols = ['partner', 'country', 'campaign', 'environment', 'kpi'];
             cols.forEach(function (col, i) {
-                let chartId = `#${col}Metrics`;
+                let chartId = `${col}Metrics`;
                 let colName = (col === 'partner') ? 'vendorname' : `${col}name`;
-                let chartType = (i > 1) ? generateLollipopChart : generateBarChart;
-                getMetrics(chartId, chartType, [colName],
-                    metrics, filterDict, null, null, null, null, addSelect);
+                let chartType = (i > 1) ? 'generateLollipopChart' : 'generateBarChart';
+                let secondary_metric_args = getDataTableArgsDict(
+                    chartType, [colName], metrics, filterDict, true);
+                getTable(chartId, `${chartId}Progress`, 'None', 'None',
+                    'None', true, 'None', false, secondary_metric_args);
             })
         }
+
+        function getPartnerMetrics(filterDict=null, clickElem = null, oldHtml = null,
+                                   allCharts = false) {
+            let metrics = ['kpi'];
+            filterDict = (filterDict) ? filterDict : [];
+            let pacing_alert_args = getDataTableArgsDict(
+                'generateAlerts', ['vendorname', 'campaignname'], ['netcost', 'adservingcost'], filterDict);
+            getTable('pacingAlerts', 'pacingAlertsProgress', 'None', 'None',
+                'None', true, 'None', false, pacing_alert_args);
+            getTable('pacingMetrics', 'pacingMetricsProgress');
+        }
+
 
         function getDates() {
             const fp = document.querySelector('#datePicker')._flatpickr;
@@ -390,7 +432,7 @@
             getTable(billingTableId, billingTableId);
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             addOnClickEvent('button[id^="getAllCharts"]', getAllChartsClickEvent);
             addOnClickEvent('button[id^="applyFilter"]', applyFilterEvent);
             addOnClickEvent('[id^="nav-billing-tab"]', getBillingTable);

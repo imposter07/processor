@@ -4,7 +4,12 @@ function convertDictToFormData(data) {
     }
     const formData = new FormData();
     for (const name in data) {
-        formData.append(name, data[name]);
+        if (typeof data[name] === 'object' && data[name] !== 'None') {
+            formData.append(name, JSON.stringify(data[name]));
+        }
+        else {
+            formData.append(name, data[name]);
+        }
     }
     return formData
 }

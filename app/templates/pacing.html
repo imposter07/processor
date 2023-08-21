@@ -41,46 +41,57 @@
         <div id="pacingAlertsProgress" style="height:50px; width:100px;" hidden></div>
         <div id="pacingAlerts"></div>
     </div>
+    <div class="row h-80">
+        <div class="col-md-4 h-80">
+            <div id="toplineMetrics"
+                 class="card shadow-sm outer remove-items-shadow"
+                 style="height:692px"></div>
+            <div class="d-none">
+                <div id="toplineMetricsProgress"></div>
+            </div>
+        </div>
+        <div class="col-md-8 h-80  vertical-center">
+            <div class="card-header d-flex flex-row rounded align-items-center">
+                <h7 class="pr-2 mr-5">Partners</h7>
+            </div>
+            <div class="card container-fluid shadow-sm outer p-0">
+                <div style="height: 420px; width: 97%">
+                    <div id="partnerMetricsProgress" class='widget'></div>
+                    <div id="partnerMetrics"></div>
+                </div>
+                <hr class="m-0">
+            </div>
+        </div>
+    </div>
     <br>
-        <div class="col-md-12 h-50">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div class="col">
-                    <h7 class="mb-3">Pacing</h7>
-                </div>
-                <div class="col">
-                    <div class="input-group">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text"><i
-                                    class="fa-solid fa-magnifying-glass"
-                                    href="#"
-                                    role="button"></i></span>
-                        </div>
-                        <input id="tableSearchInput" type="text"
-                               class="form-control"
-                               placeholder="Search"
-                               aria-label=""
-                               aria-describedby="basic-addon1"
-                               onkeyup="searchTable('#pacingMetrics')">
-                    </div>
-                </div>
-                <div class="col">
-                    <button class="btn btn-primary float-right" id="_refresh_download_pacing_data" type="button">
-                        <i class="fa-solid fa-download" style="color:white" aria-hidden="true"></i>
-                    </button>
+    <div class="row">
+        <div class="col-md-5 h-50">
+            <div class="card-header d-flex flex-row rounded">
+                <h7 class="pr-4">Delivery</h7>
+            </div>
+            <div class="card container-fluid shadow-sm outer p-0 m-0">
+                <div id="partnerTreeMapProgress" class='widget'></div>
+                <div id="partnerTreeMap" style="height:250px;"></div>
+            </div>
+        </div>
+        <div class="col-md-7 h-50">
+            <div class="card-header d-flex flex-row rounded">
+                <h7 class="pr-4">Pacing</h7>
+            </div>
+                <div id="pacingMetricsProgress"></div>
+                <div id="pacingMetrics"></div>
+        </div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="card-body container-fluid p-0">
+            <div style="height: 200px" class="p-3">
+                <div id="dailyMetricsNotesProgress" class='widget'
+                     style="height: 170px !important;"></div>
+                <div id="dailyMetricsNotes">
                 </div>
             </div>
-        <div class="card container-fluid shadow outer">
-            <div id="pacingMetrics" style="height:325px;" spellcheck='false'></div>
-            <div id="pacingMetricsProgress" class='widget'></div>
-        </div>
-        <div class="card-footer d-flex">
-            <button type="button" class="btn btn-secondary" id="pacingTableSaveButton"
-            disabled>Save Planned Spends</button>
-            <small class="ml-auto">*Pacing metrics and visuals updated after runs.
-                Start and End Dates based on uploaded Media Plan where available. Else based on VendorMatrix.
-            </small>
         </div>
     </div>
 </div>
-<br>
 <br>

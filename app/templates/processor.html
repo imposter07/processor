@@ -184,7 +184,7 @@
     <div class="row">
         <div class="col-md-12 h-50">
             <div class="card-deck container-fluid text-center">
-                <div id="totalMetricsProgress" class='widget'></div>
+                <div id="totalMetricsProgress"></div>
                 <div id="totalMetrics" class="row w-100"></div>
             </div>
         </div>
@@ -201,7 +201,7 @@
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="productMetricsProgress" class='widget'></div>
+                <div id="productMetricsProgress"></div>
                 <div id="productMetrics" style="height:250px;"></div>
             </div>
         </div>
@@ -215,8 +215,8 @@
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="dailyMetricsProgress" class='widget'></div>
-                <div id="dailyMetrics"></div>
+                <div id="dailyMetricsProgress"></div>
+                <div id="dailyMetrics" style="height:250px;"></div>
             </div>
         </div>
     </div>
@@ -231,7 +231,7 @@
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="partnerMetricsProgress" class='widget'></div>
+                <div id="partnerMetricsProgress"></div>
                 <div id="partnerMetrics"></div>
             </div>
         </div>
@@ -244,7 +244,7 @@
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="countryMetricsProgress" class='widget'></div>
+                <div id="countryMetricsProgress"></div>
                 <div id="countryMetrics"></div>
             </div>
         </div>
@@ -259,7 +259,7 @@
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="campaignMetricsProgress" class='widget'></div>
+                <div id="campaignMetricsProgress"></div>
                 <div id="campaignMetrics"></div>
             </div>
         </div>
@@ -272,7 +272,7 @@
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="environmentMetricsProgress" class='widget'></div>
+                <div id="environmentMetricsProgress"></div>
                 <div id="environmentMetrics"></div>
             </div>
         </div>
@@ -285,7 +285,7 @@
                 </select>
             </div>
             <div class="card container-fluid shadow outer">
-                <div id="kpiMetricsProgress" class='widget'></div>
+                <div id="kpiMetricsProgress"></div>
                 <div id="kpiMetrics"></div>
             </div>
         </div>
@@ -299,43 +299,50 @@
 
         function getAllCharts(filterDict, clickElem=null, oldHtml=null,
                               allCharts=false) {
-            let metrics = ['kpi']
-            let addSelect = !(clickElem)
-            getMetrics('#totalMetrics', generateTotalCards, ['mpProduct Name'],
-                 metrics, filterDict, "row w-100", 125, clickElem, oldHtml,
-                 null, null, null, null, false);
-            getMetrics('#dailyMetrics', generateAreaChart, ['eventdate'],
-                metrics, filterDict, null, null, null, null, null, null,
-                null, null, false);
-            getMetrics('#productMetrics', generateBarChart, ['productname'],
-                metrics, filterDict, null, null, null, null, addSelect, null,
-                null, null, false);
+            let metrics = ['kpi'];
+            filterDict = (filterDict) ? filterDict : [];
+            let total_metric_args = getDataTableArgsDict(
+                'generateTotalCards', ['mpProduct Name'], metrics, filterDict);
+            getTable('totalMetrics', 'totalMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, total_metric_args);
+            let daily_metric_args = getDataTableArgsDict(
+                'generateAreaChart', ['eventdate'], metrics, filterDict, true);
+            getTable('dailyMetrics', 'dailyMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, daily_metric_args);
+            let delivery_metric_args = getDataTableArgsDict(
+                'generateBarChart', ['productname'], metrics, filterDict, true);
+            getTable('productMetrics', 'productMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, delivery_metric_args);
             if (allCharts) {
                 getSecondaryCharts(filterDict, clickElem);
             }
         }
 
         function getSecondaryCharts(filterDict, clickElem=null) {
-            let addSelect = !(clickElem)
-            let metrics = ['kpi']
+            let metrics = ['kpi'];
             $('#thirdRow').removeAttr('hidden')
             $('#fourthRow').removeAttr('hidden')
             $('#filterRow').removeAttr('hidden')
-            getMetrics('#partnerMetrics', generateBarChart, ['vendorname'],
-                metrics, filterDict, null, null, null, null, addSelect,
-                null, null, null, false);
-            getMetrics('#countryMetrics', generateBarChart, ['countryname'],
-                metrics, filterDict, null, null, null, null, addSelect,
-                null, null, null, false);
-            getMetrics('#campaignMetrics', generateLollipopChart, ['campaignname'],
-                metrics, filterDict, null, null, null, null, addSelect,
-                null, null, null, false);
-            getMetrics('#environmentMetrics', generateLollipopChart, ['environmentname'],
-                metrics, filterDict, null, null, null, null, addSelect,
-                null, null, null, false);
-            getMetrics('#kpiMetrics', generateLollipopChart, ['kpiname'],
-                metrics, filterDict, null, null, null, null, addSelect,
-                null, null, null, false);
+            let partner_metric_args = getDataTableArgsDict(
+                'generateBarChart', ['vendorname'], metrics, filterDict, true);
+            getTable('partnerMetrics', 'partnerMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, partner_metric_args);
+            let country_metric_args = getDataTableArgsDict(
+                'generateBarChart', ['countryname'], metrics, filterDict, true);
+            getTable('countryMetrics', 'countryMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, country_metric_args);
+            let campaign_metric_args = getDataTableArgsDict(
+                'generateLollipopChart', ['campaignname'], metrics, filterDict, true);
+            getTable('campaignMetrics', 'campaignMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, campaign_metric_args);
+            let environment_metric_args = getDataTableArgsDict(
+                'generateLollipopChart', ['environmentname'], metrics, filterDict, true);
+            getTable('environmentMetrics', 'environmentMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, environment_metric_args);
+            let kpi_metric_args = getDataTableArgsDict(
+                'generateLollipopChart', ['kpiname'], metrics, filterDict, true);
+            getTable('kpiMetrics', 'kpiMetricsProgress', 'None', 'None',
+                'None', true, 'None', false, kpi_metric_args);
         }
 
         function getDates() {

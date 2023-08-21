@@ -575,6 +575,7 @@
     }
 
     function generateAreaChart(elem, data, xCol, yCol, filterCols) {
+        elem = `#${elem}`;
         let am = autoMargin(elem, 250, 60, 30);
         let svg = am.svg
         let parseDate = d3.timeParse("%Y-%m-%d");
@@ -649,6 +650,7 @@
 
 
     function generateDualLineChart(elem, data, xCol, yCol, filterCols) {
+        elem = `#${elem}`;
         let am = autoMargin(elem, 400, 60, 30);
         let svg = am.svg;
         let parseDate = d3.timeParse("%Y-%m-%d");
@@ -764,6 +766,7 @@
     }
 
     function generateLollipopChart(elem, data, xCol, yCol) {
+        elem = `#${elem}`;
         data = sortData(data, yCol[0])
         let dataLength = (data.length < 20) ? 1 : data.length / 20
         let am = autoMargin(elem, 250, 60, 30, dataLength);
@@ -1009,6 +1012,7 @@
     }
 
     function generateBarChart(elem, data, xCol, yCol) {
+        elem = `#${elem}`;
         elemId = elem.replace('#', '');
         document.getElementById(elemId).innerHTML='';
         data = sortData(data, yCol[0]);
@@ -1162,6 +1166,7 @@
     }
 
     function generateProgressBars(elem, data, xCol, yCol) {
+        elem = `#${elem}`;
         data.sort((a, b) => b[yCol[0]] - a[yCol[0]])
         let dataLength = (data.length < 5) ? 1 : data.length / 5
         let am = autoMargin(elem, 250, 5, 5, .9, dataLength)
@@ -1316,6 +1321,20 @@
         update(Object.keys(data[0])[1], pos1);
     }
 
+    function getMetricsComplete(data, xCol, yCol, createVisualFunction,
+                                filterDict, addSelect, elem) {
+        if (Array.isArray(data) && data.length) {
+            yCol = Object.keys(data[0]).filter(function (e) {
+                return e !== 'index' && e !== xCol[0]
+            });
+            document.getElementById(elem).innerHTML = "";
+            createVisualFunction(elem, data, xCol, yCol, filterDict);
+            if (addSelect) {
+                addSelectOptions(data, xCol, false, "", false)
+            }
+        }
+    }
+
     function getDownloadProgressForRadial(tableName, chart, downloadingProgress,
                                           procId = null, forceReturn = false,
                                           xCol = null, yCol = null,
@@ -1345,20 +1364,6 @@
         return downloadingProgress
     }
 
-    function getMetricsComplete(chart, data, xCol, yCol, createVisualFunction,
-        filterDict, addSelect, elem) {
-        chart.update(100);
-        if (Array.isArray(data) && data.length) {
-            yCol = Object.keys(data[0]).filter(function (e) {
-                return e !== 'index' && e !== xCol[0]
-            });
-            createVisualFunction(elem, data, xCol, yCol, filterDict);
-            if (addSelect) {
-                addSelectOptions(data, xCol, false, "", false)
-            }
-        }
-    }
-
     function turnOffRadialProgress(elem, downloadingProgress, oldHtml, clickElem) {
         $(elem + 'Progress').remove()
         clearInterval(downloadingProgress);
@@ -1369,61 +1374,20 @@
         }
     }
 
-    function getMetrics(elem, createVisualFunction, xCol, yCol,
-                        filterDict = null, parentClass = "", parentHeight = 250,
-                        clickElem = null, oldHtml = null, addSelect = false,
-                        dashboardId = null, vendorKey = null, procId = null,
-                        forceReturn = false ) {
-        if (filterDict) {
-            $(elem).parent().html(
-                '<div id="' + elem.substring(1) +
-                'Progress" class=\'widget\'></div>\n' +
-                '<div id="' + elem.substring(1) + '" ' +
-                'class="' + parentClass + '" ' +
-                'style="height:' + parentHeight + 'px;"></div>\n'
-            )
+    function getDataTableArgsDict(return_func='', dimensions=[], metrics = [],
+                                  filter_dict = [], use_cache, proc_id) {
+        const dataTableArgs = {};
+        if (typeof use_cache !== 'undefined') {
+            dataTableArgs['use_cache'] = true;
         }
-        $.ajax({
-            type: "POST",
-            url: "/get_metrics",
-            data: {
-                object_name: "{{ object_name }}",
-                object_type: "{{ title }}",
-                object_level: "{{ edit_name }}",
-                elem: elem,
-                x_col: xCol.join('|'),
-                y_col: yCol.join('|'),
-                filter_dict: JSON.stringify(filterDict),
-                dashboard_id: dashboardId,
-                vendor_key: vendorKey,
-                object_id: procId,
-                force_return: forceReturn
-            },
-        }).done(function (data, status) {
-            if (forceReturn) {
-                getMetricsComplete(chart, data, xCol, yCol,
-                    createVisualFunction, filterDict, addSelect, elem)
-            }
-            else {
-                downloadingProgress = getDownloadProgressForRadial('OutputData',
-                    chart, downloadingProgress, procId, forceReturn, xCol, yCol,
-                    createVisualFunction, filterDict, addSelect, elem, data['task'],
-                    oldHtml, clickElem)
-            }
-        }).fail(function (jqXHR, textStatus) {
-            console.log("Request failed: " + textStatus);
-        }).always(function () {
-            if (forceReturn) {
-                turnOffRadialProgress(elem, downloadingProgress, oldHtml, clickElem);
-            }
-        });
-        let chart = radialProgress(elem + 'Progress')
-        let downloadingProgress = null
-        if (forceReturn) {
-            downloadingProgress = getDownloadProgressForRadial('OutputData',
-                chart, downloadingProgress, procId, forceReturn, xCol, yCol,
-                createVisualFunction, filterDict, addSelect, elem)
+        if (typeof proc_id !== 'undefined') {
+            dataTableArgs['proc_id'] = proc_id;
         }
+        dataTableArgs['return_func'] = return_func;
+        dataTableArgs['dimensions'] = dimensions;
+        dataTableArgs['metrics'] = metrics;
+        dataTableArgs['filter_dict'] = filter_dict;
+        return dataTableArgs;
     }
 
     function addEdit(tableID, cols, buttonID) {
@@ -1577,11 +1541,6 @@
         for (let i = 0, row; row = rows[i]; i++) {
             rows[i].cells[colInd].style.display = "none";
         }
-    }
-
-    function getPacingTable(tableName) {
-        let elem = document.getElementById(tableName);
-        getTable(tableName, elem.id);
     }
 
     function generatePacingTable(elemID, data, xCol, yCol) {

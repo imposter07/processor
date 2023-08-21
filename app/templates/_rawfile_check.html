@@ -68,8 +68,7 @@
                                             </select>
                                         </div>
                                         <div class="shadow outer">
-                                            <div id="{{ dash }}MetricsProgress"
-                                                 class="widget">
+                                            <div id="{{ dash }}MetricsProgress">
                                             </div>
                                             <div id="{{ dash }}Metrics"></div>
                                         </div>
@@ -167,23 +166,29 @@
             $('#dashFooter' + procName).removeAttr('style');
             let metrics = ['kpi'];
             let filterDict = {};
-            let chartFunction = (function () {
-                if (selectedText === 'Date') {
-                    return generateAreaChart;
-                } else {
-                    return generateBarChart;
-                }
-            })
+            let chartFunction = (selectedText === 'Date') ? 'generateAreaChart'
+                : 'generateBarChart';
             let vendorKey = $('#rawFileBody').data('vk');
-            getMetrics('#newFilePlotMetrics', chartFunction(),
-                [selectedText], metrics,
-                filterDict, "", 250, null, null, null, null, vendorKey);
-            getMetrics('#oldFilePlotMetrics', chartFunction(),
-                [selectedText], metrics,
-                filterDict, "", 250, null, null, null, null, vendorKey);
-            getMetrics('#deltaFilePlotMetrics', chartFunction(),
-                [selectedText], metrics,
-                filterDict, "", 250, null, null, null, null, vendorKey);
+            let new_file_args = getDataTableArgsDict(
+                chartFunction, [selectedText], metrics, filterDict);
+            getTable('newFilePlotMetrics', 'newFilePlotMetricsProgress', 'None', vendorKey,
+                'None', true, 'None', false, new_file_args);
+            getTable('oldFilePlotMetrics', 'oldFilePlotMetricsProgress', 'None', vendorKey,
+                'None', true, 'None', false, new_file_args);
+            getTable('deltaFilePlotMetrics', 'deltaFilePlotMetricsProgress', 'None', vendorKey,
+                'None', true, 'None', false, new_file_args);
+        });
+        $('#select_plot').on('change', function (e) {
+            let selectedText = this.options[e.target.selectedIndex].text
+            let vendorKey = $('#data_source_clean').val();
+            let metrics = ['kpi'];
+            let filterDict = {};
+            let chartFunction = (selectedText === 'Date') ? 'generateAreaChart' :
+                'generateBarChart';
+            let file_args = getDataTableArgsDict(
+                chartFunction, [selectedText], metrics, filterDict);
+            getTable('dash_placeholderMetrics', 'dash_placeholderMetricsProgress', 'None', vendorKey,
+                'None', true, 'None', false, file_args);
         });
     }
 </script>

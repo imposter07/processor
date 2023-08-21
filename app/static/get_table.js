@@ -1,12 +1,10 @@
-function turnOffProgress(downloadingProgress, oldHtml, clickElem) {
+function turnOffProgress(oldHtml, clickElem) {
     if (oldHtml !== 'None') {
         $(clickElem).html(oldHtml);
     } else {
         addElemRemoveLoadingBtn(clickElem);
     }
     unanimateBar();
-    clearInterval(downloadingProgress);
-    downloadingProgress = null;
     let downloadID = 'downloadProgress' + clickElem;
     let downloadElem = document.getElementById(downloadID);
     if (downloadElem) {
@@ -98,6 +96,15 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
             generatePacingTable(tableName, data['data']['data'], data['plan_cols'])
         } else if (tableName === 'Daily Pacing') {
             generateDailyPacing(tableName, data['data']['data'], data['data']['plan_cols'])
+        } else if ('args' in data['data'] && 'return_func' in
+            data['data']['args']) {
+            let functionName = data['data']['args']['return_func'];
+            let chartData = data['data']['data'];
+            let xCol = data['data']['args']['dimensions'];
+            let yCol = data['data']['args']['metrics'];
+            let filterDict = data['data']['args']['filter_dict'];
+            getMetricsComplete(chartData, xCol, yCol, window[functionName],
+                filterDict, true, tableName)
         }
         else {
             showModalTable('modalTableButton');
@@ -127,7 +134,7 @@ function getTableComplete(tableName, pond, vendorKey, data){
 
 function getCompletedTask(tableName, procId = null, task = null,
                           pond = 'None', vendorKey = 'None',
-                          fixId = 'None') {
+                          fixId = 'None', args='None') {
     let jinjaValues = document.getElementById('jinjaValues').dataset;
     let uploaderType = (jinjaValues['title'] === "Uploader") ? jinjaValues['uploader_type'] : "None";
     let data = {
@@ -140,7 +147,8 @@ function getCompletedTask(tableName, procId = null, task = null,
         task: task,
         table: tableName,
         fix_id: fixId,
-        vendorkey: vendorKey
+        vendorkey: vendorKey,
+        args: args
     }
     let formData = convertDictToFormData(data);
     fetch('/get_completed_task', {
@@ -151,56 +159,86 @@ function getCompletedTask(tableName, procId = null, task = null,
     });
 }
 
-function getTaskProgress(tableName, updateFunction = false, downloadingProgress,
-                         procId = null, task = null, forceReturn = false,
+function getTaskProgressResponse(data, kwargs) {
+    let forceReturn = kwargs['forceReturn'];
+    let tableName = kwargs['tableName'];
+    let procId = kwargs['object_id'];
+    let task = kwargs['task'];
+    let pond = kwargs['pond'];
+    let vendorKey = kwargs['vendorKey'];
+    let oldHtml = kwargs['oldHtml'];
+    let clickElem = kwargs['clickElem'];
+    let fixId = kwargs['fixId'];
+    let args = kwargs['args'];
+    let updateFunction = kwargs['updateFunction'];
+    if ('complete' in data && data['complete']) {
+        turnOffProgress(oldHtml, clickElem);
+        if (!forceReturn) {
+            getCompletedTask(tableName, procId, task, pond,
+                vendorKey, fixId, args);
+        }
+    } else {
+        let downloadID = 'downloadProgress' + clickElem;
+        let downloadProgress = document.getElementById(downloadID);
+        let newPercent = data['percent'];
+        if (downloadProgress) {
+            let oldPercent = parseInt(downloadProgress.getAttribute("style").match(/\d+/)[0]);
+            if (newPercent > oldPercent) {
+                if (updateFunction) {
+                    updateFunction(newPercent);
+                } else {
+                    downloadProgress.setAttribute("style", "width: " + newPercent + "%")
+                }
+            } else {
+                let percent = oldPercent + 2;
+                if (updateFunction) {
+                    updateFunction(percent);
+                } else {
+                    downloadProgress.setAttribute("style", "width: " + percent + "%")
+                }
+            }
+        }
+        setTimeout(getTaskProgress, 2500, tableName, updateFunction,
+            procId, task,forceReturn, pond, vendorKey, oldHtml, clickElem,
+            fixId, args)
+    }
+}
+
+function getTaskProgress(tableName, updateFunction = false,
+                         procId = 'None', task = null, forceReturn = false,
                          pond = 'None', vendorKey = 'None', oldHtml = null,
-                         clickElem = null, fixId = null) {
+                         clickElem = null, fixId = null, args='None') {
     let jinjaValues = document.getElementById('jinjaValues').dataset;
-    downloadingProgress = setInterval(function() {
-        $.post('/get_task_progress',
-            {
-                object_type: jinjaValues['title'],
-                object_name: jinjaValues['object_name'],
-                object_level: jinjaValues['edit_name'],
-                task_name: tableName,
-                object_id: procId,
-                task: task,
-                table: tableName,
-                fix_id: fixId,
-                vendorkey: vendorKey
-            }).done(function (data) {
-                if ('complete' in data && data['complete']) {
-                    turnOffProgress(downloadingProgress, oldHtml, clickElem);
-                    if (!forceReturn) {
-                        getCompletedTask(tableName, procId, task, pond,
-                            vendorKey, fixId);
-                    }
-                }
-                else {
-                    let downloadID = 'downloadProgress' + clickElem;
-                    let downloadProgress = document.getElementById(downloadID);
-                    let newPercent = data['percent'];
-                    if (downloadProgress) {
-                        let oldPercent = parseInt(downloadProgress.getAttribute("style").match(/\d+/)[0]);
-                        if (newPercent > oldPercent) {
-                            if (updateFunction) {
-                                updateFunction(newPercent);
-                            } else {
-                                downloadProgress.setAttribute("style", "width: " + newPercent + "%")
-                            }
-                        } else {
-                            let percent = oldPercent + 2;
-                            if (updateFunction) {
-                                updateFunction(percent);
-                            } else {
-                                downloadProgress.setAttribute("style", "width: " + percent + "%")
-                            }
-                        }
-                    }
-                }
-        });
-    }, 2500);
-    return downloadingProgress
+    let data = {
+        object_type: jinjaValues['title'],
+        object_name: jinjaValues['object_name'],
+        object_level: jinjaValues['edit_name'],
+        task_name: tableName,
+        object_id: procId,
+        task: task,
+        table: tableName,
+        fix_id: fixId,
+        vendorkey: vendorKey,
+        args: args
+    };
+    let kwargs = {
+        'object_type': jinjaValues['title'],
+        'object_name': jinjaValues['object_name'],
+        'object_level': jinjaValues['edit_name'],
+        'forceReturn': forceReturn,
+        'tableName': tableName,
+        'object_id': procId,
+        'task': task,
+        'pond': pond,
+        'vendorKey': vendorKey,
+        'oldHtml': oldHtml,
+        'clickElem': clickElem,
+        'fixId': fixId,
+        'args': args,
+        'updateFunction': updateFunction
+    };
+    makeRequest('/get_task_progress', 'POST', data,
+        getTaskProgressResponse, 'json', kwargs, getTableError);
 }
 
 function getTableResponse(data, kwargs) {
@@ -211,24 +249,23 @@ function getTableResponse(data, kwargs) {
     let oldHtml = kwargs['oldHtml'];
     let clickElem = kwargs['clickElem'];
     let fixId = kwargs['fixId'];
-    let downloadingProgress = kwargs['downloadingProgress'];
+    let args = kwargs['args'];
+    let procId = (args !== 'None' && 'proc_id' in args) ? args['proc_id'] : 'None';
     if (forceReturn) {
         getTableComplete(tableName, pond, vendorKey, data);
     } else {
         if (data['task']) {
-            downloadingProgress = getTaskProgress(tableName, false, downloadingProgress,
-                null, data['task'], forceReturn, pond, vendorKey, oldHtml, clickElem,
-                fixId);
+            getTaskProgress(tableName, false, procId, data['task'],
+                forceReturn, pond, vendorKey, oldHtml, clickElem, fixId, args);
         }
     }
     if (forceReturn) {
-        turnOffProgress(downloadingProgress, oldHtml, clickElem);
+        turnOffProgress(oldHtml, clickElem);
     }
 }
 
 function getTableError(error, kwargs) {
     let forceReturn = kwargs['forceReturn'];
-    let downloadingProgress = kwargs['downloadingProgress'];
     let oldHtml = kwargs['oldHtml'];
     let clickElem = kwargs['clickElem'];
     let dlId = 'downloadProgress' + clickElem;
@@ -236,7 +273,7 @@ function getTableError(error, kwargs) {
     downloadProgress.style.width = '100%';
     // window.location.reload(true);
     if (forceReturn) {
-        turnOffProgress(downloadingProgress, oldHtml, clickElem);
+        turnOffProgress(oldHtml, clickElem);
     }
 }
 
@@ -248,7 +285,7 @@ function setDownloadBarAndLoadingBtn(elemId) {
 
 async function getTable(tableName, clickElem, oldHtml = 'None', vendorKey= 'None',
                   pond='None', progress= true, fixId= 'None',
-                  forceReturn= false) {
+                  forceReturn= false, args='None') {
     setDownloadBarAndLoadingBtn(clickElem);
     let jinjaValues = document.getElementById('jinjaValues').dataset;
     let uploaderType = (jinjaValues['title'] === "Uploader") ? jinjaValues['uploader_type'] : "None";
@@ -260,13 +297,13 @@ async function getTable(tableName, clickElem, oldHtml = 'None', vendorKey= 'None
         uploader_type: uploaderType,
         vendorkey: vendorKey,
         fix_id: fixId,
+        args: args,
         force_return: forceReturn
-    }
-    let downloadingProgress = null;
+    };
+    let procId = (args !== 'None' && 'proc_id' in args) ? args['proc_id'] : 'None';
     if (progress && forceReturn) {
-        downloadingProgress = getTaskProgress(tableName, false,
-            downloadingProgress, null, null, forceReturn,
-            pond, vendorKey, oldHtml, clickElem, fixId);
+        getTaskProgress(tableName, false, procId,
+            null, forceReturn, pond, vendorKey, oldHtml, clickElem, fixId);
     }
     let kwargs = {
         'forceReturn': forceReturn,
@@ -276,7 +313,7 @@ async function getTable(tableName, clickElem, oldHtml = 'None', vendorKey= 'None
         'oldHtml': oldHtml,
         'clickElem': clickElem,
         'fixId': fixId,
-        'downloadingProgress': downloadingProgress
+        'args': args,
     }
     makeRequest('/get_table', 'POST', data, getTableResponse, 'json',
         kwargs, getTableError);

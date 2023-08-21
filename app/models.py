@@ -996,7 +996,16 @@ class Processor(db.Model):
                      'billingInvoice': '.get_billing_invoice',
                      'brandtracker_imports': '.get_brandtracker_imports',
                      'request_table': '.get_request_table',
-                     'downloadTable': '.download_table'}
+                     'downloadTable': '.download_table',
+                     'totalMetrics': '.get_processor_total_metrics',
+                     'pacingAlertCount': '.get_pacing_alert_count',
+                     'dash_placeholderMetrics': '.get_raw_file_data_table',
+                     'oldFilePlotMetrics': '.get_raw_file_data_table',
+                     'newFilePlotMetrics': '.get_raw_file_data_table',
+                     'deltaFilePlotMetrics': '.get_raw_file_delta_table',
+                     'dailyMetricsNotes': '.get_processor_daily_notes',
+                     'pacingAlerts': '.get_pacing_alerts'
+                     }
         return arg_trans
 
     def get_import_form_dicts(self, reverse_sort_apis=False):

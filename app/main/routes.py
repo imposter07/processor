@@ -25,7 +25,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm, \
     ProcessorNoteForm, ProcessorAutoAnalysisForm, ProcessorReportBuilderForm, \
     WalkthroughUploadForm, ProcessorPlanForm, UploadTestForm, ScreenshotForm, \
-        BrandTrackerImportForm
+    BrandTrackerImportForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
@@ -411,6 +411,8 @@ def get_completed_task():
 @bp.route('/get_task_progress', methods=['GET', 'POST'])
 @login_required
 def get_task_progress():
+    proc_arg = {'use_cache': (
+            'args' in request.form and 'use_cache' in request.form['args'])}
     object_name = request.form['object_name']
     task_name = request.form['task_name']
     cur_obj = request.form['object_type']
@@ -419,8 +421,8 @@ def get_task_progress():
     else:
         cur_obj = Uploader
     job_name, table_name, proc_arg = translate_table_name_to_job(
-        task_name, proc_arg={})
-    if request.form['object_id']:
+        task_name, proc_arg=proc_arg)
+    if request.form['object_id'] != 'None':
         cur_obj = Processor.query.get(request.form['object_id'])
     else:
         cur_obj = cur_obj.query.filter_by(name=object_name).first()
@@ -505,8 +507,8 @@ def messages():
     page = request.args.get('page', 1, type=int)
     user_messages = current_user.messages_received.order_by(
         Message.timestamp.desc()).paginate(
-            page=page, per_page=current_app.config['POSTS_PER_PAGE'],
-            error_out=False)
+        page=page, per_page=current_app.config['POSTS_PER_PAGE'],
+        error_out=False)
     next_url = url_for('main.messages', page=user_messages.next_num) \
         if user_messages.has_next else None
     prev_url = url_for('main.messages', page=user_messages.prev_num) \
@@ -887,14 +889,13 @@ def translate_table_name_to_job(table_name, proc_arg):
         if base_name in table_name:
             proc_arg['parameter'] = table_name.replace(base_name, '')
             table_name = base_name
-    if table_name == 'download_pacing_data':
-        proc_arg['dimensions'] = ['vendorname', 'campaignname']
-        proc_arg['filter_dict'] = []
-        proc_arg['metrics'] = ['netcost']
     if table_name in ['download_raw_data', 'download_pacing_data']:
         proc_arg['parameter'] = 'Download'
-    arg_trans = Task.get_table_name_to_task_dict()
-    job_name = arg_trans[table_name]
+    if 'use_cache' in proc_arg:
+        job_name = '.get_data_tables_from_db'
+    else:
+        arg_trans = Task.get_table_name_to_task_dict()
+        job_name = arg_trans[table_name]
     return job_name, table_name, proc_arg
 
 
@@ -904,7 +905,15 @@ def get_table_arguments():
     cur_obj = request.form['object_type']
     table_name = request.form['table']
     vk = request.form['vendorkey']
-    if cur_obj == 'Processor':
+    form_dict = request.form.to_dict(flat=False)
+    if form_dict['args'][0] != 'None':
+        proc_arg = {**proc_arg, **json.loads(form_dict['args'][0]),
+                    'spec_args': 'True'}
+        proc_arg = utl.parse_additional_args(proc_arg)
+    if 'proc_id' in proc_arg:
+        proc_id = proc_arg.pop('proc_id')
+        cur_proc = Processor.query.get(proc_id)
+    elif cur_obj == 'Processor':
         cur_obj = Processor
         cur_proc = cur_obj.query.filter_by(
             name=request.form['object_name']).first_or_404()
@@ -931,7 +940,8 @@ def get_table_arguments():
         vk = 'None'
     job_name, table_name, proc_arg = translate_table_name_to_job(
         table_name=table_name, proc_arg=proc_arg)
-    if cur_proc.get_task_in_progress(job_name):
+    task_in_progress = cur_proc.get_task_in_progress(job_name)
+    if task_in_progress and task_in_progress.name == table_name:
         if job_name == '.get_request_table':
             description = 'Getting {} table for {}'.format(
                 table_name, request.form['fix_id'])
@@ -983,8 +993,9 @@ def get_table_return(task, table_name, proc_arg, job_name,
             df = pd.DataFrame([{'Result': 'AN UNEXPECTED ERROR OCCURRED.'}])
     dl_table = table_name in ['SOW', 'ToplineDownload', 'downloadTable']
     dl_table_1 = (
-        'parameter' in proc_arg and (proc_arg['parameter'] == 'RawDataOutput' or
-                                     proc_arg['parameter'] == 'Download'))
+            'parameter' in proc_arg and (
+            proc_arg['parameter'] == 'RawDataOutput' or
+            proc_arg['parameter'] == 'Download'))
     dl_table_2 = 'billingInvoice' in table_name
     if dl_table or dl_table_1 or dl_table_2:
         z = zipfile.ZipFile(df)
@@ -1042,6 +1053,9 @@ def get_table_return(task, table_name, proc_arg, job_name,
                 tmp_df = df_to_html(tmp_df, row_names)
                 html_dfs.append(tmp_df)
         data = {'data': {'data': html_dfs, 'plan_cols': plan_cols}}
+    elif 'return_func' in proc_arg:
+        df = df.reset_index().to_dict(orient='records')
+        data = {'data': {'data': df, 'args': proc_arg}}
     elif utl.LiquidTable.id_col in df and df[utl.LiquidTable.id_col]:
         data = {'data': df}
     else:
@@ -1083,6 +1097,7 @@ def get_table():
 def utility_functions():
     def print_in_console(message):
         print(str(message))
+
     return dict(mdebug=print_in_console)
 
 
@@ -2865,85 +2880,6 @@ def edit_processor_duplication(object_name):
         return redirect(url_for('main.processor_page',
                                 object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
-
-
-def translate_metrics_name_to_job(metric_name, proc_arg):
-    if metric_name in ['#totalMetrics', '#dailyMetricsNotes']:
-        proc_arg = {x: proc_arg[x] for x in proc_arg
-                    if x in ['running_user', 'filter_dict']}
-    elif metric_name in ['#dash_placeholderMetrics',
-                         '#oldFilePlotMetrics', '#newFilePlotMetrics',
-                         '#deltaFilePlotMetrics']:
-        proc_arg['parameter'] = request.form['vendor_key']
-        if metric_name == '#newFilePlotMetrics':
-            proc_arg['temp'] = True
-    arg_trans = {'#totalMetrics': '.get_processor_total_metrics',
-                 '#pacingAlertCount': '.get_pacing_alert_count',
-                 '#dash_placeholderMetrics': '.get_raw_file_data_table',
-                 '#oldFilePlotMetrics': '.get_raw_file_data_table',
-                 '#newFilePlotMetrics': '.get_raw_file_data_table',
-                 '#deltaFilePlotMetrics': '.get_raw_file_delta_table',
-                 '#dailyMetricsNotes': '.get_processor_daily_notes'
-                 }
-    if metric_name in arg_trans:
-        job_name = arg_trans[metric_name]
-    else:
-        job_name = '.get_data_tables_from_db'
-    return job_name, proc_arg
-
-
-def get_metric_arguments():
-    cur_user = User.query.filter_by(id=current_user.id).first_or_404()
-    dimensions = request.form['x_col'].split('|')
-    metric_name = request.form['elem']
-    if 'dashboard_id' in request.form and request.form['dashboard_id']:
-        dash = Dashboard.query.get(request.form['dashboard_id'])
-        metrics = dash.get_metrics()
-        dimensions = dash.get_dimensions()
-    else:
-        if 'filter_col' in request.form:
-            dimensions += request.form['filter_col'].split('|')
-        dimensions = request.form['x_col'].split('|')
-        metrics = request.form['y_col'].split('|')
-    proc_arg = {'running_user': cur_user.id,
-                'dimensions': dimensions,
-                'metrics': metrics}
-    if 'filter_dict' in request.form:
-        proc_arg['filter_dict'] = json.loads(request.form['filter_dict'])
-    obj_name = request.form['object_name']
-    if request.form['object_id']:
-        cur_proc = Processor.query.get(request.form['object_id'])
-    else:
-        if 'object_name' in request.form and request.form['object_name'] == '':
-            cur_proc = Processor.query.get(23)
-        else:
-            cur_proc = Processor.query.filter_by(name=obj_name).first_or_404()
-    job_name, proc_arg = translate_metrics_name_to_job(metric_name, proc_arg)
-    return metric_name, cur_proc, proc_arg, job_name
-
-
-def get_metrics_return(task, metric_name, proc_arg, job_name,
-                       force_return=False):
-    job = task.wait_and_get_job(force_return=True)
-    df = job.result[0]
-    data = df.reset_index().to_dict(orient='records')
-    return data
-
-
-@bp.route('/get_metrics', methods=['GET', 'POST'])
-@login_required
-def get_metrics():
-    metric_name, cur_proc, proc_arg, job_name = get_metric_arguments()
-    msg_text = 'Getting metric table for {}'.format(cur_proc.name)
-    task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
-    db.session.commit()
-    if ('force_return' in request.form and
-            request.form['force_return'] == 'false'):
-        data = {'data': 'success', 'task': task.id, 'level': 'success'}
-    else:
-        data = get_metrics_return(task, metric_name, proc_arg, job_name,
-                                  force_return=True)
-    return jsonify(data)
 
 
 @bp.route('/processor/<object_name>/dashboard', methods=['GET', 'POST'])

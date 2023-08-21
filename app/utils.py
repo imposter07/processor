@@ -5,7 +5,8 @@ import re
 from app import db
 import pandas as pd
 import datetime as dt
-from app.models import Task, Processor, User, Campaign, Project, Client, Product
+from app.models import Task, Processor, User, Campaign, Project, Client, \
+    Product, Dashboard
 from flask import current_app, render_template
 from flask_babel import _
 import uploader.upload.creator as cre
@@ -35,7 +36,7 @@ def get_file_in_memory_from_request(current_request, current_key):
 
 def parse_upload_file_request(current_request, object_name=None):
     msg = 'Attempting to parse object {} with request: {}'.format(
-            object_name, current_request)
+        object_name, current_request)
     current_app.logger.info(msg)
     current_form = current_request.form.to_dict()
     current_key = list(current_form.keys())[0]
@@ -180,6 +181,14 @@ def parse_filter_dict_from_clients(processors, seven_days_ago, current_request):
     return processors
 
 
+def parse_additional_args(proc_arg):
+    if 'dashboard_id' in proc_arg and proc_arg['dashboard_id']:
+        dash = Dashboard.query.get(proc_arg['dashboard_id'])
+        proc_arg['metrics'] = dash.get_metrics()
+        proc_arg['dimensions'] = dash.get_dimensions()
+    return proc_arg
+
+
 def get_processor_user_map(processors):
     new_list = group_sql_to_dict(processors, group_by='user_id')
     new_list = list(new_list.values())
@@ -298,16 +307,16 @@ def column_contents_to_list(df, cols):
 class LiquidTable(object):
     id_col = 'liquid_table'
 
-    def __init__(self, col_list=None, data=None, top_rows=None,
-                 totals=False, title='', description='', columns_toggle=False,
+    def __init__(self, col_list=None, data=None, top_rows=None, totals=False,
+                 title='', description='', columns_toggle=False,
                  accordion=False, specify_form_cols=True, col_dict=True,
-                 select_val_dict=None, select_box=None,
-                 form_cols=None, metric_cols=None, def_metric_cols=None,
-                 header=None, highlight_row=None, new_modal_button=False,
-                 col_filter=True, search_bar=True, chart_btn=True,
-                 df=pd.DataFrame(), row_on_click='', button_col=None,
-                 table_buttons=None, custom_cols=None, highlight_type='blank',
-                 download_table=False, slider_edit_col='',
+                 select_val_dict=None, select_box=None, form_cols=None,
+                 metric_cols=None, def_metric_cols=None, prog_cols=None,
+                 header=None, highlight_row=None,
+                 new_modal_button=False, col_filter=True, search_bar=True,
+                 chart_btn=True, df=pd.DataFrame(), row_on_click='',
+                 button_col=None, table_buttons=None, highlight_type='blank',
+                 slider_edit_col='', prog_colors='success', download_table=False,
                  table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
@@ -324,6 +333,8 @@ class LiquidTable(object):
         self.form_cols = form_cols
         self.metric_cols = metric_cols
         self.def_metric_cols = def_metric_cols
+        self.prog_cols = prog_cols
+        self.prog_colors = prog_colors
         self.header = header
         self.highlight_row = highlight_row
         self.table_name = table_name
@@ -334,7 +345,6 @@ class LiquidTable(object):
         self.row_on_click = row_on_click
         self.button_col = button_col
         self.table_buttons = table_buttons
-        self.custom_cols = custom_cols
         self.highlight_type = highlight_type
         self.download_table = download_table
         self.slider_edit_col = slider_edit_col
@@ -344,15 +354,16 @@ class LiquidTable(object):
         self.build_from_df()
         self.form_cols = self.check_form_cols(
             self.form_cols, self.specify_form_cols, self.col_list)
+        self.custom_cols = []
         self.rows_name = None
         self.top_rows_name = None
         self.liquid_table = True
         self.table_buttons = self.create_buttons()
         self.cols = self.make_columns(
             self.col_list, self.select_val_dict, self.select_box,
-            self.form_cols, self.metric_cols, self.def_metric_cols, self.header,
-            self.highlight_row, self.button_col, self.highlight_type,
-            self.slider_edit_col)
+            self.form_cols, self.metric_cols, self.def_metric_cols,
+            self.prog_cols, self.header, self.highlight_row, self.button_col,
+            self.highlight_type, self.slider_edit_col)
         self.table_dict = self.make_table_dict(
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
@@ -383,8 +394,9 @@ class LiquidTable(object):
         return form_cols
 
     def make_columns(self, col_list, select_val_dict, select_box, form_cols,
-                     metric_cols, def_metric_cols, header, highlight_row,
-                     button_col, highlight_type, slider_edit_col):
+                     metric_cols, def_metric_cols, prog_cols, header,
+                     highlight_row, button_col, highlight_type,
+                     slider_edit_col):
         cols = []
         if col_list:
             for x in col_list:
@@ -410,6 +422,9 @@ class LiquidTable(object):
                 if slider_edit_col and x == slider_edit_col:
                     cur_col.form = True
                     cur_col.type = cur_col.slider_edit_col_str
+                if prog_cols and x in prog_cols:
+                    custom_col = cur_col.parse_prog_bars(x, self.prog_colors)
+                    self.custom_cols.append(custom_col)
                 if button_col and x in button_col:
                     cur_col.type = 'button_col'
                 cur_col.update_dict()
@@ -499,3 +514,8 @@ class LiquidTableColumn(object):
             'true_color': true_color, 'false_color': false_color,
             'full_row': full_row}
         return ht
+
+    @staticmethod
+    def parse_prog_bars(col, color):
+        custom_func = {'func': 'addProgressBars', 'args': [col, color]}
+        return custom_func

@@ -2441,7 +2441,7 @@ def set_processor_config_file(processor_id, current_user_id, config_type,
 
 def set_processor_config_files(processor_id, current_user_id):
     try:
-        for ct in [('twitter', 'twconfig.json'),
+        for ct in [('twitter', 'twconfig.json'), ('rs', 'rsapi.json'),
                    ('dc', 'dcapi.json'), ('dv', 'dvapi.json'),
                    ('s3', 's3config.json'),
                    ('exp', 'export_handler.csv')]:

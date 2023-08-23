@@ -3532,14 +3532,14 @@ def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
             df = df[['current_value'] +
                     [x for x in df.columns if x != 'current_value']]
         else:
-            try:
-                df['change'] = ((df['new_value'].astype(float) -
-                                 df['old_value'].astype(float)) /
-                                df['old_value'].astype(float))
-            except KeyError:
-                _set_task_progress(100)
-                return [
-                    pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+            cols = ['new_value', 'old_value']
+            df = utl.data_to_type(df, float_col=['new_value', 'old_value'])
+            for col in cols:
+                if col not in df:
+                    df[col] = 0
+            df['change'] = ((df['new_value'].astype(float) -
+                             df['old_value'].astype(float)) /
+                            df['old_value'].astype(float))
         df['change'] = df['change'].round(4)
         df = df.replace([np.inf, -np.inf], np.nan)
         df = df.fillna(0)

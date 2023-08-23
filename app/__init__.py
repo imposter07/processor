@@ -1,5 +1,6 @@
 import os
 import rq
+import sys
 import logging
 from logging.handlers import SMTPHandler, RotatingFileHandler
 from flask import Flask, request, current_app, has_request_context
@@ -99,11 +100,13 @@ def create_app(config_class=Config()):
     app.config.from_object(rq_dashboard.default_settings)
     app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rq")
 
+    formatter = RequestFormatter(
+        '[%(asctime)s] %(remote_addr)s requested %(url)s\n'
+        '%(levelname)s in %(module)s: %(message)s'
+    )
+    console = logging.StreamHandler(sys.stdout)
+    console.setFormatter(formatter)
     if not app.debug and not app.testing:
-        formatter = RequestFormatter(
-            '[%(asctime)s] %(remote_addr)s requested %(url)s\n'
-            '%(levelname)s in %(module)s: %(message)s'
-        )
         if app.config['MAIL_SERVER']:
             auth = None
             if app.config['MAIL_USERNAME'] or app.config['MAIL_PASSWORD']:
@@ -128,12 +131,12 @@ def create_app(config_class=Config()):
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(formatter)
         app.logger.addHandler(file_handler)
-        import sys
-        console = logging.StreamHandler(sys.stdout)
-        console.setFormatter(formatter)
         app.logger.addHandler(console)
         app.logger.setLevel(logging.INFO)
         app.logger.info('LQA App startup')
+    elif app.testing:
+        app.logger.addHandler(console)
+        app.logger.setLevel(logging.DEBUG)
     return app
 
 

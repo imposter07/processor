@@ -13,7 +13,7 @@ import numpy as np
 import datetime as dt
 import app.utils as app_utl
 from datetime import datetime
-from flask import render_template
+from flask import render_template, current_app
 from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
@@ -39,8 +39,10 @@ from processor.reporting.vendormatrix import full_placement_creation
 import uploader.upload.utils as u_utl
 import uploader.upload.creator as cre
 
-app = create_app()
-app.app_context().push()
+app = current_app
+if not app:
+    app = create_app()
+    app.app_context().push()
 
 
 def _set_task_progress(progress, attempt=1):

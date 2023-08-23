@@ -2,12 +2,16 @@ import os
 import time
 import pytest
 import urllib
+import ctypes
+import threading
 import processor.reporting.utils as utl
 from datetime import datetime, timedelta
 from app import create_app, db
-from app.models import User, Post
+from app.models import User, Post, Processor, Client, Product, Campaign
 from config import Config, basedir
 from multiprocessing import Process
+from rq import SimpleWorker
+from rq.timeouts import BaseDeathPenalty, JobTimeoutException
 
 
 base_url = 'http://127.0.0.1:5000/'
@@ -19,16 +23,82 @@ class TestConfig(Config):
     TESTING = True
 
 
+class TimerDeathPenalty(BaseDeathPenalty):
+    def __init__(self, timeout, exception=JobTimeoutException, **kwargs):
+        super().__init__(timeout, exception, **kwargs)
+        self._target_thread_id = threading.current_thread().ident
+        self._timer = None
+
+        # Monkey-patch exception with the message ahead of time
+        # since PyThreadState_SetAsyncExc can only take a class
+        def init_with_message(self, *args, **kwargs):  # noqa
+            super(exception, self).__init__("Task exceeded maximum timeout value ({0} seconds)".format(timeout))
+
+        self._exception.__init__ = init_with_message
+
+    def new_timer(self):
+        """Returns a new timer since timers can only be used once."""
+        return threading.Timer(self._timeout, self.handle_death_penalty)
+
+    def handle_death_penalty(self):
+        """Raises an asynchronous exception in another thread.
+
+        Reference http://docs.python.org/c-api/init.html#PyThreadState_SetAsyncExc for more info.
+        """
+        ret = ctypes.pythonapi.PyThreadState_SetAsyncExc(
+            ctypes.c_long(self._target_thread_id), ctypes.py_object(self._exception)
+        )
+        if ret == 0:
+            raise ValueError("Invalid thread ID {}".format(self._target_thread_id))
+        elif ret > 1:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(self._target_thread_id), 0)
+            raise SystemError("PyThreadState_SetAsyncExc failed")
+
+    def setup_death_penalty(self):
+        """Starts the timer."""
+        if self._timeout <= 0:
+            return
+        self._timer = self.new_timer()
+        self._timer.start()
+
+    def cancel_death_penalty(self):
+        """Cancels the timer."""
+        if self._timeout <= 0:
+            return
+        self._timer.cancel()
+        self._timer = None
+
+
+class WindowsSimpleWorker(SimpleWorker):
+    death_penalty_class = TimerDeathPenalty
+
+
+@pytest.fixture(scope="class")
+def worker(app_fixture):
+    queue = app_fixture.task_queue
+    queue.empty()
+    worker = WindowsSimpleWorker([queue], connection=queue.connection)
+    yield worker
+    queue.empty()
+
+
+@pytest.fixture(scope='module')
+def user(app_fixture):
+    u = User(username='test', email='test@test.com')  # type: ignore
+    u.set_password('test')
+    db.session.add(u)
+    db.session.commit()
+    yield u
+    db.session.delete(u)
+    db.session.commit()
+
+
 def run_server(with_run=True):
     app = create_app(TestConfig)
     app_context = app.app_context()
     app_context.push()
     db.create_all()
     if with_run:
-        u = User(username='test', email='test@test.com')  # type: ignore
-        u.set_password('test')
-        db.session.add(u)
-        db.session.commit()
         app.run(debug=True, use_reloader=False)
     return app, app_context
 
@@ -54,16 +124,46 @@ def sw():
 
 
 @pytest.fixture(scope='module')
-def login(sw):
-    def _login():
-        sw.go_to_url(base_url)
-        login_url = '{}auth/login?next=%2F'.format(base_url)
-        if sw.browser.current_url == login_url:
-            user_pass = [('test', 'username'), ('test', 'password')]
-            sw.send_keys_from_list(user_pass)
-            sw.xpath_from_id_and_click('submit', 1)
-    yield _login
-    sw.click_on_xpath('//*[@id="navbarToggler"]/ul[2]/li[6]/a')
+def login(sw, user):
+    sw.go_to_url(base_url)
+    login_url = '{}auth/login?next=%2F'.format(base_url)
+    user_pass = [('test', 'username'), ('test', 'password')]
+    sw.send_keys_from_list(user_pass)
+    sw.xpath_from_id_and_click('submit', 1)
+
+
+@pytest.fixture(scope='module')
+def create_processor(app_fixture, user, tmp_path_factory):
+    created_processors = []
+    tmp_dir = tmp_path_factory.mktemp('test_processors')
+
+    def _create_processor(name, create_files=False):
+        client = Client(name='test').check_and_add()
+        product = Product(name='test',
+                          client_id=client.id).check_and_add()
+        campaign = Campaign(name='test',
+                            product_id=product.id).check_and_add()
+        local_path = os.path.join(tmp_dir, name, 'processor')
+        new_processor = Processor(name=name, user_id=user.id,
+                                  created_at=datetime.utcnow(),
+                                  start_date=datetime.today(),
+                                  campaign_id=campaign.id,
+                                  local_path=local_path)
+        db.session.add(new_processor)
+        db.session.commit()
+        created_processors.append(new_processor)
+        if create_files:
+            new_processor.launch_task(
+                '.create_processor',
+                'Creating processor {}...'.format(name), user.id,
+                base_path=os.path.join(basedir, 'processor')
+            )
+        return new_processor
+    yield _create_processor
+
+    for proc in created_processors:
+        db.session.delete(proc)
+    db.session.commit()
 
 
 @pytest.mark.usefixtures("app_fixture")
@@ -149,38 +249,38 @@ class TestUserModelCase:
 
 class TestUserLogin:
 
-    def test_login(self, login, sw):
-        time.sleep(5)
-        sw.go_to_url(base_url, 1)
-        login_url = '{}auth/login?next=%2F'.format(base_url)
-        assert sw.browser.current_url == login_url
-        login()
+    def test_login(self, sw, login):
+        sw.go_to_url(base_url)
         assert sw.browser.current_url == base_url
 
 
 class TestProcessor:
 
-    @pytest.fixture()
-    def set_up(self, login):
-        login()
+    @pytest.fixture(scope="class")
+    def default_name(self):
+        return 'Base Processor'
 
-    def test_create_processor(self, sw, set_up):
+    @pytest.fixture(scope="class")
+    def set_up(self, login, create_processor, default_name, worker):
+        create_processor(default_name, create_files=True)
+        worker.work(burst=True)
+
+    def test_create_processor(self, sw, login):
+        test_name = 'test'
         create_url = '{}create_processor'.format(base_url)
-        name = 'Base Processor'
 
         sw.go_to_url(create_url)
-        assert sw.browser.current_url == create_url
         form_names = ['cur_client-selectized',
                       'cur_product-selectized',
                       'cur_campaign-selectized', 'description']
         elem_form = [('test', x) for x in form_names]
-        elem_form += [(name, 'name')]
+        elem_form += [(test_name, 'name')]
         sw.send_keys_from_list(elem_form)
         sw.xpath_from_id_and_click('loadContinue')
         time.sleep(3)
         assert sw.browser.current_url == (
-            '{}processor/{}/edit/import'.format(base_url,
-                                                urllib.parse.quote(name))
+            '{}processor/{}/edit/import'.format(
+                base_url, urllib.parse.quote(test_name))
         )
 
     def test_processor_page(self, sw, set_up):

@@ -3499,7 +3499,12 @@ def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
             twdf = clean_topline_df_from_db(
                 [x for x in topline_analysis
                  if x.parameter == az.Analyze.tw_topline_col][0], 'old_value')
-            df = df.join(tdf)
+            try:
+                df = df.join(tdf)
+            except ValueError:
+                _set_task_progress(100)
+                return [
+                    pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
             df = df.join(twdf)
         if filter_dict:
             metrics = list(set(list(
@@ -3523,9 +3528,14 @@ def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
             df = df[['current_value'] +
                     [x for x in df.columns if x != 'current_value']]
         else:
-            df['change'] = ((df['new_value'].astype(float) -
-                             df['old_value'].astype(float)) /
-                            df['old_value'].astype(float))
+            try:
+                df['change'] = ((df['new_value'].astype(float) -
+                                 df['old_value'].astype(float)) /
+                                df['old_value'].astype(float))
+            except KeyError:
+                _set_task_progress(100)
+                return [
+                    pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
         df['change'] = df['change'].round(4)
         df = df.replace([np.inf, -np.inf], np.nan)
         df = df.fillna(0)
@@ -3996,11 +4006,10 @@ def get_pacing_alert_count(processor_id, current_user_id, dimensions=None,
     except:
         _set_task_progress(100)
         app.logger.error(
-            'Unhandled exception - Processor {} User {} Parameter {} '
-            'Dimensions {} Metrics {}  Filter Dict {}'.format(
-                processor_id, current_user_id, dimensions, parameter, metrics,
-                filter_dict),
-            exc_info=sys.exc_info())
+            'Unhandled exception - Processor {} User {} Dimensions {} Metrics '
+            '{}  Filter Dict {}'.format(
+                processor_id, current_user_id, dimensions, metrics,
+                filter_dict), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]), []]
 
 
@@ -4078,11 +4087,10 @@ def get_pacing_alerts(processor_id, current_user_id, dimensions=None,
     except:
         _set_task_progress(100)
         app.logger.error(
-            'Unhandled exception - Processor {} User {} Parameter {} '
-            'Dimensions {} Metrics {}  Filter Dict {}'.format(
-                processor_id, current_user_id, dimensions, parameter, metrics,
-                filter_dict),
-            exc_info=sys.exc_info())
+            'Unhandled exception - Processor {} User {} Dimensions {} Metrics '
+            '{}  Filter Dict {}'.format(
+                processor_id, current_user_id, dimensions, metrics,
+                filter_dict), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]), []]
 
 

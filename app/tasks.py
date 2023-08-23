@@ -817,6 +817,9 @@ def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
 def get_dictionary(processor_id, current_user_id, vk):
     try:
         cur_processor = Processor.query.get(processor_id)
+        if not cur_processor.local_path:
+            _set_task_progress(100)
+            return [pd.DataFrame([{'Result': 'FINISH PROCESSOR CREATION'}])]
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
@@ -3463,8 +3466,9 @@ def get_processor_total_metrics_file(processor_id, current_user_id):
 
 def clean_topline_df_from_db(db_item, new_col_name):
     df = pd.DataFrame(db_item.data)
-    if not df.empty:
-        df = df.set_index('Topline Metrics')
+    idx_col = 'Topline Metrics'
+    if not df.empty and idx_col in df.columns:
+        df = df.set_index(idx_col)
         df = utl.data_to_type(df, float_col=list(df.columns))
         df = pd.DataFrame(df.fillna(0).T.sum())
         calculated_metrics = az.ValueCalc().metric_names

@@ -1264,7 +1264,12 @@ def create_uploader(uploader_id, current_user_id, base_path):
                                object_name='Uploader')
         set_uploader_config_files(uploader_id, current_user_id)
         os.chdir(cur_path)
-        uploader_add_plan_costs(uploader_id, current_user_id)
+        save_task = '.{}'.format(save_media_plan.__name__)
+        for x in range(10):
+            if new_uploader.get_task_in_progress(save_task):
+                time.sleep(1)
+            else:
+                uploader_add_plan_costs(uploader_id, current_user_id)
         _set_task_progress(100)
         return True
     except:
@@ -3020,19 +3025,18 @@ def save_media_plan(processor_id, current_user_id, media_plan,
         base_path = create_local_path(cur_obj)
         if not os.path.exists(base_path):
             os.makedirs(base_path)
+        object_name = object_type.__name__
         if object_type == Processor:
-            object_name = 'Processor'
-            media_plan.to_csv(os.path.join(
-                base_path, 'mediaplan.csv'
-            ))
+            file_name = os.path.join(base_path, 'mediaplan.csv')
+            media_plan.to_csv(file_name)
         else:
-            object_name = 'Uploader'
-            u_utl.write_df(df=media_plan,
-                           file_name=os.path.join(base_path, 'mediaplan.xlsx'),
+            file_name = os.path.join(base_path, 'mediaplan.xlsx')
+            u_utl.write_df(df=media_plan, file_name=file_name,
                            sheet_name='Media Plan')
-            uploader_add_plan_costs(processor_id, current_user_id)
-        msg_text = ('{} media plan was updated.'
-                    ''.format(cur_obj.name))
+            create_task = '.{}'.format(create_uploader.__name__)
+            if not cur_obj.get_task_in_progress(create_task):
+                uploader_add_plan_costs(processor_id, current_user_id)
+        msg_text = ('{} media plan was updated'.format(cur_obj.name))
         processor_post_message(cur_obj, cur_user, msg_text,
                                object_name=object_name)
         _set_task_progress(100)

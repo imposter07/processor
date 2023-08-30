@@ -1054,6 +1054,7 @@ def get_table_return(task, table_name, proc_arg, job_name,
                 html_dfs.append(tmp_df)
         data = {'data': {'data': html_dfs, 'plan_cols': plan_cols}}
     elif 'return_func' in proc_arg:
+        df = df.rename(columns=str)
         df = df.reset_index().to_dict(orient='records')
         data = {'data': {'data': df, 'args': proc_arg}}
     elif utl.LiquidTable.id_col in df and df[utl.LiquidTable.id_col]:

@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import SelectField, HiddenField, StringField, \
     DateField, TextAreaField, DecimalField, FloatField, SelectMultipleField, \
-    IntegerField
+    IntegerField, FileField
 
 from wtforms.validators import ValidationError, DataRequired, Regexp
 from flask_babel import lazy_gettext as _l
@@ -73,3 +73,8 @@ class CreateSowForm(FlaskForm):
     fax = StringField('Liquid fax', validators=[DataRequired()])
     ad_serving = DecimalField('Ad serving cost', validators=[DataRequired()])
     form_continue = HiddenField('form_continue')
+
+
+class RfpForm(FlaskForm):
+    form_continue = HiddenField('form_continue')
+    add_rfp_file = FileField(_l('Add New RFP'))

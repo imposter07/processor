@@ -8,7 +8,7 @@ import processor.reporting.analyze as az
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
-    CreateSowForm
+    CreateSowForm, RfpForm
 from app.models import Client, Product, Campaign, Plan, Post, Partner, \
     PlanPhase, Sow, Processor, PartnerPlacements
 
@@ -277,3 +277,29 @@ def plan_placements(object_name):
         object_name, 'edit_plan', edit_progress=100, edit_name='PlanPlacements')
     kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/plan/<object_name>/rfp', methods=['GET', 'POST'])
+@login_required
+def rfp(object_name):
+    kwargs = Plan().get_current_plan(
+        object_name, 'edit_plan', edit_progress=100, edit_name='RFP')
+    kwargs['form'] = RfpForm()
+    return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/plan/<object_name>/rfp/upload_file', methods=['GET', 'POST'])
+@login_required
+def rfp_upload_file(object_name):
+    current_key, object_name, object_form, object_level = \
+        utl.parse_upload_file_request(request, object_name)
+    cur_plan = Plan.query.filter_by(name=object_name).first_or_404()
+    mem, file_name, file_type = \
+        utl.get_file_in_memory_from_request(request, current_key)
+    msg_text = 'Adding RFP for {}'.format(cur_plan.name)
+    cur_plan.launch_task(
+        '.add_rfp_from_file', _(msg_text),
+        running_user=current_user.id, new_data=mem)
+    db.session.commit()
+    msg = 'File was saved.'
+    return jsonify({'data': 'success', 'message': msg, 'level': 'success'})

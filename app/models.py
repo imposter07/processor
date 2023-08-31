@@ -906,28 +906,32 @@ class Processor(db.Model):
         elif buttons == 'UploaderDCM':
             buttons = [
                 {'Basic': ['main.edit_uploader', 'upload']},
-                {'Campaign': ['main.edit_uploader_campaign_dcm', 'champagne-glasses']},
+                {'Campaign': ['main.edit_uploader_campaign_dcm',
+                              'champagne-glasses']},
                 {'Adset': ['main.edit_uploader_adset_dcm', 'bullseye']},
                 {'Ad': ['main.edit_uploader_ad_dcm', 'rectangle-ad']}]
         elif buttons == 'UploaderFacebook':
             buttons = [
                 {'Basic': ['main.edit_uploader', 'upload']},
-                {'Campaign': ['main.edit_uploader_campaign', 'champagne-glasses']},
+                {'Campaign': ['main.edit_uploader_campaign',
+                              'champagne-glasses']},
                 {'Adset': ['main.edit_uploader_adset', 'bullseye']},
                 {'Creative': ['main.edit_uploader_creative', 'palette']},
                 {'Ad': ['main.edit_uploader_ad', 'rectangle-ad']}]
         elif buttons == 'UploaderAdwords':
             buttons = [
                 {'Basic': ['main.edit_uploader', 'upload']},
-                {'Campaign': ['main.edit_uploader_campaign_aw', 'champagne-glasses']},
+                {'Campaign': ['main.edit_uploader_campaign_aw',
+                              'champagne-glasses']},
                 {'Adset': ['main.edit_uploader_adset_aw', 'bullseye']},
                 {'Ad': ['main.edit_uploader_ad_aw', 'rectangle-ad']}]
         elif buttons == 'Plan':
-            buttons = [{'Basic': ['plan.edit_plan']},
-                       {'Topline': ['plan.topline']},
-                       {'SOW': ['plan.edit_sow']},
-                       {'PlanRules': ['plan.plan_rules']},
-                       {'PlanPlacements': ['plan.plan_placements']}]
+            buttons = [{'Basic': ['plan.edit_plan', 'list-ol']},
+                       {'Topline': ['plan.topline', 'calendar']},
+                       {'SOW': ['plan.edit_sow', 'file-signature']},
+                       {'PlanRules': ['plan.plan_rules', 'ruler']},
+                       {'RFP': ['plan.rfp', 'file-contract']},
+                       {'PlanPlacements': ['plan.plan_placements', 'table']}]
         else:
             buttons = [
                 {'Basic': ['main.edit_processor', 'list-ol']},
@@ -2140,6 +2144,10 @@ class Project(db.Model):
         r = ''.join(Uploader.wrap_example_prompt(x) for x in prompts)
         return r
 
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])
+
 
 class ProjectNumberMax(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2677,6 +2685,61 @@ class Partner(db.Model):
 
     def get_current_children(self):
         return self.placements.all() + self.rules.all()
+
+
+class Rfp(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    partner_name = db.Column(db.Text)
+    package_name_description = db.Column(db.Text)
+    placement_name_description = db.Column(db.Text)
+    ad_size_wxh = db.Column(db.Text)
+    ad_type = db.Column(db.Text)
+    device = db.Column(db.Text)
+    country = db.Column(db.Text)
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    buy_model = db.Column(db.Text)
+    planned_impressions = db.Column(db.Integer)
+    planned_units = db.Column(db.Text)
+    cpm_cost_per_unit = db.Column(db.Numeric)
+    planned_net_cost = db.Column(db.Numeric)
+    planned_sov = db.Column(db.Numeric)
+    reporting_source = db.Column(db.Text)
+    ad_serving_type = db.Column(db.Text)
+    targeting = db.Column(db.Text)
+    placement_phase = db.Column(db.Text)
+    placement_objective = db.Column(db.Text)
+    kpi = db.Column(db.Text)
+    sizmek_id = db.Column(db.Text)
+    partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
+
+    @staticmethod
+    def column_translation(self):
+        original_column_names = {
+            Rfp.partner_name.name: 'Partner Name',
+            Rfp.package_name_description.name: 'Package Name/Description',
+            Rfp.placement_name_description.name: 'Placement Name/Description',
+            Rfp.ad_size_wxh.name: 'Ad Size \n(WxH)',
+            Rfp.ad_type.name: 'Ad Type',
+            Rfp.device.name: 'Device',
+            Rfp.country.name: 'Country',
+            Rfp.start_date.name: 'Start Date',
+            Rfp.end_date.name: 'End Date',
+            Rfp.buy_model.name: 'Buy Model',
+            Rfp.planned_impressions.name: 'Planned Impressions',
+            Rfp.planned_units.name: 'Planned Units \n(eg. CPV, CPE, CPI)',
+            Rfp.cpm_cost_per_unit.name: 'CPM / Cost Per Unit',
+            Rfp.planned_net_cost.name: 'Planned Net Cost',
+            Rfp.planned_sov.name: 'Planned SOV %',
+            Rfp.reporting_source.name: 'Reporting Source',
+            Rfp.ad_serving_type.name: 'Ad Serving Type',
+            Rfp.targeting.name: 'Targeting ',
+            Rfp.placement_phase.name: 'Placement Phase\n(If Needed) ',
+            Rfp.placement_objective.name: 'Placement Objective\n(If Needed) ',
+            Rfp.kpi.name: 'KPI \n(If Needed) ',
+            Rfp.sizmek_id.name: 'Sizmek ID \n(Optional) '
+        }
+        return original_column_names
 
 
 class PartnerPlacements(db.Model):

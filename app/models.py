@@ -2687,6 +2687,19 @@ class Partner(db.Model):
         return self.placements.all() + self.rules.all()
 
 
+class RfpFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    name = db.Column(db.Text)
+
+    @staticmethod
+    def create_name(df):
+        cols = Rfp.column_translation()
+        return '|'.join(sorted(list(df[cols[Rfp.partner_name.name]].unique())))
+
+
 class Rfp(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     partner_name = db.Column(db.Text)
@@ -2711,10 +2724,11 @@ class Rfp(db.Model):
     placement_objective = db.Column(db.Text)
     kpi = db.Column(db.Text)
     sizmek_id = db.Column(db.Text)
+    rfp_file_id = db.Column(db.Integer, db.ForeignKey('rfp_file.id'))
     partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
 
     @staticmethod
-    def column_translation(self):
+    def column_translation():
         original_column_names = {
             Rfp.partner_name.name: 'Partner Name',
             Rfp.package_name_description.name: 'Package Name/Description',
@@ -2740,6 +2754,11 @@ class Rfp(db.Model):
             Rfp.sizmek_id.name: 'Sizmek ID \n(Optional) '
         }
         return original_column_names
+
+    def set_from_form(self, form, current_object):
+        for col in self.__table__.columns:
+            if col.name in form:
+                setattr(self, col.name, form[col.name])
 
 
 class PartnerPlacements(db.Model):

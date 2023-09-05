@@ -18,9 +18,7 @@ from app.models import Client, Product, Campaign, Plan, Post, Partner, \
 def plan():
     form = PlanForm()
     form.set_choices()
-    # kwargs = Plan.get_current_plan(Plan())
-    kwargs = {}
-    kwargs['form'] = form
+    kwargs = {'form': form}
     if request.method == 'POST':
         form.validate()
         form_client = Client(name=form.cur_client.data).check_and_add()

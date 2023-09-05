@@ -23,7 +23,7 @@ from app.models import User, Post, Task, Processor, Message, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
     ProcessorReports, Partner, PlanRule, Brandtracker, BrandtrackerDimensions, \
-    PartnerPlacements
+    PartnerPlacements, Rfp, RfpFile
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -1952,6 +1952,8 @@ def set_processor_values(processor_id, current_user_id, form_sources, table,
         db_model=parent_model)
     if parent_model == Plan:
         key = table.plan_id.name
+    elif parent_model == RfpFile:
+        key = table.rfp_file_id.name
     else:
         key = table.processor_id.name
     old_items = table.query.filter_by(**{key: processor_id}).all()
@@ -1966,8 +1968,11 @@ def set_processor_values(processor_id, current_user_id, form_sources, table,
     db.session.commit()
     msg_text = "{} {} {} set.".format(
         parent_model.__name__, cur_processor.name, table.__name__)
+    if parent_model == RfpFile:
+        cur_processor = db.session.get(Plan, cur_processor.plan_id)
+        parent_model = Plan
     processor_post_message(cur_processor, user_that_ran, msg_text,
-                           object_name=parent_model.name)
+                           object_name=parent_model.__name__)
 
 
 def set_processor_accounts(processor_id, current_user_id, form_sources):
@@ -6170,7 +6175,58 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
         cur_plan = db.session.get(Plan, plan_id)
         df = pd.read_excel(new_data, sheet_name='Plan')
         df = utl.first_last_adj(df, 2, 0).reset_index(drop=True)
-        df = df[df['Partner Name'] != 'Example Media '].reset_index(drop=True)
+        cols = Rfp.column_translation()
+        partner_col = cols[Rfp.partner_name.name]
+        df = df[df[partner_col] != 'Example Media '].reset_index(drop=True)
+        no_fill_cols = [Rfp.planned_impressions, Rfp.planned_units,
+                        Rfp.cpm_cost_per_unit, Rfp.planned_net_cost,
+                        Rfp.planned_sov]
+        no_fill_cols = [cols[x.name] for x in no_fill_cols]
+        fill_cols = [x for x in df.columns if x not in no_fill_cols]
+        for col in fill_cols:
+            df[col] = df[col].fillna(method='ffill').fillna('None')
+        name = RfpFile.create_name(df)
+        cur_rfp = RfpFile.query.filter_by(
+            name=name, plan_id=cur_plan.id).first()
+        if not cur_rfp:
+            cur_rfp = RfpFile(
+                name=name, plan_id=cur_plan.id, user_id=current_user_id)
+            db.session.add(cur_rfp)
+            db.session.commit()
+        float_col = [Rfp.planned_net_cost, Rfp.cpm_cost_per_unit,
+                     Rfp.planned_impressions]
+        float_col = [cols[x.name] for x in float_col]
+        df = utl.data_to_type(df, float_col=float_col)
+        for col in float_col:
+            df[col] = df[col].fillna(0)
+        part_translation = {}
+        for partner_name in name.split('|'):
+            cur_part = None
+            for cur_phase in cur_plan.phases.all():
+                cur_part = Partner.query.filter_by(
+                    plan_phase_id=cur_phase.id, name=partner_name).first()
+                if cur_part:
+                    break
+            if not cur_part:
+                tdf = df[df[partner_col] == partner_name]
+                total_budget = tdf[cols[Rfp.planned_net_cost.name]].sum()
+                total_imps = tdf[cols[Rfp.planned_impressions.name]].sum()
+                cpm = (total_budget / (total_imps / 1000))
+                sd = tdf[cols[Rfp.start_date.name]].min()
+                ed = tdf[cols[Rfp.end_date.name]].max()
+                cur_part = Partner(
+                    name=partner_name, plan_phase_id=cur_phase.id,
+                    total_budget=total_budget, start_date=sd, end_date=ed,
+                    estimated_cpm=cpm)
+                db.session.add(cur_part)
+                db.session.commit()
+            part_translation[partner_name] = cur_part.id
+        df[Rfp.partner_id.name] = df[partner_col].replace(part_translation)
+        df[Rfp.rfp_file_id.name] = cur_rfp.id
+        cols = {v: k for k, v in cols.items()}
+        df = df.rename(columns=cols)
+        df = df.to_dict(orient='records')
+        set_processor_values(cur_rfp.id, current_user_id, df, Rfp, RfpFile)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

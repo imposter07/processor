@@ -5039,6 +5039,10 @@ def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):
             file_type, 'TMP{}'.format(file_type))
         if os.path.exists(tmp_file_name):
             copy_file(tmp_file_name, file_name, max_attempts=10)
+        df = pd.read_json(new_data)
+        new_first_line = df.iloc[0][1]
+        check_first_row = az.CheckFirstRow(az.Analyze(matrix=matrix))
+        check_first_row.adjust_first_row_in_vm(vk, new_first_line, write=True)
         _set_task_progress(100)
         return True
     except:

@@ -1,3 +1,4 @@
+import io
 import json
 from app import db
 from flask_babel import _
@@ -5,7 +6,7 @@ from app.brandtracker import bp
 import datetime as dt
 from werkzeug.datastructures import MultiDict
 from flask_login import current_user, login_required
-from flask import render_template, request, jsonify
+from flask import render_template, request, jsonify, send_file
 from app.brandtracker.forms import PlotCategoryForm, CategoryComponentForm, \
     BrandtrackerForm
 from app.models import Brandtracker, BrandtrackerDimensions
@@ -136,6 +137,8 @@ def delete_brandtracker_component():
 @bp.route('/get_brandtracker_tables', methods=['GET', 'POST'])
 @login_required
 def get_brandtracker_tables():
+    download = (json.loads(request.form['download'])
+                if 'download' in request.form else False)
     base_form_data = json.loads(request.form['base_form_id'])
     base_form = BrandtrackerForm(MultiDict(base_form_data))
     form_data = {'titles': base_form.titles.data,
@@ -157,6 +160,13 @@ def get_brandtracker_tables():
     db.session.commit()
     job = task.wait_and_get_job()
     if job and job.result and len(job.result) > 1:
+        if download:
+            df = job.result[0]
+            mem = io.BytesIO()
+            df.to_csv(mem, encoding='utf-8', index=False)
+            mem.seek(0)
+            return send_file(mem, as_attachment=True,
+                             mimetype='text/csv', download_name='raw.csv')
         data = {
             'ChartData': job.result[0].to_dict(orient='records'),
             'InfluenceData': job.result[1],

@@ -31,6 +31,8 @@
     <div class="text-right">
         <button class="btn btn-success"
                 onclick="saveBrandtracker()">Save Configuration</button>
+        <button class="btn btn-primary"
+                onclick="downloadBrandtrackerOutput()">Download</button>
     </div>
     <div id="currentBrandtracker" data-btid="">
         <div id="brandtrackerPlot"></div>
@@ -108,6 +110,10 @@
             displayAlert(response['message'], response['level']);
         }
 
+        function downloadBrandtrackerOutput() {
+            updateBtTables(true);
+        }
+
         function addComponentOnClick() {
             let form = this.closest('form');
             let formData = new FormData(form);
@@ -143,9 +149,14 @@
             })
         }
 
-        function getBtTablesResponse(data) {
+        function getBtTablesResponse(data, kwargs = {}) {
             if (data['message']) {
                 displayAlert(data['message'], data['level']);
+            } else if (kwargs['download']) {
+                downloadTableResponse('brandtrackerOutput', null, '', data);
+                let svgElem = document.querySelector('svg');
+                let styleElem = document.getElementById('customSvgStyles');
+                downloadSvg(svgElem, styleElem);
             } else {
                 Object.keys(data).forEach(key => {
                     if (data[key]['name']) {
@@ -162,11 +173,17 @@
             }
         }
 
-        function updateBtTables() {
+        function updateBtTables(download = false) {
             let data = getBrandtrackerFormData();
+            let kwargs = {}
+            let responseType = 'json';
             if (data) {
+                if (download) {
+                    data['download'] = kwargs['download'] = true;
+                    responseType = 'file';
+                }
                 makeRequest('/get_brandtracker_tables', 'POST', data,
-                    getBtTablesResponse);
+                    getBtTablesResponse, responseType, kwargs);
             }
         }
 

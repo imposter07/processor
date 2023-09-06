@@ -5734,7 +5734,7 @@ def get_brandtracker_data(current_user_id, running_user, form_data):
             weights_dict[dim] = {x['data_column']: float(x['weight'])
                                  for x in form_data[dim] if dim in form_data}
         output_df = cal.calculate_weight_z_score(
-            df, weights_dict).reset_index().fillna('None')
+            df, weights_dict).reset_index(drop=True).fillna('None')
         result = [output_df]
         for dim in brandtracker_dimensions:
             columns[dim] = [x for x in weights_dict[dim].keys()

@@ -61,6 +61,8 @@ function makeRequest(url, method, data, responseFunction,
             data.json().then((data) => {
                 responseFunction(data, kwargs);
             });
+        } else {
+            responseFunction(data, kwargs);
         }
     }).catch(error => {
         console.log("Request failed: " + error);
@@ -369,4 +371,38 @@ function displayAlert(message, level) {
         </button>`;
     alertPlaceholderElem.insertAdjacentHTML('beforeend', btnHtml);
     fadeInElement(alertPlaceholderElem);
+}
+
+function downloadSvg(svgElem, styleElem = null) {
+    let svgString = (new XMLSerializer()).serializeToString(svgElem);
+    if (styleElem) {
+        let styleString = (new XMLSerializer()).serializeToString(styleElem);
+        svgString = ''.concat(
+            svgString.slice(0, -6), styleString, svgString.slice(-6)
+        );
+    }
+    const svgBlob = new Blob([svgString], {
+        type: 'image/svg+xml;charset=utf-8'
+    });
+    const url = URL.createObjectURL(svgBlob);
+    const image = new Image();
+    image.width = svgElem.width.baseVal.value;
+    image.height = svgElem.height.baseVal.value;
+    image.onload = function () {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0);
+        URL.revokeObjectURL(url);
+        const imgURI = canvas.toDataURL('image/png');
+
+        const downloadLink = document.createElement('a');
+        downloadLink.download = 'svg.png';
+        downloadLink.target = '_blank';
+        downloadLink.href = imgURI;
+        downloadLink.click();
+    };
+    image.src = url;
 }

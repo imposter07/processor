@@ -301,3 +301,12 @@ def rfp_upload_file(object_name):
     db.session.commit()
     msg = 'File was saved.'
     return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
+
+
+@bp.route('/plan/<object_name>/specs', methods=['GET', 'POST'])
+@login_required
+def specs(object_name):
+    kwargs = Plan().get_current_plan(
+        object_name, 'edit_plan', edit_progress=100,
+        edit_name='Specs')
+    return render_template('plan/plan.html', **kwargs)

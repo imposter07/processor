@@ -54,7 +54,7 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             let tableName = document.getElementById('jinjaValues').dataset['edit_name'];
-            if (['Topline', 'PlanRules', 'PlanPlacements'].includes(tableName)) {
+            if (['Topline', 'PlanRules', 'PlanPlacements', 'RFP', 'Specs'].includes(tableName)) {
                 getTable(tableName, tableName);
             }
         });

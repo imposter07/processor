@@ -1012,9 +1012,9 @@
     }
 
     function generateBarChart(elem, data, xCol, yCol) {
-        elem = `#${elem}`;
-        elemId = elem.replace('#', '');
-        document.getElementById(elemId).innerHTML='';
+        elem = (elem[0] === '#') ? elem : `#${elem}`;
+        let elemId = elem.replace('#', '');
+        document.getElementById(elemId).innerHTML = '';
         data = sortData(data, yCol[0]);
         let dataLength = (data.length < 10) ? 1 : data.length / 10;
         let am = autoMargin(elem, 250, 60, 30, dataLength);

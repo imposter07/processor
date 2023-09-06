@@ -931,7 +931,8 @@ class Processor(db.Model):
                        {'SOW': ['plan.edit_sow', 'file-signature']},
                        {'PlanRules': ['plan.plan_rules', 'ruler']},
                        {'RFP': ['plan.rfp', 'file-contract']},
-                       {'PlanPlacements': ['plan.plan_placements', 'table']}]
+                       {'PlanPlacements': ['plan.plan_placements', 'table']},
+                       {'Specs': ['plan.specs', 'glasses']}]
         else:
             buttons = [
                 {'Basic': ['main.edit_processor', 'list-ol']},
@@ -2470,7 +2471,9 @@ class Plan(db.Model):
             'Topline': '.get_topline',
             'ToplineDownload': '.download_topline',
             'PlanRules': '.get_plan_rules',
-            'PlanPlacements': '.get_plan_placements'
+            'PlanPlacements': '.get_plan_placements',
+            'RFP': '.get_rfp',
+            'Specs': '.get_specs'
         }
         return arg_trans
 
@@ -2693,6 +2696,8 @@ class RfpFile(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     name = db.Column(db.Text)
+    placements = db.relationship('Rfp', backref='rfp_file', lazy='dynamic')
+    specs = db.relationship('Specs', backref='rfp_file', lazy='dynamic')
 
     @staticmethod
     def create_name(df):
@@ -2759,6 +2764,80 @@ class Rfp(db.Model):
         for col in self.__table__.columns:
             if col.name in form:
                 setattr(self, col.name, form[col.name])
+
+    def get_form_dict(self):
+        fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                   if not k.startswith("_") and k != 'id'])
+        return fd
+
+
+class Specs(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    due_date = db.Column(db.Text)
+    partner = db.Column(db.Text)
+    file_name = db.Column(db.Text)
+    media_type = db.Column(db.Text)
+    environment = db.Column(db.Text)
+    dimensions = db.Column(db.Text)
+    file_type = db.Column(db.Text)
+    file_size = db.Column(db.Text)
+    key_art_direction = db.Column(db.Text)
+    messaging = db.Column(db.Text)
+    weight = db.Column(db.Text)
+    audience = db.Column(db.Text)
+    phase_cta = db.Column(db.Text)
+    loops_animation = db.Column(db.Text)
+    aspect_ratio = db.Column(db.Text)
+    video_length = db.Column(db.Text)
+    file_formats = db.Column(db.Text)
+    max_video_size_mb = db.Column(db.Text)
+    optimal_video_load_size_mb = db.Column(db.Text)
+    frame_rate = db.Column(db.Text)
+    bitrate = db.Column(db.Text)
+    hd_sd = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    rfp_file_id = db.Column(db.Integer, db.ForeignKey('rfp_file.id'))
+    partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
+
+    @staticmethod
+    def column_translation():
+        opt_size = 'Optimal Video Load Size (MB)'
+        original_column_names = {
+            Specs.due_date.name: 'Due Date',
+            Specs.partner.name: 'Partner',
+            Specs.file_name.name: 'File Name',
+            Specs.media_type.name: 'Media Type',
+            Specs.environment.name: 'Environment',
+            Specs.dimensions.name: 'Dimensions',
+            Specs.file_type.name: 'File Type',
+            Specs.file_size.name: 'File Size',
+            Specs.key_art_direction.name: 'Key Art Direction',
+            Specs.messaging.name: 'Messaging',
+            Specs.weight.name: 'Weight',
+            Specs.audience.name: 'Audience',
+            Specs.phase_cta.name: 'Phase/CTA',
+            Specs.loops_animation.name: 'Loops/Animation',
+            Specs.aspect_ratio.name: 'Aspect Ratio',
+            Specs.video_length.name: 'Video Length',
+            Specs.file_formats.name: 'File Formats',
+            Specs.max_video_size_mb.name: 'Max Video Size (MB)',
+            Specs.optimal_video_load_size_mb.name: opt_size,
+            Specs.frame_rate.name: 'Frame Rate',
+            Specs.bitrate.name: 'Bitrate',
+            Specs.hd_sd.name: 'HD/SD',
+            Specs.notes.name: 'Notes'
+        }
+        return original_column_names
+
+    def set_from_form(self, form, current_object):
+        for col in self.__table__.columns:
+            if col.name in form:
+                setattr(self, col.name, form[col.name])
+
+    def get_form_dict(self):
+        fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                   if not k.startswith("_") and k != 'id'])
+        return fd
 
 
 class PartnerPlacements(db.Model):

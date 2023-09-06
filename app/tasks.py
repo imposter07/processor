@@ -1,5 +1,4 @@
 import os
-import ast
 import sys
 import json
 import yaml
@@ -23,7 +22,7 @@ from app.models import User, Post, Task, Processor, Message, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
     ProcessorReports, Partner, PlanRule, Brandtracker, BrandtrackerDimensions, \
-    PartnerPlacements, Rfp, RfpFile
+    PartnerPlacements, Rfp, RfpFile, Specs
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -5396,7 +5395,7 @@ def get_topline(plan_id, current_user_id):
             col_list, data=partners, top_rows=phases, totals=True, title=title,
             description=description, columns_toggle=True, accordion=True,
             specify_form_cols=True, select_val_dict=select_val_dict,
-            select_box=partner_name,
+            select_box=partner_name, download_table=True,
             form_cols=form_cols + [partner_name, partner_type_name],
             metric_cols=metric_cols, def_metric_cols=def_metric_cols,
             header=phase_name, highlight_row=total_budget, table_name='Topline')
@@ -5502,8 +5501,9 @@ def get_plan_placements(plan_id, current_user_id):
         cur_plan = Plan.query.get(plan_id)
         df = cur_plan.get_placements_as_df()
         name = 'PlanPlacements'
-        lt = app_utl.LiquidTable(df=df, title=name, table_name=name,
-                                 download_table=True)
+        lt = app_utl.LiquidTable(
+            df=df, title=name, table_name=name, download_table=True,
+            specify_form_cols=False, accordion=True)
         _set_task_progress(100)
         return [lt.table_dict]
     except:
@@ -6128,8 +6128,7 @@ def write_plan_rules(plan_id, current_user_id, new_data=None):
         set_processor_values(plan_id, current_user_id, df, PlanRule, Plan)
         for phase in cur_plan.phases:
             for part in phase.partners:
-                PartnerPlacements.create_from_rules(PartnerPlacements,
-                                                    part.id)
+                PartnerPlacements.create_from_rules(PartnerPlacements, part.id)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -6171,6 +6170,28 @@ def download_table(object_id, current_user_id, function_name=None, **kwargs):
             object_id, current_user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
+                        part_translation):
+    try:
+        _set_task_progress(0)
+        df = pd.read_excel(new_data, sheet_name='Spec Sheet PLEASE FILL OUT')
+        df = utl.first_last_adj(df, 1, 0).reset_index(drop=True)
+        cols = Specs.column_translation()
+        partner_col = cols[Specs.partner.name]
+        df[Specs.partner_id.name] = df[partner_col].replace(part_translation)
+        df[Specs.rfp_file_id.name] = cur_rfp.id
+        cols = {v: k for k, v in cols.items()}
+        df = df.rename(columns=cols)
+        df = df.to_dict(orient='records')
+        set_processor_values(cur_rfp.id, current_user_id, df, Specs, RfpFile)
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Plan {} User {}'.format(
+            plan_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
 
 
 def add_rfp_from_file(plan_id, current_user_id, new_data):
@@ -6231,9 +6252,59 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
         df = df.rename(columns=cols)
         df = df.to_dict(orient='records')
         set_processor_values(cur_rfp.id, current_user_id, df, Rfp, RfpFile)
+        add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
+                            part_translation)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
         msg = 'Unhandled exception - Plan {} User {}'.format(
             plan_id, current_user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
+
+
+def get_rfp(plan_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_plan = Plan.query.get(plan_id)
+        rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
+        data = []
+        for rfp_file in rfp_files:
+            place = [x.get_form_dict() for x in rfp_file.placements]
+            data.extend(place)
+        df = pd.DataFrame(data)
+        name = 'RFP'
+        lt = app_utl.LiquidTable(
+            df=df, title=name, table_name=name, download_table=True,
+            specify_form_cols=False, accordion=True)
+        _set_task_progress(100)
+        return [lt.table_dict]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Plan {} User {}'.format(
+                plan_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_specs(plan_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_plan = Plan.query.get(plan_id)
+        rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
+        data = []
+        for rfp_file in rfp_files:
+            place = [x.get_form_dict() for x in rfp_file.specs]
+            data.extend(place)
+        df = pd.DataFrame(data)
+        name = 'Specs'
+        lt = app_utl.LiquidTable(
+            df=df, title=name, table_name=name, download_table=True,
+            specify_form_cols=False, accordion=True)
+        _set_task_progress(100)
+        return [lt.table_dict]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Plan {} User {}'.format(
+                plan_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

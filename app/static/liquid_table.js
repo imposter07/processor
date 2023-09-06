@@ -649,9 +649,12 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
     }
     let rowFormNames = getRowFormNames(tableName);
     if ('start_date' in rowData) {
-        let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
-        fp.setDate([rowData.start_date, rowData.end_date]);
-        rowFormNames = removeValues(rowFormNames, ['start_date', 'end_date']);
+        let fp = document.getElementById("datePicker" + loopIndex);
+        if (fp) {
+            fp = fp._flatpickr;
+            fp.setDate([rowData.start_date, rowData.end_date]);
+            rowFormNames = removeValues(rowFormNames, ['start_date', 'end_date']);
+        }
     }
     rowFormNames.forEach((rowFormName) => {
         let colName = 'col' + rowFormName;

@@ -2771,6 +2771,46 @@ class Rfp(db.Model):
         return fd
 
 
+    @property
+    def name(self):
+        cols = self.column_translation()
+        n = ' '.join(['{}'.format(getattr(self, key)) for key in cols.keys()])
+        return n
+
+    @staticmethod
+    def get_model_name_list():
+        return ['rfp', 'proposal']
+
+    @staticmethod
+    def get_children():
+        return None
+
+    @staticmethod
+    def get_current_children():
+        return []
+
+    @staticmethod
+    def get_parent():
+        return RfpFile
+
+    @staticmethod
+    def get_table_name_to_task_dict():
+        return {}
+
+    def get_url(self):
+        plan = db.session.get(Plan, self.rfp_file.plan_id)
+        return url_for('plan.rfp', object_name=plan.name)
+
+    def get_example_prompt(self):
+        prompts = ['Get me an rfp for Paramount.']
+        r = ''.join(Uploader.wrap_example_prompt(x) for x in prompts)
+        return r
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])
+
+
 class Specs(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     due_date = db.Column(db.Text)
@@ -2838,6 +2878,45 @@ class Specs(db.Model):
         fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                    if not k.startswith("_") and k != 'id'])
         return fd
+
+    @property
+    def name(self):
+        cols = self.column_translation()
+        n = ' '.join(['{}'.format(getattr(self, key)) for key in cols.keys()])
+        return n
+
+    @staticmethod
+    def get_model_name_list():
+        return ['specs', 'spec', 'specifications']
+
+    @staticmethod
+    def get_children():
+        return None
+
+    @staticmethod
+    def get_current_children():
+        return []
+
+    @staticmethod
+    def get_parent():
+        return RfpFile
+
+    @staticmethod
+    def get_table_name_to_task_dict():
+        return {}
+
+    def get_url(self):
+        plan = db.session.get(Plan, self.rfp_file.plan_id)
+        return url_for('plan.specs', object_name=plan.name)
+
+    def get_example_prompt(self):
+        prompts = ['What are the specs for Paramount?']
+        r = ''.join(Uploader.wrap_example_prompt(x) for x in prompts)
+        return r
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])
 
 
 class PartnerPlacements(db.Model):

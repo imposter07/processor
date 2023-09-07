@@ -31,7 +31,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project, \
     Notes, ProcessorReports, Tutorial, TutorialStage, Task, Plan, Walkthrough, \
-    Conversation, Chat, WalkthroughSlide
+    Conversation, Chat, WalkthroughSlide, Rfp, Specs
 
 from app.translate import translate
 from app.main import bp
@@ -3187,7 +3187,7 @@ def chat():
     intro_message = ('Hello I am ALI (Artificial Liquid Interface) '
                      'what can I help you with today?<br>')
     models_to_search = [Processor, Plan, TutorialStage, Notes, WalkthroughSlide,
-                        Uploader, Project]
+                        Uploader, Project, Rfp, Specs]
     for db_model in models_to_search:
         if hasattr(db_model, 'get_example_prompt'):
             ex_prompt = db_model.get_example_prompt(db_model)
@@ -3207,7 +3207,7 @@ def post_chat():
     config_path = os.path.join('processor', 'config')
     aly = az.Analyze(load_chat=True, chat_path=config_path)
     models_to_search = [Processor, Plan, TutorialStage, Notes, WalkthroughSlide,
-                        Uploader, Project]
+                        Uploader, Project, Rfp, Specs]
     response, html_response = aly.chat.get_response(
         message, models_to_search, db=db, current_user=current_user)
     new_chat = Chat(text=message, response=response,

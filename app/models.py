@@ -932,7 +932,8 @@ class Processor(db.Model):
                        {'PlanRules': ['plan.plan_rules', 'ruler']},
                        {'RFP': ['plan.rfp', 'file-contract']},
                        {'PlanPlacements': ['plan.plan_placements', 'table']},
-                       {'Specs': ['plan.specs', 'glasses']}]
+                       {'Specs': ['plan.specs', 'glasses']},
+                       {'Contacts': ['plan.contacts', 'address-book']}]
         else:
             buttons = [
                 {'Basic': ['main.edit_processor', 'list-ol']},
@@ -2473,7 +2474,8 @@ class Plan(db.Model):
             'PlanRules': '.get_plan_rules',
             'PlanPlacements': '.get_plan_placements',
             'RFP': '.get_rfp',
-            'Specs': '.get_specs'
+            'Specs': '.get_specs',
+            'Contacts': '.get_contacts'
         }
         return arg_trans
 
@@ -2698,6 +2700,7 @@ class RfpFile(db.Model):
     name = db.Column(db.Text)
     placements = db.relationship('Rfp', backref='rfp_file', lazy='dynamic')
     specs = db.relationship('Specs', backref='rfp_file', lazy='dynamic')
+    contacts = db.relationship('Contacts', backref='rfp_file', lazy='dynamic')
 
     @staticmethod
     def create_name(df):
@@ -2911,6 +2914,91 @@ class Specs(db.Model):
 
     def get_example_prompt(self):
         prompts = ['What are the specs for Paramount?']
+        r = ''.join(Uploader.wrap_example_prompt(x) for x in prompts)
+        return r
+
+    def to_dict(self):
+        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                     if not k.startswith("_") and k != 'id'])
+
+
+class Contacts(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date_submitted = db.Column(db.Date)
+    partner_name = db.Column(db.Text)
+    sales_representative = db.Column(db.Text)
+    phone1 = db.Column(db.Text)  # Phone for Sales
+    email_address1 = db.Column(db.Text)  # Email Address for Sales
+    am_traffic_contact = db.Column(db.Text)
+    phone2 = db.Column(db.Text)  # Phone for AM/Traffic
+    email_address2 = db.Column(db.Text)  # Email Address for AM/Traffic
+    director = db.Column(db.Text)
+    associate_media_director = db.Column(db.Text)
+    supervisor = db.Column(db.Text)
+    associate_strategist = db.Column(db.Text)
+    rfp_file_id = db.Column(db.Integer, db.ForeignKey('rfp_file.id'))
+    partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
+
+    @staticmethod
+    def column_translation():
+        email_sales = 'Email Address (Sales Representative)'
+        original_column_names = {
+            Contacts.partner_name.name: 'Partner Name',
+            Contacts.sales_representative.name: 'Sales Representative',
+            Contacts.phone1.name: 'Phone (Sales Representative)',
+            Contacts.email_address1.name: email_sales,
+            Contacts.am_traffic_contact.name: 'AM/Traffic Contact',
+            Contacts.phone2.name: 'Phone (AM/Traffic Contact)',
+            Contacts.email_address2.name: 'Email Address (AM/Traffic Contact)',
+            Contacts.director.name: 'Director',
+            Contacts.associate_media_director.name: 'Associate Media Director',
+            Contacts.supervisor.name: 'Supervisor',
+            Contacts.associate_strategist.name: 'Associate Strategist'
+        }
+        return original_column_names
+
+    def set_from_form(self, form, current_object):
+        for col in self.__table__.columns:
+            if col.name in form:
+                setattr(self, col.name, form[col.name])
+
+    def get_form_dict(self):
+        fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                   if not k.startswith("_") and k != 'id'])
+        return fd
+
+    @property
+    def name(self):
+        cols = self.column_translation()
+        n = ' '.join(['{}'.format(getattr(self, key)) for key in cols.keys()])
+        return n
+
+    @staticmethod
+    def get_model_name_list():
+        return ['contact', 'email', 'phone']
+
+    @staticmethod
+    def get_children():
+        return None
+
+    @staticmethod
+    def get_current_children():
+        return []
+
+    @staticmethod
+    def get_parent():
+        return RfpFile
+
+    @staticmethod
+    def get_table_name_to_task_dict():
+        return {}
+
+    def get_url(self):
+        plan = db.session.get(Plan, self.rfp_file.plan_id)
+        return url_for('plan.contacts', object_name=plan.name)
+
+    def get_example_prompt(self):
+        prompts = ['Who is the contact for Paramount?']
         r = ''.join(Uploader.wrap_example_prompt(x) for x in prompts)
         return r
 

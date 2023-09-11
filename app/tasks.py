@@ -22,7 +22,7 @@ from app.models import User, Post, Task, Processor, Message, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
     ProcessorReports, Partner, PlanRule, Brandtracker, BrandtrackerDimensions, \
-    PartnerPlacements, Rfp, RfpFile, Specs
+    PartnerPlacements, Rfp, RfpFile, Specs, Contacts
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -6172,12 +6172,67 @@ def download_table(object_id, current_user_id, function_name=None, **kwargs):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+def add_contacts_from_file(plan_id, current_user_id, new_data, cur_rfp,
+                           part_translation):
+    try:
+        _set_task_progress(0)
+        df = pd.read_excel(new_data, None)
+        sheet_name = [x for x in df.keys() if 'contact' in x.lower()]
+        if not sheet_name:
+            _set_task_progress(100)
+            return False
+        df = df[sheet_name[0]]
+        new_list = []
+        cur_contact = ''
+        contact_types = ['Sales Representative', 'AM/Traffic Contact']
+        phone_email = ['Phone', 'Email Address']
+        for col in df['Unnamed: 1']:
+            if col in contact_types:
+                cur_contact = col
+            if col in phone_email:
+                col += ' ({})'.format(cur_contact)
+            new_list.append(col)
+        df['Unnamed: 1'] = new_list
+        df = df[['Unnamed: 1', 'Unnamed: 3']].T.reset_index(drop=True)
+        df = utl.first_last_adj(df, 1, 0).reset_index(drop=True)
+        cols = Contacts.column_translation()
+        partner_col = cols[Contacts.partner_name.name]
+        mask = ~df[partner_col].isin(part_translation.keys())
+        not_in_dict = df[partner_col].loc[mask].unique()
+        for partner_name in not_in_dict:
+            cur_part = Partner(name=partner_name)
+            db.session.add(cur_part)
+            db.session.commit()
+            part_translation[partner_name] = cur_part.id
+        df[Contacts.partner_id.name] = df[partner_col].replace(part_translation)
+        df[Contacts.rfp_file_id.name] = cur_rfp.id
+        cols = {v: k for k, v in cols.items()}
+        df = df.rename(columns=cols)
+        df = df.fillna('None')
+        df = df.to_dict(orient='records')
+        set_processor_values(cur_rfp.id, current_user_id, df, Contacts, RfpFile)
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Plan {} User {}'.format(
+            plan_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+
+
 def add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
                         part_translation):
     try:
         _set_task_progress(0)
-        df = pd.read_excel(new_data, sheet_name='Spec Sheet PLEASE FILL OUT')
+        df = pd.read_excel(new_data, None)
+        sheet_name = [x for x in df.keys() if 'spec' in x.lower()]
+        if not sheet_name:
+            _set_task_progress(100)
+            return False
+        df = df[sheet_name[0]]
         df = utl.first_last_adj(df, 1, 0).reset_index(drop=True)
+        df = df[~df.isna().all(axis=1)]
+        df = df.fillna(method='ffill').fillna('None')
         cols = Specs.column_translation()
         partner_col = cols[Specs.partner.name]
         df[Specs.partner_id.name] = df[partner_col].replace(part_translation)
@@ -6187,6 +6242,7 @@ def add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
         df = df.to_dict(orient='records')
         set_processor_values(cur_rfp.id, current_user_id, df, Specs, RfpFile)
         _set_task_progress(100)
+        return True
     except:
         _set_task_progress(100)
         msg = 'Unhandled exception - Plan {} User {}'.format(
@@ -6198,11 +6254,18 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
     try:
         _set_task_progress(0)
         cur_plan = db.session.get(Plan, plan_id)
-        df = pd.read_excel(new_data, sheet_name='Plan')
+        df = pd.read_excel(new_data, None)
+        sheet_name = [x for x in df.keys() if 'plan' in x.lower()]
+        if not sheet_name:
+            _set_task_progress(100)
+            return False
+        df = df[sheet_name[0]]
         df = utl.first_last_adj(df, 2, 0).reset_index(drop=True)
         cols = Rfp.column_translation()
         partner_col = cols[Rfp.partner_name.name]
         df = df[df[partner_col] != 'Example Media '].reset_index(drop=True)
+        mask = df.drop(partner_col, axis=1).isna().all(axis=1)
+        df = df[~mask].reset_index(drop=True)
         no_fill_cols = [Rfp.planned_impressions, Rfp.planned_units,
                         Rfp.cpm_cost_per_unit, Rfp.planned_net_cost,
                         Rfp.planned_sov]
@@ -6221,7 +6284,10 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
         float_col = [Rfp.planned_net_cost, Rfp.cpm_cost_per_unit,
                      Rfp.planned_impressions]
         float_col = [cols[x.name] for x in float_col]
-        df = utl.data_to_type(df, float_col=float_col)
+        date_col = [cols[Rfp.start_date.name], cols[Rfp.end_date.name]]
+        df = utl.data_to_type(df, float_col=float_col, date_col=date_col)
+        for col in date_col:
+            df[col] = df[col].fillna(method='ffill')
         for col in float_col:
             df[col] = df[col].fillna(0)
         part_translation = {}
@@ -6237,8 +6303,12 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
                 total_budget = tdf[cols[Rfp.planned_net_cost.name]].sum()
                 total_imps = tdf[cols[Rfp.planned_impressions.name]].sum()
                 cpm = (total_budget / (total_imps / 1000))
-                sd = tdf[cols[Rfp.start_date.name]].min()
-                ed = tdf[cols[Rfp.end_date.name]].max()
+                sd = tdf[cols[Rfp.start_date.name]].dropna().min()
+                ed = tdf[cols[Rfp.end_date.name]].dropna().max()
+                if pd.isnull(sd):
+                    sd = cur_phase.start_date
+                if pd.isnull(ed):
+                    ed = cur_phase.end_date
                 cur_part = Partner(
                     name=partner_name, plan_phase_id=cur_phase.id,
                     total_budget=total_budget, start_date=sd, end_date=ed,
@@ -6254,6 +6324,8 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
         set_processor_values(cur_rfp.id, current_user_id, df, Rfp, RfpFile)
         add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
                             part_translation)
+        add_contacts_from_file(plan_id, current_user_id, new_data, cur_rfp,
+                               part_translation)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -6297,6 +6369,30 @@ def get_specs(plan_id, current_user_id):
             data.extend(place)
         df = pd.DataFrame(data)
         name = 'Specs'
+        lt = app_utl.LiquidTable(
+            df=df, title=name, table_name=name, download_table=True,
+            specify_form_cols=False, accordion=True)
+        _set_task_progress(100)
+        return [lt.table_dict]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Plan {} User {}'.format(
+                plan_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_contacts(plan_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        cur_plan = Plan.query.get(plan_id)
+        rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
+        data = []
+        for rfp_file in rfp_files:
+            place = [x.get_form_dict() for x in rfp_file.contacts]
+            data.extend(place)
+        df = pd.DataFrame(data)
+        name = 'Contacts'
         lt = app_utl.LiquidTable(
             df=df, title=name, table_name=name, download_table=True,
             specify_form_cols=False, accordion=True)

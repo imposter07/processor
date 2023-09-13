@@ -418,7 +418,7 @@ class ConversionForm(FlaskForm):
                                   choices=[(x, x) for x in vmc.datafloatcol])
     key = SelectField(
         'Conversion Platform', choices=[(x, x) for x in vmc.api_keys])
-    dcm_category = StringField('DCM Category')
+    dcm_category = StringField('DCM Group Name')
     delete = SubmitField('Delete', render_kw={'style': 'background-color:red'})
 
 

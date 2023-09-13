@@ -1953,6 +1953,8 @@ def set_processor_values(processor_id, current_user_id, form_sources, table,
         key = table.plan_id.name
     elif parent_model == RfpFile:
         key = table.rfp_file_id.name
+    elif parent_model == Partner:
+        key = table.partner_id.name
     else:
         key = table.processor_id.name
     old_items = table.query.filter_by(**{key: processor_id}).all()
@@ -1967,8 +1969,12 @@ def set_processor_values(processor_id, current_user_id, form_sources, table,
     db.session.commit()
     msg_text = "{} {} {} set.".format(
         parent_model.__name__, cur_processor.name, table.__name__)
-    if parent_model == RfpFile:
-        cur_processor = db.session.get(Plan, cur_processor.plan_id)
+    if parent_model in [RfpFile, Partner]:
+        if parent_model == Partner:
+            plan_id = cur_processor.plan.plan_id
+        else:
+            plan_id = cur_processor.plan_id
+        cur_processor = db.session.get(Plan, plan_id)
         parent_model = Plan
     processor_post_message(cur_processor, user_that_ran, msg_text,
                            object_name=parent_model.__name__)
@@ -6250,6 +6256,28 @@ def add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
         app.logger.error(msg, exc_info=sys.exc_info())
 
 
+def set_placements_from_rfp(plan_id, current_user_id, cur_rfp):
+    try:
+        _set_task_progress(0)
+        df = [PartnerPlacements.set_from_another(x) for x in cur_rfp.placements]
+        df = pd.DataFrame(df)
+        partner_col = PartnerPlacements.partner_id.name
+        partner_list = df[partner_col].unique()
+        for partner_id in partner_list:
+            cur_partner = db.session.get(Partner, int(partner_id))
+            tdf = df[df[partner_col] == partner_id]
+            tdf = tdf.to_dict(orient='records')
+            set_processor_values(cur_partner.id, current_user_id, tdf,
+                                 PartnerPlacements, Partner)
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Plan {} User {}'.format(
+            plan_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+
+
 def add_rfp_from_file(plan_id, current_user_id, new_data):
     try:
         _set_task_progress(0)
@@ -6257,8 +6285,10 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
         df = pd.read_excel(new_data, None)
         sheet_name = [x for x in df.keys() if 'plan' in x.lower()]
         if not sheet_name:
-            _set_task_progress(100)
-            return False
+            sheet_name = [x for x in df.keys() if '$' in x.lower()]
+            if not sheet_name:
+                _set_task_progress(100)
+                return False
         df = df[sheet_name[0]]
         df = utl.first_last_adj(df, 2, 0).reset_index(drop=True)
         cols = Rfp.column_translation()
@@ -6282,13 +6312,21 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
             db.session.add(cur_rfp)
             db.session.commit()
         float_col = [Rfp.planned_net_cost, Rfp.cpm_cost_per_unit,
-                     Rfp.planned_impressions]
+                     Rfp.planned_impressions, Rfp.planned_sov,
+                     Rfp.planned_units]
         float_col = [cols[x.name] for x in float_col]
         date_col = [cols[Rfp.start_date.name], cols[Rfp.end_date.name]]
         df = utl.data_to_type(df, float_col=float_col, date_col=date_col)
         for col in date_col:
             df[col] = df[col].fillna(method='ffill')
+            if col == cols[Rfp.start_date.name]:
+                fill_na_val = cur_plan.start_date
+            else:
+                fill_na_val = cur_plan.end_date
+            df[col] = df[col].fillna(fill_na_val)
         for col in float_col:
+            if col not in df.columns:
+                df[col] = 0
             df[col] = df[col].fillna(0)
         part_translation = {}
         for partner_name in name.split('|'):
@@ -6302,7 +6340,10 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
                 tdf = df[df[partner_col] == partner_name]
                 total_budget = tdf[cols[Rfp.planned_net_cost.name]].sum()
                 total_imps = tdf[cols[Rfp.planned_impressions.name]].sum()
-                cpm = (total_budget / (total_imps / 1000))
+                if total_imps == 0:
+                    cpm = 0
+                else:
+                    cpm = (total_budget / (total_imps / 1000))
                 sd = tdf[cols[Rfp.start_date.name]].dropna().min()
                 ed = tdf[cols[Rfp.end_date.name]].dropna().max()
                 if pd.isnull(sd):
@@ -6326,6 +6367,7 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
                             part_translation)
         add_contacts_from_file(plan_id, current_user_id, new_data, cur_rfp,
                                part_translation)
+        set_placements_from_rfp(plan_id, current_user_id, cur_rfp)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

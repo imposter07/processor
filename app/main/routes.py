@@ -1,5 +1,6 @@
 import io
 import os
+import sys
 import html
 import json
 import zipfile
@@ -3208,8 +3209,14 @@ def post_chat():
     aly = az.Analyze(load_chat=True, chat_path=config_path)
     models_to_search = [Processor, Plan, TutorialStage, Notes, WalkthroughSlide,
                         Uploader, Project, Rfp, Specs, Contacts]
-    response, html_response = aly.chat.get_response(
-        message, models_to_search, db=db, current_user=current_user)
+    try:
+        response, html_response = aly.chat.get_response(
+            message, models_to_search, db=db, current_user=current_user)
+    except:
+        msg = 'Unhandled exception'
+        current_app.logger.error(msg, exc_info=sys.exc_info())
+        response = 'Sorry!  An error has occurred the admin has been notified.'
+        html_response = ''
     new_chat = Chat(text=message, response=response,
                     conversation_id=conversation_id,
                     timestamp=datetime.utcnow(), html_response=html_response)

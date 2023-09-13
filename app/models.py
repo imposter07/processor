@@ -3252,11 +3252,44 @@ class PartnerPlacements(db.Model):
     def set_from_form(self, form, current_object):
         for col in self.__table__.columns:
             if col.name in form:
-                setattr(self, col.name, form[col.name].strip())
+                setattr(self, col.name, form[col.name])
 
     @staticmethod
     def get_current_children():
         return []
+
+    @staticmethod
+    def set_from_another(cur_rfp):
+        p = PartnerPlacements
+        placement_dict = {
+            p.budget.name: '',
+            p.start_date.name: cur_rfp.start_date,
+            p.end_date.name: cur_rfp.end_date,
+            p.country.name: cur_rfp.country,
+            p.targeting_bucket.name: cur_rfp.targeting,
+            p.creative_line_item.name: '',
+            p.copy.name: '',
+            p.retailer.name: '',
+            p.buy_model.name: cur_rfp.buy_model,
+            p.buy_rate.name: cur_rfp.cpm_cost_per_unit,
+            p.serving.name: cur_rfp.ad_serving_type,
+            p.ad_rate.name: '',
+            p.reporting_rate.name: '',
+            p.kpi.name: cur_rfp.kpi,
+            p.data_type_1.name: '',
+            p.service_fee_rate.name: '',
+            p.verification_rate.name: '',
+            p.reporting_source.name: cur_rfp.reporting_source,
+            p.environment.name: cur_rfp.device,
+            p.size.name: cur_rfp.ad_size_wxh,
+            p.ad_type.name: cur_rfp.ad_type,
+            p.placement_description.name: cur_rfp.placement_name_description,
+            p.package_description.name: cur_rfp.package_name_description,
+            p.media_channel.name: '',
+            p.total_budget.name: cur_rfp.planned_net_cost,
+            p.partner_id.name: cur_rfp.partner_id
+        }
+        return placement_dict
 
 
 class PlanRule(db.Model):

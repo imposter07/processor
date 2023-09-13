@@ -215,7 +215,8 @@
                 addComponentOnClick);
             addOnClickEvent('input[id^="components-"][id$="-delete"][value="Delete"]',
                 deleteComponentOnClick);
-            addOnClickEvent('input[id="update_data"]', updateBtTables);
+            addOnClickEvent('input[id="update_data"]',
+                () => {updateBtTables()});
         }
 
         document.addEventListener("DOMContentLoaded", function() {

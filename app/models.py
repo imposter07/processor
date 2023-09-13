@@ -2239,7 +2239,7 @@ class TutorialStage(db.Model):
 
     @staticmethod
     def get_model_name_list():
-        return ['tutorial', 'help', 'define', 'what']
+        return ['tutorial', 'help', 'define']
 
     def get_url(self):
         return url_for('main.app_help') + '#{}'.format(self.header)
@@ -2253,7 +2253,7 @@ class TutorialStage(db.Model):
         return []
 
     def get_example_prompt(self):
-        prompts = ['Define cpa.', 'How do I upload raw file?',
+        prompts = ['Define cpa.', 'How do I upload a raw file?',
                    'Best sites for for an mmorpg free trial?']
         r = ''.join(Uploader.wrap_example_prompt(x) for x in prompts)
         return r

@@ -455,6 +455,23 @@ function adjustOtherSliders(changedSlider) {
     });
 }
 
+function syncSliderDataCell(elem, dataCell) {
+    let keys = elem.parentElement.querySelectorAll('.slider-key');
+    let values = elem.parentElement.querySelectorAll('.slider-value');
+    let data = {};
+    keys.forEach((k, idx) => {
+        data[k.innerHTML] = values[idx].value / 100;
+    });
+    dataCell.value = JSON.stringify(data);
+    dataCell.onchange();
+}
+
+function sliderKeyEditOnInput() {
+    let dataCellId = this.dataset['datacell'];
+    let dataCell = document.getElementById(dataCellId);
+    syncSliderDataCell(this.parentElement, dataCell);
+}
+
 function sliderValueEditOnInput() {
     let sliderValueInput = this;
     let progressBarId = sliderValueInput.id.replace('Value', 'Slider');
@@ -495,13 +512,27 @@ function lockButtonOnClick() {
     }
 }
 
-function buildSliderEditCol(elem, newValue, inputElemId) {
-    let data = JSON.parse(newValue);
-    let progHtml = '<br>';
-    for (let key in data) {
-        progHtml += `
+function deleteSlider(buttonElement) {
+    const sliderContainer = buttonElement.parentElement;
+    let containerParent = sliderContainer.parentElement;
+    sliderContainer.remove();
+    syncSliderDataCell(containerParent, containerParent.children[1]);
+}
+
+function addNewSliderRow(addElem) {
+    let key = 'NEW';
+    let data = {key: 0}
+    let inputElemId = addElem.parentElement.children[1].id;
+    let newElem = generateSliderContent(key, inputElemId, data);
+    addElem.insertAdjacentHTML('beforebegin', newElem);
+    addOnClickForSlider();
+}
+
+function generateSliderContent(key, inputElemId, data) {
+    return `
             <div class="col">
-            <span>${key}</span>
+            <span class="slider-key" data-datacell="${inputElemId}" 
+                contenteditable="true">${key}</span>
             <input id="${inputElemId}${key}Slider" class="slider" 
                 data-key="${key}" data-datacell="${inputElemId}"
                 type="range" min="0" max="100" value="${data[key] * 100}">
@@ -509,13 +540,28 @@ function buildSliderEditCol(elem, newValue, inputElemId) {
                 data-key="${key}" data-datacell="${inputElemId}"
                 type="number" min="0" max="100" value="${data[key] * 100}">
             <button id="${inputElemId}${key}Lock" class="lock-button btn btn-outline-primary">Lock</button>
+            <button onclick="deleteSlider(this)" class="lock-button btn btn-outline-danger">Delete</button>
             </div>
         `;
-    }
-    elem.insertAdjacentHTML('beforeend', progHtml);
+}
+
+function addOnClickForSlider() {
     addOnClickEvent('.slider', sliderEditOnInput, 'input');
     addOnClickEvent('.slider-value', sliderValueEditOnInput, 'input');
-    addOnClickEvent('.lock-button', lockButtonOnClick)
+    addOnClickEvent('.slider-key', sliderKeyEditOnInput, 'input');
+    addOnClickEvent('.lock-button', lockButtonOnClick);
+}
+
+function buildSliderEditCol(elem, newValue, inputElemId) {
+    let data = JSON.parse(newValue);
+    let progHtml = '<br>';
+    for (let key in data) {
+        let sliderContent = generateSliderContent(key, inputElemId, data);
+        progHtml += sliderContent;
+    }
+    progHtml += `<div class="btn btn-outline-success" onclick="addNewSliderRow(this)">Add New Row</div>`;
+    elem.insertAdjacentHTML('beforeend', progHtml);
+    addOnClickForSlider();
     return progHtml
 }
 

@@ -1,3 +1,4 @@
+import os
 import json
 from app import db
 import app.utils as utl
@@ -196,8 +197,10 @@ def save_topline():
             delete_children=True)
         new_part = Partner.query.filter_by(plan_phase_id=cur_phase.id).all()
         db_df = PartnerPlacements().get_reporting_db_df()
+        config_path = os.path.join('processor', 'config')
+        aly = az.Analyze(load_chat=True, chat_path=config_path)
         for part in new_part:
-            az.AliChat.check_gg_children([], part, db_df)
+            aly.chat.check_gg_children([], part, db_df)
     return jsonify({'message': 'This data source {} was saved!'.format(
         obj_name), 'level': 'success'})
 

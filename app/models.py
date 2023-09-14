@@ -2614,6 +2614,9 @@ class Partner(db.Model):
     placements = db.relationship('PartnerPlacements',
                                  backref='partner', lazy='dynamic')
     rules = db.relationship('PlanRule', backref='partner', lazy='dynamic')
+    rfp = db.relationship('Rfp', backref='partner', lazy='dynamic')
+    specs = db.relationship('Specs', backref='p_partner', lazy='dynamic')
+    contacts = db.relationship('Contacts', backref='p_partner', lazy='dynamic')
 
     def get_form_dict(self, cur_phase=None):
         form_dict = {
@@ -2689,7 +2692,9 @@ class Partner(db.Model):
         return PartnerPlacements
 
     def get_current_children(self):
-        return self.placements.all() + self.rules.all()
+        c = (self.placements.all() + self.rules.all() + self.rfp.all() +
+             self.specs.all() + self.contacts.all())
+        return c
 
 
 class RfpFile(db.Model):
@@ -3171,14 +3176,17 @@ class PartnerPlacements(db.Model):
                 filtered_df = total_db[total_db['vendorname'] == parent.name]
                 exclude_values = [0, 'None', None, '0', '0.0', 0.0]
                 if db_col in filtered_df.columns:
-                    filtered_df = filtered_df[~filtered_df[db_col].isin(exclude_values)]
+                    mask = ~filtered_df[db_col].isin(exclude_values)
+                    filtered_df = filtered_df[mask]
                     grouped = filtered_df.groupby(db_col)[vmc.impressions].sum()
-                    g_max = grouped.idxmax()
-                    rule_info = {g_max: 1}
-                    new_rule = PlanRule(place_col=str_name, rule_info=rule_info,
-                                        partner_id=parent_id, plan_id=plan_id)
-                    db.session.add(new_rule)
-                    db.session.commit()
+                    if not grouped.empty:
+                        g_max = grouped.idxmax()
+                        rule_info = {g_max: 1}
+                        new_rule = PlanRule(
+                            place_col=str_name, rule_info=rule_info,
+                            partner_id=parent_id, plan_id=plan_id)
+                        db.session.add(new_rule)
+                        db.session.commit()
         if new_rules:
             response = 'Added rules for {} for columns {}'.format(
                 parent.name, ','.join([x.place_col for x in new_rules]))

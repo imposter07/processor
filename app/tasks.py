@@ -3106,7 +3106,7 @@ def set_spend_cap_config_file(processor_id, current_user_id, dict_col):
         cur_user = User.query.get(current_user_id)
         cap_config_dict = {
             'file_name': ['dictionaries/plannet_placement.csv'],
-            'file_dim': [dict_col],
+            'file_dim': [dict_col.replace('mp', '')],
             'file_metric': ['Net Cost (Capped)'],
             'processor_dim': [dict_col],
             'processor_metric': ['Planned Net Cost']}

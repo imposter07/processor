@@ -1,0 +1,10 @@
+{% extends "create_processor.html" %}
+{% block app_content_2 %}
+    <div id="{{ edit_name }}"></div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            let tableName = document.getElementById('jinjaValues').dataset['edit_name'];
+            getTable(tableName, tableName);
+        });
+    </script>
+{% endblock %}

@@ -16,6 +16,7 @@ from flask import render_template, current_app
 from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
+from sqlalchemy import or_, and_
 from app.models import User, Post, Task, Processor, Message, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
@@ -6445,4 +6446,41 @@ def get_contacts(plan_id, current_user_id):
         app.logger.error(
             'Unhandled exception - Plan {} User {}'.format(
                 plan_id, current_user_id), exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_project_number(current_user_id, running_user):
+    try:
+        _set_task_progress(0)
+        today = datetime.today()
+        sd = today - dt.timedelta(days=30)
+        ed = today + dt.timedelta(days=7)
+        results = db.session.query(Project).filter(
+            or_(
+                and_(Project.flight_start_date >= sd,
+                     Project.flight_start_date <= ed),
+                and_(Project.flight_end_date >= sd,
+                     Project.flight_end_date <= ed),
+                and_(Project.flight_start_date <= sd,
+                     Project.flight_end_date >= ed)
+            )
+        ).all()
+        weeks = [sd + dt.timedelta(days=x)
+                 for i, x in enumerate(range((ed - sd).days)) if i % 7 == 0]
+        week_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
+        data = [x.get_form_dict() for x in results]
+        col_list = []
+        if data:
+            col_list = list(data[0].keys())
+        col_list += week_str
+        name = 'ProjectNumber'
+        lt = app_utl.LiquidTable(
+            col_list=col_list, data=data, title=name, table_name=name,
+            download_table=True, specify_form_cols=False, accordion=True)
+        _set_task_progress(100)
+        return [lt.table_dict]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - User {}'.format(current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

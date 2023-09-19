@@ -3248,3 +3248,10 @@ def post_conversation():
     db.session.commit()
     response = {'id': conv.id, 'name': conv.name}
     return jsonify(response)
+
+
+@bp.route('/project_number', methods=['GET', 'POST'])
+@login_required
+def project_number():
+    kwargs = Project.get_current_project(Project, edit_name='ProjectNumber')
+    return render_template('project_number.html', **kwargs)

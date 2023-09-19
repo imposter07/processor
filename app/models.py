@@ -1010,8 +1010,8 @@ class Processor(db.Model):
                      'newFilePlotMetrics': '.get_raw_file_data_table',
                      'deltaFilePlotMetrics': '.get_raw_file_delta_table',
                      'dailyMetricsNotes': '.get_processor_daily_notes',
-                     'pacingAlerts': '.get_pacing_alerts'
-                     }
+                     'pacingAlerts': '.get_pacing_alerts',
+                     'ProjectNumber': '.get_project_number'}
         return arg_trans
 
     def get_import_form_dicts(self, reverse_sort_apis=False):
@@ -2117,6 +2117,25 @@ class Project(db.Model):
     def name(self):
         return '{} {}'.format(self.project_number, self.project_name)
 
+    def get_current_project(self, object_name=None, current_page=None,
+                            edit_progress=0, edit_name='Page', buttons=None):
+        kwargs = dict(title=_('Project Numbers'), object_name=object_name,
+                      object_function_call={'object_name': object_name},
+                      edit_progress=edit_progress, edit_name=edit_name)
+        if object_name:
+            cur_obj = Project.query.filter_by(name=object_name).first_or_404()
+            kwargs['object'] = cur_obj
+            kwargs['buttons'] = Processor.get_navigation_buttons('Plan')
+            posts, next_url, prev_url = Post.get_posts_for_objects(
+                cur_obj, None, current_page, 'plan')
+            kwargs['posts'] = posts.items
+            kwargs['next_url'] = next_url
+            kwargs['prev_url'] = prev_url
+        else:
+            kwargs['object'] = Project()
+            kwargs['object_name'] = ''
+        return kwargs
+
     @staticmethod
     def get_model_name_list():
         return ['project']
@@ -2149,6 +2168,14 @@ class Project(db.Model):
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                      if not k.startswith("_") and k != 'id'])
+
+    def get_form_dict(self):
+        data = {
+            Project.project_number.name: self.project_number,
+            Project.project_name.name: self.project_name,
+            Project.flight_start_date.name.replace('flight_', ''): self.flight_start_date,
+            Project.flight_end_date.name.replace('flight_', ''): self.flight_start_date}
+        return data
 
 
 class ProjectNumberMax(db.Model):

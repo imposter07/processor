@@ -16,7 +16,9 @@
                 style="float: right; opacity:.8;">Following</a>
             {% endif %}
         </h5>
-        <h6 class="card-subtitle mb-2 text-muted">{{ processor.campaign.product.client.name}} - {{ processor.campaign.product.name}}</h6>
+        {% if processor.campaign is defined %}
+            <h6 class="card-subtitle mb-2 text-muted">{{ processor.campaign.product.client.name}} - {{ processor.campaign.product.name}}</h6>
+        {% endif %}
         <h6 class="card-subtitle mb-2 text-muted">{{ processor.description }}</h6>
         {% if processor.local_path %}
             <div style="display: flex;" class="justify-content-center">
@@ -147,10 +149,12 @@
         {% if title == "Processor" %}
             {% include 'processor_requests_button.html' %}
         {% endif %}
-        {% with post = processor.get_last_post() %}
-            {% if post %}
-                {% include '_post.html' %}
-            {% endif %}
-        {% endwith %}
+        {% if processor.get_last_post is defined %}
+            {% with post = processor.get_last_post() %}
+                {% if post %}
+                    {% include '_post.html' %}
+                {% endif %}
+            {% endwith %}
+        {% endif %}
     </div>
 </div>

@@ -15,14 +15,6 @@
     </div>
     <div id="screenshot"></div>
     <script>
-        function getScreenshotImage(elem) {
-            let rowIndex = elem.id.replace('tr', '');
-            let urlElem = document.getElementById('rowurl' + rowIndex);
-            let imgElem = document.getElementById('screenshotImage');
-            imgElem.innerHTML = '';
-            getTable('screenshotImage', imgElem.id, 'None', urlElem.innerHTML);
-            document.getElementById('formCol').style.display = '';
-        }
         document.addEventListener("DOMContentLoaded", function() {
             getTable('screenshot', 'screenshot');
         });

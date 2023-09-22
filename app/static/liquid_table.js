@@ -977,9 +977,19 @@ function addRows(rows, tableName, customTableCols) {
 
 function parseApplyRowHighlight(loopIndex, curColElem, currentValue, curElem) {
     let curRow = document.getElementById('tr' + loopIndex);
-    let highlightRow = JSON.parse(decodeURIComponent(curColElem.dataset['highlight_row']));
+    let highlightRow = {
+        'comp_val' : currentValue,
+        'full_row': true,
+        'comparator': 'default',
+        'true_color': 'shadeCell0',
+        'false_color': '',
+    }
+    if (curColElem) {
+        highlightRow = JSON.parse(decodeURIComponent(curColElem.dataset['highlight_row']));
+    }
     if ((curRow) && (highlightRow)) {
         let comparisonOperatorsHash = {
+            'default': function(a, b) { return true; },
             '<': function(a, b) { return a < b; },
             '>': function(a, b) { return a > b; },
             '>=': function(a, b) { return a >= b; },
@@ -1467,16 +1477,18 @@ function getTableOnClick(elem, imgToGet) {
     let table = document.getElementById(tableId);
     let imgElemId = imgToGet;
     let rowIndex = elem.id.replace('tr', '');
-    let uniqueCols = ['campaignname', 'vendorname'];
+    let uniqueCols = getTableHeadElems(tableId);
     let vk = ''
     uniqueCols.forEach(col => {
-        vk += document.getElementById(`row${col}${rowIndex}`).textContent;
-        vk += '_'
-    })
+        let colName = col.dataset['name'];
+        vk += document.getElementById(`row${colName}${rowIndex}`).textContent;
+        vk += '|';
+    });
     let elemToAdd = `<div id="${imgElemId}"></div>`;
     table.insertAdjacentHTML('beforebegin', elemToAdd);
     let imgElem = document.getElementById(imgElemId);
     imgElem.innerHTML = '';
+    parseApplyRowHighlight(rowIndex, null, '', '')
     getTable(imgToGet, imgElem.id, 'None', vk);
 }
 

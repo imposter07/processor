@@ -1011,7 +1011,8 @@ class Processor(db.Model):
                      'deltaFilePlotMetrics': '.get_raw_file_delta_table',
                      'dailyMetricsNotes': '.get_processor_daily_notes',
                      'pacingAlerts': '.get_pacing_alerts',
-                     'ProjectNumber': '.get_project_number'}
+                     'ProjectNumber': '.get_project_number',
+                     'projectObjects': '.get_project_objects'}
         return arg_trans
 
     def get_import_form_dicts(self, reverse_sort_apis=False):
@@ -2581,7 +2582,11 @@ class Sow(db.Model):
         self.phone = '310.450.2653'
         self.fax = '310.450.2658'
         self.total_project_budget = cur_plan.total_budget
-        self.ad_serving = float(cur_plan.total_budget) * .007
+        if cur_plan.total_budget:
+            budget_val = cur_plan.total_budget
+        else:
+            budget_val = 0
+        self.ad_serving = float(budget_val) * .007
 
 
 class PlanPhase(db.Model):

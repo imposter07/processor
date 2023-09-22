@@ -449,6 +449,13 @@ class LiquidTable(object):
             'custom_cols': custom_cols}
         return table_dict
 
+    @staticmethod
+    def convert_sd_ed_to_weeks(sd, ed):
+        weeks = [sd + dt.timedelta(days=x)
+                 for i, x in enumerate(range((ed - sd).days)) if i % 7 == 0]
+        week_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
+        return week_str
+
 
 class LiquidTableColumn(object):
     name_str = 'name'

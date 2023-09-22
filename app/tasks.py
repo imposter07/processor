@@ -5561,7 +5561,8 @@ def get_screenshot_image(processor_id, current_user_id, vk=None):
         os.chdir(adjust_path(cur_processor.local_path))
         s3_class = awss3.S3()
         s3_class.input_config('s3config.json')
-        key = vk.split('.com/')[1]
+        key = [x for x in vk.split('|') if 'https://' in x]
+        key = key[0].split('.com/')[1]
         client = s3_class.get_client()
         obj = client.get_object(Bucket=s3_class.bucket, Key=key)
         response = obj['Body'].read()
@@ -6064,6 +6065,7 @@ def get_billing_invoice(processor_id, current_user_id, vk=None):
     try:
         _set_task_progress(0)
         cur_proc = Processor.query.get(processor_id)
+        vk = '_'.join(vk.split('|')[:2]) + '_'
         file_name = 'invoice_{}.pdf'.format(vk)
         file_name = os.path.join(cur_proc.local_path, file_name)
         invoice_name = 'invoice.pdf'
@@ -6465,9 +6467,7 @@ def get_project_number(current_user_id, running_user):
                      Project.flight_end_date >= ed)
             )
         ).all()
-        weeks = [sd + dt.timedelta(days=x)
-                 for i, x in enumerate(range((ed - sd).days)) if i % 7 == 0]
-        week_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
+        week_str = app_utl.LiquidTable.convert_sd_ed_to_weeks(sd, ed)
         data = [x.get_form_dict() for x in results]
         col_list = []
         if data:
@@ -6476,7 +6476,40 @@ def get_project_number(current_user_id, running_user):
         name = 'ProjectNumber'
         lt = app_utl.LiquidTable(
             col_list=col_list, data=data, title=name, table_name=name,
-            download_table=True, specify_form_cols=False, accordion=True)
+            download_table=True, specify_form_cols=False, accordion=True,
+            row_on_click='projectObjects')
+        _set_task_progress(100)
+        return [lt.table_dict]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - User {}'.format(current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_project_objects(current_user_id, running_user, vk=''):
+    try:
+        _set_task_progress(0)
+        project_num = ''.join(x.strip() for x in vk.split('|')[0])
+        p = Project.query.filter_by(project_number=project_num).first()
+        data = [x.to_dict() for x in p.processor_associated.all()]
+        col_list = []
+        sd = None
+        ed = None
+        if data:
+            col_list = list(data[0].keys())
+            for d in data:
+                if not sd or sd > d[Processor.start_date.name]:
+                    sd = d[Processor.start_date.name]
+                if not ed or ed < d[Processor.end_date.name]:
+                    ed = d[Processor.end_date.name]
+            week_str = app_utl.LiquidTable.convert_sd_ed_to_weeks(sd, ed)
+            col_list += week_str
+        name = 'projectObjects'
+        lt = app_utl.LiquidTable(
+            col_list=col_list, data=data, title=name, table_name=name,
+            download_table=True, specify_form_cols=False, accordion=True,
+            row_on_click='projectObjects')
         _set_task_progress(100)
         return [lt.table_dict]
     except:

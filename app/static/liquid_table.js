@@ -185,7 +185,7 @@ function createTableElements(tableName, rowsName,
                         href="#"
                         role="button"></i></span>
             </div>
-            <input id="tableSearchInput" type="text"
+            <input id="tableSearchInput${tableName}Table" type="text"
                    class="form-control"
                    placeholder="Search"
                    aria-label=""
@@ -726,7 +726,8 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
         }
     });
     syncTableWithForm(loopIndex, rowFormNames, tableName);
-    shadeDates(loopIndex, null, 'shadeCell' + loopIndex);
+    let cellClass = `shadeCell${loopIndex % 10}`;
+    shadeDates(loopIndex, null, cellClass);
     if (topRowElem) {
         topRowElem.click();
     }

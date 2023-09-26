@@ -2113,6 +2113,12 @@ class Project(db.Model):
         secondaryjoin="project_number_processor.c.processor_id == Processor.id",
         backref=db.backref('project_number_processor', lazy='dynamic'),
         lazy='dynamic', viewonly=True)
+    plan_associated = db.relationship(
+        'Plan', secondary=project_number_plan,
+        primaryjoin=(project_number_plan.c.project_id == id),
+        secondaryjoin="project_number_plan.c.plan_id == Plan.id",
+        backref=db.backref('project_number_plan', lazy='dynamic'),
+        lazy='dynamic', viewonly=True)
 
     @property
     def name(self):
@@ -2171,11 +2177,17 @@ class Project(db.Model):
                      if not k.startswith("_") and k != 'id'])
 
     def get_form_dict(self):
+        date_cols = [Project.flight_start_date.name,
+                     Project.flight_end_date.name]
         data = {
             Project.project_number.name: self.project_number,
             Project.project_name.name: self.project_name,
-            Project.flight_start_date.name.replace('flight_', ''): self.flight_start_date,
-            Project.flight_end_date.name.replace('flight_', ''): self.flight_start_date}
+            Project.flight_start_date.name: self.flight_start_date,
+            Project.flight_end_date.name: self.flight_end_date,
+            Processor.__tablename__: len(self.processor_associated.all()),
+            Plan.__tablename__: len(self.plan_associated.all())}
+        for x in date_cols:
+            data[x.replace('flight_', '')] = data.pop(x)
         return data
 
 

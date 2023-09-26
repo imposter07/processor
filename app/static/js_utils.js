@@ -73,8 +73,9 @@ function makeRequest(url, method, data, responseFunction,
 }
 
 function searchTable(tableName, selector = ' tr:not(.header)') {
+    const searchInputId = `#tableSearchInput${tableName.replace('#', '')}`;
     const trs = document.querySelectorAll(tableName + selector);
-    const filter = document.querySelector('#tableSearchInput').value;
+    const filter = document.querySelector(searchInputId).value;
     const regex = new RegExp(filter, 'i');
     const isThInChildren = child => child.tagName === 'TH';
     const isTh = childrenArr => childrenArr.some(isThInChildren);

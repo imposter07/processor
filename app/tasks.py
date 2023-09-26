@@ -6492,7 +6492,8 @@ def get_project_objects(current_user_id, running_user, vk=''):
         _set_task_progress(0)
         project_num = ''.join(x.strip() for x in vk.split('|')[0])
         p = Project.query.filter_by(project_number=project_num).first()
-        data = [x.to_dict() for x in p.processor_associated.all()]
+        p_objs = p.processor_associated.all() + p.plan_associated.all()
+        data = [x.to_dict() for x in p_objs]
         col_list = []
         sd = None
         ed = None

@@ -407,3 +407,22 @@ function downloadSvg(svgElem, styleElem = null) {
     };
     image.src = url;
 }
+
+function getFilters(elemId, filterDict) {
+    let newFilter = {};
+    let elem = document.getElementById(elemId);
+    if (elem) {
+        let elemKey = (elem.name) ? elem.name : elem.id.replace('Select', '');
+        newFilter[elemKey] = elem.selectize.getValue();
+        filterDict = filterDict.concat(newFilter);
+    }
+    return filterDict
+}
+
+function getMultipleFilters(filterList, filterDict, appendElem='') {
+    filterList.forEach(col => {
+        let elemId = `${col}${appendElem}`;
+        filterDict = getFilters(elemId, filterDict);
+    });
+    return filterDict
+}

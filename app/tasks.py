@@ -4779,7 +4779,8 @@ def parse_date_from_project_number(cur_string, date_opened):
         return None
 
 
-def get_project_numbers(processor_id, running_user=None):
+def get_project_numbers(processor_id, running_user=None, spec_args=None,
+                        filter_dict=None):
     try:
         _set_task_progress(0)
         os.chdir('processor')
@@ -4858,7 +4859,8 @@ def get_project_numbers(processor_id, running_user=None):
         if not ndf.empty:
             pn_max.max_number = max(ndf.index)
             db.session.commit()
-        df = get_project_number(running_user, running_user)[0]
+        df = get_project_number(running_user, running_user,
+                                filter_dict=filter_dict)[0]
         _set_task_progress(100)
         return [df]
     except:
@@ -6452,7 +6454,23 @@ def get_contacts(plan_id, current_user_id):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def get_project_number(current_user_id, running_user):
+def get_filter_dict_values():
+    filter_dict = {}
+    db_models = [Client, User, Product, Campaign, Processor, Project]
+    for db_model in db_models:
+        if db_model == User:
+            name_col = db_model.username
+        elif db_model == Project:
+            name_col = db_model.project_name
+        else:
+            name_col = db_model.name
+        name_vals = db_model.query.order_by(name_col).all()
+        name_vals = [x.__dict__[name_col.name] for x in name_vals]
+        filter_dict[db_model.__tablename__] = name_vals
+    return filter_dict
+
+
+def get_project_number(current_user_id, running_user, filter_dict=None):
     try:
         _set_task_progress(0)
         today = datetime.today()
@@ -6468,6 +6486,7 @@ def get_project_number(current_user_id, running_user):
                      Project.flight_end_date >= ed)
             )
         ).all()
+        filter_dict = get_filter_dict_values()
         week_str = app_utl.LiquidTable.convert_sd_ed_to_weeks(sd, ed)
         data = [x.get_form_dict() for x in results]
         col_list = []
@@ -6478,7 +6497,7 @@ def get_project_number(current_user_id, running_user):
         lt = app_utl.LiquidTable(
             col_list=col_list, data=data, title=name, table_name=name,
             download_table=True, specify_form_cols=False, accordion=True,
-            row_on_click='projectObjects')
+            row_on_click='projectObjects', filter_dict=filter_dict)
         _set_task_progress(100)
         return [lt.table_dict]
     except:
@@ -6488,7 +6507,7 @@ def get_project_number(current_user_id, running_user):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def get_project_objects(current_user_id, running_user, vk=''):
+def get_project_objects(current_user_id, running_user, vk='', filter_dict=None):
     try:
         _set_task_progress(0)
         project_num = ''.join(x.strip() for x in vk.split('|')[0])

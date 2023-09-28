@@ -350,21 +350,11 @@
             return [{eventdate: fp.selectedDates}]
         }
 
-        function getFilters(colName, filterDict) {
-            let newFilter = {};
-            newFilter[colName] = $('#' + colName + 'Select')[0].selectize.items
-            filterDict = filterDict.concat(newFilter)
-            return filterDict
-        }
-
         function getAllFilters() {
             let filterDict = getDates();
-            filterDict = getFilters('productname', filterDict);
-            filterDict = getFilters('campaignname', filterDict);
-            filterDict = getFilters('vendorname', filterDict);
-            filterDict = getFilters('countryname', filterDict);
-            filterDict = getFilters('environmentname', filterDict);
-            filterDict = getFilters('kpiname', filterDict);
+            let cols = ['productname', 'campaignname', 'vendorname', 'countryname',
+                'environmentname', 'kpiname'];
+            filterDict = getMultipleFilters(cols, filterDict, 'Select');
             return filterDict
         }
 

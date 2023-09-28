@@ -301,7 +301,7 @@
     function projectNumberSelectChange() {
         loadingBtn(this);
         let filterDict = [{'live': true}];
-        filterDict = getFilters('processors', filterDict);
+        filterDict = getFilters('#processors', filterDict);
         getProcessorBasedOnPage(filterDict);
     }
 

@@ -1497,6 +1497,59 @@ function downloadLiquidTable() {
     getTable('downloadTable', this.id, 'None', this.id);
 }
 
+function filterLiquidTable() {
+    let tableName = this.id.replace('FilterButton', '');
+    let filterElemId = `${tableName}Filter`;
+    let filterElem = document.getElementById(filterElemId);
+    let selectElems = filterElem.querySelectorAll(`select`);
+    let filterDict = [];
+    selectElems.forEach(selectElem => {
+        filterDict = getFilters(selectElem.id, filterDict);
+    });
+    filterDict = {'filter_dict': filterDict}
+    getTable(tableName, tableName, 'None', 'None', 'None',
+        true, 'None', false, filterDict)
+}
+
+function buildFilterDict(tableName, filterDict) {
+    const table = document.getElementById(tableName);
+    if (!table) return;
+    const filterRow = document.createElement('div');
+    filterRow.classList.add('row');
+    filterRow.id = `${tableName}Filter`;
+    for (let key in filterDict) {
+        const cell = document.createElement('div');
+        cell.classList.add('col');
+        const select = document.createElement('select');
+        let name= `${key}${tableName}Filter`
+        select.name = key;
+        select.id = name + 'Select';
+        select.multiple = true;
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = `Select ${key}...`;
+        select.appendChild(option);
+        filterDict[key].forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
+        });
+        cell.appendChild(select);
+        filterRow.appendChild(cell);
+    }
+    const button = document.createElement('div');
+    button.classList.add('btn');
+    button.classList.add('btn-outline-primary');
+    button.classList.add('col');
+    button.textContent = 'Apply Filter';
+    let buttonId = `${tableName}FilterButton`;
+    button.id = buttonId;
+    filterRow.appendChild(button);
+    table.insertBefore(filterRow, table.firstChild);
+    addOnClickEvent('#' + buttonId, filterLiquidTable);
+}
+
 function createLiquidTable(data, kwargs) {
     let tableName = kwargs['tableName'];
     let tableData = data['data'];
@@ -1519,6 +1572,7 @@ function createLiquidTable(data, kwargs) {
     let searchBar = existsInJson(tableData, 'search_bar');
     let chartBtn = existsInJson(tableData, 'chart_btn');
     let tableButtons = existsInJson(tableData, 'table_buttons');
+    let filterDict = existsInJson(tableData, 'filter_dict')
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
@@ -1542,6 +1596,9 @@ function createLiquidTable(data, kwargs) {
     if (chartBtn) {
         createLiquidTableChart(tableName, tableRows);
         showChart(tableName);
+    }
+    if (filterDict) {
+        buildFilterDict(tableName, filterDict);
     }
     addSelectize();
     addDatePicker();

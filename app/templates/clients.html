@@ -168,12 +168,8 @@
                 }).done(function (data) {
                     displayAlert(data['message'], data['level'])
                     let filterDict = [{'live': $('#liveProcessorsSwitch')[0].checked}];
-                    filterDict = getFilters('username', filterDict);
-                    filterDict = getFilters('client', filterDict);
-                    filterDict = getFilters('product', filterDict);
-                    filterDict = getFilters('campaign', filterDict);
-                    filterDict = getFilters('processor', filterDict);
-                    filterDict = getFilters('project', filterDict);
+                    let cols = ['username', 'client', 'product', 'campaign', 'processor', 'project'];
+                    filterDict = getMultipleFilters(cols, filterDict, 'Select');
                     getProcessorUserMap(filterDict)
             }).fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);
@@ -220,13 +216,6 @@
             });
         }
 
-        function getFilters(colName, filterDict) {
-            let newFilter = {};
-            newFilter[colName] = $('#' + colName + 'Select')[0].selectize.items
-            filterDict = filterDict.concat(newFilter)
-            return filterDict
-        }
-
         function addApplyFilterBtn(){
             $('button[id*="applyFilter"]').unbind().click(function () {
                 let dropdownButton = "#" + $(this)[0].id;
@@ -237,12 +226,8 @@
                       aria-hidden="true"></span> Loading...`
                   );
                 let filterDict = [{'live': $('#liveProcessorsSwitch')[0].checked}];
-                filterDict = getFilters('username', filterDict);
-                filterDict = getFilters('client', filterDict);
-                filterDict = getFilters('product', filterDict);
-                filterDict = getFilters('campaign', filterDict);
-                filterDict = getFilters('processor', filterDict);
-                filterDict = getFilters('project', filterDict);
+                let cols = ['username', 'client', 'product', 'campaign', 'processor', 'project'];
+                filterDict = getMultipleFilters(cols, filterDict);
                 getProcessorUserMap(filterDict, dropdownButton, oldHtml);
             });
         }

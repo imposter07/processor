@@ -17,10 +17,5 @@
             }
         });
     }
-    function getFilters(colName, filterDict) {
-        let newFilter = {};
-        newFilter[colName] = $('#' + colName + 'Select')[0].selectize.items
-        filterDict = filterDict.concat(newFilter)
-        return filterDict
-    }
+
 </script>

@@ -4779,7 +4779,7 @@ def parse_date_from_project_number(cur_string, date_opened):
         return None
 
 
-def get_project_numbers(processor_id, current_user_id):
+def get_project_numbers(processor_id, running_user=None):
     try:
         _set_task_progress(0)
         os.chdir('processor')
@@ -4858,13 +4858,14 @@ def get_project_numbers(processor_id, current_user_id):
         if not ndf.empty:
             pn_max.max_number = max(ndf.index)
             db.session.commit()
+        df = get_project_number(running_user, running_user)[0]
         _set_task_progress(100)
         return [df]
     except:
         _set_task_progress(100)
         app.logger.error(
             'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id), exc_info=sys.exc_info())
+                processor_id, running_user), exc_info=sys.exc_info())
         return pd.DataFrame()
 
 
@@ -6473,7 +6474,7 @@ def get_project_number(current_user_id, running_user):
         if data:
             col_list = list(data[0].keys())
         col_list += week_str
-        name = 'ProjectNumber'
+        name = 'ProjectNumbers'
         lt = app_utl.LiquidTable(
             col_list=col_list, data=data, title=name, table_name=name,
             download_table=True, specify_form_cols=False, accordion=True,

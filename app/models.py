@@ -346,6 +346,7 @@ class Task(db.Model):
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
     uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
     plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
 
     def get_rq_job(self):
         try:
@@ -1012,7 +1013,8 @@ class Processor(db.Model):
                      'dailyMetricsNotes': '.get_processor_daily_notes',
                      'pacingAlerts': '.get_pacing_alerts',
                      'ProjectNumber': '.get_project_number',
-                     'projectObjects': '.get_project_objects'}
+                     'projectObjects': '.get_project_objects',
+                     'ProjectNumbers': '.get_project_numbers'}
         return arg_trans
 
     def get_import_form_dicts(self, reverse_sort_apis=False):
@@ -2189,6 +2191,15 @@ class Project(db.Model):
         for x in date_cols:
             data[x.replace('flight_', '')] = data.pop(x)
         return data
+
+    def launch_task(self, name, description, running_user, *args, **kwargs):
+        rq_job = current_app.task_queue.enqueue('app.tasks' + name,
+                                                self.id, running_user,
+                                                *args, **kwargs)
+        task = Task(id=rq_job.get_id(), name=name, description=description,
+                    user_id=self.user_id, project_id=self.id)
+        db.session.add(task)
+        return task
 
 
 class ProjectNumberMax(db.Model):

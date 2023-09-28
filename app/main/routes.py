@@ -292,13 +292,13 @@ def project_numbers():
     current_campaigns = Campaign.query.order_by(Campaign.name).all()
     current_processors = Processor.query.order_by(Processor.name).all()
     view_selector = Client.get_client_view_selector('Project Numbers')
-    return render_template('clients.html', title=_('Project Numbers'),
-                           clients=current_clients,
-                           current_users=current_users,
-                           current_products=current_products,
-                           current_campaigns=current_campaigns,
-                           current_processors=current_processors,
-                           view_selector=view_selector)
+    kwargs = Project.get_current_project(Project, edit_name='ProjectNumber')
+    return render_template(
+        'clients.html',
+        clients=current_clients, current_users=current_users,
+        current_products=current_products, current_campaigns=current_campaigns,
+        current_processors=current_processors, view_selector=view_selector,
+        **kwargs)
 
 
 @bp.route('/user/<username>')
@@ -912,26 +912,22 @@ def get_table_arguments():
         proc_arg = {**proc_arg, **json.loads(form_dict['args'][0]),
                     'spec_args': 'True'}
         proc_arg = utl.parse_additional_args(proc_arg)
-    if 'proc_id' in proc_arg:
-        proc_id = proc_arg.pop('proc_id')
-        cur_proc = Processor.query.get(proc_id)
-    elif cur_obj == 'Processor':
-        cur_obj = Processor
-        cur_proc = cur_obj.query.filter_by(
-            name=request.form['object_name']).first_or_404()
-    elif cur_obj == 'Uploader':
-        cur_obj = Uploader
+    if cur_obj == Uploader.__name__.capitalize():
         proc_arg['parameter'] = table_name
         table_name = 'Uploader'
         proc_arg['uploader_type'] = request.form['uploader_type']
         proc_arg['object_level'] = request.form['object_level']
-        cur_proc = cur_obj.query.filter_by(
-            name=request.form['object_name']).first_or_404()
-    elif cur_obj == 'Plan':
-        cur_obj = Plan
+    elif cur_obj == Plan.__name__.capitalize():
         table_name = table_name.replace('OutputData', '')
-        cur_proc = cur_obj.query.filter_by(
-            name=request.form['object_name']).first_or_404()
+    task_objects = [Uploader, Processor, Plan, Project]
+    obj_dict = {x.__name__.capitalize(): x for x in task_objects}
+    if 'proc_id' in proc_arg:
+        proc_id = proc_arg.pop('proc_id')
+        cur_proc = Processor.query.get(proc_id)
+    elif cur_obj in obj_dict:
+        cur_obj = obj_dict[cur_obj]
+        obj_name = request.form['object_name']
+        cur_proc = cur_obj.query.filter_by(name=obj_name).first_or_404()
     else:
         cur_proc = current_user
         cur_proc.name = cur_proc.username
@@ -3253,5 +3249,5 @@ def post_conversation():
 @bp.route('/project_number', methods=['GET', 'POST'])
 @login_required
 def project_number():
-    kwargs = Project.get_current_project(Project, edit_name='ProjectNumber')
+    kwargs = Project.get_current_project(Project, edit_name='ProjectNumbers')
     return render_template('project_number.html', **kwargs)

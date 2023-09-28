@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block app_header %}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='liquid_table.css') }}">
     <h1 class="text-muted font-weight-bolder">{{ _('Client Calendar') }}</h1>
     {% include '_view_selector.html' %}
 {% endblock %}
@@ -93,6 +94,7 @@
     <script src="{{ url_for('static', filename='fullcalendar/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
     <script src="{{ url_for('static', filename='get_table.js') }}"></script>
+    <script src="{{ url_for('static', filename='liquid_table.js') }}"></script>
     <script>
         function addCalendar() {
             let calendarEl = document.getElementById('calendar');
@@ -110,54 +112,42 @@
             calendar.render();
         }
 
-        function getProcessorUserMap(filterDict, clickElem, oldHtml) {
-            let proc = $('#processors');
-            let clientDir = $('#clientDirectory');
-            proc.html('' +
-                '<button class="btn btn-primary btn-block btn-lg" type="button" disabled>' +
-                '<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>' +
-                'Loading Live Processors...' +
-                '</button>');
-            let destUrl = ('{{ title }}' === 'Clients') ?
-                "/get_processor_by_user" : "/get_project_numbers";
-            $.post(destUrl,
-                {
-                    title: '{{ title }}',
-                    filter_dict: JSON.stringify(filterDict),
-                    user_map: true
-                }).done(function (data) {
-                    if ('{{ title }}' === 'Clients') {
-                        proc.html(data['items']);
-                    }
-                    else {
-                        proc.html('<div id="projectNumberTableElem"></div>');
-                        createTable(data['items']['cols'], data['items']['data'],
-                                    'projectNumberTable', 'projectNumberTableElem');
-                    }
-                    addSelectize();
-                    ownerSelectChange();
-                    projectNumberSelectChange();
-                    getSelectedDashboard();
-                    getProcessorBody();
-            }).fail(function (jqXHR, textStatus) {
-                console.log("Request failed: " + textStatus);
+        function parseClientDir(data, kwargs) {
+            let clientDir = document.getElementById('clientDirectory');
+            clientDir.innerHTML = data['client_directory'];
+        }
 
-            }).always(function () {
-                if (oldHtml) {
-                    $(clickElem).prop("disabled", false);
-                    $(clickElem).html(oldHtml);
+        function parseProcessorUserMap(data, kwargs) {
+            let proc = document.getElementById('processors');
+            proc.innerHTML = data['items'];
+            addSelectize();
+            ownerSelectChange();
+            projectNumberSelectChange();
+            getSelectedDashboard();
+            getProcessorBody();
+        }
+
+        function getProcessorUserMap(filterDict, clickElem, oldHtml) {
+            let proc = document.getElementById('processors');
+            let jinjaValues = document.getElementById('jinjaValues').dataset;
+            let elemId = jinjaValues['title'].replace(' ', '');
+            let tableElem = document.getElementById(elemId);
+            if (!(tableElem)) {
+                let newDiv = document.createElement('div');
+                newDiv.id = elemId;
+                proc.appendChild(newDiv)
+            }
+            if (elemId === 'Clients') {
+                let destUrl = "/get_processor_by_user";
+                let data = {
+                    title: elemId,
+                    filter_dict: JSON.stringify(filterDict),
                 }
-            });
-            if (destUrl === "/get_processor_by_user") {
-                $.post(destUrl,
-                    {
-                        title: '{{ title }}',
-                        filter_dict: JSON.stringify(filterDict)
-                    }).done(function (responseData) {
-                        clientDir.html(responseData['client_directory']);
-                }).fail(function (jqXHR, textStatus) {
-                    console.log("Request failed: " + textStatus);
-                });
+                makeRequest(destUrl, 'POST', data, parseClientDir);
+                data['user_map'] = true;
+                makeRequest(destUrl, 'POST', data, parseProcessorUserMap);
+            } else {
+                getTable(elemId, elemId);
             }
         }
 

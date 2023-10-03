@@ -2175,21 +2175,26 @@ class Project(db.Model):
         return r
 
     def to_dict(self):
-        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
-                     if not k.startswith("_") and k != 'id'])
+        return self.get_form_dict()
 
     def get_form_dict(self):
         date_cols = [Project.flight_start_date.name,
                      Project.flight_end_date.name]
+        c = Campaign.query.filter_by(name=self.project_name).first()
         data = {
             Project.project_number.name: self.project_number,
             Project.project_name.name: self.project_name,
             Project.flight_start_date.name: self.flight_start_date,
             Project.flight_end_date.name: self.flight_end_date,
             Processor.__tablename__: len(self.processor_associated.all()),
-            Plan.__tablename__: len(self.plan_associated.all())}
+            Plan.__tablename__: len(self.plan_associated.all()),
+            Processor.campaign_id.name: c.id,
+            Plan.user_id.name: 4}
         for x in date_cols:
-            data[x.replace('flight_', '')] = data.pop(x)
+            key_name = x.replace('flight_', '')
+            data[key_name] = data.pop(x)
+            if not data[key_name]:
+                data[key_name] = datetime.today()
         return data
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
@@ -3130,7 +3135,8 @@ class PartnerPlacements(db.Model):
             p.media_channel]
         if for_loop:
             front_cols = [p.country.name, p.environment.name]
-            del_cols = [Partner.__table__.name, PlanPhase.__table__.name]
+            del_cols = [Partner.__table__.name, PlanPhase.__table__.name,
+                        p.start_date, p.end_date]
             for idx, x in enumerate(cols):
                 for fc in front_cols:
                     if x.name == fc:
@@ -3140,6 +3146,13 @@ class PartnerPlacements(db.Model):
                         cols.pop(idx)
         if as_string:
             cols = [x.name for x in cols]
+        else:
+            other_names = {p.targeting_bucket.name: ['audience']}
+            for idx, col in enumerate(cols):
+                val = []
+                if col.name in other_names.keys():
+                    val = other_names[col.name]
+                cols[idx].__dict__['other_names'] = val
         return cols
 
     @staticmethod
@@ -3152,6 +3165,105 @@ class PartnerPlacements(db.Model):
         total_db = pd.read_json(total_db.data)
         return total_db
 
+    @staticmethod
+    def get_col_names(col):
+        str_name = col.name
+        col_names = str_name.split('_')
+        db_col = '{}name'.format(''.join(col_names))
+        col_names = col_names + [str_name, db_col] + col.__dict__['other_names']
+        col_names = [x for x in col_names if not x.isdigit()]
+        col_names += ['{}s'.format(x) for x in col_names]
+        return str_name, db_col, col_names
+
+    def check_single_col_from_words(self, col, parent, plan_id, words,
+                                    total_db, min_impressions, new_rules):
+        str_name, db_col, col_names = self.get_col_names(col)
+        old_rule = PlanRule.query.filter_by(
+            place_col=str_name, partner_id=parent.id,
+            plan_id=plan_id).first()
+        name_in_list = utl.is_list_in_list(col_names, words, False, True)
+        if name_in_list:
+            cols = self.get_col_order(for_loop=True, as_string=False)
+            cols = [self.get_col_names(x)[2] for x in cols]
+            cols = [item for sublist in cols for item in sublist]
+            post_words = words[words.index(name_in_list[0]) + 1:]
+            for value in post_words:
+                if value in cols:
+                    post_words = post_words[:post_words.index(value)]
+                    break
+            name_words = ['called', 'named', 'categorized']
+            name_list = [x for x in post_words if x not in name_words]
+            # name_list = ''.join(post_words).split('.')[0].split(',')
+            name_list = [{db_col: x} for x in name_list]
+        else:
+            name_list = Client.get_name_list(db_col, min_impressions)
+            if name_list:
+                name_list = utl.get_dict_values_from_list(words, name_list,
+                                                          True)
+        if old_rule:
+            comp_list = [x[db_col] for x in name_list]
+            if type(old_rule.rule_info) == str:
+                old_rule.rule_info = json.loads(old_rule.rule_info)
+            for x in old_rule.rule_info:
+                if x not in comp_list:
+                    name_list.append({db_col: x})
+        if name_list:
+            rule_info = {}
+            rem_percent = 1
+            name_no_number = []
+            words_to_remove = [x[db_col].lower() for x in name_list]
+            for x in name_list:
+                name = x[db_col]
+                num = None
+                if name.lower() in words:
+                    num = utl.get_next_number_from_list(
+                        words, name.lower(), '')
+                if num:
+                    idx = words.index(num)
+                    num_mult = .01
+                    if (idx > 0) and (words[idx - 1] == '.'):
+                        num_mult = .1
+                    num = float(num) * num_mult
+                    if num > rem_percent:
+                        num = rem_percent
+                    rem_percent -= num
+                    rule_info[name] = num
+                    words.pop(idx)
+                else:
+                    name_no_number.append(name)
+            for x in name_no_number:
+                rule_info[x] = rem_percent / len(name_no_number)
+            if old_rule:
+                old_rule.rule_info = rule_info
+                db.session.commit()
+            else:
+                old_rule = PlanRule(place_col=str_name, rule_info=rule_info,
+                                    partner_id=parent.id, plan_id=plan_id)
+                db.session.add(old_rule)
+                db.session.commit()
+            new_rules.append(old_rule)
+            if name_in_list:
+                words_to_remove = words_to_remove + name_in_list
+            for word_to_remove in words_to_remove:
+                if word_to_remove and word_to_remove in words:
+                    words.pop(words.index(word_to_remove.lower()))
+        elif not name_list and not old_rule:
+            filtered_df = total_db[total_db['vendorname'] == parent.name]
+            exclude_values = [0, 'None', None, '0', '0.0', 0.0]
+            if db_col in filtered_df.columns:
+                mask = ~filtered_df[db_col].isin(exclude_values)
+                filtered_df = filtered_df[mask]
+                grouped = filtered_df.groupby(db_col)[vmc.impressions].sum()
+                if not grouped.empty:
+                    g_max = grouped.idxmax()
+                    rule_info = {g_max: 1}
+                    new_rule = PlanRule(
+                        place_col=str_name, rule_info=rule_info,
+                        partner_id=parent.id, plan_id=plan_id)
+                    db.session.add(new_rule)
+                    db.session.commit()
+        return new_rules
+
     def check_col_in_words(self, words, parent_id, total_db=pd.DataFrame()):
         response = ''
         parent = db.session.get(Partner, parent_id)
@@ -3162,86 +3274,12 @@ class PartnerPlacements(db.Model):
         new_rules = []
         if total_db.empty:
             total_db = self.get_reporting_db_df()
-        words = [x for x in words if x != parent.name.lower()]
+        parent_names = [x.name.lower() for x in g_parent.get_current_children()]
+        words = [x for x in words if x != parent_names]
         for col in cols:
-            str_name = col.name
-            old_rule = PlanRule.query.filter_by(
-                place_col=str_name, partner_id=parent_id,
-                plan_id=plan_id).first()
-            col_names = str_name.split('_')
-            db_col = '{}name'.format(''.join(col_names))
-            col_names = col_names + [str_name, db_col]
-            col_names = [x for x in col_names if not x.isdigit()]
-            name_in_list = utl.is_list_in_list(col_names, words, False, True)
-            if name_in_list:
-                post_words = words[words.index(name_in_list[0]) + 1:]
-                name_list = ''.join(post_words).split('.')[0].split(',')
-                name_list = [{db_col: x} for x in name_list]
-            else:
-                name_list = Client.get_name_list(db_col, min_impressions)
-                if name_list:
-                    name_list = utl.get_dict_values_from_list(words, name_list,
-                                                              True)
-            if old_rule:
-                comp_list = [x[db_col] for x in name_list]
-                if type(old_rule.rule_info) == str:
-                    old_rule.rule_info = json.loads(old_rule.rule_info)
-                for x in old_rule.rule_info:
-                    if x not in comp_list:
-                        name_list.append({db_col: x})
-            if name_list:
-                rule_info = {}
-                rem_percent = 1
-                name_no_number = []
-                words_to_remove = [x[db_col].lower() for x in name_list]
-                for x in name_list:
-                    name = x[db_col]
-                    num = None
-                    if name.lower() in words:
-                        num = utl.get_next_number_from_list(
-                            words, name.lower(), '')
-                    if num:
-                        idx = words.index(num)
-                        num_mult = .01
-                        if (idx > 0) and (words[idx - 1] == '.'):
-                            num_mult = .1
-                        num = float(num) * num_mult
-                        rem_percent -= num
-                        rule_info[name] = num
-                        words.pop(idx)
-                    else:
-                        name_no_number.append(name)
-                for x in name_no_number:
-                    rule_info[x] = rem_percent / len(name_no_number)
-                if old_rule:
-                    old_rule.rule_info = rule_info
-                    db.session.commit()
-                else:
-                    old_rule = PlanRule(place_col=str_name, rule_info=rule_info,
-                                        partner_id=parent_id, plan_id=plan_id)
-                    db.session.add(old_rule)
-                    db.session.commit()
-                new_rules.append(old_rule)
-                if name_in_list:
-                    words_to_remove = words_to_remove + name_in_list
-                for word_to_remove in words_to_remove:
-                    if word_to_remove and word_to_remove in words:
-                        words.pop(words.index(word_to_remove.lower()))
-            elif not name_list and not old_rule:
-                filtered_df = total_db[total_db['vendorname'] == parent.name]
-                exclude_values = [0, 'None', None, '0', '0.0', 0.0]
-                if db_col in filtered_df.columns:
-                    mask = ~filtered_df[db_col].isin(exclude_values)
-                    filtered_df = filtered_df[mask]
-                    grouped = filtered_df.groupby(db_col)[vmc.impressions].sum()
-                    if not grouped.empty:
-                        g_max = grouped.idxmax()
-                        rule_info = {g_max: 1}
-                        new_rule = PlanRule(
-                            place_col=str_name, rule_info=rule_info,
-                            partner_id=parent_id, plan_id=plan_id)
-                        db.session.add(new_rule)
-                        db.session.commit()
+            new_rules = PartnerPlacements().check_single_col_from_words(
+                col, parent, plan_id, words, total_db,
+                min_impressions, new_rules)
         if new_rules:
             response = 'Added rules for {} for columns {}'.format(
                 parent.name, ','.join([x.place_col for x in new_rules]))

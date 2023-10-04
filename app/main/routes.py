@@ -3227,7 +3227,7 @@ def post_chat():
 @login_required
 def get_conversation():
     conversation_id = request.form['conversation_id']
-    conv = Conversation.query.get(conversation_id)
+    conv = db.session.get(Conversation, conversation_id)
     chats = Chat.query.filter_by(conversation_id=conv.id).order_by(
         Chat.timestamp)
     response = {'id': conv.id, 'chats': [x.to_dict() for x in chats]}

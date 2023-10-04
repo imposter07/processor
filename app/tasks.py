@@ -5488,7 +5488,8 @@ def get_plan_rules(plan_id, current_user_id):
         df = pd.DataFrame([x.get_form_dict() for x in cur_plan.rules])
         name = 'PlanRules'
         name_col = 'column_name'
-        cols = [name_col, PlanRule.order.name, PlanRule.type.name, PlanRule.rule_info.name]
+        cols = [name_col, PlanRule.order.name, PlanRule.type.name,
+                PlanRule.rule_info.name]
         select_val_dict = {name_col: [{name_col: x} for x in dctc.COLS]}
         lt = app_utl.LiquidTable(
             df=df, title=name, table_name=name,
@@ -5522,6 +5523,23 @@ def get_plan_placements(plan_id, current_user_id):
             'Unhandled exception - Plan {} User {}'.format(
                 plan_id, current_user_id), exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
+                           total_db=None):
+    try:
+        _set_task_progress(0)
+        r = PartnerPlacements.check_col_in_words(
+            PartnerPlacements, words, parent_id, total_db=total_db)
+        PartnerPlacements.create_from_rules(PartnerPlacements, parent_id)
+        _set_task_progress(100)
+        return True
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Plan {} User {}'.format(
+                plan_id, current_user_id), exc_info=sys.exc_info())
+        return False
 
 
 # noinspection SqlResolve

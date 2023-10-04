@@ -87,6 +87,7 @@ def login(sw, user):
 
 @pytest.fixture(scope='module')
 def create_processor(app_fixture, user, tmp_path_factory):
+    cur_path = os.getcwd()
     created_processors = []
     tmp_dir = tmp_path_factory.mktemp('test_processors')
 
@@ -117,6 +118,7 @@ def create_processor(app_fixture, user, tmp_path_factory):
     for proc in created_processors:
         db.session.delete(proc)
     db.session.commit()
+    os.chdir(cur_path)
 
 
 @pytest.mark.usefixtures("app_fixture")
@@ -163,8 +165,8 @@ class TestUserModelCase:
     @staticmethod
     def test_follow_posts():
         # create four users
-        u1 = User.query.get(1)
-        u2 = User.query.get(2)
+        u1 = db.session.get(User, 1)
+        u2 = db.session.get(User, 2)
         u3 = User(username='mary', email='mary@example.com')  # type: ignore
         u4 = User(username='david', email='david@example.com')  # type: ignore
         db.session.add_all([u3, u4])

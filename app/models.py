@@ -17,6 +17,7 @@ from flask_babel import _
 import processor.reporting.utils as utl
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.dictcolumns as dctc
+import processor.reporting.models as prc_model
 import uploader.upload.creator as cre
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login
@@ -2188,7 +2189,7 @@ class Project(db.Model):
             Project.flight_end_date.name: self.flight_end_date,
             Processor.__tablename__: len(self.processor_associated.all()),
             Plan.__tablename__: len(self.plan_associated.all()),
-            Processor.campaign_id.name: c.id,
+            Processor.campaign_id.name: c.id if c else None,
             Plan.user_id.name: 4}
         for x in date_cols:
             key_name = x.replace('flight_', '')
@@ -2568,11 +2569,22 @@ class Plan(db.Model):
             p += Uploader.wrap_example_prompt(x)
         return p
 
+    @staticmethod
+    def get_large_create_prompt(prompt_dict=False):
+        partner = 'Facebook'
+        spend = '20K'
+        x = ('Create a plan with {} {} split US 50% UK 30% CA 20%. '
+             'Mobile, Desktop. Creative ciri, yen, geralt, triss. '
+             'Targeting aaa, jrpg, mmorpg. Copy x, y.'.format(partner, spend))
+        if prompt_dict:
+            x = {Partner.__table__.name: partner,
+                 Partner.total_budget.name: spend,
+                 'message': x}
+        return x
+
     def get_example_prompt(self):
         r = self.get_create_prompt(Plan)
-        x = ('Create a plan with Facebook 20K split US 50% UK 30% CA 20%. '
-             'Mobile, Desktop. Creative ciri, yen, geralt, triss. '
-             'Targeting aaa, jrpg, mmorpg. Copy x, y.')
+        x = self.get_large_create_prompt()
         r += Uploader.wrap_example_prompt(x)
         return r
 
@@ -2717,30 +2729,52 @@ class Partner(db.Model):
 
     @staticmethod
     def get_name_list(parameter='vendorname|vendortypename'):
+        ven_col = prc_model.Vendor.vendorname.name
+        vty_col = prc_model.Vendortype.vendortypename.name
+        imp_col = prc_model.Event.impressions.name
+        cli_col = prc_model.Event.clicks.name
+        net_col = prc_model.Event.netcost.name
+        lp_col = prc_model.Event.landingpage.name
+        vew_col = prc_model.Event.videoviews.name
+        vhu_col = prc_model.Event.videoviews100.name
+        bc_col = prc_model.Event.buttonclick.name
+        clp_col = 'CPLPV'
+        cpb_col = 'CPBC'
+        cpv_col = 'CPV'
         a = ProcessorAnalysis.query.filter_by(
             processor_id=23, key='database_cache',
             parameter=parameter).order_by(ProcessorAnalysis.date).first()
-        df = pd.read_json(a.data)
-        df = df[df['impressions'] > 0].sort_values('impressions',
-                                                   ascending=False)
-        df['cpm'] = (df['netcost'] / (df['impressions'] / 1000)).round(2)
-        df['cpc'] = (df['netcost'] / df['clicks']).round(2)
-        df['cplpv'] = df['CPLPV'].round(2)
-        df['Landing Page'] = df['landingpage']
-        df['cpbc'] = df['CPBC'].round(2)
-        df['Button Clicks'] = df['buttonclick']
-        df['Views'] = df['videoviews']
-        df['cpv'] = df['CPV'].round(2)
-        df['Video Views 100'] = df['videoviews100']
-        df['cpcv'] = (df['netcost'] / df['videoviews100']).round(2)
+        if a:
+            df = pd.read_json(a.data)
+        else:
+            def_dict = {
+                ven_col: ['Facebook'],
+                vty_col: ['Social']
+            }
+            event_cols = [imp_col, net_col, cli_col, lp_col, vew_col, vhu_col,
+                          bc_col, clp_col, cpb_col, cpv_col]
+            for col in event_cols:
+                def_dict[col] = [1]
+            df = pd.DataFrame(def_dict)
+        df = df[df[imp_col] > 0].sort_values(imp_col, ascending=False)
+        df['cpm'] = (df[net_col] / (df[imp_col] / 1000)).round(2)
+        df['cpc'] = (df[net_col] / df[cli_col]).round(2)
+        df[clp_col.lower()] = df[clp_col].round(2)
+        df['Landing Page'] = df[lp_col]
+        df[cpb_col.lower()] = df[cpb_col].round(2)
+        df['Button Clicks'] = df[bc_col]
+        df['Views'] = df[vew_col]
+        df[cpv_col.lower()] = df[cpv_col].round(2)
+        df['Video Views 100'] = df[vhu_col]
+        df['cpcv'] = (df[net_col] / df[vhu_col]).round(2)
         df = df.replace([np.inf, -np.inf], np.nan)
         df = df.fillna(0)
-        df = df[['vendorname', 'vendortypename', 'cpm', 'cpc',
-                 'cplpv', 'cpbc', 'cpv', 'cpcv']]
+        df = df[[ven_col, vty_col, 'cpm', 'cpc',
+                 clp_col.lower(), cpb_col.lower(), cpv_col.lower(), 'cpcv']]
         partner_name = 'partner'
         partner_type_name = 'partner_type'
         df = df.rename(columns={
-            'vendorname': partner_name, 'vendortypename': partner_type_name})
+            ven_col: partner_name, vty_col: partner_type_name})
         partner_list = df.to_dict(orient='records')
         partner_type_list = pd.DataFrame(
             df[partner_type_name].unique()).rename(
@@ -3157,12 +3191,17 @@ class PartnerPlacements(db.Model):
 
     @staticmethod
     def get_reporting_db_df():
-        parameter = PartnerPlacements.get_cols_for_db()
-        parameter = '|'.join(parameter)
+        cols = PartnerPlacements.get_cols_for_db()
+        parameter = '|'.join(cols)
         total_db = ProcessorAnalysis.query.filter_by(
             processor_id=23, key='database_cache', parameter=parameter,
             filter_col='').order_by(ProcessorAnalysis.date).first()
-        total_db = pd.read_json(total_db.data)
+        if total_db:
+            total_db = pd.read_json(total_db.data)
+        else:
+            total_db = pd.DataFrame()
+            for col in cols:
+                total_db[col] = ['None']
         return total_db
 
     @staticmethod
@@ -3192,8 +3231,8 @@ class PartnerPlacements(db.Model):
                     post_words = post_words[:post_words.index(value)]
                     break
             name_words = ['called', 'named', 'categorized']
-            name_list = [x for x in post_words if x not in name_words]
-            # name_list = ''.join(post_words).split('.')[0].split(',')
+            post_words = [x for x in post_words if x not in name_words]
+            name_list = ''.join(post_words).split('.')[0].split(',')
             name_list = [{db_col: x} for x in name_list]
         else:
             name_list = Client.get_name_list(db_col, min_impressions)
@@ -3219,6 +3258,9 @@ class PartnerPlacements(db.Model):
                     num = utl.get_next_number_from_list(
                         words, name.lower(), '')
                 if num:
+                    if num not in words:
+                        name_no_number.append(name)
+                        continue
                     idx = words.index(num)
                     num_mult = .01
                     if (idx > 0) and (words[idx - 1] == '.'):
@@ -3263,6 +3305,17 @@ class PartnerPlacements(db.Model):
                     db.session.add(new_rule)
                     db.session.commit()
         return new_rules
+
+    def check_gg_children(self, parent_id, words, total_db, msg_text):
+        parent = db.session.get(Partner, parent_id)
+        g_parent = db.session.get(PlanPhase, parent.plan_phase_id)
+        gg_parent = db.session.get(Plan, g_parent.plan_id)
+        gg_parent.launch_task(
+            '.check_plan_gg_children', _(msg_text),
+            running_user=current_user.id, parent_id=parent_id, words=words,
+            total_db=total_db)
+        db.session.commit()
+        return True
 
     def check_col_in_words(self, words, parent_id, total_db=pd.DataFrame()):
         response = ''

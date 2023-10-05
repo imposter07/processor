@@ -3035,6 +3035,7 @@ class Contacts(db.Model):
     associate_media_director = db.Column(db.Text)
     supervisor = db.Column(db.Text)
     associate_strategist = db.Column(db.Text)
+    contact_title = db.Column(db.Text)
     rfp_file_id = db.Column(db.Integer, db.ForeignKey('rfp_file.id'))
     partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
 

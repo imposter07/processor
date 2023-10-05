@@ -23,7 +23,7 @@ from app.models import User, Post, Task, Processor, Message, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
     ProcessorReports, Partner, PlanRule, Brandtracker, BrandtrackerDimensions, \
-    PartnerPlacements, Rfp, RfpFile, Specs, Contacts
+    PartnerPlacements, Rfp, RfpFile, Specs, Contacts, PlanPhase
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -294,7 +294,7 @@ def run_processor(processor_id, current_user_id, run_args):
             if processor_id == 23:
                 task_functions = [get_project_numbers, get_glossary_definitions,
                                   get_post_mortems, get_time_savers,
-                                  get_ai_playbook_market]
+                                  get_ai_playbook_market, get_contact_numbers]
                 for task_function in task_functions:
                     os.chdir(cur_path)
                     task_function(processor_id, current_user_id)
@@ -6556,3 +6556,69 @@ def get_project_objects(current_user_id, running_user, vk='', filter_dict=None):
         msg = 'Unhandled exception - User {}'.format(current_user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_contact_numbers(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        os.chdir('processor')
+        api = gsapi.GsApi()
+        api.input_config('gsapi.json')
+        sheet_id = '1IZSzjzAjiKDch9leOYL6cAmh6YeVOuXBeqTZuWD8IOI'
+        api.sheet_id = sheet_id
+        df = api.get_data()
+        df = utl.first_last_adj(df, 1, 0)
+        df_dict = df.to_dict(orient='records')
+        name = 'rfp_plan'
+        rfp_plan = Plan.query.filter_by(name=name).first()
+        if not rfp_plan:
+            rfp_plan = Plan(name=name)
+            db.session.add(rfp_plan)
+            db.session.commit()
+        cur_phase = rfp_plan.get_current_children()
+        if not cur_phase:
+            cur_phase = PlanPhase(name=name, plan_id=rfp_plan.id)
+            db.session.add(cur_phase)
+            db.session.commit()
+        else:
+            cur_phase = cur_phase[0]
+        rfp_file = RfpFile.query.filter_by(
+            name=name, plan_id=rfp_plan.id).first()
+        if not rfp_file:
+            rfp_file = RfpFile(name=name, plan_id=rfp_plan.id,
+                               user_id=current_user_id)
+            db.session.add(rfp_file)
+            db.session.commit()
+        for contact in df_dict:
+            partner_name = contact[Partner.__table__.name.capitalize()]
+            partner_obj = Partner.query.filter_by(
+                name=partner_name, plan_phase_id=cur_phase.id).first()
+            if not partner_obj:
+                partner_obj = Partner(
+                    name=partner_name, plan_phase_id=cur_phase.id)
+                db.session.add(partner_obj)
+                db.session.commit()
+            c = Contacts.query.filter_by(
+                partner_name=partner_name, rfp_file_id=rfp_file.id,
+                partner_id=partner_obj.id,
+                sales_representative=contact['Contact Name']).first()
+            if not c:
+                c = Contacts(partner_name=partner_name, rfp_file_id=rfp_file.id,
+                             partner_id=partner_obj.id,
+                             sales_representative=contact['Contact Name'],
+                             date_submitted=dt.datetime.today())
+                db.session.add(c)
+                db.session.commit()
+            c.contact_title = contact['Contact Title']
+            c.sales_representative = contact['Contact Name']
+            c.email_address1 = contact['Contact Email']
+            c.phone1 = contact['Contact Phone']
+            db.session.commit()
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, running_user), exc_info=sys.exc_info())
+        return pd.DataFrame()

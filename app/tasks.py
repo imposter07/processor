@@ -5533,7 +5533,7 @@ def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
             PartnerPlacements, words, parent_id, total_db=total_db)
         PartnerPlacements.create_from_rules(PartnerPlacements, parent_id)
         _set_task_progress(100)
-        return True
+        return r
     except:
         _set_task_progress(100)
         app.logger.error(
@@ -6620,5 +6620,5 @@ def get_contact_numbers(processor_id, current_user_id):
         _set_task_progress(100)
         app.logger.error(
             'Unhandled exception - Processor {} User {}'.format(
-                processor_id, running_user), exc_info=sys.exc_info())
+                processor_id, current_user_id), exc_info=sys.exc_info())
         return pd.DataFrame()

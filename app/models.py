@@ -365,7 +365,7 @@ class Task(db.Model):
             if self.get_progress() == 100:
                 return True
             else:
-                time.sleep(1.5)
+                time.sleep(.5)
         return False
 
     def check_return_value(self, job, force_return):
@@ -2559,27 +2559,48 @@ class Plan(db.Model):
             [(k.name, getattr(self, k.name)) for k in Plan.__table__.columns
              if not k.name.startswith("_") and k.name != 'id'])
 
-    def get_create_prompt(self):
+    def get_create_prompt(self, wrap_html=True):
+        return_prompts = []
         prompt_list = ['download sow',
                        'change budget for partner_name to new_budget',
                        'create an uploader']
         p = ''
         for x in prompt_list:
             x = '{} {} {}'.format(Plan.__table__.name, self.name, x)
-            p += Uploader.wrap_example_prompt(x)
+            if wrap_html:
+                x = Uploader.wrap_example_prompt(x)
+                p += x
+            else:
+                return_prompts.append(x)
+                p = return_prompts
         return p
 
     @staticmethod
     def get_large_create_prompt(prompt_dict=False):
-        partner = 'Facebook'
-        spend = '20K'
-        x = ('Create a plan with {} {} split US 50% UK 30% CA 20%. '
-             'Mobile, Desktop. Creative ciri, yen, geralt, triss. '
-             'Targeting aaa, jrpg, mmorpg. Copy x, y.'.format(partner, spend))
+        partner = ['Facebook']
+        spend = ['20K']
+        environments = ['Mobile', 'Desktop']
+        creative = ['ciri', 'yen', 'geralt', 'triss']
+        targeting = ['aaa', 'jrpg', 'mmorpg']
+        copy = ['x', 'y']
+        pairs = {PartnerPlacements.targeting_bucket.name: targeting,
+                 PartnerPlacements.creative_line_item.name: creative,
+                 PartnerPlacements.copy.name: copy}
+        x = 'Create a plan with '
+        for idx, part in enumerate(partner):
+            x += '{} {}.  '.format(part, spend[idx])
+        x += 'Split US 50% UK 30% CA 20%. '
+        x += '{}. '.format(', '.join(environments))
+        prompt_param_dict = {
+            Partner.__table__.name: partner,
+            Partner.total_budget.name: spend}
+        for k, v in pairs.items():
+            x += '{} {}.  '.format(
+                k.split('_')[0].capitalize(), ', '.join(v))
+            prompt_param_dict[k] = v
         if prompt_dict:
-            x = {Partner.__table__.name: partner,
-                 Partner.total_budget.name: spend,
-                 'message': x}
+            prompt_param_dict['message'] = x
+            x = prompt_param_dict
         return x
 
     def get_example_prompt(self):
@@ -3296,15 +3317,16 @@ class PartnerPlacements(db.Model):
             if db_col in filtered_df.columns:
                 mask = ~filtered_df[db_col].isin(exclude_values)
                 filtered_df = filtered_df[mask]
-                grouped = filtered_df.groupby(db_col)[vmc.impressions].sum()
-                if not grouped.empty:
-                    g_max = grouped.idxmax()
-                    rule_info = {g_max: 1}
-                    new_rule = PlanRule(
-                        place_col=str_name, rule_info=rule_info,
-                        partner_id=parent.id, plan_id=plan_id)
-                    db.session.add(new_rule)
-                    db.session.commit()
+                if not filtered_df.empty:
+                    grouped = filtered_df.groupby(db_col)[vmc.impressions].sum()
+                    if not grouped.empty:
+                        g_max = grouped.idxmax()
+                        rule_info = {g_max: 1}
+                        new_rule = PlanRule(
+                            place_col=str_name, rule_info=rule_info,
+                            partner_id=parent.id, plan_id=plan_id)
+                        db.session.add(new_rule)
+                        db.session.commit()
         return new_rules
 
     def check_gg_children(self, parent_id, words, total_db, msg_text):

@@ -8,6 +8,7 @@ import redis
 import itertools
 import numpy as np
 import pandas as pd
+from sqlalchemy import or_
 from datetime import datetime, timedelta
 from datetime import time as datetime_time
 from hashlib import md5
@@ -298,8 +299,19 @@ class Post(SearchableMixin, db.Model):
         if note_id:
             post_filter['note_id'] = note_id
         query = Post.query
-        for attr, value in post_filter.items():
-            query = query.filter(getattr(Post, attr) == value)
+        if object_name == Project.__table__.name:
+            plan_ids = [plan.id for plan in cur_obj.plan_associated]
+            processor_ids = [processor.id for processor in
+                             cur_obj.processor_associated]
+            query = Post.query.filter(
+                or_(
+                    Post.plan_id.in_(plan_ids),
+                    Post.processor_id.in_(processor_ids)
+                )
+            )
+        else:
+            for attr, value in post_filter.items():
+                query = query.filter(getattr(Post, attr) == value)
         posts = (query.
                  order_by(Post.timestamp.desc()).
                  paginate(page=page, per_page=5, error_out=False))
@@ -1590,7 +1602,7 @@ class Uploader(db.Model):
             if uploader_type == 'Facebook':
                 fb_cu = up_fbapi.CampaignUpload
                 relation_column_names = {
-                    fb_cu.objective: {constant_col: 'LINK_CLICKS'},
+                    fb_cu.objective: {constant_col: 'OUTCOME_TRAFFIC'},
                     fb_cu.spend_cap: {constant_col: '1000'},
                     fb_cu.status: {constant_col: 'PAUSED'}}
             elif uploader_type == 'Adwords':
@@ -1872,6 +1884,10 @@ class Uploader(db.Model):
         r = self.get_create_prompt(Uploader)
         return r
 
+    @staticmethod
+    def get_omit_cols():
+        return [Uploader.media_plan.name]
+
 
 class UploaderObjects(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2115,6 +2131,7 @@ class Project(db.Model):
     sow_received = db.Column(db.Text)
     billing_dates = db.Column(db.Text)
     notes = db.Column(db.Text)
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
     processor_associated = db.relationship(
         'Processor', secondary=project_number_processor,
         primaryjoin=(project_number_processor.c.project_id == id),
@@ -2138,11 +2155,11 @@ class Project(db.Model):
                       object_function_call={'object_name': object_name},
                       edit_progress=edit_progress, edit_name=edit_name)
         if object_name:
-            cur_obj = Project.query.filter_by(name=object_name).first_or_404()
+            cur_obj = Project.query.filter_by(project_number=object_name).first_or_404()
             kwargs['object'] = cur_obj
-            kwargs['buttons'] = Processor.get_navigation_buttons('Plan')
+            kwargs['buttons'] = Processor.get_navigation_buttons('Project')
             posts, next_url, prev_url = Post.get_posts_for_objects(
-                cur_obj, None, current_page, 'plan')
+                cur_obj, None, current_page, 'project')
             kwargs['posts'] = posts.items
             kwargs['next_url'] = next_url
             kwargs['prev_url'] = prev_url
@@ -2156,6 +2173,10 @@ class Project(db.Model):
         return ['project']
 
     @staticmethod
+    def get_model_omit_search_list():
+        return ['youtube']
+
+    @staticmethod
     def get_children():
         return None
 
@@ -2165,15 +2186,15 @@ class Project(db.Model):
 
     @staticmethod
     def get_parent():
-        return Client
+        return Campaign
 
     @staticmethod
     def get_table_name_to_task_dict():
         return {}
 
-    @staticmethod
-    def get_url():
-        return url_for('main.clients')
+    def get_url(self):
+        return url_for('main.project_number_page',
+                       object_name=self.project_number)
 
     def get_example_prompt(self):
         prompts = ['Project number 206196?']
@@ -2195,7 +2216,8 @@ class Project(db.Model):
             Processor.__tablename__: len(self.processor_associated.all()),
             Plan.__tablename__: len(self.plan_associated.all()),
             Processor.campaign_id.name: c.id if c else None,
-            Plan.user_id.name: 4}
+            Plan.user_id.name: 4,
+            Project.campaign_id.name: self.campaign_id}
         for x in date_cols:
             key_name = x.replace('flight_', '')
             data[key_name] = data.pop(x)
@@ -2217,10 +2239,12 @@ class Project(db.Model):
         name = Plan.get_first_unique_name(name, Project)
         return name
 
-    def set_from_form(self, form, current_object, cu_id):
+    def set_from_form(self, form, parent_model, current_user_id):
         for col in self.__table__.columns:
             if col.name in form:
                 setattr(self, col.name, form[col.name])
+        self.campaign_id = parent_model.id
+        self.user_id = current_user_id
 
     def get_table_elem(self, table_name=''):
         elem = Processor.base_get_table_elem(table_name, Project, self.name)
@@ -2653,6 +2677,8 @@ class Plan(db.Model):
         r = self.get_create_prompt(Plan)
         x = self.get_large_create_prompt()
         r += Uploader.wrap_example_prompt(x)
+        x = self.get_create_from_another_prompt(Plan)
+        r += Uploader.wrap_example_prompt(x['message'])
         return r
 
 
@@ -2842,6 +2868,8 @@ class Partner(db.Model):
         partner_type_name = 'partner_type'
         df = df.rename(columns={
             ven_col: partner_name, vty_col: partner_type_name})
+        omit_list = ['Full']
+        df = df[~df[partner_name].isin(omit_list)]
         partner_list = df.to_dict(orient='records')
         partner_type_list = pd.DataFrame(
             df[partner_type_name].unique()).rename(
@@ -3403,7 +3431,7 @@ class PartnerPlacements(db.Model):
                             partner_id=parent.id, plan_id=plan_id)
                         db.session.add(new_rule)
                         db.session.commit()
-        return new_rules
+        return new_rules, words
 
     def check_gg_children(self, parent_id, words, total_db, msg_text,
                           message=''):
@@ -3431,7 +3459,7 @@ class PartnerPlacements(db.Model):
         parent_names = [x.name.lower() for x in g_parent.get_current_children()]
         words = [x for x in words if x != parent_names]
         for col in cols:
-            new_rules = PartnerPlacements().check_single_col_from_words(
+            new_rules, words = PartnerPlacements().check_single_col_from_words(
                 col, parent, plan_id, words, total_db,
                 min_impressions, new_rules, message)
         if new_rules:

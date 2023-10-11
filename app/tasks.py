@@ -1920,6 +1920,7 @@ def uploader_save_creative(uploader_id, current_user_id, file, file_name):
         file_path = adjust_path(cur_up.local_path)
         os.chdir(file_path)
         file.seek(0)
+        utl.dir_check('creative')
         with open(os.path.join('creative', file_name), 'wb') as f:
             shutil.copyfileobj(file, f, length=131072)
         _set_task_progress(100)

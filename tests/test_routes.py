@@ -6,7 +6,7 @@ import processor.reporting.utils as utl
 import processor.reporting.analyze as az
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
-    Chat, Uploader, Project, PartnerPlacements
+    Chat, Uploader, Project, PartnerPlacements, Campaign
 
 
 def test_index(client, user):
@@ -55,7 +55,6 @@ class TestChat:
         else:
             name = cu.username
         p = Plan.query.filter_by(name=name).first()
-
         phase = p.get_current_children()[0]
         assert phase.name == PlanPhase.get_name_list()[0]
         total_budget = 0
@@ -66,6 +65,11 @@ class TestChat:
             total_budget = total_budget.lower().replace('k', '000')
             total_budget = int(total_budget.replace(',', '').replace('$', ''))
             assert int(part.total_budget) == total_budget
+            for col in [Plan.start_date.name, Plan.end_date.name]:
+                if col in prompt_dict:
+                    val = part.__dict__[col]
+                    new_val = utl.string_to_date(prompt_dict[col][0]).date()
+                    assert val == new_val
         for x in range(10):
             t = Task.query.filter_by(plan_id=p.id, complete=False).first()
             if t:
@@ -137,6 +141,9 @@ class TestChat:
         assert response.json['response'][:len(success_msg)] == success_msg
         p = Project.query.filter_by(project_number=pn).first()
         assert p.project_number == pn
+        c = Campaign.query.filter_by(
+            name=Campaign.get_default_name()[0]).first()
+        assert p.campaign_id == c.id
 
     def test_plan_create_from_another(self, client, conversation, worker):
         prompt_dict = Plan().get_create_from_another_prompt()
@@ -147,3 +154,5 @@ class TestChat:
             p = Project.query.filter_by(project_number=pn).first()
         prompt_dict[Plan.name.name] = p.name
         self.test_plan_create(client, conversation, worker, prompt_dict)
+        plan = Plan.query.filter_by(name=p.name).first()
+        assert p.campaign_id == plan.campaign_id

@@ -3760,7 +3760,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         if dimensions_sql:
             command += 'GROUP BY {}'.format(dimensions_sql)
         db_class = exp.DB()
-        db_class.input_config('dbconfig.json')
+        db_class.input_config(app.config['EXP_DB'])
         db_class.connect()
         _set_task_progress(50)
         db_class.cursor.execute(command, where_args)

@@ -30,6 +30,7 @@ class Config(object):
     DATABASE_PW = None
     DATABASE_PORT = None
     DATABASE_NAME = None
+    EXP_DB = 'dbconfig.json'
 
     def __init__(self, config_file='app/config.json'):
         config = self.load_config_file(config_file)

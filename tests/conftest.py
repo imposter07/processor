@@ -2,11 +2,13 @@ import os
 import pytest
 import ctypes
 import threading
+from sqlalchemy import create_engine, Sequence, text, inspect
 from multiprocessing import Process
 from flask_login import FlaskLoginClient
 from app import create_app, db
 from config import Config, basedir
 import processor.reporting.utils as utl
+from processor.reporting.export import ScriptBuilder, DB
 from app.models import User
 from rq import SimpleWorker
 from rq.timeouts import BaseDeathPenalty, JobTimeoutException
@@ -16,6 +18,7 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///{}'.format(
         os.path.join(basedir, 'app-test.db'))
     TESTING = True
+    EXP_DB = 'test_dbconfig.json'
 
 
 def run_server(with_run=True):
@@ -127,3 +130,41 @@ def worker(app_fixture):
     worker = WindowsSimpleWorker([queue], connection=queue.connection)
     yield worker
     queue.empty()
+
+
+@pytest.fixture(scope='module')
+def drop_views():
+    def _drop_views(engine, schema):
+        inspector = inspect(engine)
+        view_names = inspector.get_view_names(schema=schema)
+        with engine.connect() as connection:
+            for view_name in view_names:
+                drop_statement = "DROP VIEW {}.{};".format(schema, view_name)
+                connection.execute(text(drop_statement))
+            connection.commit()
+    return _drop_views
+
+
+@pytest.fixture(scope='module')
+def reporting_db(drop_views):
+    processor_path = os.path.join(basedir, 'processor')
+    os.chdir(processor_path)
+    test_db = DB(TestConfig.EXP_DB)
+    if test_db.db in ['lqadb', 'app']:
+        pytest.fail('Database configuration forbidden.')
+    if 'test' not in test_db.db:
+        pytest.fail('Database name must contain "test".')
+    os.chdir(basedir)
+    engine = create_engine(test_db.conn_string)
+    sb = ScriptBuilder()
+    Sequence('models_modelid_seq', metadata=sb.metadata,
+             schema=test_db.schema)
+    for table in sb.tables:
+        for col in table.columns:
+            if col.primary_key:
+                seq_name = '_'.join([table.name, col.name, 'seq'])
+                Sequence(seq_name, metadata=sb.metadata, schema=test_db.schema)
+    sb.metadata.create_all(bind=engine)
+    yield engine
+    drop_views(engine, test_db.schema)
+    sb.metadata.drop_all(bind=engine)

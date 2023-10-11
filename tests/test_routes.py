@@ -2,10 +2,11 @@ import os
 import pytest
 import pandas as pd
 import datetime as dt
+import processor.reporting.utils as utl
 import processor.reporting.analyze as az
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
-    Chat, Uploader
+    Chat, Uploader, Project, PartnerPlacements
 
 
 def test_index(client, user):
@@ -21,6 +22,11 @@ def test_health_check(client):
 
 
 class TestChat:
+
+    @pytest.fixture(scope='class', autouse=True)
+    def check_directory(self):
+        if os.path.exists(os.path.basename(__file__)):
+            os.chdir("..")
 
     @pytest.fixture(scope='class')
     def conversation(self, user, app_fixture):
@@ -40,19 +46,16 @@ class TestChat:
         assert response.status_code == 200
         assert response.json == expected_response
 
-    def test_plan_create(self, client, conversation, worker):
+    @staticmethod
+    def verify_plan_create(conversation_id, prompt_dict):
         budget_col = Partner.total_budget.name
-        if os.path.exists(os.path.basename(__file__)):
-            os.chdir("..")
-        prompt_dict = Plan.get_large_create_prompt(prompt_dict=True)
-        msg = prompt_dict['message']
-        data = {Chat.conversation_id.name: conversation.id, 'message': msg}
-        response = client.post('/post_chat', data=data)
-        success_msg = az.AliChat.create_success_msg
-        assert response.status_code == 200
-        assert response.json['response'][:len(success_msg)] == success_msg
-        cu = db.session.get(User, conversation.user_id)
-        p = Plan.query.filter_by(name=cu.username).first()
+        cu = db.session.get(User, conversation_id)
+        if Plan.name.name in prompt_dict:
+            name = prompt_dict[Plan.name.name]
+        else:
+            name = cu.username
+        p = Plan.query.filter_by(name=name).first()
+
         phase = p.get_current_children()[0]
         assert phase.name == PlanPhase.get_name_list()[0]
         total_budget = 0
@@ -60,13 +63,18 @@ class TestChat:
             assert part.name in prompt_dict[Partner.__table__.name]
             idx = prompt_dict[Partner.__table__.name].index(part.name)
             total_budget = prompt_dict[budget_col][idx]
-            total_budget = int(total_budget.lower().replace('k', '000'))
+            total_budget = total_budget.lower().replace('k', '000')
+            total_budget = int(total_budget.replace(',', '').replace('$', ''))
             assert int(part.total_budget) == total_budget
-        worker.work(burst=True)
-        t = Task.query.filter_by(plan_id=p.id).first()
-        t.wait_and_get_job(loops=10)
+        for x in range(10):
+            t = Task.query.filter_by(plan_id=p.id, complete=False).first()
+            if t:
+                t.wait_and_get_job(loops=10)
+            else:
+                break
         df = p.get_placements_as_df()
-        o_keys = ['message', Partner.__table__.name, budget_col]
+        o_keys = ['message', Partner.__table__.name, budget_col,
+                  PartnerPlacements.end_date.name, PartnerPlacements.name.name]
         for k, v in prompt_dict.items():
             if k not in o_keys:
                 budget = total_budget / len(v)
@@ -77,7 +85,22 @@ class TestChat:
                 cdf = {k: v, Partner.total_budget.name: len(v) * [budget]}
                 cdf = pd.DataFrame(cdf)
                 cdf = cdf.sort_values(k).reset_index(drop=True)
+                if 'date' in k:
+                    cdf = utl.data_to_type(cdf, date_col=[k])
+                    tdf = utl.data_to_type(tdf, date_col=[k])
                 assert pd.testing.assert_frame_equal(tdf, cdf) is None
+
+    def test_plan_create(self, client, conversation, worker, prompt_dict=None):
+        if not prompt_dict:
+            prompt_dict = Plan.get_large_create_prompt(prompt_dict=True)
+        msg = prompt_dict['message']
+        data = {Chat.conversation_id.name: conversation.id, 'message': msg}
+        response = client.post('/post_chat', data=data)
+        success_msg = az.AliChat.create_success_msg
+        assert response.status_code == 200
+        assert response.json['response'][:len(success_msg)] == success_msg
+        worker.work(burst=True)
+        self.verify_plan_create(conversation.user_id, prompt_dict)
 
     def test_plan_edit(self, client, conversation, worker):
         worker.work(burst=True)
@@ -102,3 +125,25 @@ class TestChat:
             client.post('/post_chat', data=data)
         part = p.get_current_children()[0].get_current_children()[0]
         assert int(part.total_budget) == int(new_budget)
+
+    def test_create_project(self, client, conversation, worker):
+        pn = '12345'
+        msg = 'Create a {} with {} {}'.format(
+            Project.__table__.name, Project.project_number.name, pn)
+        data = {Chat.conversation_id.name: conversation.id, 'message': msg}
+        response = client.post('/post_chat', data=data)
+        success_msg = az.AliChat.create_success_msg
+        assert response.status_code == 200
+        assert response.json['response'][:len(success_msg)] == success_msg
+        p = Project.query.filter_by(project_number=pn).first()
+        assert p.project_number == pn
+
+    def test_plan_create_from_another(self, client, conversation, worker):
+        prompt_dict = Plan().get_create_from_another_prompt()
+        pn = '12345'
+        p = Project.query.filter_by(project_number=pn).first()
+        if not p:
+            self.test_create_project(client, conversation, worker)
+            p = Project.query.filter_by(project_number=pn).first()
+        prompt_dict[Plan.name.name] = p.name
+        self.test_plan_create(client, conversation, worker, prompt_dict)

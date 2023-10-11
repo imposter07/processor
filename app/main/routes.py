@@ -3251,3 +3251,11 @@ def post_conversation():
 def project_number():
     kwargs = Project.get_current_project(Project, edit_name='ProjectNumbers')
     return render_template('project_number.html', **kwargs)
+
+
+@bp.route('/project_number/<object_name>', methods=['GET', 'POST'])
+@login_required
+def project_number_page(object_name):
+    kwargs = Project().get_current_project(
+        object_name, 'project_number_page', edit_progress=100, edit_name='Page')
+    return render_template('dashboard.html', **kwargs)

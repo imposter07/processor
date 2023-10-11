@@ -184,7 +184,11 @@ def save_topline():
                         'cpcv', 'dates']:
                 col_name = '{}{}'.format(col, x)
                 new_data = [x['value'] for x in partner_data
-                            if x['name'] == col_name][0]
+                            if x['name'] == col_name]
+                if new_data:
+                    new_data = new_data[0]
+                else:
+                    continue
                 if col == 'dates':
                     tl_dict = utl.get_sd_ed_in_dict(tl_dict, new_data)
                 else:

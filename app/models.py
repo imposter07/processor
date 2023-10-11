@@ -958,12 +958,20 @@ class Processor(db.Model):
     def get_model_name_list():
         return ['processor', 'report', 'data']
 
-    def get_table_elem(self, table_name):
+    @staticmethod
+    def base_get_table_elem(table_name, db_model, obj_name):
+        if db_model:
+            db_model = db_model.__table__.name.capitalize()
         elem = """
             <div class="msgTableElem">
-            <div id='{}' data-title="Processor" 
+            <div id='{}' data-title="{}" 
                     data-object_name="{}" data-edit_name="{}">
-            </div></div>""".format(table_name, self.name, table_name)
+            </div></div>""".format(
+            table_name, db_model, obj_name, table_name)
+        return elem
+
+    def get_table_elem(self, table_name):
+        elem = self.base_get_table_elem(table_name, Processor, self.name)
         return elem
 
     @staticmethod
@@ -1782,11 +1790,7 @@ class Uploader(db.Model):
             db.session.commit()
 
     def get_table_elem(self, table_name):
-        elem = """
-            <div class="msgTableElem">
-            <div id='{}' data-title="Uploader" 
-                    data-object_name="{}" data-edit_name="{}">
-            </div></div>""".format(table_name, self.name, table_name)
+        elem = Processor.base_get_table_elem(table_name, Uploader, self.name)
         return elem
 
     def get_types_from_words(self, words, up_types):
@@ -2099,6 +2103,7 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_number = db.Column(db.Text)
     initial_project_number = db.Column(db.Text)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     client_id = db.Column(db.Integer, db.ForeignKey('client.id'))
     project_name = db.Column(db.Text)
     media = db.Column(db.Boolean)
@@ -2206,6 +2211,20 @@ class Project(db.Model):
                     user_id=self.user_id, project_id=self.id)
         db.session.add(task)
         return task
+
+    @staticmethod
+    def get_first_unique_name(name):
+        name = Plan.get_first_unique_name(name, Project)
+        return name
+
+    def set_from_form(self, form, current_object, cu_id):
+        for col in self.__table__.columns:
+            if col.name in form:
+                setattr(self, col.name, form[col.name])
+
+    def get_table_elem(self, table_name=''):
+        elem = Processor.base_get_table_elem(table_name, Project, self.name)
+        return elem
 
 
 class ProjectNumberMax(db.Model):
@@ -2501,12 +2520,14 @@ class Plan(db.Model):
         return client_check
 
     @staticmethod
-    def get_first_unique_name(name):
-        name_exists = Plan.query.filter_by(name=name).first()
+    def get_first_unique_name(name, db_model=None):
+        if not db_model:
+            db_model = Plan
+        name_exists = db_model.query.filter_by(name=name).first()
         if name_exists:
             for x in range(100):
                 new_name = '{}_{}'.format(name, x)
-                name_exists = Plan.query.filter_by(name=new_name).first()
+                name_exists = db_model.query.filter_by(name=new_name).first()
                 if not name_exists:
                     name = new_name
                     break
@@ -2515,11 +2536,7 @@ class Plan(db.Model):
     def get_table_elem(self, table_name=''):
         if not table_name:
             table_name = 'Topline'
-        elem = """
-            <div class="msgTableElem">
-            <div id='{}' data-title="Plan" 
-                    data-object_name="{}" data-edit_name="{}">
-            </div></div>""".format(table_name, self.name, table_name)
+        elem = Processor.base_get_table_elem(table_name, Plan, self.name)
         return elem
 
     @staticmethod
@@ -2576,13 +2593,21 @@ class Plan(db.Model):
         return p
 
     @staticmethod
-    def get_large_create_prompt(prompt_dict=False):
-        partner = ['Facebook']
-        spend = ['20K']
-        environments = ['Mobile', 'Desktop']
-        creative = ['ciri', 'yen', 'geralt', 'triss']
-        targeting = ['aaa', 'jrpg', 'mmorpg']
-        copy = ['x', 'y']
+    def get_large_create_prompt(
+            prompt_dict=False, partner=None, spend=None, environments=None,
+            creative=None, targeting=None, copy=None):
+        if not partner:
+            partner = ['Facebook']
+        if not spend:
+            spend = ['20K']
+        if not environments:
+            environments = ['Mobile', 'Desktop']
+        if not creative:
+            creative = ['ciri', 'yen', 'geralt', 'triss']
+        if not targeting:
+            targeting = ['aaa', 'jrpg', 'mmorpg']
+        if not copy:
+            copy = ['x', 'y']
         pairs = {PartnerPlacements.targeting_bucket.name: targeting,
                  PartnerPlacements.creative_line_item.name: creative,
                  PartnerPlacements.copy.name: copy}
@@ -2602,6 +2627,27 @@ class Plan(db.Model):
             prompt_param_dict['message'] = x
             x = prompt_param_dict
         return x
+
+    def get_create_from_another_prompt(self):
+        partner = ['Facebook', 'YouTube']
+        spend = ['$17,000', '$33,000']
+        sd = ['10/5/2023']
+        ed = ['11/16/2023']
+        targeting = ['Persona/Atlus', 'RPG/JRPG', 'Strategy/Tactical']
+        creative = ['15s', '30s', '60s', 'Full']
+        copy = ['Copy 01', 'Copy 02', 'Copy 03']
+        environments = ['Cross Device']
+        prompt_dict = self.get_large_create_prompt(
+            True, partner, spend, environments, creative, targeting,
+            copy)
+        for pair in [(sd, Plan.start_date), (ed, Plan.end_date)]:
+            k = ' '.join(x.capitalize() for x in pair[1].name.split('_'))
+            prompt_dict[pair[1].name] = pair[0]
+            prompt_dict['message'] += '{} is {}.  '.format(k, pair[0][0])
+        t = PartnerPlacements.targeting_bucket.name.split('_')[0].capitalize()
+        prompt_dict['message'] = prompt_dict['message'].replace(t, 'Audiences')
+        prompt_dict['message'] += 'From {} 12345'.format(Project.__table__.name)
+        return prompt_dict
 
     def get_example_prompt(self):
         r = self.get_create_prompt(Plan)
@@ -3236,8 +3282,29 @@ class PartnerPlacements(db.Model):
         col_names += ['{}s'.format(x) for x in col_names]
         return str_name, db_col, col_names
 
+    @staticmethod
+    def find_name_from_message(message, name):
+        message = message.split(' ')
+        for idx, m in enumerate(message):
+            next_m = None
+            if not (idx + 1) >= len(message):
+                next_m = message[idx + 1]
+            for delim in [',', '.']:
+                m = m.replace(delim, '')
+                if next_m:
+                    next_m = next_m.replace(delim, '')
+            if m.lower() == name:
+                name = m
+                break
+            elif next_m:
+                if m.lower() + next_m.lower() == name:
+                    name = '{} {}'.format(m, next_m)
+                    break
+        return name
+
     def check_single_col_from_words(self, col, parent, plan_id, words,
-                                    total_db, min_impressions, new_rules):
+                                    total_db, min_impressions, new_rules,
+                                    message=''):
         str_name, db_col, col_names = self.get_col_names(col)
         old_rule = PlanRule.query.filter_by(
             place_col=str_name, partner_id=parent.id,
@@ -3249,12 +3316,19 @@ class PartnerPlacements(db.Model):
             cols = [item for sublist in cols for item in sublist]
             post_words = words[words.index(name_in_list[0]) + 1:]
             for value in post_words:
-                if value in cols:
+                if value in cols and value not in col_names:
                     post_words = post_words[:post_words.index(value)]
                     break
             name_words = ['called', 'named', 'categorized']
             post_words = [x for x in post_words if x not in name_words]
             name_list = ''.join(post_words).split('.')[0].split(',')
+            name_list = [x.strip(' ') for x in name_list]
+            """
+            if len(name_list) > 1:
+                col_name_pre = name_list[1].split(' ')[0]
+                if col_name_pre in col_names:
+                    name_list[0] = '{} {}'.format(col_name_pre, name_list[0])
+            """
             name_list = [{db_col: x} for x in name_list]
         else:
             name_list = Client.get_name_list(db_col, min_impressions)
@@ -3275,6 +3349,8 @@ class PartnerPlacements(db.Model):
             words_to_remove = [x[db_col].lower() for x in name_list]
             for x in name_list:
                 name = x[db_col]
+                if message:
+                    name = self.find_name_from_message(message, name)
                 num = None
                 if name.lower() in words:
                     num = utl.get_next_number_from_list(
@@ -3329,18 +3405,20 @@ class PartnerPlacements(db.Model):
                         db.session.commit()
         return new_rules
 
-    def check_gg_children(self, parent_id, words, total_db, msg_text):
+    def check_gg_children(self, parent_id, words, total_db, msg_text,
+                          message=''):
         parent = db.session.get(Partner, parent_id)
         g_parent = db.session.get(PlanPhase, parent.plan_phase_id)
         gg_parent = db.session.get(Plan, g_parent.plan_id)
         gg_parent.launch_task(
             '.check_plan_gg_children', _(msg_text),
             running_user=current_user.id, parent_id=parent_id, words=words,
-            total_db=total_db)
+            total_db=total_db, message=message)
         db.session.commit()
         return True
 
-    def check_col_in_words(self, words, parent_id, total_db=pd.DataFrame()):
+    def check_col_in_words(self, words, parent_id, total_db=pd.DataFrame(),
+                           message=''):
         response = ''
         parent = db.session.get(Partner, parent_id)
         g_parent = db.session.get(PlanPhase, parent.plan_phase_id)
@@ -3355,7 +3433,7 @@ class PartnerPlacements(db.Model):
         for col in cols:
             new_rules = PartnerPlacements().check_single_col_from_words(
                 col, parent, plan_id, words, total_db,
-                min_impressions, new_rules)
+                min_impressions, new_rules, message)
         if new_rules:
             response = 'Added rules for {} for columns {}'.format(
                 parent.name, ','.join([x.place_col for x in new_rules]))
@@ -3390,13 +3468,25 @@ class PartnerPlacements(db.Model):
                 total_budget=temp_dict[PartnerPlacements.total_budget.name],
                 partner_id=parent.id)
             for col in self.__table__.columns:
-                if col.name in temp_dict:
-                    setattr(place, col.name, temp_dict[col.name])
+                if col.name in temp_dict and temp_dict[col.name]:
+                    val = temp_dict[col.name]
+                    if col.name in [self.start_date.name, self.end_date.name]:
+                        if not val:
+                            val = datetime.today()
+                        else:
+                            val = val.replace('date', '').replace(' ', '')
+                            val = utl.string_to_date(val)
+                    setattr(place, col.name, val)
             pname = []
             for col in col_order:
                 if col in place.__dict__:
                     val = place.__dict__[col]
                     if col in [self.start_date.name, self.end_date.name]:
+                        if not val:
+                            val = datetime.today()
+                        elif type(val) == str:
+                            val = val.replace('date', '')
+                            val = utl.string_to_date(val)
                         val = datetime.strftime(val, '%Y%m%d')
                 elif col == Partner.__table__.name:
                     val = parent.name

@@ -52,9 +52,11 @@ def _set_task_progress(progress, attempt=1):
             job.meta['progress'] = progress
             job.save_meta()
             task = Task.query.get(job.get_id())
-            task.user.add_notification(
-                'task_progress', {'task_id': job.get_id(),
-                                  'progress': progress})
+            cu = task.user
+            if cu:
+                cu.add_notification(
+                    'task_progress', {'task_id': job.get_id(),
+                                      'progress': progress})
             if progress >= 100:
                 task.complete = True
             db.session.commit()
@@ -5526,11 +5528,12 @@ def get_plan_placements(plan_id, current_user_id):
 
 
 def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
-                           total_db=None):
+                           total_db=None, message=''):
     try:
         _set_task_progress(0)
         r = PartnerPlacements.check_col_in_words(
-            PartnerPlacements, words, parent_id, total_db=total_db)
+            PartnerPlacements, words, parent_id, total_db=total_db,
+            message=message)
         PartnerPlacements.create_from_rules(PartnerPlacements, parent_id)
         _set_task_progress(100)
         return r

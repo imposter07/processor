@@ -118,6 +118,7 @@
         }
 
         function parseProcessorUserMap(data, kwargs) {
+            addElemRemoveLoadingBtn('applyFilter');
             let proc = document.getElementById('processors');
             proc.innerHTML = data['items'];
             addSelectize();
@@ -216,20 +217,12 @@
             });
         }
 
-        function addApplyFilterBtn(){
-            $('button[id*="applyFilter"]').unbind().click(function () {
-                let dropdownButton = "#" + $(this)[0].id;
-                $(dropdownButton).prop("disabled", true);
-                let oldHtml = $(dropdownButton).html();
-                $(dropdownButton).html(
-                    `<span class="spinner-grow spinner-grow-sm" role="status"
-                      aria-hidden="true"></span> Loading...`
-                  );
-                let filterDict = [{'live': $('#liveProcessorsSwitch')[0].checked}];
-                let cols = ['username', 'client', 'product', 'campaign', 'processor', 'project'];
-                filterDict = getMultipleFilters(cols, filterDict);
-                getProcessorUserMap(filterDict, dropdownButton, oldHtml);
-            });
+        function addApplyFilterBtn() {
+            loadingBtn(this, this.style, this.class);
+            let filterDict = [{'live': document.getElementById('liveProcessorsSwitch').checked}];
+            let cols = ['username', 'client', 'product', 'campaign', 'processor', 'project'];
+            filterDict = getMultipleFilters(cols, filterDict, 'Select');
+            getProcessorUserMap(filterDict);
         }
 
         function getProcessorBody(){
@@ -300,8 +293,8 @@
             let filterDict = [{'live': $('#liveProcessorsSwitch')[0].checked}];
             getProcessorUserMap(filterDict);
             addSelectize();
-            addApplyFilterBtn();
             addOnClickEvent('[id^="viewSelector"]', viewSelectorChangeEvent, 'change');
+            addOnClickEvent('button[id*="applyFilter"]', addApplyFilterBtn);
         });
 
     </script>

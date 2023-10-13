@@ -94,17 +94,26 @@ class TestChat:
                     tdf = utl.data_to_type(tdf, date_col=[k])
                 assert pd.testing.assert_frame_equal(tdf, cdf) is None
 
-    def test_plan_create(self, client, conversation, worker, prompt_dict=None):
-        if not prompt_dict:
-            prompt_dict = Plan.get_large_create_prompt(prompt_dict=True)
-        msg = prompt_dict['message']
+    def send_post_verify_response(self, client, conversation, msg,
+                                  verify_success_msg=True):
         data = {Chat.conversation_id.name: conversation.id, 'message': msg}
         response = client.post('/post_chat', data=data)
         success_msg = az.AliChat.create_success_msg
         assert response.status_code == 200
-        assert response.json['response'][:len(success_msg)] == success_msg
+        if verify_success_msg:
+            assert response.json['response'][:len(success_msg)] == success_msg
+        return response
+
+    def test_plan_create(self, client, conversation, worker, prompt_dict=None):
+        if not prompt_dict:
+            prompt_dict = Plan.get_large_create_prompt(prompt_dict=True)
+        msg = prompt_dict['message']
+        self.send_post_verify_response(client, conversation, msg)
         worker.work(burst=True)
         self.verify_plan_create(conversation.user_id, prompt_dict)
+        cu = db.session.get(User, conversation.user_id)
+        p = Plan.query.filter_by(name=cu.username).first()
+        assert p.name == cu.username
 
     def test_plan_edit(self, client, conversation, worker):
         worker.work(burst=True)
@@ -123,22 +132,18 @@ class TestChat:
             if 'partner_name' in prompt:
                 msg = msg.replace('partner_name', partner_name)
                 msg = msg.replace('new_budget', str(new_budget))
-            data = {Chat.conversation_id.name: conversation.id, 'message': msg}
             if Uploader.__table__.name in msg:
                 continue
-            client.post('/post_chat', data=data)
+            self.send_post_verify_response(client, conversation, msg, False)
         part = p.get_current_children()[0].get_current_children()[0]
         assert int(part.total_budget) == int(new_budget)
+        prompt_dict[Partner.total_budget.name] = [str(new_budget)]
 
     def test_create_project(self, client, conversation, worker):
         pn = '12345'
         msg = 'Create a {} with {} {}'.format(
             Project.__table__.name, Project.project_number.name, pn)
-        data = {Chat.conversation_id.name: conversation.id, 'message': msg}
-        response = client.post('/post_chat', data=data)
-        success_msg = az.AliChat.create_success_msg
-        assert response.status_code == 200
-        assert response.json['response'][:len(success_msg)] == success_msg
+        self.send_post_verify_response(client, conversation, msg)
         p = Project.query.filter_by(project_number=pn).first()
         assert p.project_number == pn
         c = Campaign.query.filter_by(

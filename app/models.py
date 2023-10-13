@@ -2602,9 +2602,11 @@ class Plan(db.Model):
 
     def get_create_prompt(self, wrap_html=True):
         return_prompts = []
-        prompt_list = ['download sow',
-                       'change budget for partner_name to new_budget',
-                       'create an uploader']
+        prompt_list = [
+            'download sow',
+            'change budget for partner_name to new_budget',
+            'create an uploader',
+            'change {} to num'.format(PartnerPlacements.environment.name)]
         p = ''
         for x in prompt_list:
             x = '{} {} {}'.format(Plan.__table__.name, self.name, x)
@@ -3431,6 +3433,12 @@ class PartnerPlacements(db.Model):
                             partner_id=parent.id, plan_id=plan_id)
                         db.session.add(new_rule)
                         db.session.commit()
+            else:
+                new_rule = PlanRule(
+                    place_col=str_name, rule_info={'': 1},
+                    partner_id=parent.id, plan_id=plan_id)
+                db.session.add(new_rule)
+                db.session.commit()
         return new_rules, words
 
     def check_gg_children(self, parent_id, words, total_db, msg_text,

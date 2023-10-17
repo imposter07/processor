@@ -6,7 +6,7 @@ import processor.reporting.utils as utl
 import processor.reporting.analyze as az
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
-    Chat, Uploader, Project, PartnerPlacements, Campaign
+    Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule
 
 
 def test_index(client, user):
@@ -47,7 +47,16 @@ class TestChat:
         assert response.json == expected_response
 
     @staticmethod
-    def verify_plan_create(conversation_id, prompt_dict):
+    def wait_for_jobs_finish(p):
+        for x in range(10):
+            t = Task.query.filter_by(plan_id=p.id, complete=False).first()
+            if t:
+                t.wait_and_get_job(loops=10)
+            else:
+                break
+        return True
+
+    def verify_plan_create(self, conversation_id, prompt_dict):
         budget_col = Partner.total_budget.name
         cu = db.session.get(User, conversation_id)
         if Plan.name.name in prompt_dict:
@@ -70,12 +79,7 @@ class TestChat:
                     val = part.__dict__[col]
                     new_val = utl.string_to_date(prompt_dict[col][0]).date()
                     assert val == new_val
-        for x in range(10):
-            t = Task.query.filter_by(plan_id=p.id, complete=False).first()
-            if t:
-                t.wait_and_get_job(loops=10)
-            else:
-                break
+        self.wait_for_jobs_finish(p)
         df = p.get_placements_as_df()
         o_keys = ['message', Partner.__table__.name, budget_col,
                   PartnerPlacements.end_date.name, PartnerPlacements.name.name]
@@ -127,17 +131,29 @@ class TestChat:
         prompts = p.get_create_prompt(wrap_html=False)
         partner_name = prompt_dict[Partner.__table__.name][0]
         new_budget = 5000
+        new_env = 'mobile'
+        new_env_per = '75'
         for prompt in prompts:
             msg = prompt
             if 'partner_name' in prompt:
                 msg = msg.replace('partner_name', partner_name)
                 msg = msg.replace('new_budget', str(new_budget))
+            if 'num' in prompt:
+                msg = msg.replace('num', '{} {} {}%'.format(
+                    partner_name, new_env, new_env_per))
             if Uploader.__table__.name in msg:
                 continue
             self.send_post_verify_response(client, conversation, msg, False)
         part = p.get_current_children()[0].get_current_children()[0]
         assert int(part.total_budget) == int(new_budget)
         prompt_dict[Partner.total_budget.name] = [str(new_budget)]
+        worker.work(burst=True)
+        self.wait_for_jobs_finish(p)
+        env_rule = PlanRule.query.filter_by(
+            place_col=PartnerPlacements.environment.name, partner_id=part.id,
+            plan_id=p.id).first()
+        rule_info = env_rule.rule_info
+        assert rule_info[new_env] == int(new_env_per) / 100
 
     def test_create_project(self, client, conversation, worker):
         pn = '12345'

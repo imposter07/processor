@@ -3332,6 +3332,27 @@ class PartnerPlacements(db.Model):
                     break
         return name
 
+    @staticmethod
+    def get_default_value_for_col(parent, total_db, db_col, str_name, plan_id):
+        ven_col = prc_model.Vendor.vendorname.name
+        filtered_df = total_db[total_db[ven_col] == parent.name]
+        exclude_values = [0, 'None', None, '0', '0.0', 0.0]
+        new_rule = None
+        if db_col in filtered_df.columns:
+            mask = ~filtered_df[db_col].isin(exclude_values)
+            filtered_df = filtered_df[mask]
+            if not filtered_df.empty:
+                grouped = filtered_df.groupby(db_col)[vmc.impressions].sum()
+                if not grouped.empty:
+                    g_max = grouped.idxmax()
+                    rule_info = {g_max: 1}
+                    new_rule = PlanRule(
+                        place_col=str_name, rule_info=rule_info,
+                        partner_id=parent.id, plan_id=plan_id)
+                    db.session.add(new_rule)
+                    db.session.commit()
+        return new_rule
+
     def check_single_col_from_words(self, col, parent, plan_id, words,
                                     total_db, min_impressions, new_rules,
                                     message=''):
@@ -3351,14 +3372,11 @@ class PartnerPlacements(db.Model):
                     break
             name_words = ['called', 'named', 'categorized']
             post_words = [x for x in post_words if x not in name_words]
+            if 'date' not in str_name:
+                post_words = [x for x in post_words if
+                              not (x.isdigit() and int(x) > 10)]
             name_list = ''.join(post_words).split('.')[0].split(',')
             name_list = [x.strip(' ') for x in name_list]
-            """
-            if len(name_list) > 1:
-                col_name_pre = name_list[1].split(' ')[0]
-                if col_name_pre in col_names:
-                    name_list[0] = '{} {}'.format(col_name_pre, name_list[0])
-            """
             name_list = [{db_col: x} for x in name_list]
         else:
             name_list = Client.get_name_list(db_col, min_impressions)
@@ -3385,13 +3403,14 @@ class PartnerPlacements(db.Model):
                 if name.lower() in words:
                     num = utl.get_next_number_from_list(
                         words, name.lower(), '')
+                    words_to_remove += [num]
                 if num:
                     if num not in words:
                         name_no_number.append(name)
                         continue
                     idx = words.index(num)
                     num_mult = .01
-                    if (idx > 0) and (words[idx - 1] == '.'):
+                    if (idx > 0) and (words[idx - 1] == '.') and len(num) == 1:
                         num_mult = .1
                     num = float(num) * num_mult
                     if num > rem_percent:
@@ -3418,27 +3437,14 @@ class PartnerPlacements(db.Model):
                 if word_to_remove and word_to_remove in words:
                     words.pop(words.index(word_to_remove.lower()))
         elif not name_list and not old_rule:
-            filtered_df = total_db[total_db['vendorname'] == parent.name]
-            exclude_values = [0, 'None', None, '0', '0.0', 0.0]
-            if db_col in filtered_df.columns:
-                mask = ~filtered_df[db_col].isin(exclude_values)
-                filtered_df = filtered_df[mask]
-                if not filtered_df.empty:
-                    grouped = filtered_df.groupby(db_col)[vmc.impressions].sum()
-                    if not grouped.empty:
-                        g_max = grouped.idxmax()
-                        rule_info = {g_max: 1}
-                        new_rule = PlanRule(
-                            place_col=str_name, rule_info=rule_info,
-                            partner_id=parent.id, plan_id=plan_id)
-                        db.session.add(new_rule)
-                        db.session.commit()
-            else:
-                new_rule = PlanRule(
-                    place_col=str_name, rule_info={'': 1},
-                    partner_id=parent.id, plan_id=plan_id)
-                db.session.add(new_rule)
-                db.session.commit()
+            old_rule = self.get_default_value_for_col(
+                parent, total_db, db_col, str_name, plan_id)
+        if not old_rule:
+            old_rule = PlanRule(
+                place_col=str_name, rule_info={'': 1},
+                partner_id=parent.id, plan_id=plan_id)
+            db.session.add(old_rule)
+            db.session.commit()
         return new_rules, words
 
     def check_gg_children(self, parent_id, words, total_db, msg_text,
@@ -3465,7 +3471,7 @@ class PartnerPlacements(db.Model):
         if total_db.empty:
             total_db = self.get_reporting_db_df()
         parent_names = [x.name.lower() for x in g_parent.get_current_children()]
-        words = [x for x in words if x != parent_names]
+        words = [x for x in words if x not in parent_names]
         for col in cols:
             new_rules, words = PartnerPlacements().check_single_col_from_words(
                 col, parent, plan_id, words, total_db,

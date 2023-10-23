@@ -108,16 +108,19 @@ class TestChat:
             assert response.json['response'][:len(success_msg)] == success_msg
         return response
 
-    def test_plan_create(self, client, conversation, worker, prompt_dict=None):
+    def test_plan_create(self, client, conversation, worker, prompt_dict=None,
+                         name=None):
         if not prompt_dict:
             prompt_dict = Plan.get_large_create_prompt(prompt_dict=True)
         msg = prompt_dict['message']
         self.send_post_verify_response(client, conversation, msg)
         worker.work(burst=True)
         self.verify_plan_create(conversation.user_id, prompt_dict)
-        cu = db.session.get(User, conversation.user_id)
-        p = Plan.query.filter_by(name=cu.username).first()
-        assert p.name == cu.username
+        if not name:
+            cu = db.session.get(User, conversation.user_id)
+            name = cu.username
+        p = Plan.query.filter_by(name=name).first()
+        assert p.name == name
 
     def test_plan_edit(self, client, conversation, worker):
         worker.work(burst=True)
@@ -144,7 +147,8 @@ class TestChat:
             if Uploader.__table__.name in msg:
                 continue
             self.send_post_verify_response(client, conversation, msg, False)
-        part = p.get_current_children()[0].get_current_children()[0]
+        parts = p.get_current_children()[0].get_current_children()
+        part = parts[0]
         assert int(part.total_budget) == int(new_budget)
         prompt_dict[Partner.total_budget.name] = [str(new_budget)]
         worker.work(burst=True)
@@ -154,6 +158,7 @@ class TestChat:
             plan_id=p.id).first()
         rule_info = env_rule.rule_info
         assert rule_info[new_env] == int(new_env_per) / 100
+        assert len(parts) == 1
 
     def test_create_project(self, client, conversation, worker):
         pn = '12345'
@@ -174,6 +179,6 @@ class TestChat:
             self.test_create_project(client, conversation, worker)
             p = Project.query.filter_by(project_number=pn).first()
         prompt_dict[Plan.name.name] = p.name
-        self.test_plan_create(client, conversation, worker, prompt_dict)
+        self.test_plan_create(client, conversation, worker, prompt_dict, p.name)
         plan = Plan.query.filter_by(name=p.name).first()
         assert p.campaign_id == plan.campaign_id

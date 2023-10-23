@@ -316,8 +316,8 @@ class LiquidTable(object):
                  new_modal_button=False, col_filter=True, search_bar=True,
                  chart_btn=True, df=pd.DataFrame(), row_on_click='',
                  button_col=None, table_buttons=None, highlight_type='blank',
-                 slider_edit_col='', prog_colors='success',
-                 download_table=False, filter_dict=None,
+                 slider_edit_col='', slider_abs_col='', prog_colors='success',
+                 download_table=False, filter_dict=None, hidden_cols=None,
                  table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
@@ -349,7 +349,9 @@ class LiquidTable(object):
         self.highlight_type = highlight_type
         self.download_table = download_table
         self.slider_edit_col = slider_edit_col
+        self.slider_abs_col = slider_abs_col
         self.filter_dict = filter_dict
+        self.hidden_cols = hidden_cols
         if self.slider_edit_col:
             self.accordion = True
         self.df = df
@@ -365,7 +367,8 @@ class LiquidTable(object):
             self.col_list, self.select_val_dict, self.select_box,
             self.form_cols, self.metric_cols, self.def_metric_cols,
             self.prog_cols, self.header, self.highlight_row, self.button_col,
-            self.highlight_type, self.slider_edit_col)
+            self.highlight_type, self.slider_edit_col, self.slider_abs_col,
+            self.hidden_cols)
         self.table_dict = self.make_table_dict(
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
@@ -398,7 +401,7 @@ class LiquidTable(object):
     def make_columns(self, col_list, select_val_dict, select_box, form_cols,
                      metric_cols, def_metric_cols, prog_cols, header,
                      highlight_row, button_col, highlight_type,
-                     slider_edit_col):
+                     slider_edit_col, slider_abs_col, hidden_cols):
         cols = []
         if col_list:
             for x in col_list:
@@ -424,11 +427,15 @@ class LiquidTable(object):
                 if slider_edit_col and x == slider_edit_col:
                     cur_col.form = True
                     cur_col.type = cur_col.slider_edit_col_str
+                if slider_abs_col and x == slider_abs_col:
+                    cur_col.type = cur_col.slider_abs_col_str
                 if prog_cols and x in prog_cols:
                     custom_col = cur_col.parse_prog_bars(x, self.prog_colors)
                     self.custom_cols.append(custom_col)
                 if button_col and x in button_col:
                     cur_col.type = 'button_col'
+                if hidden_cols and x in hidden_cols:
+                    cur_col.hidden = cur_col.hidden_str
                 cur_col.update_dict()
                 cols.append(cur_col.col_dict)
         return cols
@@ -470,6 +477,7 @@ class LiquidTableColumn(object):
     form_str = 'form'
     highlight_row_str = 'highlight_row'
     slider_edit_col_str = 'slider_edit_col'
+    slider_abs_col_str = 'slider_abs_col'
 
     def __init__(self, name, col_type='', values=None, add_select_box=False,
                  hidden=False, header=False, form=False, highlight_row='',

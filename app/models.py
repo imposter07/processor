@@ -3365,18 +3365,9 @@ class PartnerPlacements(db.Model):
             cols = self.get_col_order(for_loop=True, as_string=False)
             cols = [self.get_col_names(x)[2] for x in cols]
             cols = [item for sublist in cols for item in sublist]
-            post_words = words[words.index(name_in_list[0]) + 1:]
-            for value in post_words:
-                if value in cols and value not in col_names:
-                    post_words = post_words[:post_words.index(value)]
-                    break
-            name_words = ['called', 'named', 'categorized']
-            post_words = [x for x in post_words if x not in name_words]
-            if 'date' not in str_name:
-                post_words = [x for x in post_words if
-                              not (x.isdigit() and int(x) > 10)]
-            name_list = ''.join(post_words).split('.')[0].split(',')
-            name_list = [x.strip(' ') for x in name_list]
+            date_search = 'date' in str_name
+            name_list = utl.get_next_values_from_list(
+                words, col_names, cols, date_search=date_search)
             name_list = [{db_col: x} for x in name_list]
         else:
             name_list = Client.get_name_list(db_col, min_impressions)
@@ -3385,7 +3376,7 @@ class PartnerPlacements(db.Model):
                                                           True)
         if old_rule:
             comp_list = [x[db_col] for x in name_list]
-            if type(old_rule.rule_info) == str:
+            if isinstance(old_rule.rule_info, str):
                 old_rule.rule_info = json.loads(old_rule.rule_info)
             for x in old_rule.rule_info:
                 if x not in comp_list:
@@ -3615,10 +3606,13 @@ class PlanRule(db.Model):
         fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                    if not k.startswith("_") and k != 'id'])
         cur_partner = 'ALL'
+        part_cost = 0
         if self.partner_id:
             cur_partner = db.session.get(Partner, self.partner_id)
+            part_cost = cur_partner.total_budget
             cur_partner = cur_partner.name
         fd[Partner.__name__] = cur_partner
+        fd[Partner.total_budget.name] = part_cost
         return fd
 
     def set_from_form(self, form, current_object):

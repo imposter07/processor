@@ -413,7 +413,6 @@ function getDateForm(loopIndex) {
 
 function changeSliderValues(slider, newValue) {
     slider.value = newValue;
-    slider.previousElementSibling.style.width = `${newValue}%`;
     slider.nextElementSibling.value = newValue;
     let dataCellId = slider.dataset['datacell'];
     let dataCell = document.getElementById(dataCellId);
@@ -443,7 +442,7 @@ function adjustOtherSliders(changedSlider) {
     sliders.forEach(slider => {
         lockButtonId = slider.id.replace('Slider', 'Lock');
         lockButton = document.getElementById(lockButtonId);
-        if (slider !== changedSlider && lockButton.textContent !== "Unlock") {
+        if (slider.id !== changedSlider.id && lockButton.textContent !== "Unlock") {
             let newValue = slider.value - change;
             if (newValue < 0) {
                 let changeSliderNewValue = changedSlider.value + newValue;
@@ -474,7 +473,11 @@ function sliderKeyEditOnInput() {
 
 function sliderValueEditOnInput() {
     let sliderValueInput = this;
-    let progressBarId = sliderValueInput.id.replace('Value', 'Slider');
+    let sliderValueId = sliderValueInput.id;
+    if (sliderValueInput.classList.contains('slider-absolute')) {
+        sliderValueId = sliderValueId.replace('Absolute', '');
+    }
+    let progressBarId = sliderValueId.replace('Value', 'Slider');
     let progressBar = document.getElementById(progressBarId);
     let lockButtonId = progressBar.id.replace('Slider', 'Lock');
     let lockButton = document.getElementById(lockButtonId);
@@ -483,7 +486,7 @@ function sliderValueEditOnInput() {
         return;
     }
     changeSliderValues(progressBar, this.value);
-    adjustOtherSliders(sliderValueInput, this.value);
+    adjustOtherSliders(progressBar, this.value);
 }
 
 function sliderEditOnInput() {
@@ -500,16 +503,23 @@ function sliderEditOnInput() {
     adjustOtherSliders(this, this.value);
 }
 
-function lockButtonOnClick() {
-    if (this.textContent === "Lock") {
-        this.textContent = "Unlock";
-        this.classList.remove('btn-outline-primary');
-        this.classList.add('btn-primary');
+function toggleOutlineButton(elem, selectStr='', unselectStr='',
+                             btnColor='primary') {
+    let outlineClass = `btn-outline-${btnColor}`;
+    let fillClass = outlineClass.replace('outline-', '');
+    if (elem.textContent === selectStr) {
+        elem.textContent = unselectStr;
+        elem.classList.remove(outlineClass);
+        elem.classList.add(fillClass);
     } else {
-        this.textContent = "Lock";
-        this.classList.remove('btn-primary');
-        this.classList.add('btn-outline-primary');
+        elem.textContent = selectStr;
+        elem.classList.remove(fillClass);
+        elem.classList.add(outlineClass);
     }
+}
+
+function lockButtonOnClick() {
+    toggleOutlineButton(this, 'Lock', 'Unlock');
 }
 
 function deleteSlider(buttonElement) {
@@ -529,16 +539,25 @@ function addNewSliderRow(addElem) {
 }
 
 function generateSliderContent(key, inputElemId, data) {
+    let totalElemId = inputElemId.replace('rule_info', 'rowtotal_budget');
+    let totalElem = document.getElementById(totalElemId);
+    let totalVal = totalElem.innerHTML.trim();
     return `
             <div class="col">
-            <span class="slider-key" data-datacell="${inputElemId}" 
-                contenteditable="true">${key}</span>
+            <div class="col">
+                <select class="slider-key" data-datacell="${inputElemId}" contenteditable="true">
+                    <option>${key}</option>
+                </select>
+            </div>
             <input id="${inputElemId}${key}Slider" class="slider" 
                 data-key="${key}" data-datacell="${inputElemId}"
                 type="range" min="0" max="100" value="${data[key] * 100}">
             <input id="${inputElemId}${key}Value" class="slider-value"
-                data-key="${key}" data-datacell="${inputElemId}"
+                data-key="${key}" data-datacell="${inputElemId}" style="display;"
                 type="number" min="0" max="100" value="${data[key] * 100}">
+            <input id="${inputElemId}${key}ValueAbsolute" class="slider-absolute"
+                data-key="${key}" data-datacell="${inputElemId}" style="display:none;"
+                type="number" min="0" max="${totalVal}" value="${data[key] * totalVal}">
             <button id="${inputElemId}${key}Lock" class="lock-button btn btn-outline-primary">Lock</button>
             <button onclick="deleteSlider(this)" class="lock-button btn btn-outline-danger">Delete</button>
             </div>
@@ -547,9 +566,22 @@ function generateSliderContent(key, inputElemId, data) {
 
 function addOnClickForSlider() {
     addOnClickEvent('.slider', sliderEditOnInput, 'input');
-    addOnClickEvent('.slider-value', sliderValueEditOnInput, 'input');
+    addOnClickEvent('.slider-value', sliderValueEditOnInput, 'change', false);
+    addOnClickEvent('.slider-absolute', sliderValueEditOnInput, 'change', false);
     addOnClickEvent('.slider-key', sliderKeyEditOnInput, 'input');
     addOnClickEvent('.lock-button', lockButtonOnClick);
+}
+
+function toggleSliderFormat(elem) {
+    toggleOutlineButton(elem, 'Switch Dollars', 'Switch Percent', 'success');
+    let elemClasses = ['.slider-value', '.slider-absolute'];
+    elemClasses.forEach(elemClass => {
+        let elems = elem.parentElement.querySelectorAll(elemClass);
+        let display = (elems[0].style.display === 'none') ? '': 'none';
+        elems.forEach(sliderElem => {
+            sliderElem.style.display = display;
+        });
+    });
 }
 
 function buildSliderEditCol(elem, newValue, inputElemId) {
@@ -560,6 +592,7 @@ function buildSliderEditCol(elem, newValue, inputElemId) {
         progHtml += sliderContent;
     }
     progHtml += `<div class="btn btn-outline-success" onclick="addNewSliderRow(this)">Add New Row</div>`;
+    progHtml += `<div class="btn btn-outline-success" onclick="toggleSliderFormat(this)">Switch Dollars</div>`;
     elem.insertAdjacentHTML('beforeend', progHtml);
     addOnClickForSlider();
     return progHtml

@@ -455,20 +455,24 @@ function adjustOtherSliders(changedSlider) {
 }
 
 function syncSliderDataCell(elem, dataCell) {
-    let keys = elem.parentElement.querySelectorAll('.slider-key');
-    let values = elem.parentElement.querySelectorAll('.slider-value');
+    let parentElement = elem.parentElement.parentElement;
+    let keys = parentElement.querySelectorAll('select.slider-key');
+    let values = parentElement.querySelectorAll('.slider-value');
+    let sliders = parentElement.querySelectorAll('.slider');
     let data = {};
     keys.forEach((k, idx) => {
-        data[k.innerHTML] = values[idx].value / 100;
+        data[k.value] = values[idx].value / 100;
+        values[idx].dataset['key'] = k.value;
+        sliders[idx].dataset['key'] = k.value;
     });
     dataCell.value = JSON.stringify(data);
     dataCell.onchange();
 }
 
-function sliderKeyEditOnInput() {
-    let dataCellId = this.dataset['datacell'];
+function sliderKeyEditOnInput(e) {
+    let dataCellId = e.target.dataset['datacell'];
     let dataCell = document.getElementById(dataCellId);
-    syncSliderDataCell(this.parentElement, dataCell);
+    syncSliderDataCell(e.target.parentElement, dataCell);
 }
 
 function sliderValueEditOnInput() {
@@ -535,30 +539,38 @@ function addNewSliderRow(addElem) {
     let inputElemId = addElem.parentElement.children[1].id;
     let newElem = generateSliderContent(key, inputElemId, data);
     addElem.insertAdjacentHTML('beforebegin', newElem);
+    addSelectize();
     addOnClickForSlider();
+    let elem = addElem.parentElement.querySelectorAll('input.slider')[0];
+    let dataCell = elem.dataset['datacell'];
+    syncSliderDataCell(elem, dataCell);
 }
 
-function generateSliderContent(key, inputElemId, data) {
+function generateSliderContent(key, inputElemId, data, idx) {
+    if (!(idx)) {
+        let inputElem = document.getElementById(inputElemId);
+        idx = inputElem.parentElement.querySelectorAll('.slider').length + 1;
+    }
     let totalElemId = inputElemId.replace('rule_info', 'rowtotal_budget');
     let totalElem = document.getElementById(totalElemId);
     let totalVal = totalElem.innerHTML.trim();
     return `
             <div class="col">
             <div class="col">
-                <select class="slider-key" data-datacell="${inputElemId}" contenteditable="true">
+                <select id="${inputElemId}${idx}SliderKey" class="slider-key" data-datacell="${inputElemId}">
                     <option>${key}</option>
                 </select>
             </div>
-            <input id="${inputElemId}${key}Slider" class="slider" 
+            <input id="${inputElemId}${idx}Slider" class="slider" 
                 data-key="${key}" data-datacell="${inputElemId}"
                 type="range" min="0" max="100" value="${data[key] * 100}">
-            <input id="${inputElemId}${key}Value" class="slider-value"
+            <input id="${inputElemId}${idx}Value" class="slider-value"
                 data-key="${key}" data-datacell="${inputElemId}" style="display;"
                 type="number" min="0" max="100" value="${data[key] * 100}">
-            <input id="${inputElemId}${key}ValueAbsolute" class="slider-absolute"
+            <input id="${inputElemId}${idx}ValueAbsolute" class="slider-absolute"
                 data-key="${key}" data-datacell="${inputElemId}" style="display:none;"
                 type="number" min="0" max="${totalVal}" value="${data[key] * totalVal}">
-            <button id="${inputElemId}${key}Lock" class="lock-button btn btn-outline-primary">Lock</button>
+            <button id="${inputElemId}${idx}Lock" class="lock-button btn btn-outline-primary">Lock</button>
             <button onclick="deleteSlider(this)" class="lock-button btn btn-outline-danger">Delete</button>
             </div>
         `;
@@ -568,7 +580,7 @@ function addOnClickForSlider() {
     addOnClickEvent('.slider', sliderEditOnInput, 'input');
     addOnClickEvent('.slider-value', sliderValueEditOnInput, 'change', false);
     addOnClickEvent('.slider-absolute', sliderValueEditOnInput, 'change', false);
-    addOnClickEvent('.slider-key', sliderKeyEditOnInput, 'input');
+    addOnClickEvent('.slider-key', sliderKeyEditOnInput, 'change', false);
     addOnClickEvent('.lock-button', lockButtonOnClick);
 }
 
@@ -587,13 +599,16 @@ function toggleSliderFormat(elem) {
 function buildSliderEditCol(elem, newValue, inputElemId) {
     let data = JSON.parse(newValue);
     let progHtml = '<br>';
+    let idx = 0
     for (let key in data) {
-        let sliderContent = generateSliderContent(key, inputElemId, data);
+        let sliderContent = generateSliderContent(key, inputElemId, data, idx);
         progHtml += sliderContent;
+        idx += 1;
     }
     progHtml += `<div class="btn btn-outline-success" onclick="addNewSliderRow(this)">Add New Row</div>`;
     progHtml += `<div class="btn btn-outline-success" onclick="toggleSliderFormat(this)">Switch Dollars</div>`;
     elem.insertAdjacentHTML('beforeend', progHtml);
+    addSelectize();
     addOnClickForSlider();
     return progHtml
 }
@@ -755,7 +770,7 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
         }
         if (colElem.dataset['type'] === 'slider_edit_col') {
             curElem.style.display = 'none';
-            buildSliderEditCol(curElem.parentElement, newValue, curElem.id);
+            buildSliderEditCol(curElem.parentElement, newValue, curElem.id, loopIndex);
         }
     });
     syncTableWithForm(loopIndex, rowFormNames, tableName);

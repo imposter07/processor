@@ -416,22 +416,24 @@ function changeSliderValues(slider, newValue) {
     slider.nextElementSibling.value = newValue;
     let dataCellId = slider.dataset['datacell'];
     let dataCell = document.getElementById(dataCellId);
+    let absVal = getTotalValueForSlider(dataCellId) * (newValue / 100.0)
+    slider.nextElementSibling.nextElementSibling.value = absVal.toFixed(2);
     let data = JSON.parse(dataCell.value);
     let key = slider.dataset['key'];
-    data[key] = newValue / 100;
+    data[key] = newValue / 100.0;
     dataCell.value = JSON.stringify(data);
     dataCell.onchange();
 }
 
 function adjustOtherSliders(changedSlider) {
     let total = 0;
-    let sliders = changedSlider.parentElement.parentElement.querySelectorAll(".slider");
+    let sliders = changedSlider.parentElement.parentElement.querySelectorAll(".slider-value");
     let lockedSliders = 0;
     let lockButtonId = changedSlider.id.replace('Slider', 'Lock');
     let lockButton = document.getElementById(lockButtonId);
     sliders.forEach(slider => {
         total += Number(slider.value);
-        lockButtonId = slider.id.replace('Slider', 'Lock');
+        lockButtonId = slider.id.replace('Value', 'Lock');
         lockButton = document.getElementById(lockButtonId);
         if (lockButton.textContent === "Unlock") {
             lockedSliders += 1;
@@ -440,16 +442,18 @@ function adjustOtherSliders(changedSlider) {
     let difference = total - 100;
     let change = difference / (sliders.length - 1 - lockedSliders);
     sliders.forEach(slider => {
-        lockButtonId = slider.id.replace('Slider', 'Lock');
+        lockButtonId = slider.id.replace('Value', 'Lock');
         lockButton = document.getElementById(lockButtonId);
-        if (slider.id !== changedSlider.id && lockButton.textContent !== "Unlock") {
+        let sliderId = slider.id.replace('Value', 'Slider');
+        if (sliderId !== changedSlider.id && lockButton.textContent !== "Unlock") {
             let newValue = slider.value - change;
             if (newValue < 0) {
                 let changeSliderNewValue = changedSlider.value + newValue;
                 changeSliderValues(changedSlider, changeSliderNewValue);
                 newValue = 0;
             }
-            changeSliderValues(slider, newValue);
+            let actualSlider = document.getElementById(sliderId);
+            changeSliderValues(actualSlider, newValue);
         }
     });
 }
@@ -461,7 +465,7 @@ function syncSliderDataCell(elem, dataCell) {
     let sliders = parentElement.querySelectorAll('.slider');
     let data = {};
     keys.forEach((k, idx) => {
-        data[k.value] = values[idx].value / 100;
+        data[k.value] = values[idx].value / 100.0;
         values[idx].dataset['key'] = k.value;
         sliders[idx].dataset['key'] = k.value;
     });
@@ -478,8 +482,13 @@ function sliderKeyEditOnInput(e) {
 function sliderValueEditOnInput() {
     let sliderValueInput = this;
     let sliderValueId = sliderValueInput.id;
+    let totalVal = getTotalValueForSlider(sliderValueInput.dataset['datacell']);
+    let newVal = sliderValueInput.value;
     if (sliderValueInput.classList.contains('slider-absolute')) {
         sliderValueId = sliderValueId.replace('Absolute', '');
+        sliderValueInput = document.getElementById(sliderValueId);
+        newVal = (this.value / totalVal) * 100;
+        sliderValueInput.value =  newVal;
     }
     let progressBarId = sliderValueId.replace('Value', 'Slider');
     let progressBar = document.getElementById(progressBarId);
@@ -489,8 +498,8 @@ function sliderValueEditOnInput() {
         this.value = sliderValueInput.value;
         return;
     }
-    changeSliderValues(progressBar, this.value);
-    adjustOtherSliders(progressBar, this.value);
+    changeSliderValues(progressBar, newVal);
+    adjustOtherSliders(progressBar, newVal);
 }
 
 function sliderEditOnInput() {
@@ -546,14 +555,18 @@ function addNewSliderRow(addElem) {
     syncSliderDataCell(elem, dataCell);
 }
 
+function getTotalValueForSlider(inputElemId) {
+    let totalElemId = inputElemId.replace('rule_info', 'rowtotal_budget');
+    let totalElem = document.getElementById(totalElemId);
+    return totalElem.innerHTML.trim();
+}
+
 function generateSliderContent(key, inputElemId, data, idx) {
     if (!(idx)) {
         let inputElem = document.getElementById(inputElemId);
         idx = inputElem.parentElement.querySelectorAll('.slider').length + 1;
     }
-    let totalElemId = inputElemId.replace('rule_info', 'rowtotal_budget');
-    let totalElem = document.getElementById(totalElemId);
-    let totalVal = totalElem.innerHTML.trim();
+    let totalVal = getTotalValueForSlider(inputElemId);
     return `
             <div class="col">
             <div class="col">
@@ -561,16 +574,16 @@ function generateSliderContent(key, inputElemId, data, idx) {
                     <option>${key}</option>
                 </select>
             </div>
-            <input id="${inputElemId}${idx}Slider" class="slider" 
+            <input id="${inputElemId}${key}Slider" class="slider" 
                 data-key="${key}" data-datacell="${inputElemId}"
-                type="range" min="0" max="100" value="${data[key] * 100}">
-            <input id="${inputElemId}${idx}Value" class="slider-value"
+                type="range" step="1" min="0" max="100" value="${data[key] * 100}">
+            <input id="${inputElemId}${key}Value" class="slider-value"
                 data-key="${key}" data-datacell="${inputElemId}" style="display;"
-                type="number" min="0" max="100" value="${data[key] * 100}">
-            <input id="${inputElemId}${idx}ValueAbsolute" class="slider-absolute"
+                type="number" min="0" max="100" step="any" value="${data[key] * 100}">
+            <input id="${inputElemId}${key}ValueAbsolute" class="slider-absolute"
                 data-key="${key}" data-datacell="${inputElemId}" style="display:none;"
-                type="number" min="0" max="${totalVal}" value="${data[key] * totalVal}">
-            <button id="${inputElemId}${idx}Lock" class="lock-button btn btn-outline-primary">Lock</button>
+                type="number" min="0" max="${totalVal}" step="any" value="${data[key] * totalVal}">
+            <button id="${inputElemId}${key}Lock" class="lock-button btn btn-outline-primary">Lock</button>
             <button onclick="deleteSlider(this)" class="lock-button btn btn-outline-danger">Delete</button>
             </div>
         `;

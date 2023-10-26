@@ -5817,7 +5817,7 @@ def get_processor_data_source_table(processor_id, current_user_id):
             processor_id=cur_proc.id, key=az.Analyze.unknown_col).first()
         if analysis and analysis.data:
             tdf = pd.DataFrame(analysis.data)
-            tdf[vmc.vendorkey] = utl.data_to_type(tdf, str_col=[vmc.vendorkey])
+            tdf = utl.data_to_type(tdf, str_col=[vmc.vendorkey])
             tdf[vmc.vendorkey] = tdf[vmc.vendorkey].str.strip("'")
             cols = [x for x in tdf.columns if x != vmc.vendorkey]
             col = 'Undefined Plan Net'

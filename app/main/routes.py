@@ -26,7 +26,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm, \
     ProcessorNoteForm, ProcessorAutoAnalysisForm, ProcessorReportBuilderForm, \
     WalkthroughUploadForm, ProcessorPlanForm, UploadTestForm, ScreenshotForm, \
-    BrandTrackerImportForm
+    BrandTrackerImportForm, EditProjectForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
@@ -925,9 +925,12 @@ def get_table_arguments():
         proc_id = proc_arg.pop('proc_id')
         cur_proc = Processor.query.get(proc_id)
     elif cur_obj in obj_dict:
+        k = Processor.name.name
+        if cur_obj == Project.__name__.capitalize():
+            k = Project.project_number.name
         cur_obj = obj_dict[cur_obj]
         obj_name = request.form['object_name']
-        cur_proc = cur_obj.query.filter_by(name=obj_name).first_or_404()
+        cur_proc = cur_obj.query.filter_by(**{k: obj_name}).first_or_404()
     else:
         cur_proc = current_user
         cur_proc.name = cur_proc.username
@@ -938,6 +941,9 @@ def get_table_arguments():
         vk = 'None'
     job_name, table_name, proc_arg = translate_table_name_to_job(
         table_name=table_name, proc_arg=proc_arg)
+    if cur_obj.__table__.name == Project.__table__.name:
+        proc_arg['function_name'] = job_name
+        job_name = '.get_table_project'
     task_in_progress = cur_proc.get_task_in_progress(job_name)
     if task_in_progress and task_in_progress.name == table_name:
         if job_name == '.get_request_table':
@@ -1072,23 +1078,30 @@ def get_table_return(task, table_name, proc_arg, job_name,
 @bp.route('/get_table', methods=['GET', 'POST'])
 @login_required
 def get_table():
-    table_name, cur_proc, proc_arg, job_name = get_table_arguments()
-    if not job_name:
-        data = {'data': 'fail', 'task': '', 'level': 'fail'}
-        return data
-    if job_name == '.get_request_table':
-        msg_text = 'Getting {} table for {}'.format(
-            table_name, proc_arg['fix_id'])
-    else:
-        msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
-    task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
-    db.session.commit()
-    if ('force_return' in request.form and
-            request.form['force_return'] == 'false'):
-        data = {'data': 'success', 'task': task.id, 'level': 'success'}
-    else:
-        data = get_table_return(task, table_name, proc_arg, job_name,
-                                force_return=True)
+    try:
+        table_name, cur_proc, proc_arg, job_name = get_table_arguments()
+        if not job_name:
+            data = {'data': 'fail', 'task': '', 'level': 'fail'}
+            return data
+        if job_name == '.get_request_table':
+            msg_text = 'Getting {} table for {}'.format(
+                table_name, proc_arg['fix_id'])
+        else:
+            msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
+        task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
+        db.session.commit()
+        if ('force_return' in request.form and
+                request.form['force_return'] == 'false'):
+            data = {'data': 'success', 'task': task.id, 'level': 'success'}
+        else:
+            data = get_table_return(task, table_name, proc_arg, job_name,
+                                    force_return=True)
+    except:
+        args = request.form.to_dict(flat=False)
+        msg = 'Unhandled exception {}'.format(json.dumps(args))
+        current_app.logger.error(msg, exc_info=sys.exc_info())
+        data = {'data': 'error', 'task': '', 'level': 'error',
+                'args': request.form.to_dict(flat=False)}
     return data
 
 
@@ -3249,7 +3262,7 @@ def post_conversation():
 @bp.route('/project_number', methods=['GET', 'POST'])
 @login_required
 def project_number():
-    kwargs = Project.get_current_project(Project, edit_name='ProjectNumbers')
+    kwargs = Project().get_current_project(edit_name='ProjectNumbers')
     return render_template('project_number.html', **kwargs)
 
 
@@ -3259,3 +3272,92 @@ def project_number_page(object_name):
     kwargs = Project().get_current_project(
         object_name, 'project_number_page', edit_progress=100, edit_name='Page')
     return render_template('dashboard.html', **kwargs)
+
+
+@bp.route('/project_number/<object_name>/edit', methods=['GET', 'POST'])
+@login_required
+def project_edit(object_name):
+    form_description = """
+    Basic information about this project number.
+    """
+    kwargs = Project().get_current_project(
+        object_name, current_page='basic',
+        edit_progress=100, edit_name='Basic', form_title='Basic',
+        form_description=form_description)
+    cur_project = kwargs['object']
+    form = EditProjectForm(object_name)
+    form.set_choices()
+    kwargs['form'] = form
+    if request.method == 'POST':
+        form.validate()
+        form_client = Client(name=form.cur_client.data).check_and_add()
+        form_product = Product(name=form.cur_product.data,
+                               client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(name=form.cur_campaign.data,
+                                 product_id=form_product.id).check_and_add()
+        cur_project.campaign_id = form_campaign.id
+        cur_project.project_name = form.project_name.data
+        cur_project.project_number = form.project_number.data
+        cur_project.start_date = form.start_date.data
+        cur_project.end_date = form.end_date.data
+        for proc in form.cur_processors.data:
+            cur_proc = Processor.query.filter_by(name=proc).first()
+            if cur_proc not in cur_project.processor_associated:
+                cur_project.processor_associated.append(cur_proc)
+        for proc in cur_project.processor_associated:
+            if proc.name not in form.cur_processors.data:
+                cur_project.processor_associated.remove(proc)
+        for plan_name in form.cur_plans.data:
+            cur_plan = Plan.query.filter_by(name=plan_name).first()
+            if cur_plan not in cur_project.plan_associated:
+                cur_project.plan_associated.append(cur_plan)
+        for cur_plan in cur_project.plan_associated:
+            if cur_plan.name not in form.cur_plans.data:
+                cur_project.plan_associated.remove(cur_plan)
+        db.session.commit()
+        if form.form_continue.data == 'continue':
+            next_page = 'main.project_billing'
+        else:
+            next_page = 'main.project_edit'
+        return redirect(url_for(next_page, object_name=object_name))
+    elif request.method == 'GET':
+        form.project_name.data = cur_project.name
+        form.project_number.data = cur_project.project_number
+        form.start_date.data = cur_project.flight_start_date
+        form.end_date.data = cur_project.flight_end_date
+        form_campaign = Campaign.query.filter_by(
+            id=cur_project.campaign_id).first_or_404()
+        form_product = Product.query.filter_by(
+            id=form_campaign.product_id).first_or_404()
+        form_client = Client.query.filter_by(
+            id=form_product.client_id).first_or_404()
+        form.cur_campaign.data = form_campaign.name
+        form.cur_product.data = form_product.name
+        form.cur_client.data = form_client.name
+        form.cur_processors.data = [
+            (x.name, x.name) for x in cur_project.processor_associated]
+        form.cur_plans.data = [
+            (x.name, x.name) for x in cur_project.plan_associated]
+    return render_template('create_processor.html', **kwargs)
+
+
+@bp.route('/project_number/<object_name>/billing', methods=['GET', 'POST'])
+@login_required
+def project_billing(object_name):
+    form_description = """
+    Compare planned, reported and invoiced spends in one table.  
+    Add Invoices to the table with total spend for best results.
+    """
+    kwargs = Project().get_current_project(
+        object_name, current_page='project_billing',
+        edit_progress=100, edit_name='Bill', form_title='BILLING',
+        form_description=form_description)
+    form = ProcessorContinueForm()
+    kwargs['form'] = form
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            next_page = 'main.project_number'
+        else:
+            next_page = 'main.project_billing'
+        return redirect(url_for(next_page, object_name=object_name))
+    return render_template('create_processor.html', **kwargs)

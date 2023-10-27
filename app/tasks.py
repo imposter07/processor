@@ -6627,3 +6627,24 @@ def get_contact_numbers(processor_id, current_user_id):
             'Unhandled exception - Processor {} User {}'.format(
                 processor_id, current_user_id), exc_info=sys.exc_info())
         return pd.DataFrame()
+
+
+def get_table_project(object_id, current_user_id, function_name=None, **kwargs):
+    try:
+        _set_task_progress(0)
+        task_name = function_name.replace('.', '')
+        p = db.session.get(Project, object_id)
+        df = pd.DataFrame()
+        for proc in p.processor_associated.all():
+            resp = globals()[task_name](proc.id, current_user_id, **kwargs)
+            df = pd.concat([df, resp], ignore_index=True, sort=False)
+        if 'download' in function_name:
+            df = get_file_in_memory(df)
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Obj {} User {}'.format(
+            object_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]

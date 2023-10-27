@@ -8,7 +8,8 @@ from wtforms_sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length, Regexp
 from flask_babel import _, lazy_gettext as _l
 from app.models import User, Processor, Client, Product, Campaign, Uploader, \
-    RateCard, ProcessorDatasources, ProcessorAnalysis, PartnerPlacements
+    RateCard, ProcessorDatasources, ProcessorAnalysis, PartnerPlacements, \
+    Project, Plan
 import processor.reporting.dictcolumns as dctc
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.export as exp
@@ -810,3 +811,45 @@ class ScreenshotForm(FlaskForm):
             choices = [('', '')]
             choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
             obj[1].choices = choices
+
+
+class ProjectForm(FlaskForm):
+    project_name = StringField(_l('Name'), validators=[DataRequired()])
+    project_number = StringField(_l('Number'), validators=[ DataRequired()])
+    start_date = DateField(_l('Start Date'))
+    end_date = DateField(_l('End Date'))
+    cur_client = SelectField(_l('Client'))
+    cur_product = SelectField(_l('Product'))
+    cur_campaign = SelectField(_l('Campaign'))
+    cur_processors = SelectMultipleField(_l('Processors'))
+    cur_plans = SelectMultipleField(_l('Plans'))
+    client_name = None
+    product_name = None
+    campaign_name = None
+    form_continue = HiddenField('form_continue')
+
+    def validate_name(self, project_number):
+        processor = Project.query.filter_by(
+            project_number=project_number.data).first()
+        if processor is not None:
+            raise ValidationError(_l('Please use a different name.'))
+
+    def set_choices(self):
+        for obj in [(Client, self.cur_client),
+                    (Product, self.cur_product), (Campaign, self.cur_campaign),
+                    (Processor, self.cur_processors), (Plan, self.cur_plans)]:
+            choices = [('', '')]
+            choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
+            obj[1].choices = choices
+
+
+class EditProjectForm(ProjectForm):
+    def __init__(self, original_name, *args, **kwargs):
+        super(EditProjectForm, self).__init__(*args, **kwargs)
+        self.original_name = original_name
+
+    def validate_name(self, name):
+        if name.data != self.original_name:
+            processor = Project.query.filter_by(name=self.project_name.data).first()
+            if processor is not None:
+                raise ValidationError(_l('Please use a different name.'))

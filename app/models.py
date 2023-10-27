@@ -948,6 +948,10 @@ class Processor(db.Model):
                        {'PlanPlacements': ['plan.plan_placements', 'table']},
                        {'Specs': ['plan.specs', 'glasses']},
                        {'Contacts': ['plan.contacts', 'address-book']}]
+        elif buttons == Project.__table__.name:
+            buttons = [
+                {'Basic': ['main.project_edit', 'list-ol']},
+                {'Bill': ['main.project_billing', 'money-bill']}]
         else:
             buttons = [
                 {'Basic': ['main.edit_processor', 'list-ol']},
@@ -2131,6 +2135,7 @@ class Project(db.Model):
     sow_received = db.Column(db.Text)
     billing_dates = db.Column(db.Text)
     notes = db.Column(db.Text)
+    tasks = db.relationship('Task', backref='project', lazy='dynamic')
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
     processor_associated = db.relationship(
         'Processor', secondary=project_number_processor,
@@ -2150,16 +2155,24 @@ class Project(db.Model):
         return '{} {}'.format(self.project_number, self.project_name)
 
     def get_current_project(self, object_name=None, current_page=None,
-                            edit_progress=0, edit_name='Page', buttons=None):
-        kwargs = dict(title=_('Project Numbers'), object_name=object_name,
+                            edit_progress=0, edit_name='Page',
+                            buttons=None, form_title=None,
+                            form_description=None):
+        if not buttons:
+            buttons = Project.__table__.name
+        kwargs = dict(title=_(Project.__table__.name.capitalize()),
+                      object_name=object_name,
                       object_function_call={'object_name': object_name},
-                      edit_progress=edit_progress, edit_name=edit_name)
+                      edit_progress=edit_progress, edit_name=edit_name,
+                      form_title=form_title, form_description=form_description)
         if object_name:
-            cur_obj = Project.query.filter_by(project_number=object_name).first_or_404()
+            cur_obj = Project.query.filter_by(
+                project_number=object_name).first_or_404()
             kwargs['object'] = cur_obj
-            kwargs['buttons'] = Processor.get_navigation_buttons('Project')
+            kwargs['buttons'] = Processor.get_navigation_buttons(buttons)
             posts, next_url, prev_url = Post.get_posts_for_objects(
-                cur_obj, None, current_page, 'project')
+                cur_obj, None, current_page,
+                object_name=Project.__table__.name)
             kwargs['posts'] = posts.items
             kwargs['next_url'] = next_url
             kwargs['prev_url'] = prev_url
@@ -2249,6 +2262,13 @@ class Project(db.Model):
     def get_table_elem(self, table_name=''):
         elem = Processor.base_get_table_elem(table_name, Project, self.name)
         return elem
+
+    def get_tasks_in_progress(self):
+        return Task.query.filter_by(project=self, complete=False).all()
+
+    def get_task_in_progress(self, name):
+        return Task.query.filter_by(name=name, project=self,
+                                    complete=False).first()
 
 
 class ProjectNumberMax(db.Model):

@@ -51,7 +51,7 @@ def _set_task_progress(progress, attempt=1):
         if job:
             job.meta['progress'] = progress
             job.save_meta()
-            task = Task.query.get(job.get_id())
+            task = db.session.get(Task, job.get_id())
             cu = task.user
             if cu:
                 cu.add_notification(
@@ -6071,6 +6071,9 @@ def get_billing_table(processor_id, current_user_id):
             df = df.merge(idf, how='left', on=dimensions)
         else:
             df[invoice_cost] = 0
+        for col in [dctc.PNC, cal.NCF, invoice_cost]:
+            if col not in df.columns:
+                df[col] = 0
         df['plan - netcost'] = df[dctc.PNC] - df[cal.NCF]
         df['invoice - plancost'] = df[invoice_cost] - df[dctc.PNC]
         lt = app_utl.LiquidTable(
@@ -6634,14 +6637,31 @@ def get_table_project(object_id, current_user_id, function_name=None, **kwargs):
         _set_task_progress(0)
         task_name = function_name.replace('.', '')
         p = db.session.get(Project, object_id)
-        df = pd.DataFrame()
+        lt = app_utl.LiquidTable()
+        return_val = {}
         for proc in p.processor_associated.all():
             resp = globals()[task_name](proc.id, current_user_id, **kwargs)
-            df = pd.concat([df, resp], ignore_index=True, sort=False)
+            if resp:
+                resp = resp[0]
+                is_return_df = isinstance(return_val, pd.core.frame.DataFrame)
+                is_resp_df = isinstance(resp, pd.core.frame.DataFrame)
+                if 'liquid_table' in resp and resp['liquid_table']:
+                    lt.table_dict = lt.combine_table_dicts(
+                        lt.table_dict, resp)
+                    return_val = lt.table_dict
+                elif (not is_return_df) and (not return_val):
+                    return_val = resp
+                elif is_resp_df:
+                    return_val = pd.concat([return_val, resp],
+                                           ignore_index=True, sort=False)
+                elif isinstance(resp, list):
+                    return_val.extned(resp)
         if 'download' in function_name:
-            df = get_file_in_memory(df)
+            if not isinstance(return_val, pd.core.frame.DataFrame):
+                return_val = pd.DataFrame(return_val)
+            return_val = get_file_in_memory(return_val)
         _set_task_progress(100)
-        return [df]
+        return [return_val]
     except:
         _set_task_progress(100)
         msg = 'Unhandled exception - Obj {} User {}'.format(

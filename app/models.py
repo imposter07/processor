@@ -260,7 +260,7 @@ class User(UserMixin, db.Model):
 
 @login.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 
 class Post(SearchableMixin, db.Model):
@@ -309,16 +309,18 @@ class Post(SearchableMixin, db.Model):
                     Post.processor_id.in_(processor_ids)
                 )
             )
+            object_name = cur_obj.project_number
         else:
+            object_name = cur_obj.name
             for attr, value in post_filter.items():
                 query = query.filter(getattr(Post, attr) == value)
         posts = (query.
                  order_by(Post.timestamp.desc()).
                  paginate(page=page, per_page=5, error_out=False))
         next_url = url_for(route_prefix + current_page, page=posts.next_num,
-                           object_name=cur_obj.name) if posts.has_next else None
+                           object_name=object_name) if posts.has_next else None
         prev_url = url_for(route_prefix + current_page, page=posts.prev_num,
-                           object_name=cur_obj.name) if posts.has_prev else None
+                           object_name=object_name) if posts.has_prev else None
         return posts, next_url, prev_url
 
 
@@ -634,14 +636,12 @@ class Processor(db.Model):
         'Project', secondary=project_number_processor,
         primaryjoin=(project_number_processor.c.processor_id == id),
         secondaryjoin="project_number_processor.c.project_id == Project.id",
-        backref=db.backref('project_number_processor', lazy='dynamic'),
-        lazy='dynamic')
+        back_populates='processor_associated', lazy='dynamic')
     plans = db.relationship(
         'Plan', secondary=processor_plan,
         primaryjoin=(processor_plan.c.processor_id == id),
         secondaryjoin="processor_plan.c.plan_id == Plan.id",
-        backref=db.backref('processor_plan', lazy='dynamic'),
-        lazy='dynamic')
+        back_populates='processor_associated', lazy='dynamic')
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,
@@ -2141,14 +2141,12 @@ class Project(db.Model):
         'Processor', secondary=project_number_processor,
         primaryjoin=(project_number_processor.c.project_id == id),
         secondaryjoin="project_number_processor.c.processor_id == Processor.id",
-        backref=db.backref('project_number_processor', lazy='dynamic'),
-        lazy='dynamic', viewonly=True)
+        back_populates='projects', lazy='dynamic')
     plan_associated = db.relationship(
         'Plan', secondary=project_number_plan,
         primaryjoin=(project_number_plan.c.project_id == id),
         secondaryjoin="project_number_plan.c.plan_id == Plan.id",
-        backref=db.backref('project_number_plan', lazy='dynamic'),
-        lazy='dynamic', viewonly=True)
+        back_populates='projects', lazy='dynamic')
 
     @property
     def name(self):
@@ -2470,14 +2468,12 @@ class Plan(db.Model):
         'Processor', secondary=processor_plan,
         primaryjoin=(processor_plan.c.plan_id == id),
         secondaryjoin="processor_plan.c.processor_id == Processor.id",
-        backref=db.backref('processor_plan', lazy='dynamic'),
-        lazy='dynamic')
+        lazy='dynamic', back_populates='plans')
     projects = db.relationship(
         'Project', secondary=project_number_plan,
         primaryjoin=(project_number_plan.c.plan_id == id),
         secondaryjoin="project_number_plan.c.project_id == Project.id",
-        backref=db.backref('project_number_plan', lazy='dynamic'),
-        lazy='dynamic')
+        lazy='dynamic', back_populates='plan_associated')
     phases = db.relationship('PlanPhase', backref='plan', lazy='dynamic')
     rules = db.relationship('PlanRule', backref='plan', lazy='dynamic')
 
@@ -3253,10 +3249,6 @@ class PartnerPlacements(db.Model):
     media_channel = db.Column(db.Text)
     total_budget = db.Column(db.Numeric)
     partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
-
-    @property
-    def partner(self):
-        return db.session.get(Partner, self.partner_id).name
 
     @property
     def plan_phase(self):

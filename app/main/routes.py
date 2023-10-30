@@ -3281,7 +3281,7 @@ def project_edit(object_name):
     Basic information about this project number.
     """
     kwargs = Project().get_current_project(
-        object_name, current_page='basic',
+        object_name, current_page='project_edit',
         edit_progress=100, edit_name='Basic', form_title='Basic',
         form_description=form_description)
     cur_project = kwargs['object']
@@ -3321,7 +3321,7 @@ def project_edit(object_name):
             next_page = 'main.project_edit'
         return redirect(url_for(next_page, object_name=object_name))
     elif request.method == 'GET':
-        form.project_name.data = cur_project.name
+        form.project_name.data = cur_project.project_name
         form.project_number.data = cur_project.project_number
         form.start_date.data = cur_project.flight_start_date
         form.end_date.data = cur_project.flight_end_date
@@ -3335,9 +3335,9 @@ def project_edit(object_name):
         form.cur_product.data = form_product.name
         form.cur_client.data = form_client.name
         form.cur_processors.data = [
-            (x.name, x.name) for x in cur_project.processor_associated]
+            x.name for x in cur_project.processor_associated]
         form.cur_plans.data = [
-            (x.name, x.name) for x in cur_project.plan_associated]
+            x.name for x in cur_project.plan_associated]
     return render_template('create_processor.html', **kwargs)
 
 

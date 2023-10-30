@@ -466,6 +466,18 @@ class LiquidTable(object):
         week_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
         return week_str
 
+    @staticmethod
+    def combine_table_dicts(td_one, td_two):
+        if not td_one['data']:
+            table_dict = td_two
+        elif not td_two['data']:
+            table_dict = td_one
+        else:
+            table_dict = td_one
+            table_dict['data'] = dict(
+                td_one['data'].items() + td_two['data'].items())
+        return table_dict
+
 
 class LiquidTableColumn(object):
     name_str = 'name'

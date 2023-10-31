@@ -293,6 +293,7 @@ def project_numbers():
     current_processors = Processor.query.order_by(Processor.name).all()
     view_selector = Client.get_client_view_selector('Project Numbers')
     kwargs = Project.get_current_project(Project, edit_name='ProjectNumber')
+    kwargs['title'] = 'ProjectNumber'
     return render_template(
         'clients.html',
         clients=current_clients, current_users=current_users,
@@ -924,7 +925,7 @@ def get_table_arguments():
     if 'proc_id' in proc_arg:
         proc_id = proc_arg.pop('proc_id')
         cur_proc = Processor.query.get(proc_id)
-    elif cur_obj in obj_dict:
+    elif cur_obj in obj_dict and request.form['object_name'] != 'undefined':
         k = Processor.name.name
         if cur_obj == Project.__name__.capitalize():
             k = Project.project_number.name
@@ -932,6 +933,7 @@ def get_table_arguments():
         obj_name = request.form['object_name']
         cur_proc = cur_obj.query.filter_by(**{k: obj_name}).first_or_404()
     else:
+        cur_obj = User
         cur_proc = current_user
         cur_proc.name = cur_proc.username
     if table_name == 'downloadTable':

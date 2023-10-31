@@ -4,7 +4,8 @@ import pytest
 import urllib
 from datetime import datetime, timedelta
 from app import db
-from app.models import User, Post, Processor, Client, Product, Campaign
+from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
+    Project, ProjectNumberMax
 from config import basedir
 import pandas as pd
 import processor.reporting.vmcolumns as vmc
@@ -188,6 +189,39 @@ class TestProcessor:
         proc_link = '//*[@id="navLinkProcessor"]'
         sw.click_on_xpath(proc_link, 1)
         assert sw.browser.current_url == '{}processor'.format(base_url)
+
+
+class TestProject:
+
+    @staticmethod
+    def wait_for_jobs_finish():
+        for x in range(20):
+            t = Task.query.filter_by(complete=False).first()
+            if t:
+                t.wait_and_get_job(loops=10)
+            else:
+                break
+        return True
+
+    @pytest.fixture(scope='class', autouse=True)
+    def check_directory(self):
+        if os.path.exists(os.path.basename(__file__)):
+            os.chdir("..")
+
+    def test_project_number_page(self, sw, login, worker):
+        pn_url = '{}project_numbers'.format(base_url)
+        sw.go_to_url(pn_url)
+        assert sw.browser.current_url == pn_url
+        pn_max = ProjectNumberMax(max_number=3600)
+        db.session.add(pn_max)
+        db.session.commit()
+        task_name = Task.get_table_name_to_task_dict()['ProjectNumber']
+        t = Task.query.filter_by(complete=False, name=task_name).first()
+        assert t.name == task_name
+        worker.work(burst=True)
+        self.wait_for_jobs_finish()
+        p = Project.query.all()
+        assert len(p) > 10
 
 
 class TestReportingDBReadWrite:

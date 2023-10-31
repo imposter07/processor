@@ -4794,8 +4794,10 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
         df = df.rename_axis(None, axis=1).rename_axis(
             'index', axis=0).reset_index(drop=True)
         df = df.sort_index(ascending=False)
-        pn_max = ProjectNumberMax.query.get(1)
-        ndf = df[(df.index >= pn_max.max_number) & (~df['Client'].isna())]
+        pn_max = db.session.get(ProjectNumberMax, 1)
+        ndf = df[(~df['Client'].isna())]
+        if pn_max:
+            ndf = ndf[(ndf.index >= pn_max.max_number)]
         pn_col = """# (It's a formula)"""
         for pn in ndf.to_dict(orient='records'):
             c_project = Project.query.filter_by(
@@ -4846,6 +4848,8 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
                 description = ('Automatically generated from '
                                'project number: {}').format(pn[pn_col])
                 name = pn['Project']
+                if not name:
+                    continue
                 for char in ['_', '|', ':', '.', "'", '&', '/']:
                     name = name.replace(char, ' ')
                 new_processor = Processor.query.filter_by(name=name).first()
@@ -4862,8 +4866,6 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
         if not ndf.empty:
             pn_max.max_number = max(ndf.index)
             db.session.commit()
-        df = get_project_number(running_user, running_user,
-                                filter_dict=filter_dict)[0]
         _set_task_progress(100)
         return [df]
     except:
@@ -6499,6 +6501,7 @@ def get_filter_dict_values():
 def get_project_number(current_user_id, running_user, filter_dict=None):
     try:
         _set_task_progress(0)
+        get_project_numbers(0, running_user, filter_dict=filter_dict)
         today = datetime.today()
         sd = today - dt.timedelta(days=30)
         ed = today + dt.timedelta(days=7)
@@ -6519,7 +6522,7 @@ def get_project_number(current_user_id, running_user, filter_dict=None):
         if data:
             col_list = list(data[0].keys())
         col_list += week_str
-        name = 'ProjectNumbers'
+        name = 'ProjectNumber'
         lt = app_utl.LiquidTable(
             col_list=col_list, data=data, title=name, table_name=name,
             download_table=True, specify_form_cols=False, accordion=True,

@@ -152,3 +152,8 @@ tr:hover td {
     margin: 0;
     height: 100%;
 }
+
+div[class*='remove-items-shadow'] div[class*='card'] {
+    box-shadow: none !important;
+    border: none;
+}

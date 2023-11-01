@@ -895,7 +895,7 @@ def translate_table_name_to_job(table_name, proc_arg):
     if table_name in ['download_raw_data', 'download_pacing_data']:
         proc_arg['parameter'] = 'Download'
     if 'use_cache' in proc_arg:
-        job_name = '.get_data_tables_from_db'
+        job_name = '.get_liquid_table_from_db'
     else:
         arg_trans = Task.get_table_name_to_task_dict()
         job_name = arg_trans[table_name]
@@ -910,8 +910,7 @@ def get_table_arguments():
     vk = request.form['vendorkey']
     form_dict = request.form.to_dict(flat=False)
     if form_dict['args'][0] != 'None':
-        proc_arg = {**proc_arg, **json.loads(form_dict['args'][0]),
-                    'spec_args': 'True'}
+        proc_arg = {**proc_arg, **json.loads(form_dict['args'][0])}
         proc_arg = utl.parse_additional_args(proc_arg)
     if cur_obj == Uploader.__name__.capitalize():
         proc_arg['parameter'] = table_name
@@ -1059,12 +1058,12 @@ def get_table_return(task, table_name, proc_arg, job_name,
                 tmp_df = df_to_html(tmp_df, row_names)
                 html_dfs.append(tmp_df)
         data = {'data': {'data': html_dfs, 'plan_cols': plan_cols}}
-    elif 'return_func' in proc_arg:
+    elif utl.LiquidTable.id_col in df and df[utl.LiquidTable.id_col]:
+        data = {'data': df}
+    elif 'return_func' in proc_arg and 'table_name' not in proc_arg:
         df = df.rename(columns=str)
         df = df.reset_index().to_dict(orient='records')
         data = {'data': {'data': df, 'args': proc_arg}}
-    elif utl.LiquidTable.id_col in df and df[utl.LiquidTable.id_col]:
-        data = {'data': df}
     else:
         to_html = True
         cols_to_json = True

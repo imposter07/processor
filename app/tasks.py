@@ -3498,7 +3498,7 @@ def clean_topline_df_from_db(db_item, new_col_name):
 
 
 def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
-                                metrics=None, filter_dict=None, spec_args=False,
+                                metrics=None, filter_dict=None,
                                 return_func=None):
     try:
         _set_task_progress(0)
@@ -3584,8 +3584,7 @@ def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
 
 
 def get_processor_daily_notes(processor_id, current_user_id, dimensions=None,
-                              metrics=None, filter_dict=None, spec_args=False,
-                              return_func=None):
+                              metrics=None, filter_dict=None, return_func=None):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
@@ -3682,7 +3681,7 @@ def get_processor_topline_metrics(processor_id, current_user_id, vk=None):
 # noinspection SqlResolve
 def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                             dimensions=None, metrics=None, filter_dict=None,
-                            use_cache=True, spec_args=False, return_func=None):
+                            use_cache=True, table_name=None, return_func=None):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
@@ -3798,37 +3797,70 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def get_raw_file_delta_table(processor_id, current_user_id, vk=None,
-                             dimensions=None, metrics=None, filter_dict=None,
-                             spec_args=False, return_func=None):
+def get_liquid_table_from_db(processor_id, current_user_id, parameter=None,
+                            dimensions=None, metrics=None, filter_dict=None,
+                            use_cache=True, table_name=None, return_func=None):
     try:
         _set_task_progress(0)
-        odf = get_raw_file_data_table(
+        df = get_data_tables_from_db(processor_id, current_user_id, parameter,
+                                     dimensions, metrics, filter_dict,
+                                     use_cache, table_name, return_func)[0]
+        _set_task_progress(90)
+        lt = app_utl.LiquidTable(df=df, table_name=table_name,
+                                 chart_func=return_func, chart_show=True)
+        _set_task_progress(100)
+        return [lt.table_dict]
+    except:
+        lt = app_utl.LiquidTable(
+            df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
+            table_name=None)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} Dimensions {}'.format(
+                processor_id, current_user_id, dimensions),
+            exc_info=sys.exc_info())
+        _set_task_progress(100)
+        return [lt.table_dict]
+
+
+def get_raw_file_delta_table(processor_id, current_user_id, vk=None,
+                             dimensions=None, metrics=None, filter_dict=None,
+                             return_func=None):
+    try:
+        _set_task_progress(0)
+        odf_data = get_raw_file_data_table(
             processor_id, current_user_id, vk, dimensions, metrics,
-            filter_dict, temp=False)[0]
-        ndf = get_raw_file_data_table(
+            filter_dict, temp=False)[0]['data']
+        odf = pd.DataFrame(data=odf_data)
+        ndf_data = get_raw_file_data_table(
             processor_id, current_user_id, vk,
-            dimensions, metrics, filter_dict, temp=True)[0]
+            dimensions, metrics, filter_dict, temp=True)[0]['data']
+        ndf = pd.DataFrame(data=ndf_data)
         if ([x for x in dimensions
              if x not in ndf.columns or x not in odf.columns]):
             df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
         else:
             df = ndf.set_index(dimensions).subtract(odf.set_index(dimensions),
                                                     fill_value=0).reset_index()
+        lt = app_utl.LiquidTable(df=df, chart_func=return_func, table_name=None,
+                                 chart_show=True)
         _set_task_progress(100)
-        return [df]
+        return [lt.table_dict]
     except:
-        _set_task_progress(100)
+        lt = app_utl.LiquidTable(
+            df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
+            table_name=None)
         app.logger.error(
-            'Unhandled exception - Processor {} User {} Parameter {}'.format(
-                processor_id, current_user_id, vk),
+            'Unhandled exception - Processor {} User {} Parameter {}'
+            'Filter Dict {}'.format(
+                processor_id, current_user_id, vk, filter_dict),
             exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+        _set_task_progress(100)
+        return [lt.table_dict]
 
 
 def get_raw_file_data_table(processor_id, current_user_id, vk=None,
                             dimensions=None, metrics=None, filter_dict=None,
-                            temp=None, spec_args=False, return_func=None):
+                            temp=None, return_func=None):
     try:
         _set_task_progress(0)
         cur_processor = Processor.query.get(processor_id)
@@ -3861,8 +3893,11 @@ def get_raw_file_data_table(processor_id, current_user_id, vk=None,
         try:
             df = matrix.vendor_get(vk)
         except:
+            lt = app_utl.LiquidTable(
+                df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
+                table_name=None)
             _set_task_progress(100)
-            return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+            return [lt.table_dict]
         _set_task_progress(90)
         df = utl.data_to_type(df, float_col=metrics)
         metrics = [x for x in metrics if x in df.columns]
@@ -3883,16 +3918,21 @@ def get_raw_file_data_table(processor_id, current_user_id, vk=None,
                 metric_names=metric_names, df=df, db_translate=False)
             df = df.replace([np.inf, -np.inf], np.nan)
             df = df.fillna(0)
+        lt = app_utl.LiquidTable(df=df, chart_func=return_func, table_name=None,
+                                 chart_show=True)
         _set_task_progress(100)
-        return [df]
+        return [lt.table_dict]
     except:
-        _set_task_progress(100)
+        lt = app_utl.LiquidTable(
+            df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
+            table_name=None)
         app.logger.error(
             'Unhandled exception - Processor {} User {} Parameter {}'
             'Filter Dict {}'.format(
                 processor_id, current_user_id, vk, filter_dict),
             exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+        _set_task_progress(100)
+        return [lt.table_dict]
 
 
 def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
@@ -3992,8 +4032,7 @@ def get_daily_pacing(processor_id, current_user_id, parameter=None,
 
 
 def get_pacing_alert_count(processor_id, current_user_id, dimensions=None,
-                           metrics=None, filter_dict=None, spec_args=False,
-                           return_func=None):
+                           metrics=None, filter_dict=None, return_func=None):
     try:
         _set_task_progress(0)
         count = 0
@@ -4036,8 +4075,7 @@ def get_pacing_alert_count(processor_id, current_user_id, dimensions=None,
 
 
 def get_pacing_alerts(processor_id, current_user_id, dimensions=None,
-                      metrics=None, filter_dict=None, spec_args=False,
-                      return_func=None):
+                      metrics=None, filter_dict=None, return_func=None):
     try:
         _set_task_progress(0)
         rdf = pd.DataFrame(columns=['msg'])
@@ -4478,9 +4516,9 @@ def update_analysis_in_db(processor_id, current_user_id):
                 x for x in analysis_dict if
                 x[az.Analyze.analysis_dict_key_col] == analysis.key and
                 x[az.Analyze.analysis_dict_filter_col
-                  ] == analysis.filter_col and
+                ] == analysis.filter_col and
                 x[az.Analyze.analysis_dict_filter_val
-                  ] == analysis.filter_val and
+                ] == analysis.filter_val and
                 x[az.Analyze.analysis_dict_split_col] == analysis.split_col and
                 x[az.Analyze.analysis_dict_param_col] == analysis.parameter and
                 x[az.Analyze.analysis_dict_param_2_col] == analysis.parameter_2]
@@ -5840,7 +5878,7 @@ def get_processor_data_source_table(processor_id, current_user_id):
             tdf = pd.DataFrame(columns=[vmc.vendorkey])
         df = pd.merge(df, tdf, how='outer', left_on=vmc.vendorkey,
                       right_on=vmc.vendorkey)
-        lt = app_utl.LiquidTable(df=df, table_name='rowOne')
+        lt = app_utl.LiquidTable(df=df, table_name='datasourceTable')
         lt = lt.table_dict
         _set_task_progress(100)
         return [lt]

@@ -312,13 +312,13 @@ class LiquidTable(object):
                  accordion=False, specify_form_cols=True, col_dict=True,
                  select_val_dict=None, select_box=None, form_cols=None,
                  metric_cols=None, def_metric_cols=None, prog_cols=None,
-                 header=None, highlight_row=None,
-                 new_modal_button=False, col_filter=True, search_bar=True,
-                 chart_btn=True, df=pd.DataFrame(), row_on_click='',
-                 button_col=None, table_buttons=None, highlight_type='blank',
-                 slider_edit_col='', slider_abs_col='', prog_colors='success',
-                 download_table=False, filter_dict=None, hidden_cols=None,
-                 table_name='liquidTable'):
+                 header=None, highlight_row=None, new_modal_button=False,
+                 col_filter=True, search_bar=True, chart_btn=True,
+                 chart_func=None, chart_show=False, df=pd.DataFrame(),
+                 row_on_click='', button_col=None, table_buttons=None,
+                 highlight_type='blank', slider_edit_col='', slider_abs_col='',
+                 prog_colors='success', download_table=False, filter_dict=None,
+                 hidden_cols=None, table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -343,6 +343,8 @@ class LiquidTable(object):
         self.col_filter = col_filter
         self.search_bar = search_bar
         self.chart_btn = chart_btn
+        self.chart_func = chart_func
+        self.chart_show = chart_show
         self.row_on_click = row_on_click
         self.button_col = button_col
         self.table_buttons = table_buttons
@@ -374,8 +376,8 @@ class LiquidTable(object):
             self.description, self.columns_toggle, self.accordion,
             self.specify_form_cols, self.col_dict, self.table_name,
             self.new_modal_button, self.col_filter, self.search_bar,
-            self.chart_btn, self.row_on_click, self.table_buttons,
-            self.custom_cols, self.filter_dict)
+            self.chart_btn, self.chart_func, self.chart_show, self.row_on_click,
+            self.table_buttons, self.custom_cols, self.filter_dict)
 
     def create_buttons(self):
         if not self.table_buttons:
@@ -443,20 +445,22 @@ class LiquidTable(object):
     def make_table_dict(self, cols, data, top_rows, totals, title, description,
                         columns_toggle, accordion, specify_form_cols, col_dict,
                         table_name, new_modal_button, col_filter, search_bar,
-                        chart_btn, row_on_click, table_buttons, custom_cols,
-                        filter_dict):
-        table_dict = {
-            'data': data, 'rows_name': self.rows_name, 'cols': cols,
-            'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
-            'totals': totals, 'title': title, 'description': description,
-            'columns_toggle': columns_toggle, 'accordion': accordion,
-            'specify_form_cols': specify_form_cols,
-            'col_dict': col_dict, 'name': table_name,
-            self.id_col: self.liquid_table,
-            'new_modal_button': new_modal_button, 'col_filter': col_filter,
-            'search_bar': search_bar, 'chart_btn': chart_btn,
-            'row_on_click': row_on_click, 'table_buttons': table_buttons,
-            'custom_cols': custom_cols, 'filter_dict': filter_dict}
+                        chart_btn, chart_func, chart_show, row_on_click,
+                        table_buttons, custom_cols, filter_dict):
+        table_dict = {'data': data, 'rows_name': self.rows_name, 'cols': cols,
+                      'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
+                      'totals': totals, 'title': title,
+                      'description': description,
+                      'columns_toggle': columns_toggle, 'accordion': accordion,
+                      'specify_form_cols': specify_form_cols,
+                      'col_dict': col_dict, 'name': table_name,
+                      self.id_col: self.liquid_table,
+                      'new_modal_button': new_modal_button,
+                      'col_filter': col_filter, 'search_bar': search_bar,
+                      'chart_btn': chart_btn, 'chart_func': chart_func,
+                      'chart_show': chart_show, 'row_on_click': row_on_click,
+                      'table_buttons': table_buttons,
+                      'custom_cols': custom_cols, 'filter_dict': filter_dict}
         return table_dict
 
     @staticmethod

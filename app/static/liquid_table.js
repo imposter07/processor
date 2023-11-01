@@ -193,11 +193,11 @@ function createTableElements(tableName, rowsName,
                    onkeyup="searchTable('#${tableName}Table')">
         </div>` : '';
     let showChartBtnHtml = (chartBtn) ? `
-        <button id="showChartBtn${tableName}"
-            class="btn btn-outline-success text-left" type="button" href=""
-            onclick="showChart('${tableName}');">
-            <i class="fas fa-chart-bar" role="button"></i>
-        </button>
+            <button id="showChartBtn${tableName}"
+                class="btn btn-outline-success text-left d-block"" type="button" 
+                href="" onclick="showChart('${tableName}');">
+                <i class="fas fa-chart-bar" role="button"></i>
+            </button>
     ` : '';
     let customButtons = createButtonsFromArray(tableButtons);
     let elem = document.getElementById(tableName);
@@ -1498,11 +1498,11 @@ function addProgressBars(progCol, color, loopIndex) {
     cell.innerHTML += progBar;
 }
 
-function showChart(tableName) {
+function showChart(tableName, chartShow) {
     let elem = document.getElementById(`${tableName}ChartCol`);
     let tableElem = document.getElementById(`${tableName}TableBaseCol`);
     let showChartBtn = document.getElementById(`showChartBtn${tableName}`);
-    if (elem.style.display === 'none') {
+    if (elem.style.display === 'none' || chartShow) {
         elem.style.display = '';
         tableElem.style.display = 'none';
         showChartBtn.classList.remove('btn-outline-success');
@@ -1516,7 +1516,7 @@ function showChart(tableName) {
     }
 }
 
-function createLiquidTableChart(tableName, tableRows) {
+function createLiquidTableChart(tableName, tableRows, chartFunc) {
     let chartElemId = `${tableName}ChartPlaceholder`;
     let chartElem = document.getElementById(chartElemId);
     let headElems = getTableHeadElems(tableName);
@@ -1526,11 +1526,21 @@ function createLiquidTableChart(tableName, tableRows) {
         let firstCellId = elem.id.replace('col', 'row') + '0';
         let cell = document.getElementById(firstCellId);
         let value = cell.textContent || cell.innerText;
+        value = value.replace(/[$%,]/g, '');
         let cellName = elem.id.replace('col', '');
         (isNaN(value)) ? xCols.push(cellName) : yCols.push(cellName);
     });
     if (yCols.length) {
-        generateBarChart(`#${chartElem.id}`, tableRows, xCols[0], yCols);
+        showChart(tableName, true);
+        if (chartFunc) {
+            let generateChart = window[chartFunc];
+            document.getElementById(chartElemId).innerHTML = '';
+            generateChart(`#${chartElem.id}`, tableRows, xCols[0], yCols);
+            addSelectOptions(tableRows, xCols[0], false, "", false)
+        }
+        else {
+            generateBarChart(`#${chartElem.id}`, tableRows, xCols[0], yCols);
+        }
     }
 }
 
@@ -1632,6 +1642,8 @@ function createLiquidTable(data, kwargs) {
     let colFilter = existsInJson(tableData, 'col_filter');
     let searchBar = existsInJson(tableData, 'search_bar');
     let chartBtn = existsInJson(tableData, 'chart_btn');
+    let chartFunc = existsInJson(tableData, 'chart_func');
+    let chartShow = existsInJson(tableData, 'chart_show');
     let tableButtons = existsInJson(tableData, 'table_buttons');
     let filterDict = existsInJson(tableData, 'filter_dict')
     if (!(colDict)) {
@@ -1655,8 +1667,8 @@ function createLiquidTable(data, kwargs) {
         createTableFilter(tableName + 'Table');
     }
     if (chartBtn) {
-        createLiquidTableChart(tableName, tableRows);
-        showChart(tableName);
+        createLiquidTableChart(tableName, tableRows, chartFunc);
+        showChart(tableName, chartShow);
     }
     if (filterDict) {
         buildFilterDict(tableName, filterDict);

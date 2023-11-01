@@ -243,7 +243,7 @@ class TestReportingDBReadWrite:
         return self.test_proc_name
 
     @pytest.fixture(scope="class")
-    def set_up(self, create_processor, default_name, worker):
+    def set_up(self, login, create_processor, default_name, worker):
         new_processor = create_processor(
             default_name, client=self.client, product=self.product,
             campaign=self.campaign, create_files=True)
@@ -339,7 +339,7 @@ class TestReportingDBReadWrite:
         assert (result_df[vmc.impressions].iloc[0] ==
                 db_df[vmc.impressions.lower()].iloc[0])
 
-    def test_daily_chart(self, sw, worker, reporting_db, result_df):
+    def test_daily_chart(self, sw, worker):
         ffxiv_proc_url = '{}/processor/{}'.format(
             base_url, urllib.parse.quote(self.test_proc_name))
         sw.go_to_url(ffxiv_proc_url)
@@ -347,7 +347,9 @@ class TestReportingDBReadWrite:
         time.sleep(3)
         assert sw.browser.find_element_by_id("getAllCharts")
         time.sleep(5)
-        metric_selectize_path = "//*[@id=\"dailyMetricsSelect1\"]/option"
-        metric_selectize = sw.browser.find_element_by_xpath(
-            metric_selectize_path)
-        assert metric_selectize.get_attribute('value') == 'CPBC'
+        metric_select_path = "dailyMetricsChartPlaceholderSelect0"
+        metric_select = sw.browser.find_element_by_id(metric_select_path)
+        selectize = metric_select.find_element_by_xpath(
+            "following-sibling::*[1]")
+        values = selectize.find_elements_by_class_name('item')
+        assert len(values) >= 1

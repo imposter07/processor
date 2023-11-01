@@ -139,7 +139,8 @@
             'CTR': '%',
             'VTR': '%',
             'VCR': '%',
-            'eventdate': null
+            'eventdate': null,
+            'Date': null
         };
         if (col.startsWith(costPer)) {
             return units[costPer] + precision
@@ -175,7 +176,7 @@
     function generateAxis(data, svg, xAxisType, yAxisType, width, height,
                           xCol, yCol, timeX = null, y1AxisType=null, y1Col=null,
                           domainX = null, domainY = null, centerAxis = false) {
-        let xUnit = getUnits(xCol[0]);
+        let xUnit = getUnits(xCol);
         let yUnit = getUnits(yCol);
 
         let xDomain = function () {
@@ -575,7 +576,7 @@
     }
 
     function generateAreaChart(elem, data, xCol, yCol, filterCols) {
-        elem = `#${elem}`;
+        elem = (elem[0] === '#') ? elem : `#${elem}`;
         let am = autoMargin(elem, 250, 60, 30);
         let svg = am.svg
         let parseDate = d3.timeParse("%Y-%m-%d");
@@ -650,7 +651,9 @@
 
 
     function generateDualLineChart(elem, data, xCol, yCol, filterCols) {
-        elem = `#${elem}`;
+        elem = (elem[0] === '#') ? elem : `#${elem}`;
+        let elemId = elem.replace('#', '');
+        document.getElementById(elemId).innerHTML = '';
         let am = autoMargin(elem, 400, 60, 30);
         let svg = am.svg;
         let parseDate = d3.timeParse("%Y-%m-%d");
@@ -766,7 +769,7 @@
     }
 
     function generateLollipopChart(elem, data, xCol, yCol) {
-        elem = `#${elem}`;
+        elem = (elem[0] === '#') ? elem : `#${elem}`;
         data = sortData(data, yCol[0])
         let dataLength = (data.length < 20) ? 1 : data.length / 20
         let am = autoMargin(elem, 250, 60, 30, dataLength);
@@ -1166,7 +1169,7 @@
     }
 
     function generateProgressBars(elem, data, xCol, yCol) {
-        elem = `#${elem}`;
+        elem = (elem[0] === '#') ? elem : `#${elem}`;
         data.sort((a, b) => b[yCol[0]] - a[yCol[0]])
         let dataLength = (data.length < 5) ? 1 : data.length / 5
         let am = autoMargin(elem, 250, 5, 5, .9, dataLength)
@@ -1307,7 +1310,7 @@
         
         let pos0 = '0';
         let pos1 = '1';
-        let selectorElem = '#' + elem.replace('Notes', '') + 'Select';
+        let selectorElem = `#${elem.replace('Notes', '')}ChartPlaceholderSelect`;
         addOnClickEvent(selectorElem + pos0, function (e) {
             let selectedOption = $(e.currentTarget).val();
             update(selectedOption, pos0)
@@ -1317,20 +1320,26 @@
             update(selectedOption, pos1)
         }, 'change', true, false);
 
-        update(Object.keys(data[0])[0], pos0);
-        update(Object.keys(data[0])[1], pos1);
+        let keys = Object.keys(data[0]);
+        update(keys[keys.length - 1], pos0);
+        update(keys[keys.length - 2], pos1);
     }
 
-    function getMetricsComplete(data, xCol, yCol, createVisualFunction,
-                                filterDict, addSelect, elem) {
-        if (Array.isArray(data) && data.length) {
-            yCol = Object.keys(data[0]).filter(function (e) {
+    function getMetricsComplete(data, addSelect, elem) {
+        let functionName = data['data']['args']['return_func'];
+        let chartData = data['data']['data'];
+        let xCol = data['data']['args']['dimensions'];
+        let yCol = data['data']['args']['metrics'];
+        let filterDict = data['data']['args']['filter_dict'];
+        if (Array.isArray(chartData) && chartData.length) {
+            yCol = Object.keys(chartData[0]).filter(function (e) {
                 return e !== 'index' && e !== xCol[0]
             });
             document.getElementById(elem).innerHTML = "";
-            createVisualFunction(elem, data, xCol, yCol, filterDict);
+            let createVisualFunc = getChartFunction(functionName);
+            createVisualFunc(elem, chartData, xCol, yCol, filterDict);
             if (addSelect) {
-                addSelectOptions(data, xCol, false, "", false)
+                addSelectOptions(chartData, xCol, false, "", false)
             }
         }
     }
@@ -1375,13 +1384,17 @@
     }
 
     function getDataTableArgsDict(return_func='', dimensions=[], metrics = [],
-                                  filter_dict = [], use_cache, proc_id) {
+                                  filter_dict = [], use_cache, proc_id,
+                                  table_name) {
         const dataTableArgs = {};
         if (typeof use_cache !== 'undefined') {
             dataTableArgs['use_cache'] = true;
         }
         if (typeof proc_id !== 'undefined') {
             dataTableArgs['proc_id'] = proc_id;
+        }
+        if (typeof table_name !== 'undefined') {
+            dataTableArgs['table_name'] = table_name;
         }
         dataTableArgs['return_func'] = return_func;
         dataTableArgs['dimensions'] = dimensions;
@@ -1651,6 +1664,25 @@
         }
     }
 
+    function getChartFunction(chartFuncString){
+        let chartTypes = {
+            'generateHistogram': generateHistogram,
+            'generateLineChart': generateLineChart,
+            'generateAreaChart': generateAreaChart,
+            'generateDualLineChart': generateDualLineChart,
+            'generateLollipopChart': generateLollipopChart,
+            'generateMiniChart': generateMiniChart,
+            'generateBubbleChart': generateBubbleChart,
+            'generateBarChart': generateBarChart,
+            'generateWorldMap': generateWorldMap,
+            'generateCircularBarplot': generateCircularBarplot,
+            'generateProgressBars': generateProgressBars,
+            'generateTotalCards': generateTotalCards,
+            'generateKpiNotes': generateKpiNotes,
+        };
+        return chartTypes[chartFuncString]
+    }
+
     function radialProgress(selector) {
         const parent = d3.select(selector)
         const size = parent.node().getBoundingClientRect()
@@ -1747,6 +1779,7 @@
                     <option>Select Metric</option>
                 </select>`
             let baseElem = document.getElementById(baseElemId);
+            if(!(baseElem)) {return}
             baseElem.insertAdjacentHTML('beforeend', elemToAdd);
             addSelectize();
         }

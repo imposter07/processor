@@ -61,7 +61,7 @@ function downloadTableResponse(tableName, pond, vendorKey, data) {
     })
 }
 
-function parseTableResponse(tableName, pond, vendorKey, data) {
+function parseTableResponse(tableName, pond, vendorKey, data, callbackFunc) {
     data.json().then((data) => {
         if (tableName === 'raw_file_comparison') {
             parseRawComp(data);
@@ -84,7 +84,7 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
             createChangeDictOrder(data['data']['cols'], data['data']['data'],
                 newTableName, data['dict_cols'], data['relational_cols']);
         } else if (existsInJson(data['data'], 'liquid_table')) {
-            let newTableName = data['data']['name'];
+            let newTableName = data['data']['name'] ? data['data']['name'] : tableName;
             const modalName = 'modal-body-table';
             let newTable = document.getElementById(newTableName);
             newTable.innerHTML = "";
@@ -96,15 +96,8 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
             generatePacingTable(tableName, data['data']['data'], data['plan_cols'])
         } else if (tableName === 'Daily Pacing') {
             generateDailyPacing(tableName, data['data']['data'], data['data']['plan_cols'])
-        } else if ('args' in data['data'] && 'return_func' in
-            data['data']['args']) {
-            let functionName = data['data']['args']['return_func'];
-            let chartData = data['data']['data'];
-            let xCol = data['data']['args']['dimensions'];
-            let yCol = data['data']['args']['metrics'];
-            let filterDict = data['data']['args']['filter_dict'];
-            getMetricsComplete(chartData, xCol, yCol, window[functionName],
-                filterDict, true, tableName)
+        } else if (callbackFunc) {
+            callbackFunc(data, true, tableName)
         }
         else {
             showModalTable('modalTableButton');
@@ -116,7 +109,7 @@ function parseTableResponse(tableName, pond, vendorKey, data) {
     })
 }
 
-function getTableComplete(tableName, pond, vendorKey, data){
+function getTableComplete(tableName, pond, vendorKey, data, callbackFunc){
     let dlTables = [
         'OutputDataRawDataOutput', 'download_raw_data', 'download_pacing_data',
         'OutputDataSOW', 'OutputDataToplineDownload', 'screenshotImage', 'billingInvoice',
@@ -128,13 +121,14 @@ function getTableComplete(tableName, pond, vendorKey, data){
         downloadTableResponse(tableName, pond, vendorKey, data);
     }
     else {
-        parseTableResponse(tableName, pond, vendorKey, data);
+        parseTableResponse(tableName, pond, vendorKey, data, callbackFunc);
     }
 }
 
 function getCompletedTask(tableName, procId = null, task = null,
                           pond = 'None', vendorKey = 'None',
-                          fixId = 'None', args='None') {
+                          fixId = 'None', args='None',
+                          callbackFunc=null) {
     let jinjaValues = document.getElementById('jinjaValues').dataset;
     let uploaderType = (jinjaValues['title'] === "Uploader") ? jinjaValues['uploader_type'] : "None";
     let data = {
@@ -155,7 +149,7 @@ function getCompletedTask(tableName, procId = null, task = null,
         method: 'POST',
         body: formData
     }).then((data) => {
-        getTableComplete(tableName, pond, vendorKey, data);
+        getTableComplete(tableName, pond, vendorKey, data, callbackFunc);
     });
 }
 
@@ -171,11 +165,12 @@ function getTaskProgressResponse(data, kwargs) {
     let fixId = kwargs['fixId'];
     let args = kwargs['args'];
     let updateFunction = kwargs['updateFunction'];
+    let callbackFunc = kwargs['callbackFunc'];
     if ('complete' in data && data['complete']) {
         turnOffProgress(oldHtml, clickElem);
         if (!forceReturn) {
             getCompletedTask(tableName, procId, task, pond,
-                vendorKey, fixId, args);
+                vendorKey, fixId, args, callbackFunc);
         }
     } else {
         let downloadID = 'downloadProgress' + clickElem;
@@ -200,14 +195,15 @@ function getTaskProgressResponse(data, kwargs) {
         }
         setTimeout(getTaskProgress, 2500, tableName, updateFunction,
             procId, task,forceReturn, pond, vendorKey, oldHtml, clickElem,
-            fixId, args)
+            fixId, args, callbackFunc)
     }
 }
 
 function getTaskProgress(tableName, updateFunction = false,
                          procId = 'None', task = null, forceReturn = false,
                          pond = 'None', vendorKey = 'None', oldHtml = null,
-                         clickElem = null, fixId = null, args='None') {
+                         clickElem = null, fixId = null, args='None',
+                         callbackFunc=null) {
     let jinjaValues = document.getElementById('jinjaValues').dataset;
     let data = {
         object_type: jinjaValues['title'],
@@ -235,7 +231,8 @@ function getTaskProgress(tableName, updateFunction = false,
         'clickElem': clickElem,
         'fixId': fixId,
         'args': args,
-        'updateFunction': updateFunction
+        'updateFunction': updateFunction,
+        'callbackFunc': callbackFunc
     };
     makeRequest('/get_task_progress', 'POST', data,
         getTaskProgressResponse, 'json', kwargs, getTableError);
@@ -250,13 +247,15 @@ function getTableResponse(data, kwargs) {
     let clickElem = kwargs['clickElem'];
     let fixId = kwargs['fixId'];
     let args = kwargs['args'];
+    let callbackFunc = kwargs['callbackFunc'];
     let procId = (args !== 'None' && 'proc_id' in args) ? args['proc_id'] : 'None';
     if (forceReturn) {
-        getTableComplete(tableName, pond, vendorKey, data);
+        getTableComplete(tableName, pond, vendorKey, data, callbackFunc);
     } else {
         if (data['task']) {
             getTaskProgress(tableName, false, procId, data['task'],
-                forceReturn, pond, vendorKey, oldHtml, clickElem, fixId, args);
+                forceReturn, pond, vendorKey, oldHtml, clickElem, fixId, args,
+                callbackFunc);
         }
     }
     if (forceReturn) {
@@ -285,7 +284,7 @@ function setDownloadBarAndLoadingBtn(elemId) {
 
 async function getTable(tableName, clickElem, oldHtml = 'None', vendorKey= 'None',
                   pond='None', progress= true, fixId= 'None',
-                  forceReturn= false, args='None') {
+                  forceReturn= false, args='None', callbackFunc) {
     setDownloadBarAndLoadingBtn(clickElem);
     let jinjaValues = document.getElementById('jinjaValues').dataset;
     let uploaderType = (jinjaValues['title'] === "Uploader") ? jinjaValues['uploader_type'] : "None";
@@ -303,7 +302,8 @@ async function getTable(tableName, clickElem, oldHtml = 'None', vendorKey= 'None
     let procId = (args !== 'None' && 'proc_id' in args) ? args['proc_id'] : 'None';
     if (progress && forceReturn) {
         getTaskProgress(tableName, false, procId,
-            null, forceReturn, pond, vendorKey, oldHtml, clickElem, fixId);
+            null, forceReturn, pond, vendorKey, oldHtml, clickElem, fixId,
+            callbackFunc);
     }
     let kwargs = {
         'forceReturn': forceReturn,
@@ -314,7 +314,8 @@ async function getTable(tableName, clickElem, oldHtml = 'None', vendorKey= 'None
         'clickElem': clickElem,
         'fixId': fixId,
         'args': args,
-    }
+        'callbackFunc': callbackFunc,
+    };
     makeRequest('/get_table', 'POST', data, getTableResponse, 'json',
         kwargs, getTableError);
 }

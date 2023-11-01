@@ -195,14 +195,14 @@
         <div class="col">
             <div class="card-header">
                 <h7 class="mb-3">Products</h7>
-                <select id="productMetricsSelect"
+                <select id="productMetricsChartPlaceholderSelect"
                         class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow outer">
+            <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                 <div id="productMetricsProgress"></div>
-                <div id="productMetrics" style="height:250px;"></div>
+                <div id="productMetrics"></div>
             </div>
         </div>
     </div>
@@ -210,13 +210,13 @@
         <div class="col">
             <div class="card-header">
                 <h7 class="mb-3">Daily</h7>
-                <select id="dailyMetricsSelect" class="form-control form-control-sm">
+                <select id="dailyMetricsChartPlaceholderSelect" class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow outer">
+            <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                 <div id="dailyMetricsProgress"></div>
-                <div id="dailyMetrics" style="height:250px;"></div>
+                <div id="dailyMetrics"></div>
             </div>
         </div>
     </div>
@@ -225,12 +225,12 @@
         <div class="col-md-6 h-50">
             <div class="card-header">
                 <h7 class="mb-3">Partner</h7>
-                <select id="partnerMetricsSelect"
+                <select id="partnerMetricsChartPlaceholderSelect"
                         class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow outer">
+            <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                 <div id="partnerMetricsProgress"></div>
                 <div id="partnerMetrics"></div>
             </div>
@@ -238,12 +238,12 @@
         <div class="col-md-6 h-50">
             <div class="card-header">
                 <h7 class="mb-3">Country</h7>
-                <select id="countryMetricsSelect"
+                <select id="countryMetricsChartPlaceholderSelect"
                         class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow outer">
+            <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                 <div id="countryMetricsProgress"></div>
                 <div id="countryMetrics"></div>
             </div>
@@ -253,12 +253,12 @@
         <div class="col-md-4 h-50">
             <div class="card-header">
                 <h7 class="mb-3">Campaign</h7>
-                <select id="campaignMetricsSelect"
+                <select id="campaignMetricsChartPlaceholderSelect"
                         class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow outer">
+            <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                 <div id="campaignMetricsProgress"></div>
                 <div id="campaignMetrics"></div>
             </div>
@@ -266,12 +266,12 @@
         <div class="col-md-4 h-50">
             <div class="card-header">
                 <h7 class="mb-3">Device</h7>
-                <select id="environmentMetricsSelect"
+                <select id="environmentMetricsChartPlaceholderSelect"
                         class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow outer">
+            <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                 <div id="environmentMetricsProgress"></div>
                 <div id="environmentMetrics"></div>
             </div>
@@ -279,12 +279,12 @@
         <div class="col-md-4 h-50">
             <div class="card-header">
                 <h7 class="mb-3">KPI</h7>
-                <select id="kpiMetricsSelect"
+                <select id="kpiMetricsChartPlaceholderSelect"
                         class="form-control form-control-sm">
                     <option>Select Metric</option>
                 </select>
             </div>
-            <div class="card container-fluid shadow outer">
+            <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                 <div id="kpiMetricsProgress"></div>
                 <div id="kpiMetrics"></div>
             </div>
@@ -304,7 +304,7 @@
             let total_metric_args = getDataTableArgsDict(
                 'generateTotalCards', ['mpProduct Name'], metrics, filterDict);
             getTable('totalMetrics', 'totalMetricsProgress', 'None', 'None',
-                'None', true, 'None', false, total_metric_args);
+                'None', true, 'None', false, total_metric_args, getMetricsComplete);
             let daily_metric_args = getDataTableArgsDict(
                 'generateAreaChart', ['eventdate'], metrics, filterDict, true);
             getTable('dailyMetrics', 'dailyMetricsProgress', 'None', 'None',

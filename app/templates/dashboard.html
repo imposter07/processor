@@ -59,9 +59,7 @@
             display: block;
             padding-top: 100%; /* initial ratio of 1:1*/
         }
-
-        div[class*='remove-items-shadow'] div[class*='card'] {
-            box-shadow: none !important;
+        div[class*='zoom-out'] div[class*='card'] {
             zoom: 0.9;
         }
     </style>
@@ -193,8 +191,8 @@
             <div class="row h-80">
                 <div class="col-md-4 h-80">
                     <div id="toplineMetrics"
-                         class="card shadow-sm outer remove-items-shadow"
-                         style="height:692px"></div>
+                         class="card shadow-sm outer remove-items-shadow zoom-out"
+                         style="height:755px"></div>
                     <div class="d-none">
                         <div id="toplineMetricsProgress"></div>
                     </div>
@@ -204,27 +202,25 @@
                         <h7 class="pr-2 mr-5">Daily</h7>
                         <div class="col-sm d-flex align-center">
                             <div class="col-xs-4  color-square p-2 border"
-                                 id="dailyMetricsSelect0Key"></div>
+                                 id="dailyMetricsChartPlaceholderSelect0Key"></div>
                         </div>
-                        <select id="dailyMetricsSelect0"
+                        <select id="dailyMetricsChartPlaceholderSelect0"
                                 class="form-control form-control-sm p-1 mr-4">
                         </select>
                         <div class="col-sm d-flex align-center">
                             <div class="col-xs-4  color-square pl-4 pt-1"
-                                 id="dailyMetricsSelect1Key"></div>
+                                 id="dailyMetricsChartPlaceholderSelect1Key"></div>
                         </div>
-                        <select id="dailyMetricsSelect1"
+                        <select id="dailyMetricsChartPlaceholderSelect1"
                                 class="form-control form-control-sm p-1">
                         </select>
                     </div>
-                    <div class="card container-fluid shadow-sm outer p-0">
-                        <div style="height: 420px; width: 97%">
-                            <div id="dailyMetricsProgress"></div>
-                            <div id="dailyMetrics"></div>
-                        </div>
-                        <hr class="m-0">
+                    <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow"
+                         style="overflow-x: hidden">
+                        <div id="dailyMetricsProgress"></div>
+                        <div id="dailyMetrics" style="height: 480px; width: 97%"></div>
                         <div class="card-body container-fluid p-0">
-                            <div style="height: 200px" class="p-3">
+                            <div style="height: 205px" class="p-3">
                                 <div id="dailyMetricsNotesProgress"></div>
                                 <div id="dailyMetricsNotes">
                                 </div>
@@ -235,23 +231,24 @@
             </div>
             <br>
             <div class="row">
-                <div class="col-md-4 h-50">
-                    <div class="card-header d-flex flex-row rounded">
+                <div class="col-md-4 h-75">
+                    <div class="card-header d-flex flex-row rounded"
+                         style="height:61px">
                         <h7 class="pr-4">Delivery</h7>
                     </div>
-                    <div class="card container-fluid shadow-sm outer p-0 m-0">
+                    <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                         <div id="deliveryMetricsProgress"></div>
-                        <div id="deliveryMetrics" style="height:250px;"></div>
+                        <div id="deliveryMetrics" style="height:330px;"></div>
                     </div>
                 </div>
                 <div class="col-md-8 h-50">
                     <div class="card-header d-flex flex-row rounded">
                         <h7 class="pr-4">Partner</h7>
-                        <select id="partnerMetricsSelect"
+                        <select id="partnerMetricsChartPlaceholderSelect"
                                 class="form-control form-control-sm">
                         </select>
                     </div>
-                    <div class="card container-fluid shadow-sm outer">
+                    <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                         <div id="partnerMetricsProgress"></div>
                         <div id="partnerMetrics"></div>
                     </div>
@@ -262,11 +259,11 @@
                 <div class="col-md-7 h-50">
                     <div class="card-header d-flex flex-row rounded">
                         <h7 class="pr-4">Country</h7>
-                        <select id="countryMetricsSelect"
+                        <select id="countryMetricsChartPlaceholderSelect"
                                 class="form-control form-control-sm">
                         </select>
                     </div>
-                    <div class="card container-fluid shadow-sm outer">
+                    <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                         <div id="countryMetricsProgress"></div>
                         <div id="countryMetrics"></div>
                     </div>
@@ -274,11 +271,11 @@
                 <div class="col-md-5 h-50">
                     <div class="card-header d-flex flex-row rounded">
                         <h7 class="pr-4">Campaign</h7>
-                        <select id="campaignMetricsSelect"
+                        <select id="campaignMetricsChartPlaceholderSelect"
                                 class="form-control form-control-sm">
                         </select>
                     </div>
-                    <div class="card container-fluid shadow-sm outer">
+                    <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                         <div id="campaignMetricsProgress"></div>
                         <div id="campaignMetrics"></div>
                     </div>
@@ -289,11 +286,11 @@
                 <div class="col-md-5 h-50">
                     <div class="card-header d-flex flex-row rounded">
                         <h7 class="pr-4">Device</h7>
-                        <select id="environmentMetricsSelect"
+                        <select id="environmentMetricsChartPlaceholderSelect"
                                 class="form-control form-control-sm">
                         </select>
                     </div>
-                    <div class="card container-fluid shadow-sm outer">
+                    <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                         <div id="environmentMetricsProgress"></div>
                         <div id="environmentMetrics"></div>
                     </div>
@@ -301,11 +298,11 @@
                 <div class="col-md-7 h-50">
                     <div class="card-header d-flex flex-row rounded">
                         <h7 class="pr-4">KPI</h7>
-                        <select id="kpiMetricsSelect"
+                        <select id="kpiMetricsChartPlaceholderSelect"
                                 class="form-control form-control-sm">
                         </select>
                     </div>
-                    <div class="card container-fluid shadow-sm outer">
+                    <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
                         <div id="kpiMetricsProgress"></div>
                         <div id="kpiMetrics"></div>
                     </div>
@@ -328,7 +325,7 @@
             let total_metric_args = getDataTableArgsDict(
                 'generateTotalCards', ['mpProduct Name'], metrics, filterDict);
             getTable('totalMetrics', 'totalMetricsProgress', 'None', 'None',
-                'None', true, 'None', false, total_metric_args);
+                'None', true, 'None', false, total_metric_args, getMetricsComplete);
             let daily_metric_args = getDataTableArgsDict(
                 'generateDualLineChart', ['eventdate'], metrics, filterDict, true);
             getTable('dailyMetrics', 'dailyMetricsProgress', 'None', 'None',
@@ -336,7 +333,7 @@
             let kpi_notes_args = getDataTableArgsDict(
                 'generateKpiNotes', ['mpProduct Name'], metrics, filterDict);
             getTable('dailyMetricsNotes', 'dailyMetricsNotesProgress', 'None', 'None',
-                'None', true, 'None', false, kpi_notes_args);
+                'None', true, 'None', false, kpi_notes_args, getMetricsComplete);
             getTable('toplineMetrics', 'toplineMetricsProgress', 'None', filterDict);
             let delivery_metric_args = getDataTableArgsDict(
                 'generateProgressBars', ['vendorname'], ['netcost', 'plannednetcost'], filterDict, true);
@@ -346,7 +343,7 @@
                 let pacing_alert_args = getDataTableArgsDict(
                     'generateAlertCount', ['vendorname'], ['netcost', 'plannednetcost'], filterDict);
                 getTable('pacingAlertCount', 'pacingAlertCountProgress', 'None', 'None',
-                    'None', false, 'None', false, pacing_alert_args);
+                    'None', false, 'None', false, pacing_alert_args, getMetricsComplete);
                 let partner_metric_args = getDataTableArgsDict(
                     'generateBarChart', ['vendorname'], metrics, filterDict, true);
                 getTable('partnerMetrics', 'partnerMetricsProgress', 'None', 'None',
@@ -376,7 +373,7 @@
             })
         }
 
-        function getPartnerMetrics(filterDict=null, clickElem = null, oldHtml = null,
+        function getPartnerMetrics(filterDict = null, clickElem = null, oldHtml = null,
                                    allCharts = false) {
             let metrics = ['kpi'];
             filterDict = (filterDict) ? filterDict : [];

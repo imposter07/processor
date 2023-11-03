@@ -3866,8 +3866,11 @@ def get_raw_file_data_table(processor_id, current_user_id, vk=None,
         cur_processor = Processor.query.get(processor_id)
         if ((not cur_processor.local_path) or
                 (not os.path.exists(adjust_path(cur_processor.local_path)))):
+            lt = app_utl.LiquidTable(
+                df=pd.DataFrame({x: [] for x in dimensions + metrics}),
+                table_name=None)
             _set_task_progress(100)
-            return [pd.DataFrame({x: [] for x in dimensions + metrics})]
+            return [lt.table_dict]
         _set_task_progress(15)
         def_metrics = [vmc.impressions, vmc.clicks, vmc.cost]
         if metrics == ['kpi']:
@@ -3902,8 +3905,11 @@ def get_raw_file_data_table(processor_id, current_user_id, vk=None,
         df = utl.data_to_type(df, float_col=metrics)
         metrics = [x for x in metrics if x in df.columns]
         if [x for x in dimensions if x not in df.columns]:
+            lt = app_utl.LiquidTable(
+                df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
+                table_name=None)
             _set_task_progress(100)
-            return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+            return [lt.table_dict]
         df = df.groupby(dimensions)[metrics].sum()
         df = df.reset_index()
         if vmc.date in df.columns:

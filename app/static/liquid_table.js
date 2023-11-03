@@ -364,6 +364,15 @@ function buttonColOnClick(tableName, colName, loopIndex) {
     addFilePondMeta();
 }
 
+function goToUrlFromLink(data, kwargs) {
+    window.location.href =  data['url'];
+}
+
+function getLink(objectName, viewFunction) {
+    let data = {'object_name': objectName, 'view_function': viewFunction}
+    makeRequest('url_from_view_function', 'POST', data, goToUrlFromLink)
+}
+
 function getRowHtml(loopIndex, tableName, rowData = null) {
     let tableHeadElems = document.getElementById(tableName + 'TableHeader');
     tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
@@ -379,9 +388,17 @@ function getRowHtml(loopIndex, tableName, rowData = null) {
                 <i class="fas fa-plus"  role="button"></i>
             </button>`
         let buttonColHtml = (isButtonCol) ? buttonColBtn: '';
+        let isLinkCol = tableHeadElem.dataset['type'] === 'link_col';
+        let linkColLink = (isLinkCol) ? tableHeadElem.dataset['link'] : '';
+        let linkColHtmlPre = `<a href="" onclick="getLink('${cellData}', '${linkColLink}');">`;
+        let linkColHtmlPost = `</a>`;
+        linkColHtmlPre = (isLinkCol) ? linkColHtmlPre : '';
+        linkColHtmlPost = (isLinkCol) ? linkColHtmlPost : '';
         tableHeaders += `
             <td id="row${colName}${loopIndex}" style="display:${tableHeadElem.style.display};">
-                ${cellData}${buttonColHtml}
+                ${linkColHtmlPre}
+                    ${cellData}${buttonColHtml}
+                ${linkColHtmlPost}
             </td>`
     });
     return tableHeaders
@@ -1283,7 +1300,7 @@ function addTableColumns(cols, name) {
         thead.innerHTML += `
             <th data-form="${formCol}" data-type="${col['type']}"
                 data-highlight_row="${highlightRow}" data-name="${colName}"
-                data-tableid="${name}Table"
+                data-tableid="${name}Table" data-link="${col['link_col']}"
                 id="col${colName}">${generateDisplayColumnName(colName)}
             </th>`;
         if (col['hidden']) {

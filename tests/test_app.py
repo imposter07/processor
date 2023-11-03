@@ -222,6 +222,9 @@ class TestProject:
         self.wait_for_jobs_finish()
         p = Project.query.all()
         assert len(p) > 10
+        time.sleep(2)
+        sw.xpath_from_id_and_click('rowproject_number0')
+        assert 'edit' in sw.browser.current_url
 
 
 class TestReportingDBReadWrite:

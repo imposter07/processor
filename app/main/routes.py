@@ -3327,11 +3327,18 @@ def project_edit(object_name):
         form.start_date.data = cur_project.flight_start_date
         form.end_date.data = cur_project.flight_end_date
         form_campaign = Campaign.query.filter_by(
-            id=cur_project.campaign_id).first_or_404()
-        form_product = Product.query.filter_by(
-            id=form_campaign.product_id).first_or_404()
-        form_client = Client.query.filter_by(
-            id=form_product.client_id).first_or_404()
+            id=cur_project.campaign_id).first()
+        if not form_campaign:
+            form_client = Client(name='').check_and_add()
+            form_product = Product(name='',
+                                   client_id=form_client.id).check_and_add()
+            form_campaign = Campaign(name='',
+                                     product_id=form_product.id).check_and_add()
+        else:
+            form_product = Product.query.filter_by(
+                id=form_campaign.product_id).first()
+            form_client = Client.query.filter_by(
+                id=form_product.client_id).first()
         form.cur_campaign.data = form_campaign.name
         form.cur_product.data = form_product.name
         form.cur_client.data = form_client.name
@@ -3362,3 +3369,30 @@ def project_billing(object_name):
             next_page = 'main.project_billing'
         return redirect(url_for(next_page, object_name=object_name))
     return render_template('create_processor.html', **kwargs)
+
+
+from functools import wraps
+def error_handler(route_function):
+    @wraps(route_function)
+    def decorated_function(*args, **kwargs):
+        try:
+            result = route_function(*args, **kwargs)
+            return result
+        except:
+            args = request.form.to_dict(flat=False)
+            msg = 'Unhandled exception {}'.format(json.dumps(args))
+            current_app.logger.error(msg, exc_info=sys.exc_info())
+            data = {'data': 'error', 'task': '', 'level': 'error',
+                    'args': request.form.to_dict(flat=False)}
+            return jsonify(data)
+    return decorated_function
+
+
+@bp.route('/url_from_view_function', methods=['GET', 'POST'])
+@login_required
+@error_handler
+def url_from_view_function():
+    object_name = request.form['object_name']
+    view_function = request.form['view_function']
+    url = url_for(str(view_function), object_name=object_name)
+    return jsonify({'url': url})

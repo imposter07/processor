@@ -6570,7 +6570,8 @@ def get_project_number(current_user_id, running_user, filter_dict=None):
         lt = app_utl.LiquidTable(
             col_list=col_list, data=data, title=name, table_name=name,
             download_table=True, specify_form_cols=False, accordion=True,
-            row_on_click='projectObjects', filter_dict=filter_dict)
+            row_on_click='projectObjects', filter_dict=filter_dict,
+            link_cols={Project.project_number.name: 'main.project_edit'})
         _set_task_progress(100)
         return [lt.table_dict]
     except:

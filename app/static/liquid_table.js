@@ -370,7 +370,7 @@ function goToUrlFromLink(data, kwargs) {
 
 function getLink(objectName, viewFunction) {
     let data = {'object_name': objectName, 'view_function': viewFunction}
-    makeRequest('url_from_view_function', 'POST', data, goToUrlFromLink)
+    makeRequest('url_from_view_function', 'POST', data, goToUrlFromLink);
 }
 
 function getRowHtml(loopIndex, tableName, rowData = null) {
@@ -390,7 +390,7 @@ function getRowHtml(loopIndex, tableName, rowData = null) {
         let buttonColHtml = (isButtonCol) ? buttonColBtn: '';
         let isLinkCol = tableHeadElem.dataset['type'] === 'link_col';
         let linkColLink = (isLinkCol) ? tableHeadElem.dataset['link'] : '';
-        let linkColHtmlPre = `<a href="" onclick="getLink('${cellData}', '${linkColLink}');">`;
+        let linkColHtmlPre = `<a href="javascript:void(0);" onclick="getLink('${cellData}', '${linkColLink}');">`;
         let linkColHtmlPost = `</a>`;
         linkColHtmlPre = (isLinkCol) ? linkColHtmlPre : '';
         linkColHtmlPost = (isLinkCol) ? linkColHtmlPost : '';
@@ -741,7 +741,7 @@ function addRowToTable(rowData, tableName, customTableCols) {
         </tr>`;
     let collapseStr = curTable.getAttribute('data-accordion');
     let rowOnClick = curTable.getAttribute('data-rowclick');
-    rowOnClick = (rowOnClick) ? `onclick="getTableOnClick(this, '${rowOnClick}')"` : '';
+    rowOnClick = (rowOnClick) ? `onclick="getTableOnClick(event, '${rowOnClick}')"` : '';
     let rowCard = `
         <tr id="tr${loopIndex}" data-toggle="${collapseStr}" ${rowOnClick}
             data-target="#collapseRow${loopIndex}" class="accordion-toggle"
@@ -1561,13 +1561,18 @@ function createLiquidTableChart(tableName, tableRows, chartFunc) {
     }
 }
 
-function getTableOnClick(elem, imgToGet) {
+function getTableOnClick(e, imgToGet) {
+    let elem = e.target;
+    if (elem.tagName.toLowerCase() === 'a') {
+        return
+    }
+    elem = elem.parentElement;
     let tableId = elem.dataset['table'];
     let table = document.getElementById(tableId);
     let imgElemId = imgToGet;
     let rowIndex = elem.id.replace('tr', '');
     let uniqueCols = getTableHeadElems(tableId);
-    let vk = ''
+    let vk = '';
     uniqueCols.forEach(col => {
         let colName = col.dataset['name'];
         vk += document.getElementById(`row${colName}${rowIndex}`).textContent;
@@ -1577,7 +1582,7 @@ function getTableOnClick(elem, imgToGet) {
     table.insertAdjacentHTML('beforebegin', elemToAdd);
     let imgElem = document.getElementById(imgElemId);
     imgElem.innerHTML = '';
-    parseApplyRowHighlight(rowIndex, null, '', '')
+    parseApplyRowHighlight(rowIndex, null, '', '');
     getTable(imgToGet, imgElem.id, 'None', vk);
 }
 

@@ -6582,6 +6582,80 @@ def get_project_number(current_user_id, running_user, filter_dict=None):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+def effectiveness_tool_connection(processor_id, current_user_id, vk):
+    try:
+        _set_task_progress(0)
+        headers = "Headers"
+        factors_low = "factors Low"
+        factors_inc = "factors Inc"
+
+        values = ["-0.20", "-0.10", "0.00", "0.10", "0.20"]
+        n_row = 9
+
+        freq_vals = values * n_row
+        brand_factors_Low = [
+            "Established IP", "High Category Recognition",
+            "High Genre Opportunity","Strong Community Sentiment",
+            "High Game Score", "Free-to-Play","Increasing MAUs",
+            "High Marketplace SOV", "Existing / Returning Players"]
+        brand_factors_Inc = [
+            "New IP", "Low Category Recognition",
+            "Low Genre Opportunity", "Weak Community Sentiment",
+            "Low Game Score", "Full Retail",
+            "Decreasing MAUs", "Low Marketplace SOV",
+            "New / Competitive Players"]
+        messaging_factors_Low = [
+            "Low Complexity", "High Message Uniqueness",
+            "Evergreen Campaign", "Gameplay Asset",
+            "Few Message Variants (1-2)", "Fatigued Asset",
+            "Large Format Assets"]
+        messaging_factors_Inc = [
+            "High Complexity", "Low Message Uniqueness",
+            "Campaign Launch", "Key Art",
+            "Several Message Variants (3+)",
+            "New Asset", "Small Format Assets"]
+        media_factors_Low = [
+            "Low Environment Clutter", "Strong Contextual Alignment",
+            "High Audience Attention", "Low Ad Blocking",
+            "Long Flight / Evergreen", "Low Media Fragmentation",
+            "Low Competitive Environment"]
+
+        media_factors_Inc = [
+            "High Environment Clutter", "Low Contextual Alignment",
+            "Low Audience Attention","High Ad Blocking",
+            "Burst / Launch Flighting", "High Media Fragmentation",
+            "High Competitive Environment"]
+
+        df1 = pd.DataFrame({factors_low: brand_factors_Low,
+                            factors_inc: brand_factors_Inc})
+        df1.insert(loc=0, column=headers, value="Brand Factors")
+        df2 = pd.DataFrame({factors_low: messaging_factors_Low,
+                            factors_inc: messaging_factors_Inc})
+        df2.insert(loc=0, column=headers, value="Messaging Factors")
+        df3 = pd.DataFrame({factors_low: media_factors_Low,
+                            factors_inc: media_factors_Inc})
+        df3.insert(loc=0, column=headers, value="Media Factors")
+
+        result = pd.concat([df1, df2, df3], axis=0)
+        result.reset_index(drop=True, inplace=True)
+
+        for i, value in enumerate(values, 1):
+            col_name = f"Value_{i}"
+            result.insert(loc=2, column=col_name, value=value)
+        lt = app_utl.LiquidTable(df=df, table_name='effectiveness tool')
+        _set_task_progress(100)
+        return [lt.table_dict]
+
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {} VK {}'.format(
+            processor_id, current_user_id, vk), exc_info=sys.exc_info())
+        df = pd.DataFrame([{'Result': 'CONFIG WAS UNABLE TO BE LOADED.'}])
+        lt = app_utl.LiquidTable(df=df, table_name='effectiveness tool',
+                                 col_filter=False)
+        return [lt.table_dict]
+
 def get_project_objects(current_user_id, running_user, vk='', filter_dict=None):
     try:
         _set_task_progress(0)

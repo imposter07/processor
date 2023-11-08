@@ -4873,6 +4873,17 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
                         ed = sd
                 else:
                     sd = ed = None
+                form_product = Product(
+                    name='None',
+                    client_id=cur_client.id).check_and_add()
+                name = pn['Project']
+                if not name:
+                    continue
+                for char in ['_', '|', ':', '.', "'", '&', '/']:
+                    name = name.replace(char, ' ')
+                form_campaign = Campaign(
+                    name=pn['Project'],
+                    product_id=form_product.id).check_and_add()
                 new_project = Project(
                     project_number=pn[pn_col],
                     initial_project_number=pn['initial PN'],
@@ -4882,22 +4893,12 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
                     date_opened=date_opened, flight_start_date=sd,
                     flight_end_date=ed, exhibit=pn['Exhibit #'],
                     sow_received=pn["SOW rec'd"],
-                    billing_dates=pn['Billings + date(s)'], notes=pn['NOTES'])
+                    billing_dates=pn['Billings + date(s)'], notes=pn['NOTES'],
+                    campaign_id=form_campaign.id)
                 db.session.add(new_project)
                 db.session.commit()
-                form_product = Product(
-                    name='None',
-                    client_id=cur_client.id).check_and_add()
-                form_campaign = Campaign(
-                    name=pn['Project'],
-                    product_id=form_product.id).check_and_add()
                 description = ('Automatically generated from '
                                'project number: {}').format(pn[pn_col])
-                name = pn['Project']
-                if not name:
-                    continue
-                for char in ['_', '|', ':', '.', "'", '&', '/']:
-                    name = name.replace(char, ' ')
                 new_processor = Processor.query.filter_by(name=name).first()
                 if not new_processor:
                     new_processor = Processor(

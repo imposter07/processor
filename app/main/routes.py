@@ -3368,20 +3368,10 @@ def project_edit(object_name):
         form.end_date.data = cur_project.flight_end_date
         form_campaign = Campaign.query.filter_by(
             id=cur_project.campaign_id).first()
-        if not form_campaign:
-            name = Client.get_default_name()[0]
-            form_client = Client(name=name).check_and_add()
-            form_product = Product(name=name,
-                                   client_id=form_client.id).check_and_add()
-            form_campaign = Campaign(name=name,
-                                     product_id=form_product.id).check_and_add()
-            cur_project.campaign_id = form_campaign.id
-            db.session.commit()
-        else:
-            form_product = Product.query.filter_by(
-                id=form_campaign.product_id).first()
-            form_client = Client.query.filter_by(
-                id=form_product.client_id).first()
+        form_product = Product.query.filter_by(
+            id=form_campaign.product_id).first()
+        form_client = Client.query.filter_by(
+            id=form_product.client_id).first()
         form.cur_campaign.data = form_campaign.name
         form.cur_product.data = form_product.name
         form.cur_client.data = form_client.name

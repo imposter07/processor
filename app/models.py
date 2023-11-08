@@ -2154,6 +2154,19 @@ class Project(db.Model):
     def name(self):
         return '{} {}'.format(self.project_number, self.project_name)
 
+    @staticmethod
+    def find_campaign(cur_obj):
+        if not cur_obj.campaign_id:
+            c = Campaign.query.filter_by(name=cur_obj.project_name).first()
+            if not c:
+                name = Client.get_default_name()[0]
+                cli = Client(name=name).check_and_add()
+                pro = Product(name=name, client_id=cli.id).check_and_add()
+                c = Campaign(name=name, product_id=pro.id).check_and_add()
+            cur_obj.campaign_id = c.id
+            db.session.commit()
+        return cur_obj
+
     def get_current_project(self, object_name=None, current_page=None,
                             edit_progress=0, edit_name='Page',
                             buttons=None, form_title=None,
@@ -2168,6 +2181,7 @@ class Project(db.Model):
         if object_name:
             cur_obj = Project.query.filter_by(
                 project_number=object_name).first_or_404()
+            cur_obj = self.find_campaign(cur_obj)
             kwargs['object'] = cur_obj
             kwargs['buttons'] = Processor.get_navigation_buttons(buttons)
             posts, next_url, prev_url = Post.get_posts_for_objects(

@@ -3798,8 +3798,9 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
 
 
 def get_liquid_table_from_db(processor_id, current_user_id, parameter=None,
-                            dimensions=None, metrics=None, filter_dict=None,
-                            use_cache=True, table_name=None, return_func=None):
+                             dimensions=None, metrics=None, filter_dict=None,
+                             use_cache=True, table_name=None, return_func=None,
+                             chart_show=True):
     try:
         _set_task_progress(0)
         df = get_data_tables_from_db(processor_id, current_user_id, parameter,
@@ -3807,7 +3808,7 @@ def get_liquid_table_from_db(processor_id, current_user_id, parameter=None,
                                      use_cache, table_name, return_func)[0]
         _set_task_progress(90)
         lt = app_utl.LiquidTable(df=df, table_name=table_name,
-                                 chart_func=return_func, chart_show=True)
+                                 chart_func=return_func, chart_show=chart_show)
         _set_task_progress(100)
         return [lt.table_dict]
     except:

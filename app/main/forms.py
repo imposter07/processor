@@ -157,7 +157,7 @@ class BrandTrackerImportForm(ImportForm):
             col_data[col] = [x[col] for x in table_imports if x[col]]
             for batch_num, idx in enumerate(
                     range(0, len(col_data[col]), batch_size)):
-                batch_data = col_data[col][idx:idx+batch_size]
+                batch_data = col_data[col][idx:idx + batch_size]
                 source = shared_input.copy()
                 source['name'] = 'batch{}'.format(batch_num)
                 if col == game_title:
@@ -710,6 +710,8 @@ class ProcessorDashboardForm(FlaskForm):
         'Dimensions', choices=[(x, x) for x in exp.ScriptBuilder().dimensions])
     metrics = SelectMultipleField(
         'Metrics', choices=[(x, x) for x in exp.ScriptBuilder().metrics])
+    default_view = SelectField('Default View',
+                               choices=[(x, x) for x in ['Table', 'Chart']])
     add_child = SubmitField(label='Add Static Filter')
     form_continue = HiddenField('form_continue')
     static_filters = FieldList(FormField(StaticFilterForm, label=''))
@@ -815,7 +817,7 @@ class ScreenshotForm(FlaskForm):
 
 class ProjectForm(FlaskForm):
     project_name = StringField(_l('Name'), validators=[DataRequired()])
-    project_number = StringField(_l('Number'), validators=[ DataRequired()])
+    project_number = StringField(_l('Number'), validators=[DataRequired()])
     start_date = DateField(_l('Start Date'))
     end_date = DateField(_l('End Date'))
     cur_client = SelectField(_l('Client'))
@@ -850,6 +852,7 @@ class EditProjectForm(ProjectForm):
 
     def validate_name(self, name):
         if name.data != self.original_name:
-            processor = Project.query.filter_by(name=self.project_name.data).first()
+            processor = Project.query.filter_by(
+                name=self.project_name.data).first()
             if processor is not None:
                 raise ValidationError(_l('Please use a different name.'))

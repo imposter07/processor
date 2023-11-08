@@ -59,6 +59,7 @@
             display: block;
             padding-top: 100%; /* initial ratio of 1:1*/
         }
+
         div[class*='zoom-out'] div[class*='card'] {
             zoom: 0.9;
         }
@@ -179,6 +180,9 @@
 
             <br>
             <div class="row">
+                <button class="btn btn-success ml-3 text-right" id="add-dash">
+                    <i class="fas fa-plus" style="color:white"></i>
+                </button>
                 <div class="col-md-12 h-50">
                     <div class="card-deck container-fluid text-center mx-auto mb-2 mt-2">
                         <div id="totalMetricsProgress"></div>
@@ -218,7 +222,8 @@
                     <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow"
                          style="overflow-x: hidden">
                         <div id="dailyMetricsProgress"></div>
-                        <div id="dailyMetrics" style="height: 480px; width: 97%"></div>
+                        <div id="dailyMetrics"
+                             style="height: 480px; width: 97%"></div>
                         <div class="card-body container-fluid p-0">
                             <div style="height: 205px" class="p-3">
                                 <div id="dailyMetricsNotesProgress"></div>
@@ -253,6 +258,8 @@
                         <div id="partnerMetrics"></div>
                     </div>
                 </div>
+                <br>
+                <div id="customCharts" class="container-fluid"></div>
             </div>
             <br>
             <div class="row" id="thirdRow" hidden="">
@@ -339,6 +346,7 @@
                 'generateProgressBars', ['vendorname'], ['netcost', 'plannednetcost'], filterDict, true);
             getTable('deliveryMetrics', 'deliveryMetricsProgress', 'None', 'None',
                 'None', true, 'None', false, delivery_metric_args);
+            buildCustomCharts();
             if (!allCharts) {
                 let pacing_alert_args = getDataTableArgsDict(
                     'generateAlertCount', ['vendorname'], ['netcost', 'plannednetcost'], filterDict);
@@ -352,6 +360,43 @@
             if (allCharts) {
                 getSecondaryCharts(filterDict, clickElem);
             }
+        }
+
+        async function getCustomCharts() {
+            let jv = document.getElementById('jinjaValues');
+            let object_name = jv.dataset['object_name'].trim();
+            let response = await fetch(
+                `/processor/${object_name}/dashboard/get?render=false`);
+            return await response.json();
+        }
+
+        async function buildCustomCharts() {
+            let elem = document.getElementById("customCharts");
+            let count = 0;
+            let dashboards = await getCustomCharts();
+            dashboards.forEach(function (dash) {
+                let id = Math.floor(count / 2);
+                let row_id = `row_${id}`;
+                if (count % 2 === 0) {
+                    let row_html = `<div class="row" id="${row_id}"></div>`;
+                    elem.insertAdjacentHTML('beforeend', row_html);
+                }
+                let row = document.getElementById(row_id);
+                let html = `<div class="col-md-6"><br>${dash['html']}</div>`;
+                row.insertAdjacentHTML('beforeend', html);
+                let dashId = dash['id'];
+                let chartName = `dash${dashId}Metrics`;
+                let chartType = dash['chart_type'];
+                let chartFunction = getChartFunctionName(chartType);
+                let defaultView = dash['default_view'] === 'Chart';
+                let dash_metric_args = getDataTableArgsDict(
+                    chartFunction, JSON.parse(dash['dimensions']),
+                    JSON.parse(dash['metrics']), JSON.parse(dash['chart_filters']),
+                    true, undefined, undefined, defaultView);
+                getTable(chartName, chartName + 'Progress', 'None', 'None',
+                    'None', true, 'None', false, dash_metric_args);
+                count++
+            });
         }
 
         function getSecondaryCharts(filterDict, clickElem = null) {
@@ -420,10 +465,35 @@
             getTable(billingTableId, billingTableId);
         }
 
+        function saveDash() {
+            let jv = document.getElementById('jinjaValues');
+            let object_name = jv.dataset['object_name'].trim();
+            let url = `/processor/${object_name}/dashboard/create?render=false`;
+            let form = document.getElementById('base_form_id');
+            let formData = new FormData(form);
+            makeRequest(url, 'POST', formData, reloadPage);
+        }
+
+        async function addDashModal() {
+            let response = await fetch('/get_dash_form');
+            let json_response = await response.json();
+            let dash_form = json_response['form_html'];
+            showModalTable('addDash');
+            let modal = document.getElementById('addDashmodalTable');
+            let saveButton = modal.querySelector('[id="modalTableSaveButton"]');
+            saveButton.id = 'saveDashButton';
+            saveButton.removeAttribute('onclick');
+            let modalBody = modal.querySelector('[class="modal-body"]');
+            modalBody.innerHTML += dash_form;
+            addSelectize();
+            addOnClickEvent('[id^="saveDashButton"]', saveDash);
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
             addOnClickEvent('button[id^="getAllCharts"]', getAllChartsClickEvent);
             addOnClickEvent('button[id^="applyFilter"]', applyFilterEvent);
             addOnClickEvent('[id^="nav-billing-tab"]', getBillingTable);
+            addOnClickEvent('[id^="add-dash"]', addDashModal);
             addSelectize();
             $("#datePicker").flatpickr({
                 mode: "range"

@@ -924,6 +924,7 @@ def get_table_arguments():
     if 'proc_id' in proc_arg:
         proc_id = proc_arg.pop('proc_id')
         cur_proc = Processor.query.get(proc_id)
+        cur_obj = Processor
     elif cur_obj in obj_dict and request.form['object_name'] != 'undefined':
         k = Processor.name.name
         if cur_obj == Project.__name__.capitalize():
@@ -1088,7 +1089,8 @@ def get_table():
             msg_text = 'Getting {} table for {}'.format(
                 table_name, proc_arg['fix_id'])
         else:
-            msg_text = 'Getting {} table for {}'.format(table_name, cur_proc.name)
+            msg_text = 'Getting {} table for {}'.format(table_name,
+                                                        cur_proc.name)
         task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
         db.session.commit()
         if ('force_return' in request.form and
@@ -2930,6 +2932,14 @@ def set_dashboard_filters_in_db(object_id, form_dicts,
     return True
 
 
+@bp.route('/get_dash_form', methods=['GET'])
+@login_required
+def processor_get_dash_form():
+    form = ProcessorDashboardForm()
+    form_html = render_template('_form.html', form=form)
+    return jsonify({'form_html': form_html})
+
+
 @bp.route('/processor/<object_name>/dashboard/create',
           methods=['GET', 'POST'])
 @login_required
@@ -2950,7 +2960,7 @@ def processor_dashboard_create(object_name):
             processor_id=cur_proc.id, name=form.name.data,
             user_id=current_user.id, chart_type=form.chart_type.data,
             dimensions=form.dimensions.data, metrics=form.metrics.data,
-            created_at=datetime.utcnow())
+            default_view=form.default_view.data, created_at=datetime.utcnow())
         db.session.add(new_dash)
         db.session.commit()
         set_dashboard_filters_in_db(new_dash.id, form.static_filters.data)
@@ -2964,20 +2974,45 @@ def processor_dashboard_create(object_name):
         if form.form_continue.data == 'continue':
             return redirect(url_for('main.processor_dashboard_all',
                                     object_name=cur_proc.name))
+        elif request.args.get('render') == 'false':
+            return jsonify({'data': 'success', 'message': creation_text,
+                            'level': 'success'})
         else:
             return redirect(url_for('main.processor_dashboard_create',
                                     object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/processor/<object_name>/dashboard/all', methods=['GET', 'POST'])
+@bp.route('/processor/<object_name>/dashboard/get', methods=['GET'])
 @login_required
-def processor_dashboard_all(object_name):
+def processor_dashboards_get(object_name):
     kwargs = Processor().get_current_processor(
         object_name, current_page='processor_dashboard_all', edit_progress=100,
         edit_name='View All', buttons='ProcessorDashboard')
     cur_proc = kwargs['processor']
     dashboards = cur_proc.get_all_dashboards()
+    if request.args.get('render') == 'false':
+        dash_data = []
+        for dash in dashboards:
+            dash_id = dash.id
+            metrics = dash.get_metrics_json()
+            dimensions = dash.get_dimensions_json()
+            chart_type = dash.chart_type
+            chart_filters = dash.get_filters_json()
+            default_view = dash.default_view
+            dash_html = render_template('_dash_card.html', dash=dash)
+            dash_data.append(
+                {'id': dash_id, 'metrics': metrics, 'dimensions': dimensions,
+                 'chart_type': chart_type, 'chart_filters': chart_filters,
+                 'default_view': default_view, 'html': dash_html})
+        return jsonify(dash_data)
+    return kwargs, dashboards
+
+
+@bp.route('/processor/<object_name>/dashboard/all', methods=['GET', 'POST'])
+@login_required
+def processor_dashboard_all(object_name):
+    kwargs, dashboards = processor_dashboards_get(object_name)
     for dash in dashboards:
         static_filters = ProcessorDashboardForm().set_filters(
             DashboardFilter, dash)
@@ -3040,13 +3075,16 @@ def get_dashboard_properties():
         dimensions = dash.get_dimensions_json()
         chart_type = dash.chart_type
         chart_filters = dash.get_filters_json()
+        default_view = dash.default_view
     else:
         metrics = []
         dimensions = []
         chart_type = []
         chart_filters = []
+        default_view = []
     dash_properties = {'metrics': metrics, 'dimensions': dimensions,
-                       'chart_type': chart_type, 'chart_filters': chart_filters}
+                       'chart_type': chart_type, 'chart_filters': chart_filters,
+                       'default_view': default_view}
     return jsonify(dash_properties)
 
 
@@ -3055,12 +3093,13 @@ def get_dashboard_properties():
 def save_dashboard():
     dash = Dashboard.query.get(int(request.form['dashboard_id']))
     object_form = request.form.to_dict()
-    cols = ['name', 'chart_type', 'dimensions', 'metrics']
+    cols = ['name', 'chart_type', 'dimensions', 'metrics', 'default_view']
     object_form = utl.clean_serialize_dict(object_form, cols)
     dash.name = object_form['name'][0]
     dash.chart_type = object_form['chart_type'][0]
     dash.dimensions = object_form['dimensions'][0]
     dash.metrics = object_form['metrics']
+    dash.default_view = object_form['default_view'][0]
     db.session.commit()
     set_dashboard_filters_in_db(dash.id, object_form['static_filters'])
     msg = 'The dashboard {} has been saved!'.format(dash.name)

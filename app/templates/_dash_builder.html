@@ -1385,7 +1385,7 @@
 
     function getDataTableArgsDict(return_func='', dimensions=[], metrics = [],
                                   filter_dict = [], use_cache, proc_id,
-                                  table_name) {
+                                  table_name, chart) {
         const dataTableArgs = {};
         if (typeof use_cache !== 'undefined') {
             dataTableArgs['use_cache'] = true;
@@ -1395,6 +1395,9 @@
         }
         if (typeof table_name !== 'undefined') {
             dataTableArgs['table_name'] = table_name;
+        }
+        if (typeof use_cache !== 'undefined') {
+            dataTableArgs['chart_show'] = chart;
         }
         dataTableArgs['return_func'] = return_func;
         dataTableArgs['dimensions'] = dimensions;
@@ -1662,6 +1665,25 @@
                 + datum['msg'] + `</div>`;
             alertElem.innerHTML += alertHtml;
         }
+    }
+
+    function getChartFunctionName(chartType) {
+        let chartName = {
+            'Histogram': 'generateHistogram',
+            'Line': 'generateLineChart',
+            'Area': 'generateAreaChart',
+            'Dual Line': 'generateDualLineChart',
+            'Lollipop': 'generateLollipopChart',
+            'Mini': 'generateMiniChart',
+            'Bubble': 'generateBubbleChart',
+            'Bar': 'generateBarChart',
+            'World Map': 'generateWorldMap',
+            'Circular Barplot': 'generateCircularBarplot',
+            'Progress Bars': 'generateProgressBars',
+            'Total Cards': 'generateTotalCards',
+            'Kpi Notes': 'generateKpiNotes',
+        };
+        return chartName[chartType]
     }
 
     function getChartFunction(chartFuncString){

@@ -1,6 +1,7 @@
 <div class="card mb-3">
-    <div class="card-header">
-        <h3>
+    {% if processor is defined %}
+        <div class="card-header">
+            <h3>
             <span class="nowrap">
             <a href="{{ url_for('main.processor_dashboard_view',
             object_name=dash.processor.name, dashboard_id=dash.id) }}">
@@ -8,9 +9,9 @@
             <h6 class="mt-0">{{ _('was created %(when)s',
             when=moment(dash.created_at).fromNow()) }}</h6>
             </span>
-        </h3>
-    </div>
-    <div class="card">
+            </h3>
+        </div>
+        <div class="card">
         <div class="card-body">
             <div class="row">
                 <div class="col">
@@ -22,7 +23,7 @@
             <div class="btn-group btn-group-sm btn-block" role="group">
                 <button id="dash{{ dash.id }}View"
                         class="btn btn-outline-success">
-                     <i class="fas fa-chart-bar" href="#" role="button"></i>
+                    <i class="fas fa-chart-bar" href="#" role="button"></i>
                     View
                 </button>
                 <button id="dash{{ dash.id }}Save"
@@ -42,23 +43,19 @@
                 </button>
             </div>
         </div>
-        <div class="card-footer">
-            <div id="dash{{ dash.id }}Row" class="row" style="display: none;">
-                <div class="col-md-12 h-50">
-                    <div class="card-header">
-                        <h7 class="mb-3">{{ dash.name }}</h7>
-                        <select id="dash{{ dash.id }}MetricsSelect"
-                                class="form-control form-control-sm">
-                            <option>Select Metric</option>
-                        </select>
-                    </div>
-                    <div class="card container-fluid shadow outer">
-                        <div id="dash{{ dash.id }}MetricsProgress"></div>
-                        <div id="dash{{ dash.id }}Metrics"></div>
-                    </div>
-                </div>
+    {% endif %}
+    <div id="dash{{ dash.id }}Row" class="row">
+        <div class="col-md-12 h-50">
+            <div class="card-header">
+                <h7 class="mb-3">{{ dash.name }}</h7>
+                <select id="dash{{ dash.id }}MetricsChartPlaceholderSelect"
+                        class="form-control form-control-sm">
+                </select>
             </div>
+            <div id="dash{{ dash.id }}MetricsProgress"></div>
+            <div id="dash{{ dash.id }}Metrics"></div>
         </div>
+    </div>
     </div>
 </div>
 <script>
@@ -74,25 +71,24 @@
             },
         }).done(function (data, status) {
             let chartName = dashId + 'Metrics';
-            let chartTypes = {'Bar': 'generateBarChart',
-                'Lollipop': 'generateLollipopChart', 'Area': 'generateAreaChart',
-                'Line': 'generateLineChart'};
             let chartType = data['chart_type'];
-            let chartFunction = chartTypes[chartType];
+            let chartFunction = getChartFunctionName(chartType);
+            let defaultView = data['default_view'] === 'Chart';
             let dash_metric_args = getDataTableArgsDict(
                 chartFunction, JSON.parse(data['dimensions']),
                 JSON.parse(data['metrics']), JSON.parse(data['chart_filters']),
-                true);
+                true, undefined, undefined, defaultView);
             getTable(chartName, chartName + 'Progress', 'None', 'None',
                 'None', true, 'None', false, dash_metric_args);
         }).fail(function (jqXHR, textStatus) {
             console.log("Request failed: " + textStatus);
         });
     }
+
     function saveDash(dashId, dropdownButton, oldHtml) {
-        let clickedButton = '#' + dashId + 'Save'
+        let clickedButton = '#' + dashId + 'Save';
         let objForm = $($(clickedButton).parent().parent()[0]
-            .children[0].children[0].children[0]).serializeArray()
+            .children[0].children[0].children[0]).serializeArray();
         $.ajax({
             type: "POST",
             url: "/save_dashboard",
@@ -121,6 +117,7 @@
             unanimateBar();
         });
     }
+
     $(document).ready(function () {
         $('button[id^="dash"]').unbind().click(function () {
             let curId = this.id
@@ -138,7 +135,7 @@
             let currentFunction = functionName(curId);
             let dashId = this.id.replace(currentFunction[0], '')
             let dropdownButton = '#' + this.id
-            $('#' + dashId + 'Row').css('display','block');
+            $('#' + dashId + 'Row').css('display', 'block');
             $(dropdownButton).prop("disabled", true);
             let oldHtml = $(dropdownButton).html();
             $(dropdownButton).html(

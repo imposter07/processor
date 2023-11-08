@@ -209,6 +209,15 @@ class TestProject:
             os.chdir("..")
 
     def test_project_number_page(self, sw, login, worker):
+        name = Product.get_default_name()[0]
+        cli = Client(name=name).check_and_add()
+        pro = Product(name=name, client_id=cli.id).check_and_add()
+        cam = Campaign(name=name, product_id=pro.id).check_and_add()
+        p = Project(project_number=name, campaign_id=cam.id,
+                    flight_start_date=datetime.today(),
+                    flight_end_date=datetime.today())
+        db.session.add(p)
+        db.session.commit()
         pn_url = '{}project_numbers'.format(base_url)
         sw.go_to_url(pn_url)
         assert sw.browser.current_url == pn_url
@@ -222,7 +231,16 @@ class TestProject:
         self.wait_for_jobs_finish()
         p = Project.query.all()
         assert len(p) > 10
+        select_id = 'productProjectNumberFilterSelect-selectized'
         time.sleep(2)
+        sw.send_keys_from_list([(name, select_id)])
+        apply_id = 'ProjectNumberFilterButton'
+        sw.xpath_from_id_and_click(apply_id)
+        t = Task.query.filter_by(complete=False, name=task_name).first()
+        assert t.name == task_name
+        worker.work(burst=True)
+        self.wait_for_jobs_finish()
+        time.sleep(3)
         sw.xpath_from_id_and_click('rowproject_number0')
         assert 'edit' in sw.browser.current_url
 

@@ -34,6 +34,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Notes, ProcessorReports, Tutorial, TutorialStage, Task, Plan, Walkthrough, \
     Conversation, Chat, WalkthroughSlide, Rfp, Specs, Contacts
 
+from functools import wraps
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -3368,11 +3369,14 @@ def project_edit(object_name):
         form_campaign = Campaign.query.filter_by(
             id=cur_project.campaign_id).first()
         if not form_campaign:
-            form_client = Client(name='').check_and_add()
-            form_product = Product(name='',
+            name = Client.get_default_name()[0]
+            form_client = Client(name=name).check_and_add()
+            form_product = Product(name=name,
                                    client_id=form_client.id).check_and_add()
-            form_campaign = Campaign(name='',
+            form_campaign = Campaign(name=name,
                                      product_id=form_product.id).check_and_add()
+            cur_project.campaign_id = form_campaign.id
+            db.session.commit()
         else:
             form_product = Product.query.filter_by(
                 id=form_campaign.product_id).first()
@@ -3410,7 +3414,6 @@ def project_billing(object_name):
     return render_template('create_processor.html', **kwargs)
 
 
-from functools import wraps
 def error_handler(route_function):
     @wraps(route_function)
     def decorated_function(*args, **kwargs):

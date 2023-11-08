@@ -4,9 +4,11 @@ import pandas as pd
 import datetime as dt
 import processor.reporting.utils as utl
 import processor.reporting.analyze as az
+import app.utils as app_utl
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
-    Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule
+    Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, Client, \
+    Product
 
 
 def test_index(client, user):
@@ -182,3 +184,37 @@ class TestChat:
         self.test_plan_create(client, conversation, worker, prompt_dict, p.name)
         plan = Plan.query.filter_by(name=p.name).first()
         assert p.campaign_id == plan.campaign_id
+
+
+class TestUtils:
+
+    def test_parse_filter_dict_from_clients(self, user, app_fixture):
+        name = Client.get_default_name()[0]
+        cli = Client(name=name).check_and_add()
+        pro = Product(name=name, client_id=cli.id).check_and_add()
+        cam = Campaign(name=name, product_id=pro.id).check_and_add()
+        new_name = '{}0'.format(name)
+        cam1 = Campaign(name=new_name, product_id=pro.id).check_and_add()
+        for idx, cur_name in enumerate([name, new_name]):
+            cam_ids = [cam.id]
+            if idx > 0:
+                cam_ids.append(cam1.id)
+            for cam_id in cam_ids:
+                p = Project(project_number=cur_name, campaign_id=cam_id)
+                db.session.add(p)
+                db.session.commit()
+        p = Project.query.filter_by(project_number=name).first()
+        assert p.project_number == name
+        filter_dict = [{Project.__table__.name: [name]}]
+        results = Project.query
+        objs = app_utl.parse_filter_dict_from_clients(
+            results, None, None, filter_dict, db_model=Project)
+        objs = objs.all()
+        assert len(objs) == 1
+        assert objs[0].project_number == name
+        filter_dict = [{Campaign.__table__.name: [cam.name]}]
+        p = Project.query.filter_by(campaign_id=cam.id).all()
+        objs = app_utl.parse_filter_dict_from_clients(
+            results, None, None, filter_dict, db_model=Project)
+        objs = objs.all()
+        assert len(objs) == len(p)

@@ -511,6 +511,7 @@ class Campaign(db.Model):
     processor = db.relationship('Processor', backref='campaign', lazy='dynamic')
     uploader = db.relationship('Uploader', backref='campaign', lazy='dynamic')
     plan = db.relationship('Plan', backref='campaign', lazy='dynamic')
+    project = db.relationship('Project', backref='campaign', lazy='dynamic')
 
     def check(self):
         campaign_check = Campaign.query.filter_by(

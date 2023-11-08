@@ -136,43 +136,60 @@ def convert_file_to_df(current_file):
     return df
 
 
-def parse_filter_dict_from_clients(processors, seven_days_ago, current_request):
-    current_filters = json.loads(current_request.form['filter_dict'])
+def parse_filter_dict_from_clients(processors, seven_days_ago, current_request,
+                                   filter_dict=None, db_model=Processor):
+    if filter_dict:
+        current_filters = filter_dict
+    else:
+        current_filters = json.loads(current_request.form['filter_dict'])
+    proc_filter = [
+        Processor.__table__.name, Processor, Processor.name.name,
+        db_model.id]
+    project_filter = [
+        Project.__table__.name, Project, Project.project_number.name,
+        '']
+    if db_model == Project:
+        proc_filter[3] = Project.processor_associated
+        project_filter[3] = db_model.id
+    else:
+        project_filter[3] = db_model.projects
     filter_types = [
-        ('username', User, 'username', Processor.user_id),
-        ('campaign', Campaign, 'name', Processor.campaign_id),
-        ('processor', Processor, 'name', Processor.id),
-        ('project', Project, 'project_number', Processor.projects),
-        ('client', Client, 'name', ''),
-        ('product', Product, 'name', '')]
+        (User.username.name, User, User.username.name, db_model.user_id),
+        (Campaign.__table__.name, Campaign, Campaign.name.name,
+         db_model.campaign_id),
+        proc_filter,
+        project_filter,
+        (Client.__table__.name, Client, Client.name.name, ''),
+        (Product.__table__.name, Product, Product.name.name, '')]
     live = [x for x in current_filters if 'live' in x.keys()]
     if live and live[0]['live']:
         processors = processors.filter(
             Processor.end_date > seven_days_ago.date())
     for filter_type in filter_types:
         filt_name = filter_type[0]
-        db_model = filter_type[1]
+        cur_db_model = filter_type[1]
         db_attr = filter_type[2]
         proc_rel = filter_type[3]
         cur_filter = [x for x in current_filters if filt_name in x.keys()]
         if cur_filter and cur_filter[0][filt_name] and processors:
             cur_list = cur_filter[0][filt_name]
-            if filt_name == 'project':
+            if filt_name == Project.__table__.name:
                 cur_list = [x.split('_')[0] for x in cur_list]
             user_list = []
             for x in cur_list:
-                query = db_model.query.filter(getattr(db_model, db_attr) == x)
+                query = cur_db_model.query.filter(
+                    getattr(cur_db_model, db_attr) == x)
                 if query and query.first():
                     user_list.append(query.first().id)
-            if filt_name == 'client':
+            if filt_name == Client.__table__.name:
                 processors = [
                     x for x in processors if
                     x.campaign.product.client_id in user_list]
-            elif filt_name == 'product':
+            elif filt_name == Product.__table__.name:
                 processors = [
                     x for x in processors if
-                    x.campaign.product_id in user_list]
-            elif filt_name == 'project':
+                    x.campaign and x.campaign.product_id in user_list]
+            elif filt_name == Project.__table__.name and db_model == Processor:
                 processors = [x for x in processors
                               if any(e in [y.id for y in x.projects]
                                      for e in user_list)]

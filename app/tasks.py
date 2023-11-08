@@ -22,7 +22,7 @@ from app.models import User, Post, Task, Processor, Message, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
-    ProcessorReports, Partner, PlanRule, Brandtracker, BrandtrackerDimensions, \
+    ProcessorReports, Partner, PlanRule, Brandtracker, \
     PartnerPlacements, Rfp, RfpFile, Specs, Contacts, PlanPhase
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
@@ -4831,7 +4831,8 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
                         filter_dict=None):
     try:
         _set_task_progress(0)
-        os.chdir('processor')
+        if os.path.exists('processor'):
+            os.chdir('processor')
         api = gsapi.GsApi()
         api.input_config('gsapi.json')
         df = api.get_data()
@@ -6559,7 +6560,12 @@ def get_project_number(current_user_id, running_user, filter_dict=None):
                 and_(Project.flight_start_date <= sd,
                      Project.flight_end_date >= ed)
             )
-        ).all()
+        )
+        if filter_dict:
+            results = app_utl.parse_filter_dict_from_clients(
+                results, None, None, filter_dict, db_model=Project)
+        else:
+            results = results.all()
         filter_dict = get_filter_dict_values()
         week_str = app_utl.LiquidTable.convert_sd_ed_to_weeks(sd, ed)
         data = [x.get_form_dict() for x in results]
@@ -6590,50 +6596,47 @@ def effectiveness_tool_connection(processor_id, current_user_id, vk):
         factors_inc = "factors Inc"
 
         values = ["-0.20", "-0.10", "0.00", "0.10", "0.20"]
-        n_row = 9
 
-        freq_vals = values * n_row
-        brand_factors_Low = [
+        brand_factors_low = [
             "Established IP", "High Category Recognition",
             "High Genre Opportunity","Strong Community Sentiment",
             "High Game Score", "Free-to-Play","Increasing MAUs",
             "High Marketplace SOV", "Existing / Returning Players"]
-        brand_factors_Inc = [
+        brand_factors_inc = [
             "New IP", "Low Category Recognition",
             "Low Genre Opportunity", "Weak Community Sentiment",
             "Low Game Score", "Full Retail",
             "Decreasing MAUs", "Low Marketplace SOV",
             "New / Competitive Players"]
-        messaging_factors_Low = [
+        messaging_factors_low = [
             "Low Complexity", "High Message Uniqueness",
             "Evergreen Campaign", "Gameplay Asset",
             "Few Message Variants (1-2)", "Fatigued Asset",
             "Large Format Assets"]
-        messaging_factors_Inc = [
+        messaging_factors_inc = [
             "High Complexity", "Low Message Uniqueness",
             "Campaign Launch", "Key Art",
             "Several Message Variants (3+)",
             "New Asset", "Small Format Assets"]
-        media_factors_Low = [
+        media_factors_low = [
             "Low Environment Clutter", "Strong Contextual Alignment",
             "High Audience Attention", "Low Ad Blocking",
             "Long Flight / Evergreen", "Low Media Fragmentation",
             "Low Competitive Environment"]
-
-        media_factors_Inc = [
+        media_factors_inc = [
             "High Environment Clutter", "Low Contextual Alignment",
             "Low Audience Attention","High Ad Blocking",
             "Burst / Launch Flighting", "High Media Fragmentation",
             "High Competitive Environment"]
 
-        df1 = pd.DataFrame({factors_low: brand_factors_Low,
-                            factors_inc: brand_factors_Inc})
+        df1 = pd.DataFrame({factors_low: brand_factors_low,
+                            factors_inc: brand_factors_inc})
         df1.insert(loc=0, column=headers, value="Brand Factors")
-        df2 = pd.DataFrame({factors_low: messaging_factors_Low,
-                            factors_inc: messaging_factors_Inc})
+        df2 = pd.DataFrame({factors_low: messaging_factors_low,
+                            factors_inc: messaging_factors_inc})
         df2.insert(loc=0, column=headers, value="Messaging Factors")
-        df3 = pd.DataFrame({factors_low: media_factors_Low,
-                            factors_inc: media_factors_Inc})
+        df3 = pd.DataFrame({factors_low: media_factors_low,
+                            factors_inc: media_factors_inc})
         df3.insert(loc=0, column=headers, value="Media Factors")
 
         result = pd.concat([df1, df2, df3], axis=0)
@@ -6642,19 +6645,19 @@ def effectiveness_tool_connection(processor_id, current_user_id, vk):
         for i, value in enumerate(values, 1):
             col_name = f"Value_{i}"
             result.insert(loc=2, column=col_name, value=value)
-        lt = app_utl.LiquidTable(df=df, table_name='effectiveness tool')
+        lt = app_utl.LiquidTable(df=result, table_name='effectiveness tool')
         _set_task_progress(100)
         return [lt.table_dict]
-
     except:
         _set_task_progress(100)
         app.logger.error(
             'Unhandled exception - Processor {} User {} VK {}'.format(
-            processor_id, current_user_id, vk), exc_info=sys.exc_info())
+                processor_id, current_user_id, vk), exc_info=sys.exc_info())
         df = pd.DataFrame([{'Result': 'CONFIG WAS UNABLE TO BE LOADED.'}])
         lt = app_utl.LiquidTable(df=df, table_name='effectiveness tool',
                                  col_filter=False)
         return [lt.table_dict]
+
 
 def get_project_objects(current_user_id, running_user, vk='', filter_dict=None):
     try:

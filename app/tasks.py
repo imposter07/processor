@@ -5775,6 +5775,7 @@ def get_brandtracker_imports(processor_id, current_user_id):
 def get_brandtracker_data(current_user_id, running_user, form_data):
     try:
         _set_task_progress(0)
+        # Get all brandtracker processors and their associated reporting data
         campaign = Campaign.query.filter_by(name='BRANDTRACKER').first()
         bt_procs = Processor.query.filter_by(campaign_id=campaign.id).all()
         df = pd.DataFrame()
@@ -5791,6 +5792,7 @@ def get_brandtracker_data(current_user_id, running_user, form_data):
             if not tdf.empty:
                 df = pd.concat([df, tdf], ignore_index=True)
 
+        # Filter dataframe to contain only requested data
         c_str = '_comparison'
         date = form_data['primary_date']
         cdate = form_data['comparison_date']
@@ -5806,18 +5808,22 @@ def get_brandtracker_data(current_user_id, running_user, form_data):
         df = df.groupby(['productname']).mean().fillna(0)
         df = df.merge(cdf, how='left', left_index=True,
                       right_index=True, suffixes=(None, c_str))
+        # Get equations for any calculated columns, then add them to df
         calculated_cols = Brandtracker.get_calculated_fields(c_str=c_str)
         df = df.assign(**calculated_cols)
 
+        # Create map of columns to weights for each dimension
         columns = {}
         weights_dict = {}
         brandtracker_dimensions = ['Influence', 'Engagement', 'Momentum']
         for dim in brandtracker_dimensions:
             weights_dict[dim] = {x['data_column']: float(x['weight'])
                                  for x in form_data[dim] if dim in form_data}
+        # Add z-scores and weighted totals to dataframe
         output_df = cal.calculate_weight_z_score(
             df, weights_dict).reset_index(drop=True).fillna('None')
         result = [output_df]
+        # Get LiquidTable dictionary for each dimension and append to result
         for dim in brandtracker_dimensions:
             columns[dim] = [x for x in weights_dict[dim].keys()
                             if x in output_df]

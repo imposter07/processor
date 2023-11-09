@@ -50,6 +50,13 @@ function getColumnIndex(tableElem, colName) {
     }
 }
 
+/**
+ * Replace element with selectize dropdown populated with opts
+ * @param {Element} elem     Element whose innerHtml will be replaced.
+ * @param {Array}   opts     Options for the select. [{text: "Example1",
+ *     value: "Example1"}].
+ * @param {Boolean} multiple Flag for allowing selection of multiple options.
+ */
 function onMetricClick(elem, opts, multiple=false) {
     elem.onclick = '';
     let defaultValue = [elem.innerHTML];
@@ -69,6 +76,12 @@ function onMetricClick(elem, opts, multiple=false) {
     metricSelectize[0].selectize.open()
 }
 
+/**
+ * Replace selectize parent element with text of selected options.
+ * @param {Array}   opts     Options for the select. [{text: "Example1",
+ *     value: "Example1"}]
+ * @param {Boolean} multiple Flag for allowing selection of multiple options.
+ */
 function submitSelection(opts, multiple) {
     let value = document.getElementById('metric_select').selectize.getValue();
     if (multiple) {
@@ -88,6 +101,13 @@ function resetIndex(tableElem) {
     }
 }
 
+/**
+ * Add row to the metrics table using values from the activeMetricModal.
+ * @param {Array} vmcOptions Options for the metric name select.
+ *     [{text: "Example1" value: "Example1"}]
+ * @param {Array} rawOptions Options for the metric value select.
+ *     [{text: "Example1" value: "Example1"}]
+ */
 function addActiveMetric(vmcOptions, rawOptions) {
     let tableName = 'metrics_table'
     let tableElem = tableName + 'Elem'
@@ -254,16 +274,25 @@ function createTable(colData, rawData, tableName,
     });
 }
 
+/**
+ * Create active metrics table.
+ * @param {string} colData    Stringified list of columns in the table.
+ * @param {string} rawData    Html string of table element.
+ * @param {string} tableName  ID of table element.
+ * @param {string} elem       ID of containing element.
+ * @param {string} rawColData Stringified list of possible metric value strings.
+ * @param {string} vmcColData Stringified list of possible metric name strings.
+ */
 function createMetricTable(colData, rawData, tableName,
                            elem, rawColData, vmcColData) {
     let cols = JSON.parse(colData);
     let rawCols = JSON.parse(rawColData);
     let vmcCols = JSON.parse(vmcColData);
 
-    var vmcOptions = vmcCols.map(function (e) {
+    let vmcOptions = vmcCols.map(function (e) {
         return {text: e, value: e}
     });
-    var rawOptions = rawCols.map(function (e) {
+    let rawOptions = rawCols.map(function (e) {
         return {text: e, value: e}
     });
 
@@ -273,10 +302,10 @@ function createMetricTable(colData, rawData, tableName,
         </button>`
 
     let deleteButtonHtml = deleteButton(tableName)
-    let tableJquery = '#' + tableName;
     document.getElementById(elem).innerHTML = buttonsHtml + rawData;
     $(document).ready(function () {
-        modalElem = $("#activeMetricModal .modal-body")
+        // Populate modal with select inputs with relevant options.
+        let modalElem = $("#activeMetricModal .modal-body")
         modalElem.html(`<div class="form-group row justify-content-center align-items-center">
                           <div class="col-md-6" style="word-break: break-word">
                             <label for="metric_name_select">Metric Name</label>
@@ -302,17 +331,18 @@ function createMetricTable(colData, rawData, tableName,
                                                   delimiter: '|'
                                                   });
 
-        nameColIndex = getColumnIndex(elem, 'Metric Name');
-        valueColIndex = getColumnIndex(elem, 'Metric Value');
+        // Add onclick events and delete button to each table row.
+        let nameColIndex = getColumnIndex(elem, 'Metric Name');
+        let valueColIndex = getColumnIndex(elem, 'Metric Value');
 
-        var rows = document.getElementById(elem).getElementsByTagName('tr');
+        let rows = document.getElementById(elem).getElementsByTagName('tr');
         rows[0].setAttribute('style',"text-align: left");
-        for (var i = 1, row; row = rows[i]; i++) {
+        for (let i = 1, row; row = rows[i]; i++) {
             rows[i].setAttribute("style", "word-break:break-word")
-            nameElem = rows[i].cells[nameColIndex]
+            let nameElem = rows[i].cells[nameColIndex]
             nameElem.onclick = function() {onMetricClick(this, vmcOptions);}
 
-            valueElem = rows[i].cells[valueColIndex]
+            let valueElem = rows[i].cells[valueColIndex]
             valueElem.onclick = function() {onMetricClick(this, rawOptions, multiple=true);}
 
             let deleteCell = rows[i].insertCell(-1)
@@ -362,6 +392,7 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
         return {text: e, value: e}
     });
     let relationalOrderData = JSON.parse(relationalData);
+    // Populate default modal with button and table html
     let buttonsHtml = `<div class="text-left">
         <button class="btn btn-primary" id="shiftUp" tabindex="0"  
             aria-controls=${tableName} type="button" title="Shift order up">
@@ -382,6 +413,7 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
     document.getElementById('shiftUp').onclick = function() {
         shiftOrderUp(elem, relationalOrderData);
     }
+    // Add empty column to each row for more options button.
     let labelColIndex = getColumnIndex(elem, '');
     let rows = document.getElementById(elem).getElementsByTagName('tr');
     rows[0].cells[labelColIndex].innerHTML = 'Auto Dictionary Order'
@@ -389,6 +421,7 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
         let buttonCell = rows[i].insertCell(1)
         buttonCell.style.verticalAlign = "middle"
     }
+    // Add select input with auto dictionary columns and event listeners to each row
     for (let i = 3, row; row = rows[i]; i++) {
         let labelElem = rows[i].cells[labelColIndex]
         let defaultValue = labelElem.innerHTML;
@@ -422,9 +455,12 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
 }
 
 function shiftOrderUp(modalElem, relationData) {
+    // Shift selections in the change order modal up one space.
     let firstRow = 3
     let rows = document.getElementById(modalElem).getElementsByTagName('tr');
     for (let i = firstRow; i < rows.length; i++) {
+        // Get the value of the select input in the next row. If there is a
+        // subSelect, use that value. If there is no next row, default mpMisc.
         let nextValue
         let currentSelect = document.getElementById(`auto_order_select${i}`);
         if (document.getElementById(`auto_order_select${i+1}subSelect`)) {
@@ -435,6 +471,7 @@ function shiftOrderUp(modalElem, relationData) {
         if (!nextValue) {
             nextValue = 'mpMisc'
         }
+        // Shift dataset attributes up one row.
         if (rows[i+1] && rows[i+1].getAttribute('data-index')) {
             rows[i].setAttribute('data-index',
                                  rows[i+1].getAttribute('data-index'));
@@ -446,15 +483,19 @@ function shiftOrderUp(modalElem, relationData) {
         }
         currentSelect.selectize.addOption({value:nextValue, text:nextValue});
         currentSelect.selectize.setValue(nextValue, true);
+        // Add or update subSelect based on new selection.
         getDictColumnDetails(currentSelect.selectize, relationData);
     }
     addMoreOrderOptions(relationData);
 }
 
 function shiftOrderDown(modalElem, relationData) {
+    // Shift selections in the change order modal up one space.
     let firstRow = 3
     let rows = document.getElementById(modalElem).getElementsByTagName('tr');
     for (let i = rows.length - 1; i >= firstRow; i--) {
+        // Get the value of the select input in the previous row. If there is a
+        // subSelect, use that value. If there is no next row, default mpMisc.
         let prevValue
         let currentSelect = document.getElementById(`auto_order_select${i}`)
         if (document.getElementById(`auto_order_select${i-1}subSelect`)) {
@@ -465,6 +506,7 @@ function shiftOrderDown(modalElem, relationData) {
         if (!prevValue) {
             prevValue = 'mpMisc'
         }
+        // Shift dataset attributes down one row.
         if (rows[i-1].getAttribute('data-index')) {
             rows[i].setAttribute('data-index',
                                  rows[i-1].getAttribute('data-index'));
@@ -476,12 +518,16 @@ function shiftOrderDown(modalElem, relationData) {
         }
         currentSelect.selectize.addOption({value:prevValue, text:prevValue});
         currentSelect.selectize.setValue(prevValue, true);
+        // Add or update subSelect based on new selection.
         getDictColumnDetails(currentSelect.selectize, relationData);
     }
     addMoreOrderOptions(relationData);
 }
 
 function parseCombCols(selectElem, relationData) {
+    // If the select element has a value of the form
+    // <column>:::<index>:::<delimiter>, set the select value to column and
+    // add index and delim data attributes to tr element.
     let combKey = ':::'
     let relKeys = Object.keys(relationData[0]);
     let relValues = [].concat(...Object.values(relationData[0]));
@@ -509,13 +555,19 @@ function getDictColumnDetails(selectElem, relationalData) {
     let relationKeys = Object.keys(relationAuto);
     let relationValues = [].concat(...Object.values(relationAuto));
     let subSelectId = selectElem.$input[0].id + 'subSelect'
+    // If selected option belongs to a relation table, update subSelect.
+    // Otherwise, remove any existing subSelect.
     if (relationKeys.includes(selectElem.items[0])
         || relationValues.includes(selectElem.items[0])) {
         let key, defaultValue
         if (relationKeys.includes(selectElem.items[0])) {
+            // Use the first Auto value for the selected relation key as the
+            // default value of the subSelect.
             key = selectElem.items[0]
             defaultValue = relationAuto[key][0]
         } else {
+            // Set the primary select to the relation key, and set the default
+            // subSelect value to the original selected value.
             key = relationKeys.find(key =>
                 relationAuto[key].includes(selectElem.items[0]));
             defaultValue = selectElem.items[0];
@@ -525,6 +577,7 @@ function getDictColumnDetails(selectElem, relationalData) {
             return {text: e, value: e}
         });
         if (!document.getElementById(subSelectId)) {
+            // Create subSelect with relevant options for selected relation key.
             let newSelect = document.createElement("select");
             newSelect.id = subSelectId;
             selectElem.$input[0].parentElement.appendChild(newSelect);
@@ -540,6 +593,7 @@ function getDictColumnDetails(selectElem, relationalData) {
                                                addMoreOrderOptions(relationalData);}
                                            });
         } else {
+            // Update existing subSelect value and options.
             let currentSub = document.getElementById(subSelectId);
             if (!relationAuto[key].includes(currentSub.selectize.getValue())) {
                 currentSub.selectize.clear(true);
@@ -555,15 +609,19 @@ function getDictColumnDetails(selectElem, relationalData) {
 }
 
 function removeChangeOrderSelectize(elem = "modal-body-table") {
+    // Set td innerHTML to equivalent string of all user input for given row.
     let combKey = ':::'
     let rows = document.getElementById(elem).getElementsByTagName('tr');
     for (let i = 3, row; row = rows[i]; i++) {
+        // Get primary select value, or subSelect value if one exists.
         let value = document.getElementById(`auto_order_select${i}`)
             .selectize.getValue();
         if (document.getElementById(`auto_order_select${i}subSelect`)) {
             value = document.getElementById(`auto_order_select${i}subSelect`)
                 .selectize.getValue();
         }
+        // Set text value to <value>:::<index>:::<delimiter> from dataset
+        // attributes if applicable.
         if (rows[i].getAttribute('data-index')) {
             let index = rows[i].getAttribute('data-index');
             let delim = rows[i].getAttribute('data-delim');
@@ -575,6 +633,9 @@ function removeChangeOrderSelectize(elem = "modal-body-table") {
 }
 
 function getForbiddenDelim(colName, relationData) {
+    // Get delimiter that would shift data to next Auto relation column.
+    // i.e. If the Auto column is 'column1::_::column2', then
+    // colName=column1 => '_'.
     let forbiddenDelim;
     let [relationAuto, relationDelim] = relationData;
     let relKey = Object.keys(relationAuto).find(
@@ -587,6 +648,9 @@ function getForbiddenDelim(colName, relationData) {
 }
 
 function getLeadDelim(colName, relationData) {
+    // Get delimiter that precedes the given Auto relation column.
+    // i.e. If the Auto column is 'column1::_::column2', then
+    // colName=column2 => '_'.
     let leadDelim;
     let [relationAuto, relationDelim] = relationData;
     let relKey = Object.keys(relationAuto).find(
@@ -599,6 +663,8 @@ function getLeadDelim(colName, relationData) {
 }
 
 function populateMoreOptionsModal(selectElems, relationData, delimOptions) {
+    // Populate modal allowing users to further customize dictionary columns
+    // which combine multiple strings.
     let modalElem = document.getElementById('changeOrderMoreOptions');
     let colName = selectElems[0].selectize.getValue();
     let leadDelim = getLeadDelim(colName, relationData);
@@ -612,11 +678,13 @@ function populateMoreOptionsModal(selectElems, relationData, delimOptions) {
         <select></select>`
     let inputElem = modalElem.querySelector('#moreOptionsEditor input');
     let delimSelect = modalElem.querySelector('#moreOptionsEditor select');
+    // Remove any forbidden delimiters from options.
     let forbiddenDelim = getForbiddenDelim(colName, relationData);
     if (forbiddenDelim) {
         delimOptions = delimOptions.filter(e => e != forbiddenDelim);
     }
     let defaultDelim = delimOptions[0]
+    // Get sample data from the relevant rows for the user to manipulate.
     let sampleData = selectElems.map(function(e) {
         let row = e.closest('tr');
         let data = row.getElementsByTagName('td')[2].innerHTML
@@ -630,6 +698,7 @@ function populateMoreOptionsModal(selectElems, relationData, delimOptions) {
         }
         return {data: data, index: index, delim: delim, rowIndex: row.rowIndex}
     });
+    // Arrange sample data into current order, structure as select options.
     sampleData.sort((a, b) => (Number(a.index) > Number(b.index)) ? 1 : -1);
     let data = sampleData.map(function(e) {
         return {text: e.data, value: e.rowIndex}
@@ -650,6 +719,12 @@ function populateMoreOptionsModal(selectElems, relationData, delimOptions) {
     //TODO: Set up preview
 }
 
+/**
+ * Given an array of integer strings, return the smallest missing integer >= 0.
+ * If no integers are missing, return the next integer.
+ * @param   {Array}    indexArr Array of integer strings, i.e. ['0', '2']
+ * @returns {string}            Minimum missing integer.
+ */
 function findMinIndex(indexArr) {
     if (!indexArr.length) {
         return String(0)
@@ -672,6 +747,7 @@ function replaceForbiddenDelim(rows, forbiddenDelim, defaultDelim) {
 }
 
 function assignIndexDelim(selectElems, relationData, delimOptions) {
+    // Set data-index and data-delim for the each tr containing selectElems.
     let colName = selectElems[0].selectize.getValue();
     let forbiddenDelim = getForbiddenDelim(colName, relationData);
     let leadDelim = getLeadDelim(colName, relationData);
@@ -679,11 +755,13 @@ function assignIndexDelim(selectElems, relationData, delimOptions) {
         delimOptions = delimOptions.filter(e => e != forbiddenDelim);
     }
     let defaultDelim = delimOptions[0]
+    // Get associated tr for each selectElems. Split into indexed and unindexed.
     let rows = selectElems.map(function(e) {return e.closest('tr')});
     let indexedRows = rows.filter(e =>
         Boolean(e.getAttribute('data-index')));
     let unindexedRows = rows.filter(e =>
         !Boolean(e.getAttribute('data-index')));
+    // Use previously selected delimiter for these elements, if applicable.
     if (indexedRows.length) {
         for (let row of indexedRows) {
             let index = row.getAttribute('data-index');
@@ -694,10 +772,12 @@ function assignIndexDelim(selectElems, relationData, delimOptions) {
             }
         }
     }
+    // Get list of indexes already assigned.
     let inds = indexedRows.map(function(e) {
         return e.getAttribute('data-index')
     })
     for (let row of unindexedRows) {
+        // Assign unindexed row smallest available index and required delimiter.
         let minInd = findMinIndex(inds);
         inds.push(minInd);
         row.setAttribute('data-index', minInd);
@@ -710,6 +790,7 @@ function assignIndexDelim(selectElems, relationData, delimOptions) {
 }
 
 function saveMoreOptions(leadDelim) {
+    // Update tr data-index and data-delim attributes to reflect user input.
     let modalElem = document.getElementById('moreOptionsEditor');
     let inputElem = modalElem.getElementsByTagName('input')[0];
     let selectElem = modalElem.getElementsByTagName('select')[0];
@@ -730,6 +811,8 @@ function saveMoreOptions(leadDelim) {
 }
 
 function addMoreOrderOptions(relationData) {
+    // Add more options button to any tr where at least one other tr has the
+    // same selected option.
     let delimOptions = ['-', '_', '/']
     let moreButton = `<button type="button" class="btn btn-primary btn-circle btn-sm"
                               data-dismiss="modal"
@@ -739,6 +822,8 @@ function addMoreOrderOptions(relationData) {
     let $primarySelects = $('select[id*=auto_order_select]').not('[id$=subSelect]')
     let $secondarySelects = $('select[id*=auto_order_select][id$=subSelect]')
     let allVals = []
+    // Populate allVals with the value of all select inputs in the auto order
+    // column. Remove the more options button from each row.
     $primarySelects.each(function(index, elem) {
         allVals.push(elem.value);
         let row = elem.closest("tr");
@@ -747,9 +832,11 @@ function addMoreOrderOptions(relationData) {
     $secondarySelects.each(function(index, elem) {
         allVals.push(elem.value);
     })
+    // Get all unique options currently in use.
     let uniqueVals = new Set(allVals);
     uniqueVals.delete('mpMisc');
     for (let val of uniqueVals) {
+        // Get list of all select inputs with given value (val).
         let matchingSelects = []
         $primarySelects.each(function(index, elem) {
             if (elem.value === val) {
@@ -764,6 +851,8 @@ function addMoreOrderOptions(relationData) {
                 matchingSelects.push(elem)
             }
         });
+        // If there is more than one select input with the same value, set
+        // index and delimiter attributes for tr and add more options button.
         if (matchingSelects.length > 1) {
             assignIndexDelim(matchingSelects, relationData, delimOptions)
             for (let elem of matchingSelects) {
@@ -775,6 +864,8 @@ function addMoreOrderOptions(relationData) {
                 }
             }
         } else {
+            // Remove unnecessary index and delimiter information for unique
+            // selections.
             for (let elem of matchingSelects) {
                 let row = elem.closest("tr")
                 row.removeAttribute('data-index')

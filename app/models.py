@@ -734,6 +734,12 @@ class Processor(db.Model):
     def get_url(self):
         return url_for('main.processor_page', object_name=self.name)
 
+    def get_follow_url(self):
+        return url_for('main.follow_processor', object_name=self.name)
+
+    def get_unfollow_url(self):
+        return url_for('main.unfollow_processor', object_name=self.name)
+
     def get_project_numbers(self):
         return [x.project_number for x in self.projects]
 
@@ -1489,8 +1495,15 @@ class Uploader(db.Model):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                      if not k.startswith("_") and k != 'id'])
 
-    def get_url(self):
-        return url_for('main.uploader_page', object_name=self.name)
+    def get_url(self, route='main.uploader_page'):
+        return url_for(route, object_name=self.name)
+
+    def get_follow_url(self):
+        return self.get_url(route='main.follow_processor')
+
+    def get_unfollow_url(self):
+        return self.get_url(route='main.unfollow_processor')
+
 
     def get_object_function_call(self):
         return {'object_name': self.name}
@@ -2504,16 +2517,16 @@ class Plan(db.Model):
         return output_links
 
     def get_current_plan(self, object_name=None, current_page=None,
-                         edit_progress=0, edit_name='Page', buttons=None):
+                         edit_progress=0, edit_name='Page', buttons='Plan'):
         output_links = self.get_output_links()
         kwargs = dict(title=_('Plan'), object_name=object_name,
                       object_function_call={'object_name': object_name},
                       edit_progress=edit_progress, edit_name=edit_name,
-                      output_links=output_links)
+                      output_links=output_links,
+                      buttons=Processor.get_navigation_buttons(buttons))
         if object_name:
             cur_obj = Plan.query.filter_by(name=object_name).first_or_404()
             kwargs['object'] = cur_obj
-            kwargs['buttons'] = Processor.get_navigation_buttons('Plan')
             posts, next_url, prev_url = Post.get_posts_for_objects(
                 cur_obj, None, current_page, 'plan')
             kwargs['posts'] = posts.items
@@ -2522,13 +2535,26 @@ class Plan(db.Model):
         else:
             kwargs['object'] = Plan()
             kwargs['object_name'] = ''
+            kwargs['object_function_call']['object_name'] = ''
         return kwargs
 
-    def get_url(self):
-        return url_for('plan.edit_plan', object_name=self.name)
+    def get_url(self, route='plan.edit_plan'):
+        url = ''
+        if self and self.name:
+            url = url_for(route, object_name=self.name)
+        return url
+
+    def get_follow_url(self):
+        return self.get_url(route='main.follow_processor')
+
+    def get_unfollow_url(self):
+        return self.get_url(route='main.unfollow_processor')
 
     def get_last_post(self):
-        return self.posts.order_by(Post.timestamp.desc()).first()
+        posts = []
+        if self and self.name:
+            posts = self.posts.order_by(Post.timestamp.desc()).first()
+        return posts
 
     def launch_task(self, name, description, running_user, *args, **kwargs):
         rq_job = current_app.task_queue.enqueue('app.tasks' + name,

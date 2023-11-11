@@ -6,17 +6,15 @@
         </a>
             {% if not current_user.is_following_processor(processor) %}
                 <a class="btn btn-outline-primary btn-sm rounded-pill"
-                   href="{{ url_for('main.follow_processor',
-                   object_name=processor.name) }}"
+                   href="{{ processor.get_follow_url() }}"
                 style="float: right; opacity:.8;">Follow</a>
              {% else %}
                 <a class="btn btn-primary btn-sm rounded-pill"
-                   href="{{ url_for('main.unfollow_processor',
-                   object_name=processor.name) }}"
+                   href="{{ processor.get_unfollow_url() }}"
                 style="float: right; opacity:.8;">Following</a>
             {% endif %}
         </h5>
-        {% if processor.campaign is defined %}
+        {% if processor.campaign is defined and processor.campaign is not none and processor.campaign != 'None' %}
             <h6 class="card-subtitle mb-2 text-muted">{{ processor.campaign.product.client.name}} - {{ processor.campaign.product.name}}</h6>
         {% endif %}
         <h6 class="card-subtitle mb-2 text-muted">{{ processor.description }}</h6>

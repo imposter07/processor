@@ -68,6 +68,13 @@ def user(app_fixture):
     db.session.commit()
 
 
+@pytest.fixture(scope='module', autouse=True)
+def check_directory():
+    if (os.path.exists(os.path.basename(__file__)) or
+            os.getcwd().split('\\')[-1] == 'processor'):
+        os.chdir("..")
+
+
 class TimerDeathPenalty(BaseDeathPenalty):
     def __init__(self, timeout, exception=JobTimeoutException, **kwargs):
         super().__init__(timeout, exception, **kwargs)

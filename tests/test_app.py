@@ -5,7 +5,9 @@ import urllib
 from datetime import datetime, timedelta
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
-    Project, ProjectNumberMax
+    Project, ProjectNumberMax, Plan
+import app.plan.routes as plan_routes
+import app.plan.forms as plan_forms
 from config import basedir
 import pandas as pd
 import processor.reporting.vmcolumns as vmc
@@ -66,6 +68,21 @@ def create_processor(app_fixture, user, tmp_path_factory, worker):
         db.session.delete(proc)
     db.session.commit()
     os.chdir(cur_path)
+
+
+def submit_form(sw, form_names=None, select_form_names=None,
+                submit_id='loadContinue', test_name='test'):
+    if not form_names:
+        form_names = []
+    if not select_form_names:
+        select_form_names = []
+    test_name = 'test'
+    select_str = '-selectized'
+    elem_form = [(test_name, '{}{}'.format(x, select_str))
+                 if 'cur' in x or x in select_form_names
+                 else (test_name, x) for x in form_names + select_form_names]
+    sw.send_keys_from_list(elem_form)
+    sw.xpath_from_id_and_click(submit_id)
 
 
 @pytest.mark.usefixtures("app_fixture")
@@ -191,6 +208,23 @@ class TestProcessor:
         assert sw.browser.current_url == '{}processor'.format(base_url)
 
 
+class TestPlan:
+
+    def test_create_plan(self, sw, login):
+        create_url = '{}{}'.format(base_url, plan_routes.plan.__name__)
+        sw.go_to_url(create_url)
+        form_names = ['cur_client', 'cur_product', 'cur_campaign',
+                      'description', 'name']
+        test_name = 'test'
+        submit_form(sw, form_names, test_name=test_name)
+        p = Plan.query.filter_by(name=test_name).first()
+        assert p.name == test_name
+        edit_url = '{}{}/{}/{}'.format(
+            base_url, plan_routes.plan.__name__, urllib.parse.quote(test_name),
+            plan_routes.topline.__name__)
+        assert sw.browser.current_url == edit_url
+
+
 class TestProject:
 
     @staticmethod
@@ -202,11 +236,6 @@ class TestProject:
             else:
                 break
         return True
-
-    @pytest.fixture(scope='class', autouse=True)
-    def check_directory(self):
-        if os.path.exists(os.path.basename(__file__)):
-            os.chdir("..")
 
     def test_project_number_page(self, sw, login, worker):
         name = Product.get_default_name()[0]

@@ -17,9 +17,12 @@ from app.models import Client, Product, Campaign, Plan, Post, Partner, \
 @bp.route('/plan', methods=['GET', 'POST'])
 @login_required
 def plan():
+    kwargs = Plan().get_current_plan(current_page='create_plan',
+                                     edit_progress=100, edit_name='Basic',
+                                     buttons='Plan')
     form = PlanForm()
     form.set_choices()
-    kwargs = {'form': form}
+    kwargs['form'] = form
     if request.method == 'POST':
         form.validate()
         form_client = Client(name=form.cur_client.data).check_and_add()
@@ -43,6 +46,11 @@ def plan():
                     plan_id=new_plan.id)
         db.session.add(post)
         db.session.commit()
+        if form.form_continue.data == 'continue':
+            route_str = 'plan.topline'
+        else:
+            route_str = 'plan.edit_plan'
+        return redirect(url_for(route_str, object_name=new_plan.name))
     return render_template('plan/plan.html', **kwargs)
 
 

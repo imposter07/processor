@@ -25,11 +25,6 @@ def test_health_check(client):
 
 class TestChat:
 
-    @pytest.fixture(scope='class', autouse=True)
-    def check_directory(self):
-        if os.path.exists(os.path.basename(__file__)):
-            os.chdir("..")
-
     @pytest.fixture(scope='class')
     def conversation(self, user, app_fixture):
         message = 'test message'

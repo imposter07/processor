@@ -1892,7 +1892,7 @@ def edit_processor_finish(object_name):
                 '.build_processor_from_request', _(msg_text),
                 running_user=current_user.id)
             db.session.commit()
-            return redirect(url_for('main.processor_page',
+            return redirect(url_for('main.edit_processor',
                                     object_name=cur_proc.name))
         else:
             return redirect(url_for('main.edit_processor_finish',

@@ -366,7 +366,7 @@
             let jv = document.getElementById('jinjaValues');
             let object_name = jv.dataset['object_name'].trim();
             let response = await fetch(
-                `/processor/${object_name}/dashboard/get?render=false`);
+                `/processor/${object_name}/dashboard/get`);
             return await response.json();
         }
 
@@ -423,9 +423,20 @@
             let metrics = ['kpi'];
             filterDict = (filterDict) ? filterDict : [];
             let pacing_alert_args = getDataTableArgsDict(
-                'generateAlerts', ['vendorname', 'campaignname'], ['netcost', 'adservingcost'], filterDict);
+                'generateAlerts', ['vendorname', 'campaignname'],
+                ['netcost', 'adservingcost'], filterDict);
             getTable('pacingAlerts', 'pacingAlertsProgress', 'None', 'None',
-                'None', true, 'None', false, pacing_alert_args);
+                'None', true, 'None', false, pacing_alert_args, getMetricsComplete);
+            let partner_metric_args = getDataTableArgsDict(
+                'generateBarChart', [ 'campaignname', 'vendorname'],
+                metrics, filterDict, true, undefined, undefined, false);
+            getTable('partnerSummaryMetrics', 'partnerSummaryMetricsProgress',
+                'None', 'None', 'None', true, 'None', false, partner_metric_args);
+            let tree_metric_args = getDataTableArgsDict(
+                'generateTreeMap', ['vendortypename', 'vendorname'],
+                ['netcost'], filterDict, true);
+            getTable('partnerTreeMap', 'partnerTreeMapProgress',
+                'None', 'None', 'None', true, 'None', false, tree_metric_args);
             getTable('pacingMetrics', 'pacingMetricsProgress');
         }
 

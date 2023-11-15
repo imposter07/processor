@@ -2957,6 +2957,8 @@ def processor_dashboard_create(object_name):
         return render_template('create_processor.html', **kwargs)
     if request.method == 'POST':
         form.validate()
+        form.dimensions.data = (
+            form.dimensions.data if form.dimensions.data else 'eventdate')
         new_dash = Dashboard(
             processor_id=cur_proc.id, name=form.name.data,
             user_id=current_user.id, chart_type=form.chart_type.data,
@@ -2992,28 +2994,30 @@ def processor_dashboards_get(object_name):
         edit_name='View All', buttons='ProcessorDashboard')
     cur_proc = kwargs['processor']
     dashboards = cur_proc.get_all_dashboards()
-    if request.args.get('render') == 'false':
-        dash_data = []
-        for dash in dashboards:
-            dash_id = dash.id
-            metrics = dash.get_metrics_json()
-            dimensions = dash.get_dimensions_json()
-            chart_type = dash.chart_type
-            chart_filters = dash.get_filters_json()
-            default_view = dash.default_view
-            dash_html = render_template('_dash_card.html', dash=dash)
-            dash_data.append(
-                {'id': dash_id, 'metrics': metrics, 'dimensions': dimensions,
-                 'chart_type': chart_type, 'chart_filters': chart_filters,
-                 'default_view': default_view, 'html': dash_html})
-        return jsonify(dash_data)
-    return kwargs, dashboards
+    dash_data = []
+    for dash in dashboards:
+        dash_id = dash.id
+        metrics = dash.get_metrics_json()
+        dimensions = dash.get_dimensions_json()
+        chart_type = dash.chart_type
+        chart_filters = dash.get_filters_json()
+        default_view = dash.default_view
+        dash_html = render_template('_dash_card.html', dash=dash)
+        dash_data.append(
+            {'id': dash_id, 'metrics': metrics, 'dimensions': dimensions,
+             'chart_type': chart_type, 'chart_filters': chart_filters,
+             'default_view': default_view, 'html': dash_html})
+    return jsonify(dash_data)
 
 
 @bp.route('/processor/<object_name>/dashboard/all', methods=['GET', 'POST'])
 @login_required
 def processor_dashboard_all(object_name):
-    kwargs, dashboards = processor_dashboards_get(object_name)
+    kwargs = Processor().get_current_processor(
+        object_name, current_page='processor_dashboard_all', edit_progress=100,
+        edit_name='View All', buttons='ProcessorDashboard')
+    cur_proc = kwargs['processor']
+    dashboards = cur_proc.get_all_dashboards()
     for dash in dashboards:
         static_filters = ProcessorDashboardForm().set_filters(
             DashboardFilter, dash)
@@ -3404,6 +3408,9 @@ def project_billing(object_name):
     return render_template('create_processor.html', **kwargs)
 
 
+from functools import wraps
+
+
 def error_handler(route_function):
     @wraps(route_function)
     def decorated_function(*args, **kwargs):
@@ -3417,6 +3424,7 @@ def error_handler(route_function):
             data = {'data': 'error', 'task': '', 'level': 'error',
                     'args': request.form.to_dict(flat=False)}
             return jsonify(data)
+
     return decorated_function
 
 

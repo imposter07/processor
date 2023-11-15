@@ -5,6 +5,7 @@ import app.utils as utl
 from flask_babel import _
 from app.plan import bp
 from datetime import datetime
+import datetime as dt
 import processor.reporting.analyze as az
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
@@ -32,12 +33,16 @@ def plan():
         form_campaign = Campaign(
             name=form.cur_campaign.data,
             product_id=form_product.id).check_and_add()
+        sd = form.start_date.data
+        sd = sd if sd else datetime.today()
+        ed = form.end_date.data
+        ed = ed if ed else datetime.today() + dt.timedelta(days=7)
         new_plan = Plan(
             name=form.name.data, description=form.description.data,
             client_requests=form.client_requests.data,
             restrictions=form.restrictions.data, objective=form.objective.data,
-            start_date=form.start_date.data, end_date=form.end_date.data,
-            total_budget=form.total_budget.data, campaign_id=form_campaign.id)
+            start_date=sd, end_date=ed, total_budget=form.total_budget.data,
+            campaign_id=form_campaign.id)
         db.session.add(new_plan)
         db.session.commit()
         creation_text = 'Plan was requested for creation.'
@@ -46,6 +51,13 @@ def plan():
                     plan_id=new_plan.id)
         db.session.add(post)
         db.session.commit()
+        if not new_plan.phases.all():
+            phase = PlanPhase(
+                name='Launch', plan_id=new_plan.id,
+                start_date=new_plan.start_date,
+                end_date=new_plan.end_date)
+            db.session.add(phase)
+            db.session.commit()
         if form.form_continue.data == 'continue':
             route_str = 'plan.topline'
         else:

@@ -97,7 +97,12 @@ def rename_duplicates(old):
 def get_sd_ed_in_dict(dict_to_add, sd_ed_value):
     date_list = sd_ed_value.split(' to ')
     sd = date_list[0]
-    ed = date_list[1]
+    if not sd:
+        sd = dt.datetime.today().strftime('%Y-%m-%d')
+    if len(date_list) > 1:
+        ed = date_list[1]
+    else:
+        ed = sd
     dict_to_add['start_date'] = dt.datetime.strptime(sd, '%Y-%m-%d')
     dict_to_add['end_date'] = dt.datetime.strptime(ed, '%Y-%m-%d')
     return dict_to_add

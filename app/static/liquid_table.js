@@ -1542,10 +1542,12 @@ function createLiquidTableChart(tableName, tableRows, chartFunc) {
     headElems.forEach(elem => {
         let firstCellId = elem.id.replace('col', 'row') + '0';
         let cell = document.getElementById(firstCellId);
-        let value = cell.textContent || cell.innerText;
-        value = value.replace(/[$%,]/g, '');
-        let cellName = elem.id.replace('col', '');
-        (isNaN(value)) ? xCols.push(cellName) : yCols.push(cellName);
+        if (cell) {
+            let value = cell.textContent || cell.innerText;
+            value = value.replace(/[$%,]/g, '');
+            let cellName = elem.id.replace('col', '');
+            (isNaN(value)) ? xCols.push(cellName) : yCols.push(cellName);
+        }
     });
     if (yCols.length) {
         showChart(tableName, true);

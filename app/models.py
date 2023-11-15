@@ -2764,7 +2764,10 @@ class Sow(db.Model):
         self.plan_id = cur_plan.id
         self.project_name = cur_plan.name
         self.date_submitted = datetime.today().date()
-        self.liquid_contact = User.query.get(cur_plan.user_id).username
+        liquid_contact = db.session.get(User, cur_plan.user_id)
+        if not liquid_contact:
+            liquid_contact = current_user
+        self.liquid_contact = liquid_contact.username
         cur_proj = cur_plan.projects.first()
         self.liquid_project = cur_proj if cur_proj else 0
         self.start_date = cur_plan.start_date

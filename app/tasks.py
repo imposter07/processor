@@ -4835,6 +4835,7 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
             os.chdir('processor')
         api = gsapi.GsApi()
         api.input_config('gsapi.json')
+        api.sheet_id = '1kCTyf6klPrd1Dy7xonyk6TPMSe0gm0FQO2s7IpHP7VU'
         df = api.get_data()
         df = utl.first_last_adj(df, 3, 0)
         df = df.rename_axis(None, axis=1).rename_axis(
@@ -5431,6 +5432,12 @@ def get_topline(plan_id, current_user_id):
         partner_type_name = 'partner_type'
         phase_name = 'Phase'
         total_budget = 'total_budget'
+        if not cur_plan.start_date:
+            cur_plan.start_date = dt.datetime.today()
+            db.session.commit()
+        if not cur_plan.end_date:
+            cur_plan.end_date = dt.datetime.today()
+            db.session.commit()
         sd = cur_plan.start_date
         ed = cur_plan.end_date
         weeks = [sd + dt.timedelta(days=x)

@@ -76,10 +76,9 @@ def submit_form(sw, form_names=None, select_form_names=None,
         form_names = []
     if not select_form_names:
         select_form_names = []
-    test_name = 'test'
     select_str = '-selectized'
     elem_form = [(test_name, '{}{}'.format(x, select_str))
-                 if 'cur' in x or x in select_form_names
+                 if 'cur' in x or 'Select' in x or x in select_form_names
                  else (test_name, x) for x in form_names + select_form_names]
     sw.send_keys_from_list(elem_form)
     sw.xpath_from_id_and_click(submit_id)
@@ -209,20 +208,62 @@ class TestProcessor:
 
 
 class TestPlan:
+    test_name = 'test'
 
-    def test_create_plan(self, sw, login):
-        create_url = '{}{}'.format(base_url, plan_routes.plan.__name__)
+    def get_url(self, url_type=''):
+        url = '{}{}'.format(base_url, plan_routes.plan.__name__)
+        name_url = urllib.parse.quote(self.test_name)
+        topline_route = plan_routes.topline.__name__
+        sow_route = plan_routes.edit_sow.__name__
+        url_dict = {}
+        for url_route in [topline_route, sow_route]:
+            url_str = url_route
+            if url_route == sow_route:
+                url_str = url_str.split('_')[1]
+            url_dict[url_route] = url_str
+        if url_type in url_dict:
+            url += '/{}/{}'.format(name_url, url_dict[url_type])
+        return url
+
+    def test_create_plan(self, sw, login, worker):
+        create_url = self.get_url()
         sw.go_to_url(create_url)
         form_names = ['cur_client', 'cur_product', 'cur_campaign',
                       'description', 'name']
-        test_name = 'test'
-        submit_form(sw, form_names, test_name=test_name)
-        p = Plan.query.filter_by(name=test_name).first()
-        assert p.name == test_name
-        edit_url = '{}{}/{}/{}'.format(
-            base_url, plan_routes.plan.__name__, urllib.parse.quote(test_name),
-            plan_routes.topline.__name__)
+        submit_form(sw, form_names, test_name=self.test_name)
+        p = Plan.query.filter_by(name=self.test_name).first()
+        assert p.name == self.test_name
+        edit_url = self.get_url(plan_routes.topline.__name__)
         assert sw.browser.current_url == edit_url
+
+    def test_topline(self, sw, login, worker):
+        edit_url = self.get_url(plan_routes.topline.__name__)
+        if not sw.browser.current_url == edit_url:
+            self.test_create_plan(sw, login, worker)
+        assert sw.browser.current_url == edit_url
+        sel_id = 'partnerSelectAdd'
+        submit_id = 'addRowsTopline'
+        worker.work(burst=True)
+        TestProject.wait_for_jobs_finish()
+        sw.wait_for_elem_load(submit_id)
+        part_name = 'Facebook'
+        part_budget = '5000'
+        submit_form(sw, form_names=[sel_id], submit_id=submit_id,
+                    test_name=part_name)
+        sw.xpath_from_id_and_click('tr0', sleep=0)
+        submit_form(sw, ['total_budget0'], test_name=part_budget)
+        sow_url = self.get_url(plan_routes.edit_sow.__name__)
+        worker.work(burst=True)
+        TestProject.wait_for_jobs_finish()
+        p = Plan.query.filter_by(name=self.test_name).first()
+        phase = p.get_current_children()
+        assert len(phase) == 1
+        part = phase[0].get_current_children()
+        assert len(part) == 1
+        part = part[0]
+        assert part.name == part_name
+        assert int(part.total_budget) == int(part_budget)
+        assert sw.browser.current_url == sow_url
 
 
 class TestProject:

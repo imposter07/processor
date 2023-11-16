@@ -301,11 +301,10 @@ class TestProject:
         self.wait_for_jobs_finish()
         p = Project.query.all()
         assert len(p) > 10
-        select_id = 'productProjectNumberFilterSelect-selectized'
-        time.sleep(2)
-        sw.send_keys_from_list([(name, select_id)])
+        select_id = 'productProjectNumberFilterSelect'
         apply_id = 'ProjectNumberFilterButton'
-        sw.xpath_from_id_and_click(apply_id)
+        sw.wait_for_elem_load(apply_id)
+        submit_form(sw, [select_id], submit_id=apply_id, test_name=name)
         t = Task.query.filter_by(complete=False, name=task_name).first()
         assert t.name == task_name
         worker.work(burst=True)

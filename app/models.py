@@ -2232,9 +2232,17 @@ class Project(db.Model):
     def get_table_name_to_task_dict():
         return {}
 
-    def get_url(self):
-        return url_for('main.project_number_page',
-                       object_name=self.project_number)
+    def get_url(self, route='main.project_number_page'):
+        url = ''
+        if self and self.name:
+            url = url_for(route, object_name=self.name)
+        return url
+
+    def get_follow_url(self):
+        return self.get_url(route='main.follow_processor')
+
+    def get_unfollow_url(self):
+        return self.get_url(route='main.unfollow_processor')
 
     def get_example_prompt(self):
         prompts = ['Project number 206196?']
@@ -2256,7 +2264,7 @@ class Project(db.Model):
             Processor.__tablename__: len(self.processor_associated.all()),
             Plan.__tablename__: len(self.plan_associated.all()),
             Processor.campaign_id.name: c.id if c else None,
-            Plan.user_id.name: 4,
+            Plan.user_id.name: self.user_id,
             Project.campaign_id.name: self.campaign_id}
         for x in date_cols:
             key_name = x.replace('flight_', '')

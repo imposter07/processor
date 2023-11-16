@@ -4902,9 +4902,14 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
                                'project number: {}').format(pn[pn_col])
                 new_processor = Processor.query.filter_by(name=name).first()
                 if not new_processor:
+                    cu = User.query.filter_by(username='ALI').first()
+                    if cu:
+                        user_id = cu.id
+                    else:
+                        user_id = running_user
                     new_processor = Processor(
                         name=name, description=description,
-                        user_id=4, created_at=datetime.utcnow(),
+                        user_id=user_id, created_at=datetime.utcnow(),
                         start_date=sd, end_date=ed,
                         campaign_id=form_campaign.id)
                     db.session.add(new_processor)
@@ -5421,7 +5426,7 @@ def get_sow(plan_id, current_user_id):
 def get_topline(plan_id, current_user_id):
     try:
         _set_task_progress(0)
-        cur_plan = Plan.query.get(plan_id)
+        cur_plan = db.session.get(Plan, plan_id)
         partners = []
         for phase in cur_plan.phases:
             partners.extend(

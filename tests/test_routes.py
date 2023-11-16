@@ -33,6 +33,10 @@ class TestChat:
         db.session.add(conv)
         db.session.commit()
         yield conv
+        chats = Chat.query.filter_by(conversation_id=conv.id).all()
+        for c in chats:
+            db.session.delete(c)
+            db.session.commit()
         db.session.delete(conv)
         db.session.commit()
 

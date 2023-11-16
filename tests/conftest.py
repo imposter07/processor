@@ -1,4 +1,5 @@
 import os
+import docker
 import pytest
 import ctypes
 import threading
@@ -9,7 +10,7 @@ from app import create_app, db
 from config import Config, basedir
 import processor.reporting.utils as utl
 from processor.reporting.export import ScriptBuilder, DB
-from app.models import User
+from app.models import User, Project, Processor, Uploader, Plan
 from rq import SimpleWorker
 from rq.timeouts import BaseDeathPenalty, JobTimeoutException
 
@@ -21,11 +22,35 @@ class TestConfig(Config):
     EXP_DB = 'test_dbconfig.json'
 
 
+def check_docker_running(config):
+    try:
+        cli = docker.from_env()
+    except docker.errors.DockerException:
+        return config
+    if not cli.containers.list():
+        return config
+    db_cred = {
+        'drivername': 'postgresql',
+        'username': 'postgres',
+        'password': 'postgres',
+        'host': '127.0.0.1',
+        'port': '5433',
+        'database': 'postgres',
+    }
+    config.SQLALCHEMY_DATABASE_URI = (
+        f"postgresql://{db_cred['username']}:{db_cred['password']}"
+        f"@{db_cred['host']}:{db_cred['port']}/{db_cred['database']}")
+    return config
+
+
 def run_server(with_run=True):
-    app = create_app(TestConfig)
+    config = TestConfig
+    config = check_docker_running(config)
+    app = create_app(config)
     app_context = app.app_context()
     app_context.push()
-    db.create_all()
+    with app.app_context():
+        db.create_all()
     if with_run:
         app.run(debug=True, use_reloader=False)
     return app, app_context
@@ -64,6 +89,11 @@ def user(app_fixture):
     db.session.add(u)
     db.session.commit()
     yield u
+    for db_model in [Project, Processor, Uploader, Plan]:
+        rows = db_model.query.filter_by(user_id=u.id).all()
+        for row in rows:
+            db.session.delete(row)
+            db.session.commit()
     db.session.delete(u)
     db.session.commit()
 

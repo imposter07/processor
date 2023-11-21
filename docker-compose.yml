@@ -14,7 +14,20 @@ services:
     ports:
       - '5433:5432'
     volumes:
-      - db:/var/lib/postgresql/data
+      - db1_data:/var/lib/postgresql/data
+  report-db:
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5434:5432'
+    volumes:
+      - db2_data:/var/lib/postgresql/data
 volumes:
-  db:
+  db1_data:
+    driver: local
+  db2_data:
     driver: local

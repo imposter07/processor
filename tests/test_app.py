@@ -397,7 +397,8 @@ class TestReportingDBReadWrite:
                    "FROM lqadb.event;")
             df = pd.read_sql(sql, connection)
             total_impressions_from_db = df.iloc[0]['total_impressions']
-            assert total_impressions_from_db == rdf[vmc.impressions].sum()
+            assert (int(total_impressions_from_db) ==
+                    int(rdf[vmc.impressions].sum()))
             sql = "SELECT SUM(clicks) as total_clicks FROM lqadb.event;"
             df = pd.read_sql(sql, connection)
             total_clicks_from_db = df.iloc[0]['total_clicks']

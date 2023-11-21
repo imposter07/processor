@@ -197,8 +197,8 @@ def copy_processor_local(file_path, copy_back=False):
 
 def processor_failed_email(processor_id, current_user_id, exception_text):
     try:
-        user_that_ran = User.query.get(current_user_id)
-        cur_processor = Processor.query.get(processor_id)
+        user_that_ran = db.session.get(User, current_user_id)
+        cur_processor = db.session.get(Processor, processor_id)
         from urllib.parse import quote
         recipients = [user_that_ran]
         exception_text = '{} - {}'.format(exception_text[0], exception_text[1])
@@ -309,8 +309,8 @@ def run_processor(processor_id, current_user_id, run_args):
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
             processor_id, current_user_id), exc_info=sys.exc_info())
-        processor_to_run = Processor.query.get(processor_id)
-        user_that_ran = User.query.get(current_user_id)
+        processor_to_run = db.session.get(Processor, processor_id)
+        user_that_ran = db.session.get(User, current_user_id)
         msg_text = ("{} run failed.".format(processor_to_run.name))
         processor_post_message(processor_to_run, user_that_ran, msg_text)
         processor_failed_email(processor_id, current_user_id, sys.exc_info())
@@ -3502,7 +3502,7 @@ def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
                                 return_func=None):
     try:
         _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         topline_analysis = cur_processor.processor_analysis.filter_by(
             key=az.Analyze.topline_col).all()
         kpis, kpi_cols = get_kpis_for_processor(processor_id, current_user_id)
@@ -3587,7 +3587,7 @@ def get_processor_daily_notes(processor_id, current_user_id, dimensions=None,
                               metrics=None, filter_dict=None, return_func=None):
     try:
         _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         import processor.reporting.analyze as az
         import processor.reporting.vmcolumns as vmc
         import processor.reporting.dictcolumns as dctc
@@ -3627,7 +3627,7 @@ def get_processor_daily_notes(processor_id, current_user_id, dimensions=None,
 def get_processor_topline_metrics(processor_id, current_user_id, vk=None):
     try:
         _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         import processor.reporting.analyze as az
         import processor.reporting.vmcolumns as vmc
         import processor.reporting.dictcolumns as dctc
@@ -3684,7 +3684,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                             use_cache=True, table_name=None, return_func=None):
     try:
         _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         if ((not cur_processor.local_path) or
                 (not os.path.exists(adjust_path(cur_processor.local_path)))):
             _set_task_progress(100)
@@ -4459,7 +4459,7 @@ def update_analysis_in_db_reporting_cache(processor_id, current_user_id, df,
                                           check=False):
     try:
         _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         dimensions_str = '|'.join(dimensions)
         metrics_str = '|'.join(metrics)
         if not filter_dict:
@@ -4785,7 +4785,7 @@ def write_report_builder(processor_id, current_user_id, new_data=None):
 def get_kpis_for_processor(processor_id, current_user_id):
     try:
         _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         vc = az.ValueCalc()
         analysis = cur_processor.processor_analysis.filter_by(
             key=az.Analyze.kpi_col).all()
@@ -5726,7 +5726,7 @@ def get_single_notes_table(processor_id, current_user_id, vk=None):
 def update_all_notes_table(processor_id, current_user_id):
     try:
         _set_task_progress(0)
-        cur_proc = Processor.query.get(processor_id)
+        cur_proc = db.session.get(Processor, processor_id)
         dimensions = ['dimensions']
         date_cols = ['start_date', 'end_date']
         dim_cols = ['vendor', 'kpi', 'country', 'environment']

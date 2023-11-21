@@ -1,14 +1,18 @@
 import os
+import json
 import docker
 import pytest
 import ctypes
 import threading
+import pandas as pd
 from sqlalchemy import create_engine, Sequence, text, inspect
+from sqlalchemy.schema import CreateSchema
 from multiprocessing import Process
 from flask_login import FlaskLoginClient
 from app import create_app, db
 from config import Config, basedir
 import processor.reporting.utils as utl
+import processor.reporting.expcolumns as exc
 from processor.reporting.export import ScriptBuilder, DB
 from app.models import User, Project, Processor, Uploader, Plan
 from rq import SimpleWorker
@@ -22,7 +26,45 @@ class TestConfig(Config):
     EXP_DB = 'test_dbconfig.json'
 
 
-def check_docker_running(config):
+def check_export_handler(db_file, config_path):
+    file_name = os.path.join(config_path, 'export_handler.csv')
+    df = pd.read_csv(os.path.join(config_path, 'export_handler.csv'))
+    config_vals = {exc.test_file: 'results.csv', exc.test_config: db_file}
+    for k, v in config_vals.items():
+        if k not in df.columns:
+            df[k] = v
+            df.to_csv(file_name, index=False)
+
+
+def check_exp_db_config(config, remove=False):
+    processor_path = os.path.join(basedir, Processor.__table__.name)
+    config_path = os.path.join(processor_path, utl.config_path)
+    tmp_file = os.path.join(config_path, 'tmp{}'.format(config.EXP_DB))
+    old_file = os.path.join(config_path, config.EXP_DB)
+    if remove:
+        remove_exp_db_config(tmp_file, old_file)
+    else:
+        db_config = {'USER': config.db_cred['username'],
+                     'PASS': config.db_cred['password'],
+                     'HOST': config.db_cred['host'],
+                     'PORT': config.db_cred['port'],
+                     'DATABASE': config.db_cred['database'],
+                     'SCHEMA': 'lqadb'}
+        if os.path.exists(old_file):
+            utl.copy_file(old_file, tmp_file)
+        with open(old_file, 'w') as f:
+            json.dump(db_config, f)
+        check_export_handler(config.EXP_DB, config_path)
+
+
+def remove_exp_db_config(tmp_file, old_file):
+    if os.path.exists(tmp_file):
+        utl.copy_file(tmp_file, old_file)
+        os.remove(tmp_file)
+
+
+def check_docker_running(config, port='5433', database='postgres',
+                         export_config=False):
     try:
         cli = docker.from_env()
     except docker.errors.DockerException:
@@ -34,12 +76,15 @@ def check_docker_running(config):
         'username': 'postgres',
         'password': 'postgres',
         'host': '127.0.0.1',
-        'port': '5433',
-        'database': 'postgres',
+        'port': port,
+        'database': database,
     }
     config.SQLALCHEMY_DATABASE_URI = (
         f"postgresql://{db_cred['username']}:{db_cred['password']}"
         f"@{db_cred['host']}:{db_cred['port']}/{db_cred['database']}")
+    config.db_cred = db_cred
+    if export_config:
+        check_exp_db_config(config)
     return config
 
 
@@ -63,6 +108,7 @@ def app_fixture():
     db.session.remove()
     db.drop_all()
     app_context.pop()
+    check_exp_db_config(TestConfig, remove=True)
 
 
 @pytest.fixture(scope='module')
@@ -184,15 +230,25 @@ def drop_views():
 
 @pytest.fixture(scope='module')
 def reporting_db(drop_views):
-    processor_path = os.path.join(basedir, 'processor')
-    os.chdir(processor_path)
-    test_db = DB(TestConfig.EXP_DB)
-    if test_db.db in ['lqadb', 'app']:
-        pytest.fail('Database configuration forbidden.')
-    if 'test' not in test_db.db:
-        pytest.fail('Database name must contain "test".')
-    os.chdir(basedir)
+    config = TestConfig
+    config = check_docker_running(config, port='5434', export_config=True)
+    processor_path = os.path.join(basedir, Processor.__table__.name)
+    if 'postgres' in config.SQLALCHEMY_DATABASE_URI:
+        test_db = config
+        test_db.conn_string = config.SQLALCHEMY_DATABASE_URI
+        test_db.schema = 'lqadb'
+    else:
+        os.chdir(processor_path)
+        test_db = DB(TestConfig.EXP_DB)
+        if test_db.db in ['lqadb', 'app']:
+            pytest.fail('Database configuration forbidden.')
+        if 'test' not in test_db.db:
+            pytest.fail('Database name must contain "test".')
+        os.chdir(basedir)
     engine = create_engine(test_db.conn_string)
+    with engine.connect() as connection:
+        connection.execute(CreateSchema(test_db.schema, if_not_exists=True))
+        connection.commit()
     sb = ScriptBuilder()
     Sequence('models_modelid_seq', metadata=sb.metadata,
              schema=test_db.schema)

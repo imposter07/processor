@@ -109,6 +109,20 @@
                     vendorKey = 'None';
                 }
             }
+            let base_table_html = `<table id="rawFileTable"
+                               class="table table-striped table-responsive-sm small">
+                            <thead class="fs-7 text-gray-400 text-uppercase">
+                            <tr>
+                                <th>CHECK TYPE</th>
+                                <th>NEW FILE</th>
+                                <th>OLD FILE</th>
+                            </tr>
+                            </thead>
+                            <tbody class="fs-5" id="rawFileTableBody">
+
+                            </tbody>
+                        </table>`;
+            document.getElementById('rawFileBody').innerHTML = base_table_html;
             $('#rawFileBody').attr('data-vk', vendorKey);
             getTable('raw_file_comparison', rawFileTableBodyId, 'None', vendorKey, 'None', false);
             changeMetrics();

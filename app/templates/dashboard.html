@@ -427,8 +427,13 @@
                 ['netcost', 'adservingcost'], filterDict);
             getTable('pacingAlerts', 'pacingAlertsProgress', 'None', 'None',
                 'None', true, 'None', false, pacing_alert_args, getMetricsComplete);
+            let partner_bar_args = getDataTableArgsDict(
+                'generateDualBarChart', ['vendorname'],
+                metrics, filterDict, true, undefined, undefined, true);
+            getTable('partnerBarMetrics', 'partnerBarMetricsProgress',
+                'None', 'None', 'None', true, 'None', false, partner_bar_args);
             let partner_metric_args = getDataTableArgsDict(
-                'generateBarChart', [ 'campaignname', 'vendorname'],
+                'generateBarChart', ['campaignname', 'vendorname'],
                 metrics, filterDict, true, undefined, undefined, false);
             getTable('partnerSummaryMetrics', 'partnerSummaryMetricsProgress',
                 'None', 'None', 'None', true, 'None', false, partner_metric_args);

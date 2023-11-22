@@ -43,23 +43,38 @@
     </div>
     <div class="row h-80">
         <div class="col-md-4 h-80">
-            <div id="toplineMetrics"
-                 class="card shadow-sm outer remove-items-shadow"
-                 style="height:692px"></div>
-            <div class="d-none">
-                <div id="toplineMetricsProgress"></div>
+            <div class="card-header d-flex flex-row rounded align-items-center">
+                <div class="col-sm d-flex align-center">
+                    <div class="col-xs-4  color-square p-2 border"
+                         id="partnerBarMetricsChartPlaceholderSelect0Key"></div>
+                </div>
+                <select id="partnerBarMetricsChartPlaceholderSelect0"
+                        class="form-control form-control-sm p-1 mr-4">
+                </select>
+                <div class="col-sm d-flex align-center">
+                    <div class="col-xs-4  color-square p-2 border"
+                         id="partnerBarMetricsChartPlaceholderSelect1Key"></div>
+                </div>
+                <select id="partnerBarMetricsChartPlaceholderSelect1"
+                        class="form-control form-control-sm p-1">
+                </select>
+            </div>
+            <div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
+                <div id="partnerBarMetricsProgress"></div>
+                <div id="partnerBarMetrics" style="height: 685px;"></div>
             </div>
         </div>
         <div class="col-md-8 h-80  vertical-center">
-            <div class="card-header d-flex flex-row rounded align-items-center">
-                <h7 class="pr-2 mr-5">Partners</h7>
+            <div class="card-header d-flex flex-row rounded">
+                <h7 class="pr-4">Partners</h7>
+                <select id="partnerSummaryMetricsChartPlaceholderSelect"
+                        class="form-control form-control-sm">
+                </select>
             </div>
-            <div class="card container-fluid shadow-sm outer p-0">
-                <div style="height: 420px; width: 97%">
-                    <div id="partnerSummaryMetricsProgress"></div>
-                    <div id="partnerSummaryMetrics"></div>
-                </div>
-                <hr class="m-0">
+            <div class="card container-fluid shadow-sm outer p-0 m-0 remove-items-shadow"
+                 style="height: 695px;">
+                <div id="partnerSummaryMetricsProgress"></div>
+                <div id="partnerSummaryMetrics"></div>
             </div>
         </div>
     </div>

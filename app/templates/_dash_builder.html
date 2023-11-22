@@ -62,13 +62,13 @@
 
 <script>
     function autoMargin(elem, maxHeight, lMargin, bMargin, dataLength = 1,
-                        dataLengthY = 1, equalSides = false) {
+                        dataLengthY = 1, equalSides = false, tMargin = 10) {
         const parent = d3.select(elem);
         const size = parent.node().getBoundingClientRect()
         if (equalSides) {
             maxHeight = size.width;
         }
-        let margin = {top: 10, right: lMargin, bottom: bMargin, left: lMargin},
+        let margin = {top: tMargin, right: lMargin, bottom: bMargin, left: lMargin},
             width = (size.width - margin.left - margin.right) * dataLength,
             height = (maxHeight - margin.top - margin.bottom) * dataLengthY;
         let svgHeight = height + margin.top + margin.bottom
@@ -131,7 +131,7 @@
         });
     }
 
-    function getUnits(col, precision=',.2f') {
+    function getUnits(col, precision=',.2s') {
         let costPer = 'CP';
         let units = {
             [costPer]: '$',
@@ -157,7 +157,8 @@
     }
 
     function generateY1Axis(data, svg, xAxisType, yAxisType, width, height,
-                          xCol, yCol, timeX = null, y1AxisType=null, y1Col=null) {
+                            xCol, yCol, timeX = null, y1AxisType = null, y1Col = null,
+                            ticks=null) {
         let y1Unit = getUnits(y1Col);
         let y1Scale = y1AxisType
             .domain([0, d3.max(data, function (d) {
@@ -169,17 +170,39 @@
             .attr('class', 'y1axis')
             .attr("transform", "translate(" + width + " ,0)")
             .call(y1Axis)
-            .call(y1Axis.ticks(null, y1Unit))
+            .call(y1Axis.ticks(ticks, y1Unit))
         return {y1Scale: y1Scale, y1Axis: y1Axis}
+    }
+
+    function generateX1Axis(data, svg, xAxisType, yAxisType, width, height,
+                            xCol, yCol, timeX = null, x1AxisType = null, x1Col = null,
+                            ticks=null) {
+        let x1Unit = getUnits(x1Col);
+        let x1Scale = x1AxisType
+            .domain([0, d3.max(data, function (d) {
+                return +d[x1Col];
+            })])
+            .range([0, width])
+        let x1Axis = d3.axisTop(x1Scale);
+        svg.append("g")
+            .attr('class', 'x1axis')
+            .call(x1Axis)
+            .call(x1Axis.ticks(ticks, x1Unit));
+        return {x1Scale: x1Scale, x1Axis: x1Axis}
+    }
+
+    function flipAxis(xAxisType, yAxisType, xCol, yCol, xDomain, yDomain) {
+        [xAxisType, yAxisType] = [yAxisType, xAxisType];
+        [xCol, yCol] = [yCol, xCol];
+        [xDomain, yDomain] = [yDomain, xDomain];
+        return [xAxisType, yAxisType, xCol, yCol, xDomain, yDomain];
     }
 
     function generateAxis(data, svg, xAxisType, yAxisType, width, height,
                           xCol, yCol, timeX = null, y1AxisType=null, y1Col=null,
-                          domainX = null, domainY = null, centerAxis = false) {
-        let xUnit = getUnits(xCol);
-        let yUnit = getUnits(yCol);
-
-        let xDomain = function () {
+                          domainX = null, domainY = null, centerAxis = false,
+                          x1AxisType = null, x1Col = null, ticks=null) {
+        let xDomain = function (xCol) {
             if (domainX) {
                 return domainX;
             } else if (timeX) {
@@ -191,8 +214,8 @@
                     return d[xCol];
                 })
             }
-        }
-        let yDomain = function () {
+        };
+        let yDomain = function (yCol) {
             if (domainY) {
                 return domainY;
             } else {
@@ -200,9 +223,16 @@
                     return +d[yCol];
                 })]
             }
+        };
+        if (x1Col) {
+            [xAxisType, yAxisType, xCol, yCol, xDomain, yDomain] =
+                flipAxis(xAxisType, yAxisType, xCol, yCol, xDomain, yDomain);
         }
+        let xUnit = getUnits(xCol);
+        let yUnit = getUnits(yCol);
+
         let x = xAxisType
-            .domain(xDomain())
+            .domain(xDomain(xCol))
             .range([0, width])
         if (!timeX && x.name === 'i') {
             x.padding(1)
@@ -218,29 +248,34 @@
             .attr("transform", "translate(0," + transHeight + ")")
             .attr('class', 'xaxis')
             .call(xAxis)
-            .call(xAxis.ticks(null, xUnit));
+            .call(xAxis.ticks(ticks, xUnit));
         if (!timeX && x.name === 'i') {
             svg.selectAll('.xaxis')
                 .selectAll(".tick text")
                 .call(wrapText, x.bandwidth());
         }
-
         let yScale = yAxisType
-            .domain(yDomain())
+            .domain(yDomain(yCol))
             .range([height, 0]);
         let yAxis = d3.axisLeft(yScale);
         svg.append("g")
             .attr("transform", "translate(" + transWidth + ", 0)")
             .attr('class', 'yaxis')
             .call(yAxis)
-            .call(yAxis.ticks(null, yUnit));
+            .call(yAxis.ticks(ticks, yUnit));
 
         let y1Props = {};
         if (y1Col) {
             y1Props = generateY1Axis(data, svg, xAxisType, yAxisType, width, height,
-                          xCol, yCol, timeX, y1AxisType, y1Col)
+                xCol, yCol, timeX, y1AxisType, y1Col, ticks)
         }
-        return {...{x: x, yScale: yScale, yAxis: yAxis, xAxis: xAxis}, ...y1Props}
+        let x1Props;
+        if (x1Col) {
+            x1Props = generateX1Axis(data, svg, xAxisType, yAxisType, width, height,
+                xCol, yCol, timeX, x1AxisType, x1Col, ticks)
+        }
+        return {...{x: x, yScale: yScale, yAxis: yAxis, xAxis: xAxis},
+            ...y1Props, ...x1Props}
     }
 
     function getColorPal(allGroup) {
@@ -254,10 +289,10 @@
         return data.sort((a, b) => b[col] - a[col])
     }
 
-    function updateYAxis(axes, data, svg, selectedVar, scale=null, axis=null,
-                         axisSelector=".yaxis") {
-        axis = (axis) ? axis :  axes.yAxis;
-        scale = (scale) ? scale :  axes.yScale;
+    function updateYAxis(axes, data, svg, selectedVar, scale = null, axis = null,
+                         axisSelector = ".yaxis", ticks=null) {
+        axis = (axis) ? axis : axes.yAxis;
+        scale = (scale) ? scale : axes.yScale;
         let yUnits = getUnits(selectedVar)
         scale.domain([0, d3.max(data, function (d) {
             return +d[selectedVar]
@@ -265,13 +300,15 @@
         svg.selectAll(axisSelector)
             .transition().duration(500)
             .call(axis)
-            .call(axis.ticks(null, yUnits))
+            .call(axis.ticks(ticks, yUnits))
     }
 
     function addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, timeX,
-                        scale=null, selectedVar1=null, scale1=null) {
+                        scale = null, selectedVar1 = null, scale1 = null, scaleX = null) {
         scale = (scale) ? scale : axes.yScale;
         scale1 = (scale1) ? scale1 : axes.yScale;
+        let flip = (scaleX !== null);
+        scaleX = (scaleX) ? scaleX : axes.x;
         let dateFormatter = d3.timeFormat("%m/%d/%y");
         let formatValue = d3.format(getUnits(selectedVar, ',.4f'));
         let focus = svg.append("g")
@@ -342,45 +379,60 @@
             return d[xCol];
         }).left
 
-        function mousemove() {
+        function mousemove(event) {
             let dGet = function (currentThis) {
+                let coord = (flip) ? 1 : 0;
                 if (timeX) {
-                    let x0 = axes.x.invert(d3.mouse(currentThis)[0])
+                    let x0 = scaleX.invert(d3.pointer(event, currentThis)[coord]);
                     let i = bisectDate(data, x0, 1)
                     let d0 = data[i - 1]
                     let d1 = data[i];
                     return x0 - d0[xCol] > d1[xCol] - x0 ? d1 : d0
                 } else {
-                    let mx = d3.mouse(currentThis)[0] // x position of cursor
-                    let idx = Math.round((mx / axes.x.step()) - axes.x.padding())
+                    let mx = d3.pointer(event, currentThis)[coord]; // ? x : y position of cursor
+                    let idx = Math.round((mx / scaleX.step()) - scaleX.padding());
+                    idx = (flip) ? (data.length - 1 - idx) : idx;
                     return data[idx]
                 }
             }
             let d = dGet(this)
-            let xColVal = (timeX) ? dateFormatter(d[xCol]) : d[xCol]
-            focus.attr("transform", "translate(" + axes.x(d[xCol]) + "," + scale(d[selectedVar]) + ")");
+            let xColVal = (timeX) ? dateFormatter(d[xCol]) : d[xCol];
+            let y, y1, x, x1;
+            if (flip) {
+                y = scaleX(d[xCol]) + am.margin.top - (15/2);
+                x = scale(d[selectedVar]);
+                focus.attr("transform", "translate(" + x + "," + y + ")");
+            } else {
+                focus.attr("transform", "translate(" + scaleX(d[xCol]) + "," + scale(d[selectedVar]) + ")");
+            }
             focus.select(".tooltip-y").text(selectedVar + ": " + formatValue(d[selectedVar]));
             if (selectedVar1) {
                 let formatValue1 = d3.format(getUnits(selectedVar1, '.4f'));
-                focus1.attr("transform", "translate(" + axes.x(d[xCol]) + "," + scale1(d[selectedVar1]) + ")");
+                if (flip) {
+                    y1 = scaleX(d[xCol]) + am.margin.top - (25/2);
+                    x1 = scale1(d[selectedVar1]);
+                    focus1.attr("transform", "translate(" + x1 + "," + y1 + ")");
+                } else {
+                    focus1.attr("transform", "translate(" + scaleX(d[xCol]) + "," + scale1(d[selectedVar1]) + ")");
+                }
                 focus.select(".tooltip-y1").text(selectedVar1 + ": " + formatValue1(d[selectedVar1]));
             }
             focus.select(".tooltip-x").text(xCol + ": " + xColVal);
-            focus.style("left", (d3.mouse(this)[0] + 70) + "px");
-            focus.style("top", (d3.mouse(this)[1]) + "px");
+            focus.style("left", (d3.pointer(event, this)[0] + 70) + "px");
+            focus.style("top", (d3.pointer(event, this)[1]) + "px");
+            let position = (flip) ? x : d3.pointer(event, svg.node())[0];
             focus.style("margin", "5px");
-            const position = d3.mouse(svg.node());
-            if (position[0] > (svg.node().parentNode.width.baseVal.value/2)) {
+            if (position > (svg.node().parentNode.width.baseVal.value / 2)) {
                 focus.style("text-anchor", "end");
-                focus.selectAll("text").each(function(d, i) {
+                focus.selectAll("text").each(function (d, i) {
                     d3.select(this).attr('x', '-18');
                 });
-             } else {
+            } else {
                 focus.style("text-anchor", "start");
-                focus.selectAll("text").each(function(d, i) {
+                focus.selectAll("text").each(function (d, i) {
                     d3.select(this).attr('x', '18');
                 });
-             }
+            }
         }
     }
 
@@ -543,6 +595,7 @@
             data, svg, d3.scaleTime(), d3.scaleLinear(), am.width, am.height,
             xCol, yCol[0], true
         )
+
         // A function that update the chart
         function update(selectedVar) {
             updateYAxis(axes, data, svg, selectedVar)
@@ -1014,6 +1067,92 @@
         update(yCol[0]);
     }
 
+    function generateDualBarChart(elem, data, xCol, yCol) {
+        elem = (elem[0] === '#') ? elem : `#${elem}`;
+        let elemId = elem.replace('#', '');
+        document.getElementById(elemId).innerHTML = '';
+        data = sortData(data, yCol[0]);
+        let dataLength = (data.length < 10) ? 1 : data.length / 10;
+        let am = autoMargin(elem, 580, 70, 30, dataLength, 1, false, 30);
+        let svg = am.svg;
+        generateSelect(elem, yCol, "Select0");
+        generateSelect(elem, yCol, "Select1", 1);
+        // A color scale: one color for each group
+        let myColor = getColorPal(yCol);
+
+        let axes = generateAxis(
+            data, svg, d3.scaleBand(), d3.scaleLinear(), am.width, am.height,
+            xCol, yCol[0], false, null, null, null, null, false,
+            d3.scaleLinear(), yCol[1], 5);
+
+        function update(selectedVar, selectedDim = null, xAxis, bar, selectedVar1) {
+            let scale = (xAxis === '.xaxis') ? axes.x :  axes.x1Scale;
+            let scale1 = (xAxis === '.xaxis') ? axes.x1Scale :  axes.x;
+            let axis = (xAxis === '.xaxis') ? axes.xAxis : axes.x1Axis;
+            let width = (xAxis === '.xaxis') ? 25  : 15;
+            // Add Y axis
+            updateYAxis(axes, data, svg, selectedVar, scale, axis, xAxis, 5);
+            // variable u: map data to existing circle
+            var j = svg.selectAll(''.concat(".", bar))
+                .data(data);
+            // update lines
+            j
+                .enter()
+                .append("rect")
+                .attr("class", bar)
+                .merge(j)
+                .transition()
+                .duration(1000)
+                .attr("y", function (d) {
+                    return axes.yScale(d[xCol]) + am.margin.top - (width/2);
+                })
+                .attr("height", width)
+                .attr("width", function (d) {
+                    return scale(d[selectedVar]);
+                })
+                .attr("stroke", function (d) {
+                    return myColor(selectedVar)
+                })
+                .attr("stroke-width", 1)
+                .attr("fill", function (d) {
+                    return myColor(selectedVar)
+                })
+                .attr("fill-opacity", .3)
+            // generateMiniChart(elem)
+            addToolTip(svg, am, axes, data, xCol, selectedVar, myColor, false,
+                scale, selectedVar1, scale1, axes.yScale)
+        }
+
+        function updateColorKey(selectedOption, elem, key) {
+            let color = myColor(selectedOption);
+            let colorOpacity = hexToRgb(color);
+            colorOpacity = colorOpacity.replace('1)', '.3)');
+            let style = ('border-color: ' + color + ' !important;' +
+                'background-color: ' + colorOpacity);
+             $(elem + key).attr('style', style);
+        }
+
+        $(elem + 'Select0').on("change", function (e) {
+            let selectedOption = $(e.currentTarget).val();
+            let selectedOption1 = $(elem + 'Select1').val();
+            update(selectedOption, null, ".xaxis", "bar0", selectedOption1);
+            update(selectedOption1, null, ".x1axis", "bar1", selectedOption);
+            updateColorKey(selectedOption, elem, 'Select0Key')
+        });
+        $(elem + "Select1").on("change", function (e) {
+            let selectedOption1 = $(e.currentTarget).val();
+            let selectedOption = $(elem + 'Select0').val();
+            update(selectedOption, null, ".xaxis", "bar0", selectedOption1);
+            update(selectedOption1, null, ".x1axis", "bar1", selectedOption);
+            updateColorKey(selectedOption1, elem, 'Select1Key')
+        });
+
+        update(yCol[0], null, ".xaxis", "bar0", yCol[1]);
+        update(yCol[1], null, ".x1axis", "bar1", yCol[0]);
+        updateColorKey(yCol[0], elem, 'Select0Key')
+        updateColorKey(yCol[1], elem, 'Select1Key')
+    }
+
     function generateBarChart(elem, data, xCol, yCol) {
         elem = (elem[0] === '#') ? elem : `#${elem}`;
         let elemId = elem.replace('#', '');
@@ -1307,7 +1446,7 @@
                 })
             }
         }
-        
+
         let pos0 = '0';
         let pos1 = '1';
         let selectorElem = `#${elem.replace('Notes', '')}ChartPlaceholderSelect`;

@@ -346,3 +346,12 @@ def contacts(object_name):
         object_name, 'edit_plan', edit_progress=100,
         edit_name='Contacts')
     return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/plan/<object_name>/calc', methods=['GET', 'POST'])
+@login_required
+def calc(object_name):
+    kwargs = Plan().get_current_plan(
+        object_name, 'edit_plan', edit_progress=100,
+        edit_name='Calc')
+    return render_template('plan/plan.html', **kwargs)

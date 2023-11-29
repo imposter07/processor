@@ -54,7 +54,8 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             let tableName = document.getElementById('jinjaValues').dataset['edit_name'];
-            let routeNames = ['Topline', 'PlanRules', 'PlanPlacements', 'RFP', 'Specs', 'Contacts'];
+            let routeNames = ['Topline', 'PlanRules', 'PlanPlacements', 'RFP',
+                'Specs', 'Contacts', 'Calc'];
             if (routeNames.includes(tableName)) {
                 getTable(tableName, tableName);
             }

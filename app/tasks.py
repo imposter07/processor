@@ -6607,7 +6607,7 @@ def get_project_number(current_user_id, running_user, filter_dict=None):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def effectiveness_tool_connection(processor_id, current_user_id, vk):
+def get_plan_calc(plan_id, current_user_id):
     try:
         _set_task_progress(0)
         headers = "Headers"
@@ -6664,18 +6664,17 @@ def effectiveness_tool_connection(processor_id, current_user_id, vk):
         for i, value in enumerate(values, 1):
             col_name = f"Value_{i}"
             result.insert(loc=2, column=col_name, value=value)
-        lt = app_utl.LiquidTable(df=result, table_name='effectiveness tool')
+        name = 'Calc'
+        lt = app_utl.LiquidTable(df=result, table_name=name)
         _set_task_progress(100)
         return [lt.table_dict]
     except:
         _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {} VK {}'.format(
-                processor_id, current_user_id, vk), exc_info=sys.exc_info())
-        df = pd.DataFrame([{'Result': 'CONFIG WAS UNABLE TO BE LOADED.'}])
-        lt = app_utl.LiquidTable(df=df, table_name='effectiveness tool',
-                                 col_filter=False)
-        return [lt.table_dict]
+        msg = 'Unhandled exception - Plan {} User {}'.format(
+            plan_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
+        return [df]
 
 
 def get_project_objects(current_user_id, running_user, vk='', filter_dict=None):

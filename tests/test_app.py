@@ -215,8 +215,9 @@ class TestPlan:
         name_url = urllib.parse.quote(self.test_name)
         topline_route = plan_routes.topline.__name__
         sow_route = plan_routes.edit_sow.__name__
+        calc_route = plan_routes.calc.__name__
         url_dict = {}
-        for url_route in [topline_route, sow_route]:
+        for url_route in [topline_route, sow_route, calc_route]:
             url_str = url_route
             if url_route == sow_route:
                 url_str = url_str.split('_')[1]
@@ -264,6 +265,20 @@ class TestPlan:
         assert part.name == part_name
         assert int(part.total_budget) == int(part_budget)
         assert sw.browser.current_url == sow_url
+
+    def test_calc(self, sw, login, worker):
+        p = Plan.query.filter_by(name=self.test_name).first()
+        if not p:
+            self.test_create_plan(sw, login, worker)
+        edit_url = self.get_url('calc')
+        sw.go_to_url(edit_url, sleep=1)
+        assert sw.browser.current_url == edit_url
+        worker.work(burst=True)
+        TestProject.wait_for_jobs_finish()
+        elem_id = 'rowHeaders0'
+        sw.wait_for_elem_load(elem_id)
+        elem = sw.browser.find_element_by_id(elem_id)
+        assert elem.get_attribute('innerHTML') == 'Brand Factors'
 
 
 class TestProject:
@@ -325,7 +340,7 @@ class TestReportingDBReadWrite:
     def result_df(self):
         test_path = os.path.join(basedir, 'processor', exc.test_path)
         results_path = os.path.join(test_path, 'results.csv')
-        rdf = pd.read_csv(results_path)
+        rdf = pd.read_csv(results_path, low_memory=False)
         return rdf
 
     @pytest.fixture(scope="class")

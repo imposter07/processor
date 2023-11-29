@@ -954,7 +954,8 @@ class Processor(db.Model):
                        {'RFP': ['plan.rfp', 'file-contract']},
                        {'PlanPlacements': ['plan.plan_placements', 'table']},
                        {'Specs': ['plan.specs', 'glasses']},
-                       {'Contacts': ['plan.contacts', 'address-book']}]
+                       {'Contacts': ['plan.contacts', 'address-book']},
+                       {'Calc': ['plan.calc', 'calculator']}]
         elif buttons == Project.__table__.name:
             buttons = [
                 {'Basic': ['main.project_edit', 'list-ol']},
@@ -2639,7 +2640,8 @@ class Plan(db.Model):
             'PlanPlacements': '.get_plan_placements',
             'RFP': '.get_rfp',
             'Specs': '.get_specs',
-            'Contacts': '.get_contacts'
+            'Contacts': '.get_contacts',
+            'Calc': '.get_plan_calc'
         }
         return arg_trans
 

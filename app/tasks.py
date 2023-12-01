@@ -296,7 +296,8 @@ def run_processor(processor_id, current_user_id, run_args):
             if processor_id == 23:
                 task_functions = [get_project_numbers, get_glossary_definitions,
                                   get_post_mortems, get_time_savers,
-                                  get_ai_playbook_market, get_contact_numbers]
+                                  get_ai_playbook_market, get_contact_numbers,
+                                  get_rate_cards]
                 for task_function in task_functions:
                     os.chdir(cur_path)
                     task_function(processor_id, current_user_id)
@@ -6661,8 +6662,10 @@ def get_plan_calc(plan_id, current_user_id):
         result = pd.concat([df1, df2, df3], axis=0)
         result.reset_index(drop=True, inplace=True)
 
+        cell_pick_cols = []
         for i, value in enumerate(values, 1):
             col_name = f"Value_{i}"
+            cell_pick_cols.extend(col_name)
             result.insert(loc=2, column=col_name, value=value)
         name = 'Calc'
         lt = app_utl.LiquidTable(df=result, table_name=name)
@@ -6812,3 +6815,86 @@ def get_table_project(object_id, current_user_id, function_name=None, **kwargs):
             object_id, current_user_id)
         app.logger.error(msg, exc_info=sys.exc_info())
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
+def get_rate_cards(processor_id, current_user_id):
+    try:
+        _set_task_progress(0)
+        if os.path.exists('processor'):
+            os.chdir('processor')
+        api = gsapi.GsApi()
+        api.input_config('gsapi.json')
+        sheet_id = '10S4gHR_LBBTVeEpiLhSDJ0z4gCBAdqFRTywQdP-qS-k'
+        api.sheet_id = sheet_id
+        df = api.get_data()
+        df = utl.first_last_adj(df, 1, 0)
+        df = df.reset_index(drop=True)
+        pn_col = 'Placement Name/Description'
+        target_col = 'Targeting\n(ROS, targeted, etc.)'
+        size_col = 'Ad Size\n(dimensions, aspect\nratio, etc.)'
+        type_col = 'Ad Type\n(display, video, etc.)'
+        device_col = 'Device\n(desktop, mobile, \ncross-device, etc.)'
+        country_col = 'Country'
+        bm_col = ' Buy Model\n(CPM, flat, etc.)'
+        cpu_col = ' CPM / Cost Per Unit'
+        cost_col = 'Net Cost (if flat)'
+        partner_col = '{} Name'.format(Partner.__table__.name.capitalize())
+        df = utl.data_to_type(df, float_col=[cost_col, cpu_col])
+        df_dict = df.to_dict(orient='records')
+        name = 'Rate Card Database'
+        rfp_plan = Plan.query.filter_by(name=name).first()
+        if not rfp_plan:
+            rfp_plan = Plan(name=name)
+            db.session.add(rfp_plan)
+            db.session.commit()
+        cur_phase = rfp_plan.get_current_children()
+        if not cur_phase:
+            cur_phase = PlanPhase(name=name, plan_id=rfp_plan.id)
+            db.session.add(cur_phase)
+            db.session.commit()
+        else:
+            cur_phase = cur_phase[0]
+        rfp_file = RfpFile.query.filter_by(
+            name=name, plan_id=rfp_plan.id).first()
+        if not rfp_file:
+            rfp_file = RfpFile(name=name, plan_id=rfp_plan.id,
+                               user_id=current_user_id)
+            db.session.add(rfp_file)
+            db.session.commit()
+        for rate_card in df_dict:
+            partner_name = rate_card[partner_col]
+            partner_obj = Partner.query.filter_by(
+                name=partner_name, plan_phase_id=cur_phase.id).first()
+            if not partner_obj:
+                partner_obj = Partner(
+                    name=partner_name, plan_phase_id=cur_phase.id)
+                db.session.add(partner_obj)
+                db.session.commit()
+            kwargs = {
+                Rfp.partner_name.name: rate_card[partner_col],
+                Rfp.placement_name_description.name: rate_card[pn_col],
+                Rfp.targeting.name: rate_card[target_col],
+                Rfp.ad_size_wxh.name: rate_card[size_col],
+                Rfp.ad_type.name: rate_card[type_col],
+                Rfp.device.name: rate_card[device_col],
+                Rfp.country.name: rate_card[country_col],
+                Rfp.buy_model.name: rate_card[bm_col],
+                Rfp.cpm_cost_per_unit.name: rate_card[cpu_col],
+                Rfp.planned_net_cost.name: rate_card[cost_col],
+                Rfp.rfp_file_id.name: rfp_file.id,
+                Rfp.partner_id.name: partner_obj.id
+            }
+            place = Rfp.query.filter_by(**kwargs).first()
+            if not place:
+                place = Rfp(**kwargs)
+                db.session.add(place)
+                db.session.commit()
+            db.session.commit()
+        _set_task_progress(100)
+        return [df]
+    except:
+        _set_task_progress(100)
+        app.logger.error(
+            'Unhandled exception - Processor {} User {}'.format(
+                processor_id, current_user_id), exc_info=sys.exc_info())
+        return pd.DataFrame()

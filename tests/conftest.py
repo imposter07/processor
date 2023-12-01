@@ -14,7 +14,7 @@ from config import Config, basedir
 import processor.reporting.utils as utl
 import processor.reporting.expcolumns as exc
 from processor.reporting.export import ScriptBuilder, DB
-from app.models import User, Project, Processor, Uploader, Plan
+from app.models import User, Project, Processor, Uploader, Plan, RfpFile
 from rq import SimpleWorker
 from rq.timeouts import BaseDeathPenalty, JobTimeoutException
 
@@ -135,7 +135,7 @@ def user(app_fixture):
     db.session.add(u)
     db.session.commit()
     yield u
-    for db_model in [Project, Processor, Uploader, Plan]:
+    for db_model in [RfpFile, Project, Processor, Uploader, Plan]:
         rows = db_model.query.filter_by(user_id=u.id).all()
         for row in rows:
             db.session.delete(row)

@@ -210,14 +210,17 @@ class TestProcessor:
 class TestPlan:
     test_name = 'test'
 
-    def get_url(self, url_type=''):
+    def get_url(self, url_type='', plan_name=None):
+        if not plan_name:
+            plan_name = self.test_name
         url = '{}{}'.format(base_url, plan_routes.plan.__name__)
-        name_url = urllib.parse.quote(self.test_name)
+        name_url = urllib.parse.quote(plan_name)
         topline_route = plan_routes.topline.__name__
         sow_route = plan_routes.edit_sow.__name__
         calc_route = plan_routes.calc.__name__
+        rfp_route = plan_routes.rfp.__name__
         url_dict = {}
-        for url_route in [topline_route, sow_route, calc_route]:
+        for url_route in [topline_route, sow_route, calc_route, rfp_route]:
             url_str = url_route
             if url_route == sow_route:
                 url_str = url_str.split('_')[1]
@@ -279,6 +282,23 @@ class TestPlan:
         sw.wait_for_elem_load(elem_id)
         elem = sw.browser.find_element_by_id(elem_id)
         assert elem.get_attribute('innerHTML') == 'Brand Factors'
+
+    def test_rate_card_rfp(self, sw, login, worker, create_processor):
+        plan_name = 'Rate Card Database'
+        p = Processor.query.filter_by(name=self.test_name).first()
+        if not p:
+            p = Processor(name=self.test_name)
+            db.session.add(p)
+            db.session.commit()
+        p.launch_task('.get_rate_cards', '', 1)
+        worker.work(burst=True)
+        edit_url = self.get_url(plan_routes.rfp.__name__, plan_name)
+        sw.go_to_url(edit_url, sleep=1)
+        worker.work(burst=True)
+        elem_id = 'rowrfp_file_id0'
+        sw.wait_for_elem_load(elem_id)
+        elem = sw.browser.find_element_by_id(elem_id)
+        assert elem.get_attribute('innerHTML').strip() == '1'
 
 
 class TestProject:

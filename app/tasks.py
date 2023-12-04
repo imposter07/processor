@@ -5434,10 +5434,10 @@ def get_topline(plan_id, current_user_id):
                 [x.get_form_dict(phase)
                  for x in Partner.query.filter_by(plan_phase_id=phase.id)])
         partner_list, partner_type_list = Partner.get_name_list()
-        partner_name = 'partner'
-        partner_type_name = 'partner_type'
+        partner_name = Partner.__table__.name
+        partner_type_name = Partner.partner_type.name
         phase_name = 'Phase'
-        total_budget = 'total_budget'
+        total_budget = Partner.total_budget.name
         if not cur_plan.start_date:
             cur_plan.start_date = dt.datetime.today()
             db.session.commit()
@@ -6479,7 +6479,7 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
 def get_rfp(plan_id, current_user_id):
     try:
         _set_task_progress(0)
-        cur_plan = Plan.query.get(plan_id)
+        cur_plan = db.session.get(Plan, plan_id)
         rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
         data = []
         for rfp_file in rfp_files:
@@ -6664,11 +6664,12 @@ def get_plan_calc(plan_id, current_user_id):
 
         cell_pick_cols = []
         for i, value in enumerate(values, 1):
-            col_name = f"Value_{i}"
-            cell_pick_cols.extend(col_name)
+            col_name = f"Value{i}"
+            cell_pick_cols.append(col_name)
             result.insert(loc=2, column=col_name, value=value)
         name = 'Calc'
-        lt = app_utl.LiquidTable(df=result, table_name=name)
+        lt = app_utl.LiquidTable(df=result, table_name=name,
+                                 cell_pick_cols=cell_pick_cols)
         _set_task_progress(100)
         return [lt.table_dict]
     except:

@@ -373,6 +373,15 @@ function getLink(objectName, viewFunction) {
     makeRequest('url_from_view_function', 'POST', data, goToUrlFromLink);
 }
 
+function cellPickOnClick(clickedCell) {
+    let highlightStr = 'shadeCell0';
+    let cells = clickedCell.parentNode.cells;
+    Array.from(cells).forEach(function(cell) {
+        cell.classList.remove(highlightStr);
+    });
+    clickedCell.classList.add(highlightStr);
+}
+
 function getRowHtml(loopIndex, tableName, rowData = null) {
     let tableHeadElems = document.getElementById(tableName + 'TableHeader');
     tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
@@ -394,8 +403,10 @@ function getRowHtml(loopIndex, tableName, rowData = null) {
         let linkColHtmlPost = `</a>`;
         linkColHtmlPre = (isLinkCol) ? linkColHtmlPre : '';
         linkColHtmlPost = (isLinkCol) ? linkColHtmlPost : '';
+        let isCellPickCol = tableHeadElem.dataset['type'] === 'cell_pick_col';
+        let cellPickCol = (isCellPickCol) ? 'onclick="cellPickOnClick(this)"' : '';
         tableHeaders += `
-            <td id="row${colName}${loopIndex}" style="display:${tableHeadElem.style.display};">
+            <td id="row${colName}${loopIndex}" style="display:${tableHeadElem.style.display};" ${cellPickCol}>
                 ${linkColHtmlPre}
                     ${cellData}${buttonColHtml}
                 ${linkColHtmlPost}

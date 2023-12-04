@@ -21,10 +21,9 @@ base_url = 'http://127.0.0.1:5000/'
 @pytest.fixture(scope='module')
 def login(sw, user):
     sw.go_to_url(base_url)
-    login_url = '{}auth/login?next=%2F'.format(base_url)
-    user_pass = [('test', 'username'), ('test', 'password')]
-    sw.send_keys_from_list(user_pass)
-    sw.xpath_from_id_and_click('submit', 1)
+    submit_id = 'submit'
+    sw.wait_for_elem_load(submit_id)
+    submit_form(sw, ['username', 'password'], submit_id=submit_id)
 
 
 @pytest.fixture(scope='class')
@@ -81,7 +80,7 @@ def submit_form(sw, form_names=None, select_form_names=None,
                  if 'cur' in x or 'Select' in x or x in select_form_names
                  else (test_name, x) for x in form_names + select_form_names]
     sw.send_keys_from_list(elem_form)
-    sw.xpath_from_id_and_click(submit_id)
+    sw.xpath_from_id_and_click(submit_id, .5)
 
 
 @pytest.mark.usefixtures("app_fixture")
@@ -282,6 +281,10 @@ class TestPlan:
         sw.wait_for_elem_load(elem_id)
         elem = sw.browser.find_element_by_id(elem_id)
         assert elem.get_attribute('innerHTML') == 'Brand Factors'
+        elem_id = 'rowValue50'
+        elem = sw.browser.find_element_by_id(elem_id)
+        elem.click()
+        assert elem.get_attribute("class") == 'shadeCell0'
 
     def test_rate_card_rfp(self, sw, login, worker, create_processor):
         plan_name = 'Rate Card Database'

@@ -340,7 +340,8 @@ class LiquidTable(object):
                  row_on_click='', button_col=None, table_buttons=None,
                  highlight_type='blank', slider_edit_col='', slider_abs_col='',
                  prog_colors='success', download_table=False, filter_dict=None,
-                 hidden_cols=None, link_cols=None, table_name='liquidTable'):
+                 hidden_cols=None, link_cols=None, cell_pick_cols=None,
+                 table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -377,6 +378,7 @@ class LiquidTable(object):
         self.filter_dict = filter_dict
         self.hidden_cols = hidden_cols
         self.link_cols = link_cols
+        self.cell_pick_cols = cell_pick_cols
         if self.slider_edit_col:
             self.accordion = True
         self.df = df
@@ -393,7 +395,7 @@ class LiquidTable(object):
             self.form_cols, self.metric_cols, self.def_metric_cols,
             self.prog_cols, self.header, self.highlight_row, self.button_col,
             self.highlight_type, self.slider_edit_col, self.slider_abs_col,
-            self.hidden_cols, self.link_cols)
+            self.hidden_cols, self.link_cols, self.cell_pick_cols)
         self.table_dict = self.make_table_dict(
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
@@ -426,7 +428,10 @@ class LiquidTable(object):
     def make_columns(self, col_list, select_val_dict, select_box, form_cols,
                      metric_cols, def_metric_cols, prog_cols, header,
                      highlight_row, button_col, highlight_type,
-                     slider_edit_col, slider_abs_col, hidden_cols, link_cols):
+                     slider_edit_col, slider_abs_col, hidden_cols, link_cols,
+                     cell_pick_cols):
+        print(col_list)
+        print(cell_pick_cols)
         cols = []
         if col_list:
             for x in col_list:
@@ -464,6 +469,8 @@ class LiquidTable(object):
                 if link_cols and x in link_cols:
                     cur_col.type = LiquidTableColumn.link_col_str
                     cur_col.link = link_cols[x]
+                if cell_pick_cols and x in cell_pick_cols:
+                    cur_col.type = LiquidTableColumn.cell_pick_col_str
                 cur_col.update_dict()
                 cols.append(cur_col.col_dict)
         return cols
@@ -521,6 +528,7 @@ class LiquidTableColumn(object):
     slider_edit_col_str = 'slider_edit_col'
     slider_abs_col_str = 'slider_abs_col'
     link_col_str = 'link_col'
+    cell_pick_col_str = 'cell_pick_col'
 
     def __init__(self, name, col_type='', values=None, add_select_box=False,
                  hidden=False, header=False, form=False, highlight_row='',

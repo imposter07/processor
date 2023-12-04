@@ -2804,10 +2804,12 @@ class PlanPhase(db.Model):
     partners = db.relationship('Partner', backref='plan', lazy='dynamic')
 
     def get_form_dict(self):
+        sd = self.start_date if self.start_date else datetime.today()
+        ed = self.end_date if self.end_date else datetime.today()
         form_dict = {
             'name': self.name,
-            'start_date': datetime.strftime(self.start_date, '%Y-%m-%d'),
-            'end_date': datetime.strftime(self.end_date, '%Y-%m-%d')
+            'start_date': datetime.strftime(sd, '%Y-%m-%d'),
+            'end_date': datetime.strftime(ed, '%Y-%m-%d')
         }
         return form_dict
 

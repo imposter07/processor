@@ -3804,12 +3804,17 @@ def get_liquid_table_from_db(processor_id, current_user_id, parameter=None,
                              chart_show=True):
     try:
         _set_task_progress(0)
+        include_args = ['parameter', 'dimensions', 'metrics', 'filter_dict',
+                        'use_cache']
+        args_dict = {key: value for key, value in locals().items() if
+                     key in include_args}
         df = get_data_tables_from_db(processor_id, current_user_id, parameter,
                                      dimensions, metrics, filter_dict,
                                      use_cache, table_name, return_func)[0]
         _set_task_progress(90)
         lt = app_utl.LiquidTable(df=df, table_name=table_name,
-                                 chart_func=return_func, chart_show=chart_show)
+                                 chart_func=return_func, chart_show=chart_show,
+                                 metadata=args_dict, download_table=True)
         _set_task_progress(100)
         return [lt.table_dict]
     except:
@@ -6280,7 +6285,7 @@ def download_table(object_id, current_user_id, function_name=None, **kwargs):
     try:
         _set_task_progress(0)
         task_name = function_name.replace('.', '')
-        resp = globals()[task_name](object_id, current_user_id)
+        resp = globals()[task_name](object_id, current_user_id, **kwargs)
         df = pd.DataFrame(resp[0]['data'])
         download_file = get_file_in_memory(df)
         _set_task_progress(100)

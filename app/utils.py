@@ -341,7 +341,7 @@ class LiquidTable(object):
                  highlight_type='blank', slider_edit_col='', slider_abs_col='',
                  prog_colors='success', download_table=False, filter_dict=None,
                  hidden_cols=None, link_cols=None, cell_pick_cols=None,
-                 table_name='liquidTable'):
+                 metadata=None, table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -379,6 +379,7 @@ class LiquidTable(object):
         self.hidden_cols = hidden_cols
         self.link_cols = link_cols
         self.cell_pick_cols = cell_pick_cols
+        self.metadata = metadata
         if self.slider_edit_col:
             self.accordion = True
         self.df = df
@@ -402,7 +403,8 @@ class LiquidTable(object):
             self.specify_form_cols, self.col_dict, self.table_name,
             self.new_modal_button, self.col_filter, self.search_bar,
             self.chart_btn, self.chart_func, self.chart_show, self.row_on_click,
-            self.table_buttons, self.custom_cols, self.filter_dict)
+            self.table_buttons, self.custom_cols, self.filter_dict,
+            self.metadata)
 
     def create_buttons(self):
         if not self.table_buttons:
@@ -430,8 +432,6 @@ class LiquidTable(object):
                      highlight_row, button_col, highlight_type,
                      slider_edit_col, slider_abs_col, hidden_cols, link_cols,
                      cell_pick_cols):
-        print(col_list)
-        print(cell_pick_cols)
         cols = []
         if col_list:
             for x in col_list:
@@ -479,7 +479,7 @@ class LiquidTable(object):
                         columns_toggle, accordion, specify_form_cols, col_dict,
                         table_name, new_modal_button, col_filter, search_bar,
                         chart_btn, chart_func, chart_show, row_on_click,
-                        table_buttons, custom_cols, filter_dict):
+                        table_buttons, custom_cols, filter_dict, metadata):
         table_dict = {'data': data, 'rows_name': self.rows_name, 'cols': cols,
                       'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
                       'totals': totals, 'title': title,
@@ -493,7 +493,8 @@ class LiquidTable(object):
                       'chart_btn': chart_btn, 'chart_func': chart_func,
                       'chart_show': chart_show, 'row_on_click': row_on_click,
                       'table_buttons': table_buttons,
-                      'custom_cols': custom_cols, 'filter_dict': filter_dict}
+                      'custom_cols': custom_cols, 'filter_dict': filter_dict,
+                      'metadata': metadata}
         return table_dict
 
     @staticmethod

@@ -88,8 +88,9 @@ function addNewRowModal(tableName) {
         addNewRowSaveBtnFunction, kwargs);
 }
 
-function createSingleButton(buttonObject) {
+function createSingleButton(tableName, buttonObject) {
     let buttonElem = document.createElement('button');
+    buttonElem.dataset['table_name'] = tableName;
     let {classList, content, icon, ...rest} = buttonObject;
     if (!classList) {
         classList = ['btn', 'btn-outline-primary'];
@@ -115,13 +116,13 @@ function createSingleButton(buttonObject) {
     return buttonElem
 }
 
-function createButtonsFromArray(buttonArray) {
+function createButtonsFromArray(tableName, buttonArray) {
     let buttonElems = document.createDocumentFragment();
     if (!buttonArray) {
         return buttonElems;
     }
     buttonArray.forEach((buttonObject) => {
-        let buttonElem = createSingleButton(buttonObject);
+        let buttonElem = createSingleButton(tableName, buttonObject);
         buttonElems.appendChild(buttonElem);
     });
     return buttonElems
@@ -199,7 +200,7 @@ function createTableElements(tableName, rowsName,
                 <i class="fas fa-chart-bar" role="button"></i>
             </button>
     ` : '';
-    let customButtons = createButtonsFromArray(tableButtons);
+    let customButtons = createButtonsFromArray(tableName, tableButtons);
     let elem = document.getElementById(tableName);
     let elemToAdd = `
     <div class="card shadow outer text-center">
@@ -1642,7 +1643,16 @@ function getTableOnClick(e, imgToGet) {
 }
 
 function downloadLiquidTable() {
-    getTable('downloadTable', this.id, 'None', this.id);
+    let tableId = this.dataset['table_name'];
+    let table = document.getElementById(tableId);
+    if (Object.keys(table.dataset).length > 0) {
+        let liquid_table_args = getMetadata(tableId);
+        getTable('downloadTable', this.id, 'None', tableId,
+        'None', true, 'None', false, liquid_table_args);
+    }
+    else {
+        getTable('downloadTable', this.id, 'None', this.id);
+    }
 }
 
 function filterLiquidTable() {
@@ -1698,6 +1708,22 @@ function buildFilterDict(tableName, filterDict) {
     addOnClickEvent('#' + buttonId, filterLiquidTable);
 }
 
+function addMetadata(tableName, metadata) {
+    const table = document.getElementById(tableName);
+    for (const [key, value] of Object.entries(metadata)) {
+        table.dataset[key] = JSON.stringify(value);
+    }
+}
+
+function getMetadata(elementId) {
+    const element = document.getElementById(elementId);
+    const data = {};
+    for (const key in element.dataset) {
+        data[key] = JSON.parse(element.dataset[key]);
+    }
+    return data;
+}
+
 function createLiquidTable(data, kwargs) {
     let tableName = kwargs['tableName'];
     let tableData = data['data'];
@@ -1722,7 +1748,8 @@ function createLiquidTable(data, kwargs) {
     let chartFunc = existsInJson(tableData, 'chart_func');
     let chartShow = existsInJson(tableData, 'chart_show');
     let tableButtons = existsInJson(tableData, 'table_buttons');
-    let filterDict = existsInJson(tableData, 'filter_dict')
+    let filterDict = existsInJson(tableData, 'filter_dict');
+    let metadata =  existsInJson(tableData, 'metadata');
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
@@ -1749,6 +1776,9 @@ function createLiquidTable(data, kwargs) {
     }
     if (filterDict) {
         buildFilterDict(tableName, filterDict);
+    }
+    if (metadata) {
+        addMetadata(tableName, metadata);
     }
     addSelectize();
     addDatePicker();

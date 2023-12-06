@@ -896,7 +896,7 @@ def translate_table_name_to_job(table_name, proc_arg):
             table_name = base_name
     if table_name in ['download_raw_data', 'download_pacing_data']:
         proc_arg['parameter'] = 'Download'
-    if 'use_cache' in proc_arg:
+    if 'use_cache' in proc_arg and table_name != 'downloadTable':
         job_name = '.get_liquid_table_from_db'
     else:
         arg_trans = Task.get_table_name_to_task_dict()

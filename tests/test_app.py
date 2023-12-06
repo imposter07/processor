@@ -20,9 +20,8 @@ base_url = 'http://127.0.0.1:5000/'
 
 @pytest.fixture(scope='module')
 def login(sw, user):
-    sw.go_to_url(base_url)
     submit_id = 'submit'
-    sw.wait_for_elem_load(submit_id)
+    sw.go_to_url(base_url, elem_id=submit_id)
     submit_form(sw, ['username', 'password'], submit_id=submit_id)
 
 
@@ -230,9 +229,9 @@ class TestPlan:
 
     def test_create_plan(self, sw, login, worker):
         create_url = self.get_url()
-        sw.go_to_url(create_url)
         form_names = ['cur_client', 'cur_product', 'cur_campaign',
                       'description', 'name']
+        sw.go_to_url(create_url, elem_id=form_names[0])
         submit_form(sw, form_names, test_name=self.test_name)
         p = Plan.query.filter_by(name=self.test_name).first()
         assert p.name == self.test_name
@@ -285,6 +284,14 @@ class TestPlan:
         elem = sw.browser.find_element_by_id(elem_id)
         elem.click()
         assert elem.get_attribute("class") == 'shadeCell0'
+        assert elem.get_attribute('innerHTML') == '0.20'
+        sw.xpath_from_id_and_click('loadRefresh')
+        worker.work(burst=True)
+        t = Task.query.filter_by(name='.write_plan_calc').first()
+        assert t
+        elem_id = 'totalCardValuecell_pick_col'
+        elem = sw.browser.find_element_by_id(elem_id)
+        assert elem.get_attribute('innerHTML') == '0.20'
 
     def test_rate_card_rfp(self, sw, login, worker, create_processor):
         plan_name = 'Rate Card Database'

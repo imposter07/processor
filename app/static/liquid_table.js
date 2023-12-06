@@ -380,6 +380,9 @@ function cellPickOnClick(clickedCell) {
         cell.classList.remove(highlightStr);
     });
     clickedCell.classList.add(highlightStr);
+    let elemId = clickedCell.dataset['target'];
+    document.getElementById(elemId).innerText = clickedCell.innerText;
+    populateTotalCards(clickedCell.dataset['table']);
 }
 
 function getRowHtml(loopIndex, tableName, rowData = null) {
@@ -404,7 +407,8 @@ function getRowHtml(loopIndex, tableName, rowData = null) {
         linkColHtmlPre = (isLinkCol) ? linkColHtmlPre : '';
         linkColHtmlPost = (isLinkCol) ? linkColHtmlPost : '';
         let isCellPickCol = tableHeadElem.dataset['type'] === 'cell_pick_col';
-        let cellPickCol = (isCellPickCol) ? 'onclick="cellPickOnClick(this)"' : '';
+        const cellPickHtml = `onclick="cellPickOnClick(this)" data-target="rowcell_pick_col${loopIndex}" data-table="${tableName}" `;
+        let cellPickCol = (isCellPickCol) ? cellPickHtml : '';
         tableHeaders += `
             <td id="row${colName}${loopIndex}" style="display:${tableHeadElem.style.display};" ${cellPickCol}>
                 ${linkColHtmlPre}
@@ -1146,8 +1150,8 @@ function syncTableWithForm(loopIndex, formNames, tableName) {
     });
 }
 
-function formatNumber(currentNumber) {
-    return currentNumber.toFixed(0).toLocaleString("en-US").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+function formatNumber(currentNumber, fractionDigits = 0) {
+    return currentNumber.toFixed(fractionDigits).toLocaleString("en-US").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 function createTotalCards(tableName) {
@@ -1168,13 +1172,7 @@ function createTotalCards(tableName) {
     )
 }
 
-function populateTotalCards(tableName) {
-    if (!document.getElementById(tableName + 'TotalCards')) return;
-    let table = document.getElementById(tableName + 'Body');
-    let formatter = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    });
+function getMetricsForTotalCards(tableName) {
     let formNames = [
         ['', 'total_budget', 1],
         ['cpm', 'Impressions', 0],
@@ -1183,17 +1181,43 @@ function populateTotalCards(tableName) {
         ['cpbc', 'Button Clicks', 0],
         ['cpv', 'Views', 0],
         ['cpcv', 'Video Views 100', 0]]
+    let cols = getTableHeadElems(tableName);
+    cols.forEach(col => {
+        if (col.dataset['type'] === 'metrics') {
+            let colName = col.dataset['name'];
+            let existsInFormNames = formNames.some(([prefix, name]) => name === colName);
+            if (!existsInFormNames) {
+                formNames.push(['', colName, 1]);
+            }
+        }
+    });
+    formNames = formNames.filter(([prefix, name]) => {
+        return cols.some(col => col.dataset['name'] === name || col.dataset['name'] === prefix);
+    });
+    return formNames
+}
+
+function populateTotalCards(tableName) {
+    if (!document.getElementById(tableName + 'TotalCards')) return;
+    let table = document.getElementById(tableName + 'Body');
+    let formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+    });
+    let formNames = getMetricsForTotalCards(tableName);
     let data = [];
     data = formNames.map(function (e) {
         return {name: e[1], numeric_value: 0, current_value: 0, msg: '', change: ''}
-    })
+    });
     if (table) {
-        let rowName = document.getElementById(`${tableName}Table`).getAttribute('data-value');
+        let cols = getTableHeadElems(tableName);
+        let rowName = cols[0].id.replace('col', '');
         let currentRows = document.querySelectorAll(`[id^='row${rowName}']`);
         currentRows.forEach(currentRow => {
             let rowNum = currentRow.id.replace(`row${rowName}`, '');
             if (!isNaN(rowNum[0])) {
-                let rowCost = parseFloat(document.getElementById('rowtotal_budget' + rowNum).innerHTML.replace('$', ''));
+                let totalElem = document.getElementById('rowtotal_budget' + rowNum);
+                let rowCost = (totalElem) ? parseFloat(totalElem.innerHTML.replace('$', '')) : 0;
                 formNames.forEach(formName => {
                     let costPerName = formName[0];
                     let summableName = formName[1];
@@ -1207,26 +1231,30 @@ function populateTotalCards(tableName) {
                         }
                         document.getElementById('row' + summableName + rowNum).innerHTML = formatNumber(rowValue);
                     }
+                    rowValue = isNaN(rowValue) ? 0 : rowValue;
                     data[idx]['numeric_value'] += rowValue;
                 });
             }
-        })
+        });
     }
     let idxSumCost = data.findIndex(x => x.name === 'total_budget');
-    let sumCost = data[idxSumCost]['numeric_value'];
+    let sumCost = (data[idxSumCost]) ? (data[idxSumCost]['numeric_value']) : 0;
     formNames.forEach(formName => {
         let costPerName = formName[0];
         let summableName = formName[1];
         let idx = data.findIndex(x => x.name === summableName);
-        data[idx]['current_value'] = formatNumber(data[idx]['numeric_value']);
+        data[idx]['current_value'] = formatNumber(data[idx]['numeric_value'], 2);
         if (costPerName !== '') {
             let curVal = sumCost / data[idx]['numeric_value'];
             if (summableName === 'Impressions') {
                 curVal = curVal * 1000;
             }
-            data.push({name: costPerName, numeric_value: curVal, current_value: formatter.format(curVal)})
-        }
-        else {
+            data.push({
+                name: costPerName,
+                numeric_value: curVal,
+                current_value: formatter.format(curVal)
+            })
+        } else {
             data[idx]['msg'] = "Of Total Budget";
             data[idx]['change'] = sumCost / parseFloat("{{ object.total_budget }}");
         }
@@ -1289,6 +1317,74 @@ function generateDisplayColumnName(colName) {
     return colName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ');
 }
 
+function addTableColumn(col, specifyFormCol, thead, name) {
+    let colName = col['name'];
+    let formCol = (!(specifyFormCol)) ? 'true' : col['form'];
+    let highlightRow = encodeURIComponent(JSON.stringify(existsInJson(col, 'highlight_row')));
+    thead.innerHTML += `
+            <th data-form="${formCol}" data-type="${col['type']}"
+                data-highlight_row="${highlightRow}" data-name="${colName}"
+                data-tableid="${name}Table" data-link="${col['link_col']}"
+                id="col${colName}">${generateDisplayColumnName(colName)}
+            </th>`;
+    if (col['hidden']) {
+        document.getElementById('col' + colName).style.display = 'none';
+    }
+    if (col['type'] === 'select') {
+        let selectName = 'colSelect' + colName;
+        let colElem = document.getElementById('col' + colName);
+        colElem.innerHTML += `<select id="` + selectName + `" hidden=''></select>`;
+        let colSelectElem = document.getElementById(selectName);
+        col['values'].forEach(val => {
+            let optionData = '';
+            Object.entries(val).forEach(([k, v]) => {
+                optionData += `data-` + k + `="` + v + `" `;
+            });
+            colSelectElem.innerHTML += `
+                    <option ` + optionData + `
+                            value="` + val[colName] + `">` + val[colName] + `</option>`;
+        });
+        if (col['add_select_box']) {
+            let elem = document.getElementById('addRowsPlaceholder' + name);
+            let placeHolderName = 'selectAdd' + colName + 'Placeholder' + name;
+            let newElem = `
+                    <div id="${placeHolderName}">Select ${colName}...</div>
+                    <div class="input-group-append">
+                        <button id="addRows${name}"
+                                class="btn btn-outline-success btn-block text-left"
+                                type="button" href="">
+                            <i class="fas fa-plus"  role="button"></i>
+                        </button>
+                    </div>`;
+            elem.insertAdjacentHTML('beforeend', newElem);
+            let addBoxName = colName.toLowerCase() + 'SelectAdd';
+            document.getElementById(placeHolderName).innerHTML = `
+                <select id="${addBoxName}" multiple="" class="width100 form-control">
+                    <option value="">Select ${colName}s To Add...</option>
+                </select>`;
+            document.getElementById(addBoxName).innerHTML += document.getElementById(selectName).innerHTML;
+        }
+        addSelectize();
+    }
+    if (col['type'].includes('metrics')) {
+        let colSelectElem = document.getElementById(`selectColumns${name}`);
+        if (colSelectElem) {
+            colSelectElem = colSelectElem.selectize;
+            colSelectElem.addOption({
+                text: generateDisplayColumnName(colName),
+                id: colName,
+                value: colName
+            });
+            if (col['type'] === 'default_metrics') {
+                let curVal = colSelectElem.getValue();
+                curVal.push(colName);
+                colSelectElem.setValue(curVal);
+            }
+        }
+    }
+    return thead
+}
+
 function addTableColumns(cols, name) {
     let tHeadName =  name + 'TableTHead';
     let table = document.getElementById(name + 'Table');
@@ -1304,69 +1400,15 @@ function addTableColumns(cols, name) {
         addOnClickEvent('[id^="selectColumns"]', toggleMetricsOnChange, 'change');
     }
     let specifyFormCol = table.getAttribute('data-specifyform');
+    let addHiddenCol = false;
     cols.forEach(col => {
-        let colName = col['name'];
-        let formCol = (!(specifyFormCol)) ? 'true': col['form'];
-        let highlightRow = encodeURIComponent(JSON.stringify(existsInJson(col, 'highlight_row')));
-        thead.innerHTML += `
-            <th data-form="${formCol}" data-type="${col['type']}"
-                data-highlight_row="${highlightRow}" data-name="${colName}"
-                data-tableid="${name}Table" data-link="${col['link_col']}"
-                id="col${colName}">${generateDisplayColumnName(colName)}
-            </th>`;
-        if (col['hidden']) {
-            document.getElementById('col' + colName).style.display = 'none';
-        }
-        if (col['type'] === 'select') {
-            let selectName = 'colSelect' + colName;
-            let colElem = document.getElementById('col' + colName);
-            colElem.innerHTML += `<select id="` + selectName + `" hidden=''></select>`;
-            let colSelectElem = document.getElementById(selectName);
-            col['values'].forEach(val => {
-                let optionData = '';
-                Object.entries(val).forEach(([k,v]) => {
-                    optionData += `data-` + k + `="` + v +`" `;
-                })
-                colSelectElem.innerHTML += `
-                    <option ` + optionData + `
-                            value="` + val[colName] + `">` + val[colName] + `</option>`;
-            })
-            if (col['add_select_box']) {
-                let elem = document.getElementById('addRowsPlaceholder' + name);
-                let placeHolderName = 'selectAdd' + colName + 'Placeholder' + name;
-                let newElem = `
-                    <div id="${placeHolderName}">Select ${colName}...</div>
-                    <div class="input-group-append">
-                        <button id="addRows${name}"
-                                class="btn btn-outline-success btn-block text-left"
-                                type="button" href="">
-                            <i class="fas fa-plus"  role="button"></i>
-                        </button>
-                    </div>`;
-                elem.insertAdjacentHTML('beforeend', newElem);
-                let addBoxName = colName.toLowerCase() + 'SelectAdd';
-                document.getElementById(placeHolderName).innerHTML = `
-                <select id="${addBoxName}" multiple="" class="width100 form-control">
-                    <option value="">Select ${colName}s To Add...</option>
-                </select>`;
-                document.getElementById(addBoxName).innerHTML += document.getElementById(selectName).innerHTML;
-            }
-            addSelectize();
-        }
-        if (col['type'].includes('metrics')) {
-            let selectize = document.getElementById(`selectColumns${name}`).selectize;
-            selectize.addOption({
-                text: generateDisplayColumnName(colName),
-                id: colName,
-                value: colName
-            });
-            if (col['type'] === 'default_metrics') {
-                let curVal = selectize.getValue();
-                curVal.push(colName);
-                selectize.setValue(curVal);
-            }
-        }
+        thead = addTableColumn(col, specifyFormCol, thead, name);
+        addHiddenCol = (col['type'] === 'cell_pick_col') ? true : addHiddenCol;
     });
+    if (addHiddenCol) {
+        let col = {'type': 'metrics', 'hidden': true, 'name': 'cell_pick_col'}
+        addTableColumn(col, specifyFormCol, thead, name);
+    }
 }
 
 function convertColsToObject(cols) {

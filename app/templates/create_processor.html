@@ -516,25 +516,24 @@
             let editName = jv.dataset['edit_name'];
             let validForm = document.getElementById('base_form_id').reportValidity();
             if (validForm) {
+                const liquidTables = {'Bill': 'billingTable'};
+                const additionalKeys = ['PlanRules', 'PlanPlacements', 'Calc'];
+                additionalKeys.forEach(key => {
+                    liquidTables[key] = key;
+                });
                 if (editName === "Clean") {
                     submitCleanForm(form_continue);
                 }
                 else if (editName === "Topline") {
-                    submitToplineForm(form_continue, "{{ edit_name }}");
+                    submitToplineForm(form_continue, editName);
                 }
                 else if (editName === "Plan") {
                     let curPage = window.location.pathname.split("/").pop();
                     let nextPage = curPage.includes('normal') ? 'import' : 'accounts';
                     SendDataTable('modalTable', form_continue, curPage, nextPage);
                 }
-                else if (editName === "Bill") {
-                    saveLiquidTable(form_continue, 'billingTable');
-                }
-                else if (editName === 'PlanRules') {
-                    saveLiquidTable(form_continue, 'PlanRules');
-                }
-                else if (editName === 'PlanPlacements') {
-                    saveLiquidTable(form_continue, 'PlanPlacements');
+                else if (liquidTables[editName]) {
+                    saveLiquidTable(form_continue, liquidTables[editName]);
                 }
                 else {
                     if (editName === "Import") {

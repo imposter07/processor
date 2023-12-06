@@ -6261,6 +6261,21 @@ def write_plan_placements(plan_id, current_user_id, new_data=None):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+def write_plan_calc(plan_id, current_user_id, new_data=None):
+    try:
+        _set_task_progress(0)
+        df = pd.read_json(new_data)
+        df = pd.DataFrame(df[0][1])
+        df = df.to_dict(orient='records')
+        _set_task_progress(100)
+    except:
+        _set_task_progress(100)
+        msg = 'Unhandled exception - Plan {} User {}'.format(
+            plan_id, current_user_id)
+        app.logger.error(msg, exc_info=sys.exc_info())
+        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+
 def download_table(object_id, current_user_id, function_name=None, **kwargs):
     try:
         _set_task_progress(0)
@@ -6669,7 +6684,7 @@ def get_plan_calc(plan_id, current_user_id):
             result.insert(loc=2, column=col_name, value=value)
         name = 'Calc'
         lt = app_utl.LiquidTable(df=result, table_name=name,
-                                 cell_pick_cols=cell_pick_cols)
+                                 cell_pick_cols=cell_pick_cols, totals=True)
         _set_task_progress(100)
         return [lt.table_dict]
     except:

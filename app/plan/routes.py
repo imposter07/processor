@@ -354,4 +354,5 @@ def calc(object_name):
     kwargs = Plan().get_current_plan(
         object_name, 'edit_plan', edit_progress=100,
         edit_name='Calc')
+    kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)

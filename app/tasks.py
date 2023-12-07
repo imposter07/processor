@@ -23,7 +23,8 @@ from app.models import User, Post, Task, Processor, Message, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
     ProcessorReports, Partner, PlanRule, Brandtracker, \
-    PartnerPlacements, Rfp, RfpFile, Specs, Contacts, PlanPhase
+    PartnerPlacements, Rfp, RfpFile, Specs, Contacts, PlanPhase, \
+    PlanEffectiveness
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -3870,7 +3871,7 @@ def get_raw_file_data_table(processor_id, current_user_id, vk=None,
                             temp=None, return_func=None):
     try:
         _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         if ((not cur_processor.local_path) or
                 (not os.path.exists(adjust_path(cur_processor.local_path)))):
             lt = app_utl.LiquidTable(
@@ -5075,7 +5076,7 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
                 'No Vendor Key': {'Old': (False, msg), 'New': (False, msg)}}
         else:
             _set_task_progress(0)
-            cur_processor = Processor.query.get(processor_id)
+            cur_processor = db.session.get(Processor, processor_id)
             os.chdir(adjust_path(cur_processor.local_path))
             matrix = vm.VendorMatrix()
             aly = az.Analyze(matrix=matrix)
@@ -5102,7 +5103,7 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
 
 def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):
     try:
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk=vk)
@@ -6272,6 +6273,8 @@ def write_plan_calc(plan_id, current_user_id, new_data=None):
         df = pd.read_json(new_data)
         df = pd.DataFrame(df[0][1])
         df = df.to_dict(orient='records')
+        set_processor_values(plan_id, current_user_id, df, PlanEffectiveness,
+                             Plan)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -6632,63 +6635,35 @@ def get_plan_calc(plan_id, current_user_id):
     try:
         _set_task_progress(0)
         headers = "Headers"
-        factors_low = "factors Low"
-        factors_inc = "factors Inc"
-
         values = ["-0.20", "-0.10", "0.00", "0.10", "0.20"]
+        brand_low = PlanEffectiveness.brand_low
+        brand_high = PlanEffectiveness.brand_low
+        msg_low = PlanEffectiveness.msg_low
+        msg_high = PlanEffectiveness.msg_high
+        media_low = PlanEffectiveness.media_low
+        media_high = PlanEffectiveness.media_high
 
-        brand_factors_low = [
-            "Established IP", "High Category Recognition",
-            "High Genre Opportunity","Strong Community Sentiment",
-            "High Game Score", "Free-to-Play","Increasing MAUs",
-            "High Marketplace SOV", "Existing / Returning Players"]
-        brand_factors_inc = [
-            "New IP", "Low Category Recognition",
-            "Low Genre Opportunity", "Weak Community Sentiment",
-            "Low Game Score", "Full Retail",
-            "Decreasing MAUs", "Low Marketplace SOV",
-            "New / Competitive Players"]
-        messaging_factors_low = [
-            "Low Complexity", "High Message Uniqueness",
-            "Evergreen Campaign", "Gameplay Asset",
-            "Few Message Variants (1-2)", "Fatigued Asset",
-            "Large Format Assets"]
-        messaging_factors_inc = [
-            "High Complexity", "Low Message Uniqueness",
-            "Campaign Launch", "Key Art",
-            "Several Message Variants (3+)",
-            "New Asset", "Small Format Assets"]
-        media_factors_low = [
-            "Low Environment Clutter", "Strong Contextual Alignment",
-            "High Audience Attention", "Low Ad Blocking",
-            "Long Flight / Evergreen", "Low Media Fragmentation",
-            "Low Competitive Environment"]
-        media_factors_inc = [
-            "High Environment Clutter", "Low Contextual Alignment",
-            "Low Audience Attention","High Ad Blocking",
-            "Burst / Launch Flighting", "High Media Fragmentation",
-            "High Competitive Environment"]
-
-        df1 = pd.DataFrame({factors_low: brand_factors_low,
-                            factors_inc: brand_factors_inc})
-        df1.insert(loc=0, column=headers, value="Brand Factors")
-        df2 = pd.DataFrame({factors_low: messaging_factors_low,
-                            factors_inc: messaging_factors_inc})
-        df2.insert(loc=0, column=headers, value="Messaging Factors")
-        df3 = pd.DataFrame({factors_low: media_factors_low,
-                            factors_inc: media_factors_inc})
-        df3.insert(loc=0, column=headers, value="Media Factors")
-
-        result = pd.concat([df1, df2, df3], axis=0)
-        result.reset_index(drop=True, inplace=True)
-
+        d = {PlanEffectiveness.brand: (brand_low, brand_high),
+             PlanEffectiveness.msg: (msg_low, msg_high),
+             PlanEffectiveness.media: (media_low, media_high)
+        }
+        df = pd.DataFrame()
+        for k, v in d.items():
+            tdf = pd.DataFrame({PlanEffectiveness.factors_low: v[0],
+                                PlanEffectiveness.factors_high: v[1]})
+            tdf[headers] = k
+            df = pd.concat([df, tdf], ignore_index=True)
         cell_pick_cols = []
         for i, value in enumerate(values, 1):
             col_name = f"Value{i}"
             cell_pick_cols.append(col_name)
-            result.insert(loc=2, column=col_name, value=value)
+            df[col_name] = value
+        col_order = [headers,
+                     PlanEffectiveness.factors_low] + cell_pick_cols + [
+                        PlanEffectiveness.factors_high]
+        df = df[col_order]
         name = 'Calc'
-        lt = app_utl.LiquidTable(df=result, table_name=name,
+        lt = app_utl.LiquidTable(df=df, table_name=name,
                                  cell_pick_cols=cell_pick_cols, totals=True)
         _set_task_progress(100)
         return [lt.table_dict]

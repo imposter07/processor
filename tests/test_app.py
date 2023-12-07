@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from contextlib import contextmanager
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
-    Project, ProjectNumberMax, Plan
+    Project, ProjectNumberMax, Plan, PlanEffectiveness
 import app.plan.routes as plan_routes
 import app.plan.forms as plan_forms
 from config import basedir
@@ -82,7 +82,7 @@ def submit_form(sw, form_names=None, select_form_names=None,
                  if 'cur' in x or 'Select' in x or x in select_form_names
                  else (test_name, x) for x in form_names + select_form_names]
     sw.send_keys_from_list(elem_form)
-    sw.xpath_from_id_and_click(submit_id, .5)
+    sw.xpath_from_id_and_click(submit_id, .1)
 
 
 @pytest.mark.usefixtures("app_fixture")
@@ -255,8 +255,10 @@ class TestPlan:
         part_budget = '5000'
         submit_form(sw, form_names=[sel_id], submit_id=submit_id,
                     test_name=part_name)
-        sw.xpath_from_id_and_click('tr0', sleep=1)
-        submit_form(sw, ['total_budget0'], test_name=part_budget)
+        sw.xpath_from_id_and_click('tr0', sleep=0)
+        elem_id = 'total_budget0'
+        sw.wait_for_elem_load(elem_id)
+        submit_form(sw, [elem_id], test_name=part_budget)
         sow_url = self.get_url(plan_routes.edit_sow.__name__)
         worker.work(burst=True)
         TestProject.wait_for_jobs_finish()
@@ -274,6 +276,7 @@ class TestPlan:
         p = Plan.query.filter_by(name=self.test_name).first()
         if not p:
             self.test_create_plan(sw, login, worker)
+            p = Plan.query.filter_by(name=self.test_name).first()
         edit_url = self.get_url('calc')
         sw.go_to_url(edit_url, sleep=1)
         assert sw.browser.current_url == edit_url
@@ -286,15 +289,19 @@ class TestPlan:
         elem_id = 'rowValue50'
         elem = sw.browser.find_element_by_id(elem_id)
         elem.click()
+        selected_val = '0.20'
         assert elem.get_attribute("class") == 'shadeCell0'
-        assert elem.get_attribute('innerHTML') == '0.20'
+        assert elem.get_attribute('innerHTML') == selected_val
         sw.xpath_from_id_and_click('loadRefresh')
         worker.work(burst=True)
         t = Task.query.filter_by(name='.write_plan_calc').first()
         assert t
         elem_id = 'totalCardValuecell_pick_col'
         elem = sw.browser.find_element_by_id(elem_id)
-        assert elem.get_attribute('innerHTML') == '0.20'
+        assert elem.get_attribute('innerHTML') == selected_val
+        pe = PlanEffectiveness.query.filter_by(
+            plan_id=p.id, factor_name=PlanEffectiveness.brand_low[0]).first()
+        assert pe.selected_val == float(selected_val)
 
     def test_rate_card_rfp(self, sw, login, worker, create_processor):
         plan_name = 'Rate Card Database'
@@ -337,9 +344,9 @@ class TestProject:
         db.session.add(p)
         db.session.commit()
         pn_url = '{}project_numbers'.format(base_url)
-        sw.go_to_url(pn_url)
+        sw.go_to_url(pn_url, elem_id='loadingBtn')
         assert sw.browser.current_url == pn_url
-        pn_max = ProjectNumberMax(max_number=3600)
+        pn_max = ProjectNumberMax(max_number=3700)
         db.session.add(pn_max)
         db.session.commit()
         task_name = Task.get_table_name_to_task_dict()['ProjectNumber']
@@ -357,8 +364,11 @@ class TestProject:
         assert t.name == task_name
         worker.work(burst=True)
         self.wait_for_jobs_finish()
-        time.sleep(3)
-        sw.xpath_from_id_and_click('rowproject_number0')
+        elem_id = 'rowproject_number0'
+        a_xpath = '//*[@id="{}"]/a'.format(elem_id)
+        sw.wait_for_elem_load(xpath=a_xpath, visible=True)
+        sw.click_on_xpath(a_xpath)
+        sw.wait_for_elem_load('project_number')
         assert 'edit' in sw.browser.current_url
 
 

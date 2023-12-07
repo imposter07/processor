@@ -3697,6 +3697,55 @@ class PlanRule(db.Model):
         return []
 
 
+class PlanEffectiveness(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    factor_name = db.Column(db.Text)
+    selected_val = db.Column(db.Float)
+    plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
+    brand = "Brand Factors"
+    msg = "Messaging Factors"
+    media = "Media Factors"
+    factors_low = "Lower Frequency"
+    factors_high = "Increase Frequency"
+    brand_low = [
+        "Established IP", "High Category Recognition",
+        "High Genre Opportunity", "Strong Community Sentiment",
+        "High Game Score", "Free-to-Play", "Increasing MAUs",
+        "High Marketplace SOV", "Existing / Returning Players"]
+    brand_high = [
+        "New IP", "Low Category Recognition",
+        "Low Genre Opportunity", "Weak Community Sentiment",
+        "Low Game Score", "Full Retail",
+        "Decreasing MAUs", "Low Marketplace SOV",
+        "New / Competitive Players"]
+    msg_low = [
+        "Low Complexity", "High Message Uniqueness",
+        "Evergreen Campaign", "Gameplay Asset",
+        "Few Message Variants (1-2)", "Fatigued Asset",
+        "Large Format Assets"]
+    msg_high = [
+        "High Complexity", "Low Message Uniqueness",
+        "Campaign Launch", "Key Art",
+        "Several Message Variants (3+)",
+        "New Asset", "Small Format Assets"]
+    media_low = [
+        "Low Environment Clutter", "Strong Contextual Alignment",
+        "High Audience Attention", "Low Ad Blocking",
+        "Long Flight / Evergreen", "Low Media Fragmentation",
+        "Low Competitive Environment"]
+    media_high = [
+        "High Environment Clutter", "Low Contextual Alignment",
+        "Low Audience Attention", "High Ad Blocking",
+        "Burst / Launch Flighting", "High Media Fragmentation",
+        "High Competitive Environment"]
+
+    def set_from_form(self, form, current_object):
+        selected_val = form['cell_pick_col'].strip()
+        self.factor_name = form[PlanEffectiveness.factors_low].strip()
+        self.plan_id = current_object.id
+        self.selected_val = float(selected_val) if selected_val else 0
+
+
 class Conversation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Text)

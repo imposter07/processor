@@ -716,6 +716,20 @@ function getRowFormNames(tableName){
     return tableHeadElems.filter(col => col.dataset['form'] === 'true').map(col => col.id.replace('col', ''));
 }
 
+function checkCellPickCol(loopIndex) {
+    let pickVal = document.getElementById(`rowcell_pick_col${loopIndex}`);
+    if (pickVal) {
+        let curRow = document.getElementById(`tr${loopIndex}`);
+        let pickValue = Number(pickVal.innerHTML).toFixed(1);
+        Array.from(curRow.children).forEach(cell => {
+            let cellValue = Number(cell.innerHTML).toFixed(1);
+            if (cellValue === pickValue) {
+                cell.click();
+            }
+        });
+    }
+}
+
 function addRowToTable(rowData, tableName, customTableCols) {
     let curTable = document.getElementById(tableName + 'Table');
     let bodyId = tableName + 'Body';
@@ -775,6 +789,7 @@ function addRowToTable(rowData, tableName, customTableCols) {
             applyCustomFunction(customFunc, loopIndex);
         }
     }
+    checkCellPickCol(loopIndex);
     return loopIndex
 }
 
@@ -1407,8 +1422,18 @@ function addTableColumns(cols, name) {
         addHiddenCol = (col['type'] === 'cell_pick_col') ? true : addHiddenCol;
     });
     if (addHiddenCol) {
-        let col = {'type': 'metrics', 'hidden': true, 'name': 'cell_pick_col'}
-        addTableColumn(col, specifyFormCol, thead, name);
+        let pickCol = document.getElementById('colcell_pick_col');
+        if (pickCol) {
+            pickCol.style.display = 'none';
+            pickCol.dataset['type'] = 'metrics';
+        } else {
+            let col = {
+                'type': 'metrics',
+                'hidden': true,
+                'name': 'cell_pick_col'
+            }
+            addTableColumn(col, specifyFormCol, thead, name);
+        }
     }
 }
 

@@ -302,6 +302,13 @@ class TestPlan:
         pe = PlanEffectiveness.query.filter_by(
             plan_id=p.id, factor_name=PlanEffectiveness.brand_low[0]).first()
         assert pe.selected_val == float(selected_val)
+        sw.browser.refresh()
+        worker.work(burst=True)
+        elem_id = 'rowValue50'
+        sw.wait_for_elem_load(elem_id)
+        elem = sw.browser.find_element_by_id(elem_id)
+        assert elem.get_attribute("class") == 'shadeCell0'
+        assert elem.get_attribute('innerHTML') == selected_val
 
     def test_rate_card_rfp(self, sw, login, worker, create_processor):
         plan_name = 'Rate Card Database'

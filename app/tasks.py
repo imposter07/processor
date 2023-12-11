@@ -6653,14 +6653,22 @@ def get_plan_calc(plan_id, current_user_id):
                                 PlanEffectiveness.factors_high: v[1]})
             tdf[headers] = k
             df = pd.concat([df, tdf], ignore_index=True)
+        selected_dict = {}
+        for col in brand_low + msg_low + media_low:
+            pe = PlanEffectiveness.query.filter_by(plan_id=plan_id,
+                                                   factor_name=col).first()
+            pe = pe.selected_val if pe else 0
+            selected_dict[col] = pe
+        pick_col = 'cell_pick_col'
+        df[pick_col] = df[PlanEffectiveness.factors_low].map(selected_dict)
         cell_pick_cols = []
         for i, value in enumerate(values, 1):
             col_name = f"Value{i}"
             cell_pick_cols.append(col_name)
             df[col_name] = value
-        col_order = [headers,
-                     PlanEffectiveness.factors_low] + cell_pick_cols + [
-                        PlanEffectiveness.factors_high]
+        first_cols = [headers, PlanEffectiveness.factors_low]
+        last_cols = [PlanEffectiveness.factors_high, pick_col]
+        col_order = first_cols + cell_pick_cols + last_cols
         df = df[col_order]
         name = 'Calc'
         lt = app_utl.LiquidTable(df=df, table_name=name,

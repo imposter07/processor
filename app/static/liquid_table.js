@@ -1630,8 +1630,8 @@ function createLiquidTableChart(tableName, tableRows, chartFunc) {
             (isNaN(value)) ? xCols.push(cellName) : yCols.push(cellName);
         }
     });
+    showChart(tableName, true);
     if (yCols.length) {
-        showChart(tableName, true);
         if (chartFunc) {
             let generateChart = window[chartFunc];
             document.getElementById(chartElemId).innerHTML = '';

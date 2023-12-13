@@ -380,7 +380,13 @@ class TestPlan:
         assert t
         elem_id = 'totalCardValuecell_pick_col'
         elem = sw.browser.find_element_by_id(elem_id)
-        assert elem.get_attribute('innerHTML') == selected_val
+        default_val = 3
+        for x in range(10):
+            if elem.get_attribute('innerHTML') != f'{default_val}':
+                break
+            time.sleep(.1)
+        num = float(selected_val) + default_val
+        assert elem.get_attribute('innerHTML') == f'{num:.2f}'
         pe = PlanEffectiveness.query.filter_by(
             plan_id=p.id, factor_name=PlanEffectiveness.brand_low[0]).first()
         assert pe.selected_val == float(selected_val)

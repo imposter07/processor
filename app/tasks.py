@@ -299,7 +299,7 @@ def run_processor(processor_id, current_user_id, run_args):
                 task_functions = [get_project_numbers, get_glossary_definitions,
                                   get_post_mortems, get_time_savers,
                                   get_ai_playbook_market, get_contact_numbers,
-                                  get_rate_cards]
+                                  get_rate_cards, get_plan_calc_tutorial]
                 for task_function in task_functions:
                     os.chdir(cur_path)
                     task_function(processor_id, current_user_id)
@@ -6691,7 +6691,8 @@ def get_plan_calc(plan_id, current_user_id):
         df = df[col_order]
         name = 'Calc'
         lt = app_utl.LiquidTable(df=df, table_name=name,
-                                 cell_pick_cols=cell_pick_cols, totals=True)
+                                 cell_pick_cols=cell_pick_cols, totals=True,
+                                 total_default_val=3)
         _set_task_progress(100)
         return [lt.table_dict]
     except:

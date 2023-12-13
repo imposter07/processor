@@ -1171,7 +1171,7 @@ function formatNumber(currentNumber, fractionDigits = 0) {
     return currentNumber.toFixed(fractionDigits).toLocaleString("en-US").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-function createTotalCards(tableName) {
+function createTotalCards(tableName, defaultTotalVal = 0) {
     let elem = document.getElementById(tableName);
     elem.insertAdjacentHTML('afterbegin',`
         <div class="card shadow outer text-center">
@@ -1182,7 +1182,8 @@ function createTotalCards(tableName) {
             </div>
             <div class="card-body">
                 <div class="card-deck container-fluid text-center">
-                    <div id="${tableName}TotalCards" class="row w-100"></div>
+                    <div id="${tableName}TotalCards" data-default="${defaultTotalVal}"
+                        class="row w-100"></div>
                 </div>
             </div>
         </div>`
@@ -1215,7 +1216,8 @@ function getMetricsForTotalCards(tableName) {
 }
 
 function populateTotalCards(tableName) {
-    if (!document.getElementById(tableName + 'TotalCards')) return;
+    let totalCardsElem = document.getElementById(`${tableName}TotalCards`);
+    if (!totalCardsElem) return;
     let table = document.getElementById(tableName + 'Body');
     let formatter = new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -1223,8 +1225,10 @@ function populateTotalCards(tableName) {
     });
     let formNames = getMetricsForTotalCards(tableName);
     let data = [];
+    let defaultSumVal = totalCardsElem.dataset['default'];
+    defaultSumVal = (defaultSumVal) ? parseFloat(defaultSumVal) : 0;
     data = formNames.map(function (e) {
-        return {name: e[1], numeric_value: 0, current_value: 0, msg: '', change: ''}
+        return {name: e[1], numeric_value: defaultSumVal, current_value: defaultSumVal, msg: '', change: ''}
     });
     if (table) {
         let cols = getTableHeadElems(tableName);
@@ -1796,7 +1800,8 @@ function createLiquidTable(data, kwargs) {
         addRows(tableRows, tableName, customTableCols);
     }
     if (totalCards) {
-        createTotalCards(tableName);
+        let defaultTotalVal = existsInJson(tableData, 'total_default_val');
+        createTotalCards(tableName, defaultTotalVal);
         populateTotalCards(tableName);
     }
     if (colFilter) {

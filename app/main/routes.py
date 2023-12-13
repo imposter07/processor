@@ -3098,17 +3098,26 @@ def get_dashboard_properties():
 @login_required
 def save_dashboard():
     dash = Dashboard.query.get(int(request.form['dashboard_id']))
-    object_form = request.form.to_dict()
-    cols = ['name', 'chart_type', 'dimensions', 'metrics', 'default_view']
-    object_form = utl.clean_serialize_dict(object_form, cols)
-    dash.name = object_form['name'][0]
-    dash.chart_type = object_form['chart_type'][0]
-    dash.dimensions = object_form['dimensions'][0]
+    object_form = json.loads(request.form.to_dict()['object_form'])
+    dash.name = object_form['name']
+    dash.chart_type = object_form['chart_type']
+    dash.dimensions = object_form['dimensions']
     dash.metrics = object_form['metrics']
-    dash.default_view = object_form['default_view'][0]
+    dash.default_view = object_form['default_view']
     db.session.commit()
-    set_dashboard_filters_in_db(dash.id, object_form['static_filters'])
+    if 'static_filters' in object_form:
+        set_dashboard_filters_in_db(dash.id, object_form['static_filters'])
     msg = 'The dashboard {} has been saved!'.format(dash.name)
+    return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
+
+
+@bp.route('/delete_dashboard', methods=['GET', 'POST'])
+@login_required
+def delete_dashboard():
+    dash = Dashboard.query.get(int(request.form['dashboard_id']))
+    db.session.delete(dash)
+    db.session.commit()
+    msg = 'The dashboard {} has been deleted.'.format(dash.name)
     return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
 
 

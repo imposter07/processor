@@ -374,7 +374,7 @@ function displayAlert(message, level) {
     fadeInElement(alertPlaceholderElem);
 }
 
-function downloadSvg(svgElem, styleElem = null) {
+function downloadSvg(svgElem, styleElem = null, name='svg.png') {
     let svgString = (new XMLSerializer()).serializeToString(svgElem);
     if (styleElem) {
         let styleString = (new XMLSerializer()).serializeToString(styleElem);
@@ -400,7 +400,7 @@ function downloadSvg(svgElem, styleElem = null) {
         const imgURI = canvas.toDataURL('image/png');
 
         const downloadLink = document.createElement('a');
-        downloadLink.download = 'svg.png';
+        downloadLink.download = name;
         downloadLink.target = '_blank';
         downloadLink.href = imgURI;
         downloadLink.click();

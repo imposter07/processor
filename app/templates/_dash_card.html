@@ -1,4 +1,4 @@
-<div class="card mb-3">
+<div class="card mb-3" id="dash{{ dash.id }}card" data-name="{{ dash.name }}">
     {% if processor is defined %}
         <div class="card-header">
             <h3>
@@ -11,10 +11,10 @@
             </span>
             </h3>
         </div>
-        <div class="card">
+        <div class="card" id="dash{{ dash.id }}">
         <div class="card-body">
             <div class="row">
-                <div class="col">
+                <div class="col" id="dash{{ dash.id }}form">
                     {% for form in dash.form %}
                         {% include '_form.html' %}
                     {% endfor %}
@@ -30,11 +30,6 @@
                         class="btn btn-outline-info">
                     <i class="fas fa-save" href="#" role="button"></i>
                     Save
-                </button>
-                <button id="dash{{ dash.id }}Download"
-                        class="btn btn-outline-primary">
-                    <i class="fas fa-download" href="#" role="button"></i>
-                    Download
                 </button>
                 <button id="dash{{ dash.id }}Delete"
                         class="btn btn-outline-danger">
@@ -59,90 +54,119 @@
     </div>
 </div>
 <script>
-    function viewDash(dashId, dropdownButton, oldHtml) {
-        $.ajax({
-            type: "POST",
-            url: "/get_dashboard_properties",
-            data: {
-                object_name: "{{ object_name }}",
-                object_type: "{{ title }}",
-                object_level: "{{ edit_name }}",
-                dashboard_id: dashId.replace('dash', '')
-            },
-        }).done(function (data, status) {
-            let chartName = dashId + 'Metrics';
-            let chartType = data['chart_type'];
-            let chartFunction = getChartFunctionName(chartType);
-            let defaultView = data['default_view'] === 'Chart';
-            let dash_metric_args = getDataTableArgsDict(
-                chartFunction, JSON.parse(data['dimensions']),
-                JSON.parse(data['metrics']), JSON.parse(data['chart_filters']),
-                true, undefined, undefined, defaultView);
-            getTable(chartName, chartName + 'Progress', 'None', 'None',
-                'None', true, 'None', false, dash_metric_args);
-        }).fail(function (jqXHR, textStatus) {
-            console.log("Request failed: " + textStatus);
-        });
+    function loadDash(data, kwargs) {
+        let dashId = kwargs['dashId'];
+        let btnId = kwargs['btnId'];
+        let chartName = dashId + 'Metrics';
+        let chartType = data['chart_type'];
+        let chartFunction = getChartFunctionName(chartType);
+        let defaultView = data['default_view'] === 'Chart';
+        let dash_metric_args = getDataTableArgsDict(
+            chartFunction, JSON.parse(data['dimensions']),
+            JSON.parse(data['metrics']), JSON.parse(data['chart_filters']),
+            true, undefined, undefined, defaultView);
+        getTable(chartName, btnId, 'None', 'None', 'None', true, 'None',
+            false, dash_metric_args);
     }
 
-    function saveDash(dashId, dropdownButton, oldHtml) {
-        let clickedButton = '#' + dashId + 'Save';
-        let objForm = $($(clickedButton).parent().parent()[0]
-            .children[0].children[0].children[0]).serializeArray();
-        $.ajax({
-            type: "POST",
-            url: "/save_dashboard",
-            data: {
-                object_name: "{{ object_name }}",
-                object_type: "{{ title }}",
-                object_level: "{{ edit_name }}",
-                dashboard_id: dashId.replace('dash', ''),
-                object_form: objForm
-            },
-        }).done(function (data, status) {
-            let element = $(dropdownButton).parent().parent().parent()[0];
-            let originalColor = element.style.backgroundColor;
-            element.style.backgroundColor = "#b3ecff";
-            let t = setTimeout(function () {
-                element.style.backgroundColor = originalColor;
-            }, (2 * 1000));
-            displayAlert(data['message'], data['level'])
-        }).fail(function (jqXHR, textStatus) {
-            console.log("Request failed: " + textStatus);
-            displayAlert('Could not save dashboard, please try again later',
-                'warning')
-        }).always(function () {
-            $(dropdownButton).prop("disabled", false);
-            $(dropdownButton).html(oldHtml);
-            unanimateBar();
-        });
+    function viewDash(dashId, btnId) {
+        let jv = document.getElementById('jinjaValues');
+        let data = {
+            object_name:  jv.dataset['object_name'],
+            object_type: jv.dataset['title'],
+            object_level: jv.dataset['edit_name'],
+            dashboard_id: dashId.replace('dash', '')
+        };
+        let kwargs = {'dashId': dashId, 'btnId': btnId};
+        makeRequest('/get_dashboard_properties', 'POST', data, loadDash,
+            'json', kwargs);
     }
 
-    $(document).ready(function () {
-        $('button[id^="dash"]').unbind().click(function () {
-            let curId = this.id
-            let functionName = function (curId) {
-                if (curId.includes('View')) {
-                    return ['View', viewDash]
-                } else if (curId.includes('Save')) {
-                    return ['Save', saveDash]
-                } else if (curId.includes('Download')) {
-                    return ['Download', '']
-                } else if (curId.includes('Delete')) {
-                    return ['Delete', '']
-                }
+    function handleSaveFail(data, kwargs) {
+        let btnId = kwargs['btnId'];
+        displayAlert('Could not save dashboard, please try again later',
+            'warning');
+        unanimateBar();
+        addElemRemoveLoadingBtn(btnId)
+    }
+
+    function handleSave(data, kwargs) {
+        let id = kwargs['dashId'];
+        let btnId = kwargs['btnId'];
+        let element = document.getElementById(id).firstElementChild;
+        let originalColor = element.style.backgroundColor;
+        element.style.backgroundColor = "#b3ecff";
+        let t = setTimeout(function () {
+            element.style.backgroundColor = originalColor;
+        }, (2 * 1000));
+        displayAlert(data['message'], data['level']);
+        addElemRemoveLoadingBtn(btnId)
+    }
+
+    function saveDash(dashId, btnId) {
+        let id = dashId.replace('dash', '');
+        let jv = document.getElementById('jinjaValues');
+        let form = document.getElementById('dash' + id + 'form').firstElementChild;
+        let formData = new FormData(form);
+        let data = {
+            object_name: jv.dataset['object_name'],
+            object_type: jv.dataset['title'],
+            object_level: jv.dataset['edit_name'],
+            dashboard_id: id,
+            object_form: JSON.stringify(convertFormDataToDict(formData))
+        };
+        let kwargs = {'dashId': dashId, 'btnId': btnId};
+        makeRequest('/save_dashboard', 'POST', data, handleSave,
+            'json', kwargs, handleSaveFail);
+    }
+
+    function handleDelete(data, kwargs){
+        let id = kwargs['dashId'];
+        let btnId = kwargs['btnId'];
+        let element = document.getElementById(id + 'card');
+        let originalColor = element.style.backgroundColor;
+        element.style.backgroundColor = "rgba(255,0,0,0.68)";
+        let t = setTimeout(function () {
+            element.style.backgroundColor = originalColor;
+        }, (2 * 1000));
+        addElemRemoveLoadingBtn(btnId);
+        element.innerHTML = '';
+        displayAlert(data['message'], data['level']);
+    }
+
+    function deleteDash(dashId, btnId) {
+        let jv = document.getElementById('jinjaValues');
+        let data = {
+            object_name: jv.dataset['object_name'],
+            object_type: jv.dataset['title'],
+            object_level: jv.dataset['edit_name'],
+            dashboard_id: dashId.replace('dash', '')
+        };
+        let kwargs = {'dashId': dashId, 'btnId': btnId};
+        makeRequest('/delete_dashboard', 'POST', data, handleDelete,
+            'json', kwargs);
+    }
+
+    function setButtonEvents() {
+        let curId = this.id;
+        let functionName = function (curId) {
+            if (curId.includes('View')) {
+                return ['View', viewDash]
+            } else if (curId.includes('Save')) {
+                return ['Save', saveDash]
+            } else if (curId.includes('Delete')) {
+                return ['Delete', deleteDash]
             }
-            let currentFunction = functionName(curId);
-            let dashId = this.id.replace(currentFunction[0], '')
-            let dropdownButton = '#' + this.id
-            $('#' + dashId + 'Row').css('display', 'block');
-            $(dropdownButton).prop("disabled", true);
-            let oldHtml = $(dropdownButton).html();
-            $(dropdownButton).html(
-                `<span id="loadingBtn" class="spinner-grow spinner-grow-sm"
-                    role="status" aria-hidden="true"></span> Loading...`
-            );
-            currentFunction[1](dashId, dropdownButton, oldHtml)
-        });
+        };
+        let currentFunction = functionName(curId);
+        let dashId = this.id.replace(currentFunction[0], '');
+        if (!curId.includes('View')) {
+            loadingBtn(this);
+        }
+        currentFunction[1](dashId, this.id)
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        addOnClickEvent('button[id^="dash"]', setButtonEvents);
     });
 </script>

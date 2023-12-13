@@ -207,36 +207,37 @@ function createTableElements(tableName, rowsName,
         ${title}
     <div class="card-body">
         ${colToggleHtml}
-        ${showChartBtnHtml}
-        <div class="row">
+        <div class="row mb-3">
+            <div class="col d-flex">
+                <div class="btn-group">
+                    ${showChartBtnHtml}
+                    ${topRowsBtnHtml}
+                    ${colToggleBtnHtml}
+                    ${newModalBtnHtml}
+                </div>
+            </div>
+            <div class="col">
+                <div id="addRowsPlaceholder${tableName}" class="input-group ">
+                </div>
+            </div>
+            <div class="col">
+                <div class="input-group ">
+                    ${showSearchBarHtml}
+                </div>
+            </div>
+        </div>
+        <div class="row m-2">
             <div id="${tableName}TableSlideCol" class="col-xs"
                  style="" data-value="${topRowsName}">
                 <div id="${tableName}TableSlide" class="card-deck"></div>
             </div>
             <div id="${tableName}TableBaseCol" class="col">
-                <div class="row">
-                    <div class="col">
-                        <div id="addRowsPlaceholder${tableName}" class="input-group mb-3">
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="btn-group">
-                            ${topRowsBtnHtml}
-                            ${colToggleBtnHtml}
-                            ${newModalBtnHtml}
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="input-group mb-3">
-                            ${showSearchBarHtml}
-                    </div>
-                </div>
                 <table id="${tableName}Table" data-value="${rowsName}" data-accordion="${collapseStr}"
                        data-specifyform="${specifyFormCols}" data-rowclick="${rowOnClick}"
                        data-colfilter="${colFilter}"
                        class="table table-striped table-responsive-sm small"></table>
             </div>
-            <div id="${tableName}ChartCol" class="col" style="">
+            <div id="${tableName}ChartCol" class="col" style="display: none">
                 <div id="${tableName}ChartPlaceholder"></div>
             </div>
         </div>
@@ -1364,7 +1365,7 @@ function addTableColumn(col, specifyFormCol, thead, name) {
             let elem = document.getElementById('addRowsPlaceholder' + name);
             let placeHolderName = 'selectAdd' + colName + 'Placeholder' + name;
             let newElem = `
-                    <div id="${placeHolderName}">Select ${colName}...</div>
+                    <div id="${placeHolderName}" class="p-0">Select ${colName}...</div>
                     <div class="input-group-append">
                         <button id="addRows${name}"
                                 class="btn btn-outline-success btn-block text-left"
@@ -1375,7 +1376,7 @@ function addTableColumn(col, specifyFormCol, thead, name) {
             elem.insertAdjacentHTML('beforeend', newElem);
             let addBoxName = colName.toLowerCase() + 'SelectAdd';
             document.getElementById(placeHolderName).innerHTML = `
-                <select id="${addBoxName}" multiple="" class="width100 form-control">
+                <select id="${addBoxName}" multiple="" class="width100">
                     <option value="">Select ${colName}s To Add...</option>
                 </select>`;
             document.getElementById(addBoxName).innerHTML += document.getElementById(selectName).innerHTML;
@@ -1615,6 +1616,7 @@ function showChart(tableName, chartShow) {
 function createLiquidTableChart(tableName, tableRows, chartFunc) {
     let chartElemId = `${tableName}ChartPlaceholder`;
     let chartElem = document.getElementById(chartElemId);
+    chartElem.style.display = '';
     let headElems = getTableHeadElems(tableName);
     let xCols = [];
     let yCols = [];
@@ -1669,14 +1671,19 @@ function getTableOnClick(e, imgToGet) {
 
 function downloadLiquidTable() {
     let tableId = this.dataset['table_name'];
-    let table = document.getElementById(tableId);
-    if (Object.keys(table.dataset).length > 0) {
-        let liquid_table_args = getMetadata(tableId);
-        getTable('downloadTable', this.id, 'None', tableId,
-        'None', true, 'None', false, liquid_table_args);
+    let liquid_table_args = getMetadata(tableId);
+    let tableElem = document.getElementById(tableId + 'TableBaseCol');
+    if (tableElem.style.display === 'none') {
+        let chartElem = document.getElementById(tableId + 'ChartPlaceholder');
+        let svg = chartElem.querySelector('svg');
+        let svgStyles = document.getElementById('customSvgStyles');
+        let jinjaValues = document.getElementById('jinjaValues').dataset;
+        let name = jinjaValues['title']  + "_" + jinjaValues['object_name'] + "_" + tableId + ".png";
+        downloadSvg(svg, svgStyles, name)
     }
     else {
-        getTable('downloadTable', this.id, 'None', this.id);
+        getTable('downloadTable', this.id, 'None', tableId,
+            'None', true, 'None', false, liquid_table_args);
     }
 }
 

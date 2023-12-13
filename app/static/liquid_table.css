@@ -157,3 +157,11 @@ div[class*='remove-items-shadow'] div[class*='card'] {
     box-shadow: none !important;
     border: none;
 }
+
+div[class*='remove-internal-padding'] div[class*='card'] .card-body {
+    padding: 0 !important;
+}
+
+.selectize-input {
+    border-radius: .25rem 0 0 .25rem !important;
+}

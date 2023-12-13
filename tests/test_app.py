@@ -181,8 +181,17 @@ class TestProcessor:
 
     @pytest.fixture(scope="class")
     def set_up(self, login, create_processor, default_name, worker):
-        create_processor(default_name, create_files=True)
+        new_proc = create_processor(default_name, create_files=True)
         worker.work(burst=True)
+        return new_proc
+
+    @staticmethod
+    @contextmanager
+    def adjust_path(path):
+        cur_path = os.path.abspath(os.getcwd())
+        os.chdir(path)
+        yield path
+        os.chdir(cur_path)
 
     def test_create_processor(self, sw, login):
         test_name = 'test'
@@ -197,10 +206,88 @@ class TestProcessor:
             base_url, urllib.parse.quote(test_name))
         assert sw.browser.current_url == import_url
 
-    def test_processor_page(self, sw, set_up):
+    def test_processor_page(self, sw, set_up, worker):
         proc_link = '//*[@id="navLinkProcessor"]'
         sw.click_on_xpath(proc_link, 1)
+        worker.work(burst=True)
         assert sw.browser.current_url == '{}processor'.format(base_url)
+
+    def add_import_card(self, worker, sw, default_name, name):
+        with self.adjust_path(basedir):
+            proc_url = '{}/processor/{}/edit/import'.format(
+                base_url, urllib.parse.quote(default_name))
+            sw.go_to_url(proc_url, elem_id='add_child', sleep=.5)
+            sw.xpath_from_id_and_click('add_child')
+            sw.wait_for_elem_load('apis-0-key-selectized')
+            import_form = [(name, 'apis-0-name'),
+                           ('Rawfile', "apis-0-key-selectized", 'clear'),
+                           ('11-16-2023', 'apis-0-start_date')]
+            sw.send_keys_from_list(import_form)
+            sw.browser.execute_script("window.scrollTo(0, 0)")
+            sw.xpath_from_id_and_click('loadRefresh')
+            sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
+            worker.work(burst=True)
+
+    def delete_import_card(self, worker, sw, default_name, name):
+        with self.adjust_path(basedir):
+            proc_url = '{}/processor/{}/edit/import'.format(
+                base_url, urllib.parse.quote(default_name))
+            sw.go_to_url(proc_url, elem_id='add_child', sleep=.5)
+            import_card = sw.browser.find_element_by_xpath(
+                '//div[@class="card col-" and .//input[@value="{}"]]'.format(
+                    name))
+            card_body = import_card.find_element_by_xpath('./*')
+            api_id = card_body.get_attribute('id')
+            sw.xpath_from_id_and_click('{}-delete'.format(api_id))
+            sw.browser.execute_script("window.scrollTo(0, 0)")
+            sw.xpath_from_id_and_click('loadRefresh')
+            sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
+            worker.work(burst=True)
+
+    def test_add_delete_import(self, set_up, sw, worker, default_name):
+        self.add_import_card(worker, sw, default_name, 'test')
+        sw.browser.refresh()
+        sw.wait_for_elem_load('base_form_id')
+        with self.adjust_path(set_up.local_path):
+            matrix = vm.VendorMatrix()
+            assert 'API_Rawfile_test' in matrix.vm_df[vmc.vendorkey].to_list()
+            self.delete_import_card(worker, sw, default_name, 'test')
+            matrix = vm.VendorMatrix()
+            assert 'API_Rawfile_test' not in matrix.vm_df[
+                vmc.vendorkey].to_list()
+
+    def test_raw_file_upload(self, set_up, sw, worker, default_name, user):
+        test_name = 'test1'
+        test_raw = 'rawfile_{}.csv'.format(test_name)
+        self.add_import_card(worker, sw, default_name, test_name)
+        sw.browser.refresh()
+        sw.wait_for_elem_load('apis-0')
+        place_col = 'Placement Name (From Ad Server)'
+        placement = ('1074619450_Criteo_US_Best Buy_0_0_0_dCPM_5_45216_No '
+                     'Tracking_0_0_CPV_Awareness_Launch_0_0_V_Cross Device_0'
+                     '_eCommerce_eCommerce Ads_Best Buy')
+        data = {place_col: [placement],
+                'Date': ['11/16/2023'],
+                'Impressions': ['1']}
+        df = pd.DataFrame(data)
+        raw1_path = os.path.join(basedir, 'tests', 'tmp', 'test1.csv')
+        df.to_csv(raw1_path)
+        with self.adjust_path(basedir):
+            form_file = sw.browser.find_element_by_id('apis-0-raw_file')
+            file_pond = form_file.find_element_by_class_name(
+                'filepond--browser')
+            file_path = raw1_path
+            file_pond.send_keys(file_path)
+            sw.wait_for_elem_load("loadingBtnrawFileTableBody")
+            worker.work(burst=True)
+            sw.wait_for_elem_load('00')
+            sw.xpath_from_id_and_click('modalRawFileSaveButton')
+            sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
+            worker.work(burst=True)
+            raw_path = os.path.join(set_up.local_path, utl.raw_path, test_raw)
+            raw_df = pd.read_csv(raw_path)
+            assert not raw_df.empty
+            assert (df.iloc[0][place_col] == raw_df.iloc[0][place_col])
 
 
 class TestPlan:
@@ -368,7 +455,7 @@ class TestProject:
         self.wait_for_jobs_finish()
         elem_id = 'rowproject_number0'
         a_xpath = '//*[@id="{}"]/a'.format(elem_id)
-        sw.wait_for_elem_load(xpath=a_xpath, visible=True)
+        sw.wait_for_elem_load(a_xpath, selector=sw.select_xpath, visible=True)
         sw.click_on_xpath(a_xpath)
         sw.wait_for_elem_load('project_number')
         assert 'edit' in sw.browser.current_url
@@ -410,6 +497,7 @@ class TestReportingDBReadWrite:
     client = "Square Enix"
     product = "Final Fantasy XIV"
     campaign = "March EVG FY22"
+    dash = "dashTest"
 
     @pytest.fixture(scope="class")
     def result_df(self):
@@ -440,6 +528,16 @@ class TestReportingDBReadWrite:
         test_db = DB(app_fixture.config['EXP_DB'])
         test_db.copy_from('model', model_df, model_df.columns)
 
+    @pytest.fixture(scope="class")
+    def export_test_data(self, set_up, user, worker, load_empty_model_table,
+                         reporting_db):
+        new_processor = set_up
+        task = '.run_processor'
+        msg = 'Running processor {}...'.format(self.test_proc_name)
+        run_args = '--noprocess --exp test'
+        new_processor.launch_task(task, msg, user.id, run_args)
+        worker.work(burst=True)
+
     def test_postgres_setup(self, reporting_db):
         """Check main postgresql fixture."""
         with reporting_db.connect() as connection:
@@ -466,15 +564,8 @@ class TestReportingDBReadWrite:
             assert all(column in campaign_columns for column in
                        expected_campaign_columns)
 
-    def test_export_py(self, set_up, user, worker, reporting_db,
-                       load_empty_model_table, result_df):
-        new_processor = set_up
-        task = '.run_processor'
-        msg = 'Running processor {}...'.format(self.test_proc_name)
-        run_args = '--noprocess --exp test'
+    def test_export_py(self, reporting_db, result_df, export_test_data):
         rdf = result_df
-        new_processor.launch_task(task, msg, user.id, run_args)
-        worker.work(burst=True)
         sql = "SELECT * FROM lqadb.agency;"
         with reporting_db.connect() as connection:
             df = pd.read_sql(sql, connection, index_col='agencyid')
@@ -495,7 +586,8 @@ class TestReportingDBReadWrite:
             total_clicks_from_csv = rdf[vmc.clicks].sum()
             assert total_clicks_from_db == total_clicks_from_csv
 
-    def test_get_data_tables_from_db(self, set_up, user, worker, reporting_db):
+    def test_get_data_tables_from_db(self, set_up, user, worker, reporting_db,
+                                     export_test_data):
         dimensions = ['productname']
         metrics = ['kpi']
         new_processor = set_up
@@ -520,171 +612,102 @@ class TestReportingDBReadWrite:
         assert (result_df[vmc.impressions].iloc[0] ==
                 db_df[vmc.impressions.lower()].iloc[0])
 
-    def test_daily_chart(self, sw, worker):
+    def test_daily_chart(self, set_up, user, login, sw, worker,
+                         export_test_data):
         ffxiv_proc_url = '{}/processor/{}'.format(
             base_url, urllib.parse.quote(self.test_proc_name))
         sw.go_to_url(ffxiv_proc_url)
         worker.work(burst=True)
-        time.sleep(3)
+        sw.wait_for_elem_load('getAllCharts')
         assert sw.browser.find_element_by_id("getAllCharts")
-        time.sleep(5)
         metric_select_path = "dailyMetricsChartPlaceholderSelect0"
+        sw.wait_for_elem_load(metric_select_path, selector=sw.select_xpath)
         metric_select = sw.browser.find_element_by_id(metric_select_path)
         selectize = metric_select.find_element_by_xpath(
             "following-sibling::*[1]")
         values = selectize.find_elements_by_class_name('item')
         assert len(values) >= 1
 
-    def test_create_chart(self, sw, worker):
+    def test_create_chart(self, set_up, user, login, sw, worker,
+                          export_test_data):
         ffxiv_proc_url = '{}/processor/{}'.format(
             base_url, urllib.parse.quote(self.test_proc_name))
         sw.go_to_url(ffxiv_proc_url)
         worker.work(burst=True)
-        time.sleep(3)
+        sw.wait_for_elem_load('add-dash')
         add_dash = sw.browser.find_element_by_id("add-dash")
         assert add_dash
         add_dash.click()
-        time.sleep(2)
+        sw.wait_for_elem_load('chart_type-selectized', selector=sw.select_xpath)
         dash_form_fill = [('Test', 'name'),
                           ('Lollipop', 'chart_type-selectized', 'clear'),
                           ('environmentname', 'dimensions-selectized', 'clear'),
                           ('impressions', 'metrics-selectized'),
                           ('Chart', 'default_view-selectized', 'clear')]
         sw.send_keys_from_list(dash_form_fill)
-        sw.xpath_from_id_and_click('saveDashButton', 3)
+        sw.xpath_from_id_and_click('saveDashButton')
+        sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
         worker.work(burst=True)
-        time.sleep(3)
+        sw.wait_for_elem_load("showChartBtndash1Metrics")
         assert sw.browser.find_element_by_id("dash1Metrics")
         assert sw.browser.find_element_by_id("showChartBtndash1Metrics")
-        time.sleep(5)
         metric_selectize_path = (
             "//*[@id=\"dash1MetricsChartPlaceholderSelect\"]/option")
+        sw.wait_for_elem_load(metric_selectize_path, selector=sw.select_xpath)
         metric_selectize = sw.browser.find_element_by_xpath(
             metric_selectize_path)
         assert metric_selectize.get_attribute('value') == 'Impressions'
 
-    def test_request_dashboard(self, sw, worker):
+    @pytest.fixture(scope="class")
+    def request_dashboard(self, sw, worker):
         req_dash_url = '/dashboard/create'
         ffxiv_proc_url = '{}/processor/{}/{}'.format(
             base_url, urllib.parse.quote(self.test_proc_name), req_dash_url)
         sw.go_to_url(ffxiv_proc_url)
-        name = 'Test2'
-        dash_form_fill = [(name, 'name'),
+        dash_form_fill = [(self.dash, 'name'),
                           ('Area', 'chart_type-selectized', 'clear'),
                           ('clicks', 'metrics-selectized'),
                           ('Table', 'default_view-selectized', 'clear')]
         sw.send_keys_from_list(dash_form_fill)
-        sw.xpath_from_id_and_click('loadContinue', 3)
+        sw.xpath_from_id_and_click('loadContinue')
+        sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
         worker.work(burst=True)
-        time.sleep(3)
-        charts = sw.browser.find_elements_by_css_selector('[id*="name"]')
-        new_chart = next((element for element in charts if
-                          name in element.get_attribute('value')), None)
-        assert new_chart
-        chart_id = new_chart.get_attribute("id").split('__')[1]
-        sw.xpath_from_id_and_click('dash{}View'.format(chart_id), 3)
+
+    def search_for_dash(self, sw):
+        all_dash_url = '/dashboard/all'
+        ffxiv_proc_url = '{}/processor/{}/{}'.format(
+            base_url, urllib.parse.quote(self.test_proc_name), all_dash_url)
+        sw.go_to_url(ffxiv_proc_url, sleep=.5)
+        sw.wait_for_elem_load("[data-name='{}']", selector=sw.select_css)
+        return sw.browser.find_elements_by_css_selector(
+            "[data-name='{}']".format(self.dash))
+
+    def test_request_dashboard(self, set_up, user, login, sw, worker,
+                               export_test_data, request_dashboard):
+        new_charts = self.search_for_dash(sw)
+        assert new_charts
+        new_chart = new_charts[0]
+        chart_id = new_chart.get_attribute("id").replace('card', '')
+        sw.xpath_from_id_and_click('{}View'.format(chart_id))
+        sw.wait_for_elem_load('spinner-grow spinner-grow-sm',
+                              selector=sw.select_css)
         worker.work(burst=True)
-        time.sleep(3)
+        elem_id = 'showChartBtn{}Metrics'.format(chart_id)
+        sw.wait_for_elem_load(elem_id)
+        view_chart_btn = sw.browser.find_element_by_id(elem_id)
+        assert view_chart_btn
         metric_selectize_path = (
-            "//*[@id=\"dash{}MetricsChartPlaceholderSelect\"]/option".format(
+            "//*[@id=\"{}MetricsChartPlaceholderSelect\"]/option".format(
                 chart_id))
+        sw.wait_for_elem_load(metric_selectize_path, selector=sw.select_xpath)
         metric_selectize = sw.browser.find_element_by_xpath(
             metric_selectize_path)
         assert metric_selectize.get_attribute('value') == 'Clicks'
-        view_chart_btn = sw.browser.find_element_by_id(
-            'showChartBtndash{}Metrics'.format(chart_id))
-        assert view_chart_btn
 
-
-class TestImportTab:
-
-    @pytest.fixture(scope="class")
-    def default_name(self):
-        return 'Base Processor'
-
-    @pytest.fixture(scope="class")
-    def set_up(self, login, create_processor, default_name, worker):
-        new_proc = create_processor(default_name, create_files=True)
-        worker.work(burst=True)
-        return new_proc
-
-    @staticmethod
-    @contextmanager
-    def adjust_path(path):
-        cur_path = os.path.abspath(os.getcwd())
-        os.chdir(path)
-        yield path
-        os.chdir(cur_path)
-
-    def add_import_card(self, worker, sw, default_name, name):
-        with self.adjust_path(basedir):
-            proc_url = '{}/processor/{}/edit/import'.format(
-                base_url, urllib.parse.quote(default_name))
-            sw.go_to_url(proc_url)
-            sw.xpath_from_id_and_click('add_child', 2)
-            import_form = [(name, 'apis-0-name'),
-                           ('Rawfile', "apis-0-key-selectized", 'clear'),
-                           ('11-16-2023', 'apis-0-start_date')]
-            sw.send_keys_from_list(import_form)
-            sw.browser.execute_script("window.scrollTo(0, 0)")
-            sw.xpath_from_id_and_click('loadRefresh', 2)
-            worker.work(burst=True)
-
-    def delete_import_card(self, worker, sw, default_name, name):
-        with self.adjust_path(basedir):
-            proc_url = '{}/processor/{}/edit/import'.format(
-                base_url, urllib.parse.quote(default_name))
-            sw.go_to_url(proc_url)
-            import_card = sw.browser.find_element_by_xpath(
-                '//div[@class="card col-" and .//input[@value="{}"]]'.format(
-                    name))
-            card_body = import_card.find_element_by_xpath('./*')
-            api_id = card_body.get_attribute('id')
-            sw.xpath_from_id_and_click('{}-delete'.format(api_id), 2)
-            sw.browser.execute_script("window.scrollTo(0, 0)")
-            sw.xpath_from_id_and_click('loadRefresh', 3)
-            worker.work(burst=True)
-
-    def test_add_delete_import(self, set_up, sw, worker, default_name):
-        self.add_import_card(worker, sw, default_name, 'test')
-        sw.browser.refresh()
-        sw.wait_for_elem_load('base_form_id')
-        with self.adjust_path(set_up.local_path):
-            matrix = vm.VendorMatrix()
-            assert 'API_Rawfile_test' in matrix.vm_df[vmc.vendorkey].to_list()
-            self.delete_import_card(worker, sw, default_name, 'test')
-            matrix = vm.VendorMatrix()
-            assert 'API_Rawfile_test' not in matrix.vm_df[
-                vmc.vendorkey].to_list()
-
-    def test_raw_file_upload(self, set_up, sw, worker, default_name, user):
-        test_name = 'test1'
-        test_raw = 'rawfile_{}.csv'.format(test_name)
-        self.add_import_card(worker, sw, default_name, test_name)
-        sw.browser.refresh()
-        sw.wait_for_elem_load('base_form_id')
-        place_col = 'Placement Name (From Ad Server)'
-        placement = ('1074619450_Criteo_US_Best Buy_0_0_0_dCPM_5_45216_No '
-                     'Tracking_0_0_CPV_Awareness_Launch_0_0_V_Cross Device_0'
-                     '_eCommerce_eCommerce Ads_Best Buy')
-        data = {place_col: [placement],
-                'Date': ['11/16/2023'],
-                'Impressions': ['1']}
-        df = pd.DataFrame(data)
-        raw1_path = os.path.join(basedir, 'tests', 'tmp', 'test1.csv')
-        df.to_csv(raw1_path)
-        with self.adjust_path(basedir):
-            form_file = sw.browser.find_element_by_id('apis-0-raw_file')
-            file_pond = form_file.find_element_by_class_name(
-                'filepond--browser')
-            file_path = raw1_path
-            file_pond.send_keys(file_path)
-            time.sleep(5)
-            worker.work(burst=True)
-            time.sleep(2)
-            sw.xpath_from_id_and_click('modalRawFileSaveButton', 2)
-            worker.work(burst=True)
-            raw_path = os.path.join(set_up.local_path, utl.raw_path, test_raw)
-            raw_df = pd.read_csv(raw_path)
-            assert not raw_df.empty
-            assert (df.iloc[0][place_col] == raw_df.iloc[0][place_col])
+    def test_delete_dashboard(self, set_up, user, login, sw, worker,
+                              request_dashboard):
+        new_chart = self.search_for_dash(sw)[0]
+        chart_id = new_chart.get_attribute("id").replace('card', '')
+        sw.xpath_from_id_and_click('{}Delete'.format(chart_id))
+        new_chart = self.search_for_dash(sw)
+        assert not new_chart

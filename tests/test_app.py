@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from contextlib import contextmanager
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
-    Project, ProjectNumberMax, Plan, PlanEffectiveness
+    Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial
 import app.plan.routes as plan_routes
 import app.plan.forms as plan_forms
 from config import basedir
@@ -169,7 +169,7 @@ class TestUserModelCase:
 class TestUserLogin:
 
     def test_login(self, sw, login):
-        sw.go_to_url(base_url)
+        sw.go_to_url(base_url, elem_id='post')
         assert sw.browser.current_url == base_url
 
 
@@ -187,20 +187,15 @@ class TestProcessor:
     def test_create_processor(self, sw, login):
         test_name = 'test'
         create_url = '{}create_processor'.format(base_url)
-
-        sw.go_to_url(create_url)
-        form_names = ['cur_client-selectized',
-                      'cur_product-selectized',
-                      'cur_campaign-selectized', 'description']
-        elem_form = [('test', x) for x in form_names]
-        elem_form += [(test_name, 'name')]
-        sw.send_keys_from_list(elem_form)
-        sw.xpath_from_id_and_click('loadContinue')
-        time.sleep(3)
-        assert sw.browser.current_url == (
-            '{}processor/{}/edit/import'.format(
-                base_url, urllib.parse.quote(test_name))
-        )
+        submit_id = 'loadContinue'
+        sw.go_to_url(create_url, elem_id=submit_id)
+        form = ['cur_client', 'cur_product', 'cur_campaign', 'description',
+                'name']
+        submit_form(sw, form_names=form, submit_id=submit_id)
+        sw.wait_for_elem_load('refresh_imports')
+        import_url = '{}processor/{}/edit/import'.format(
+            base_url, urllib.parse.quote(test_name))
+        assert sw.browser.current_url == import_url
 
     def test_processor_page(self, sw, set_up):
         proc_link = '//*[@id="navLinkProcessor"]'
@@ -278,7 +273,7 @@ class TestPlan:
             self.test_create_plan(sw, login, worker)
             p = Plan.query.filter_by(name=self.test_name).first()
         edit_url = self.get_url('calc')
-        sw.go_to_url(edit_url, sleep=1)
+        sw.go_to_url(edit_url, elem_id='loadingBtnCalc')
         assert sw.browser.current_url == edit_url
         worker.work(burst=True)
         TestProject.wait_for_jobs_finish()
@@ -292,7 +287,7 @@ class TestPlan:
         selected_val = '0.20'
         assert elem.get_attribute("class") == 'shadeCell0'
         assert elem.get_attribute('innerHTML') == selected_val
-        sw.xpath_from_id_and_click('loadRefresh')
+        sw.xpath_from_id_and_click('loadRefresh', sleep=.1)
         worker.work(burst=True)
         t = Task.query.filter_by(name='.write_plan_calc').first()
         assert t
@@ -320,7 +315,7 @@ class TestPlan:
         p.launch_task('.get_rate_cards', '', 1)
         worker.work(burst=True)
         edit_url = self.get_url(plan_routes.rfp.__name__, plan_name)
-        sw.go_to_url(edit_url, sleep=1)
+        sw.go_to_url(edit_url, elem_id='form_continue')
         worker.work(burst=True)
         elem_id = 'rowrfp_file_id0'
         sw.wait_for_elem_load(elem_id)
@@ -377,6 +372,36 @@ class TestProject:
         sw.click_on_xpath(a_xpath)
         sw.wait_for_elem_load('project_number')
         assert 'edit' in sw.browser.current_url
+
+
+class TestTutorial:
+    test_name = TestPlan.test_name
+    tutorial_name = 'Effective RF Planning Model'
+
+    def test_get_tutorial(self, sw, login, worker, create_processor):
+        p = Processor.query.filter_by(name=self.test_name).first()
+        if not p:
+            p = Processor(name=self.test_name)
+            db.session.add(p)
+            db.session.commit()
+        p.launch_task('.get_plan_calc_tutorial', '', 1)
+        worker.work(burst=True)
+        t = Tutorial.query.filter_by(name=self.tutorial_name).first()
+        assert t.name == self.tutorial_name
+        return t
+
+    def test_tutorial(self, sw, login, worker, create_processor):
+        t = Tutorial.query.filter_by(name=self.tutorial_name).first()
+        if not t:
+            t = self.test_get_tutorial(sw, login, worker, create_processor)
+        elem_id = 'tutorialCardBody'
+        sw.go_to_url(base_url, elem_id=elem_id)
+        link_xpath = '//*[@id="{}"]/div/div/h5/a'.format(elem_id)
+        sw.click_on_xpath(link_xpath, .1)
+        elem_id = 'loadContinue'
+        sw.wait_for_elem_load(elem_id)
+        elem = sw.browser.find_element_by_id(elem_id)
+        assert elem
 
 
 class TestReportingDBReadWrite:

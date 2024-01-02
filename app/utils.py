@@ -326,6 +326,34 @@ def column_contents_to_list(df, cols):
     return cols_as_list
 
 
+def set_form_contents_from_db(cur_obj, sql_choices=None):
+    if not sql_choices:
+        sql_choices = [(Client, cur_obj.cur_client),
+                       (Product, cur_obj.cur_product),
+                       (Campaign, cur_obj.cur_campaign)]
+    for obj in sql_choices:
+        choices = [('', '')]
+        choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
+        obj[1].choices = choices
+
+
+def create_local_path(cur_obj):
+    if not cur_obj.local_path:
+        file_path_elems = [
+            'mnt', 'c', 'clients', cur_obj.campaign.product.client.name,
+            cur_obj.campaign.product.name, cur_obj.campaign.name, cur_obj.name,
+            cur_obj.__table__.name]
+        base_path = ''
+        for x in file_path_elems:
+            base_path = os.path.join(base_path, x)
+        tmp_dir = current_app.config['TMP_DIR']
+        if tmp_dir:
+            base_path = os.path.join(tmp_dir, base_path)
+    else:
+        base_path = cur_obj.local_path
+    return base_path
+
+
 class LiquidTable(object):
     id_col = 'liquid_table'
 

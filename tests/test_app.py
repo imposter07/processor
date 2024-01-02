@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 from contextlib import contextmanager
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
-    Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial
+    Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader
 import app.plan.routes as plan_routes
-import app.plan.forms as plan_forms
+import app.main.routes as main_routes
 from config import basedir
 import pandas as pd
 import processor.reporting.vmcolumns as vmc
@@ -270,7 +270,10 @@ class TestProcessor:
                 'Date': ['11/16/2023'],
                 'Impressions': ['1']}
         df = pd.DataFrame(data)
-        raw1_path = os.path.join(basedir, 'tests', 'tmp', 'test1.csv')
+        file_name = 'test1.csv'
+        raw1_path = os.path.join(basedir, 'tests', 'tmp')
+        utl.dir_check(raw1_path)
+        raw1_path = os.path.join(raw1_path, file_name)
         df.to_csv(raw1_path)
         with self.adjust_path(basedir):
             form_file = sw.browser.find_element_by_id('apis-0-raw_file')
@@ -495,6 +498,39 @@ class TestTutorial:
         sw.wait_for_elem_load(elem_id)
         elem = sw.browser.find_element_by_id(elem_id)
         assert elem
+
+
+class TestUploader:
+    test_name = 'test'
+
+    def get_url(self, url_type='', up_name=None):
+        if not up_name:
+            up_name = self.test_name
+        url = '{}{}'.format(base_url, main_routes.uploader.__name__)
+        name_url = urllib.parse.quote(up_name)
+        c_route = main_routes.edit_uploader_campaign.__name__
+        url_dict = {}
+        for url_route in [c_route]:
+            url_str = url_route.split('_')
+            url_str = '{}/{}'.format(url_str[0], url_str[2])
+            url_dict[url_route] = url_str
+        if url_type in url_dict:
+            url += '/{}/{}'.format(name_url, url_dict[url_type])
+        return url
+
+    def test_create_uploader(self, sw, login, worker):
+        c_url = '{}/{}'.format(base_url, main_routes.create_uploader.__name__)
+        form_names = ['cur_client', 'cur_product', 'cur_campaign',
+                      'description', 'name']
+        sw.go_to_url(c_url, elem_id=form_names[0])
+        submit_form(sw, form_names, test_name=self.test_name)
+        worker.work(burst=True)
+        cur_up = Uploader.query.filter_by(name=self.test_name).first()
+        assert cur_up.name == self.test_name
+        cam_url = self.get_url(main_routes.edit_uploader_campaign.__name__)
+        assert sw.browser.current_url == cam_url
+        up_main_file = os.path.join(cur_up.local_path, 'main.py')
+        assert os.path.isfile(up_main_file)
 
 
 class TestReportingDBReadWrite:

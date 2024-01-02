@@ -1798,9 +1798,7 @@ class Uploader(db.Model):
     def create_object(self, media_plan_data, is_df=False):
         import app.utils as app_utl
         self.create_base_uploader_objects(self.id)
-        new_path = '/mnt/c/clients/{}/{}/{}/{}/uploader'.format(
-            self.campaign.product.client.name, self.campaign.product.name,
-            self.campaign.name, self.name)
+        new_path = app_utl.create_local_path(self)
         self.local_path = new_path
         db.session.commit()
         post_body = 'Create Uploader {}...'.format(self.name)

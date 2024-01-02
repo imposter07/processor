@@ -25,6 +25,8 @@ class Config(object):
     ELASTICSEARCH_URL = None
     USER_EMAIL_DOMAIN = None
     BASE_PROCESSOR_PATH = None
+    BASE_UPLOADER_PATH = None
+    TMP_DIR = ''
     DATABASE_URL = None
     DATABASE_USER = None
     DATABASE_PW = None

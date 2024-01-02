@@ -54,14 +54,15 @@ def _set_task_progress(progress, attempt=1):
             job.meta['progress'] = progress
             job.save_meta()
             task = db.session.get(Task, job.get_id())
-            cu = task.user
-            if cu:
-                cu.add_notification(
-                    'task_progress', {'task_id': job.get_id(),
-                                      'progress': progress})
-            if progress >= 100:
-                task.complete = True
-            db.session.commit()
+            if task:
+                cu = task.user
+                if cu:
+                    cu.add_notification(
+                        'task_progress', {'task_id': job.get_id(),
+                                          'progress': progress})
+                if progress >= 100:
+                    task.complete = True
+                db.session.commit()
     except:
         attempt += 1
         if attempt > 10:
@@ -103,7 +104,8 @@ def adjust_path(path):
         path = path.replace(x[0], x[1])
     if os.name == 'nt':
         for x in [['/mnt/c', 'C:'], ['/mnt/c', 'c:']]:
-            path = path.replace(x[0], x[1])
+            if path[:len(x[0])] == x[0]:
+                path = x[1] + path[len(x[0]):]
     return path
 
 
@@ -279,6 +281,8 @@ def run_processor(processor_id, current_user_id, run_args):
         old_file_path = adjust_path(processor_to_run.local_path)
         file_path = copy_processor_local(old_file_path)
         from processor.main import main
+        if not file_path:
+            return False
         os.chdir(file_path)
         if run_args:
             main(run_args)
@@ -380,7 +384,10 @@ def write_translational_dict(processor_id, current_user_id, new_data):
 
 
 def set_initial_constant_file(cur_processor):
-    os.chdir(adjust_path(cur_processor.local_path))
+    proc_path = cur_processor.local_path
+    if not proc_path:
+        return False
+    os.chdir(adjust_path(proc_path))
     dcc = dct.DictConstantConfig(None)
     dcc.read_raw_df(dctc.filename_con_config)
     for col in [(dctc.CLI, cur_processor.campaign.product.client.name),
@@ -391,6 +398,7 @@ def set_initial_constant_file(cur_processor):
                 (col[0] == dctc.AGF and cur_processor.digital_agency_fees)):
             dcc.df.loc[idx, dctc.DICT_COL_VALUE] = col[1]
     dcc.write(dcc.df, dctc.filename_con_config)
+    return True
 
 
 def create_processor(processor_id, current_user_id, base_path):
@@ -399,6 +407,8 @@ def create_processor(processor_id, current_user_id, base_path):
             processor_id=processor_id, current_user_id=current_user_id)
         old_path = adjust_path(base_path)
         new_path = adjust_path(new_processor.local_path)
+        if not new_path:
+            return False
         if not os.path.exists(new_path):
             os.makedirs(new_path)
         copy_tree_no_overwrite(old_path, new_path)
@@ -491,6 +501,8 @@ def set_processor_imports(processor_id, current_user_id, form_imports,
             if 'raw_file' in processor_dict:
                 processor_dict.pop('raw_file', None)
         processor_path = adjust_path(cur_processor.local_path)
+        if not processor_path:
+            return False
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         from processor.reporting.vendormatrix import ImportConfig
         os.chdir('processor')
@@ -550,7 +562,10 @@ def set_data_sources(processor_id, current_user_id, form_sources):
             else:
                 sources[idx][
                     'original_vendor_key'] = sources[idx][vmc.vendorkey]
-        os.chdir(adjust_path(cur_processor.local_path))
+        proc_path = cur_processor.local_path
+        if not proc_path:
+            return False
+        os.chdir(adjust_path(proc_path))
         matrix = vm.VendorMatrix()
         matrix.set_data_sources(sources)
         msg_text = "Processor {} datasources set.".format(cur_processor.name)
@@ -1256,8 +1271,8 @@ def get_logfile_uploader(uploader_id, current_user_id):
 
 def create_uploader(uploader_id, current_user_id, base_path):
     try:
-        new_uploader = Uploader.query.get(uploader_id)
-        user_create = User.query.get(current_user_id)
+        new_uploader = db.session.get(Uploader, uploader_id)
+        user_create = db.session.get(User, current_user_id)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         old_path = adjust_path(base_path)
         new_path = adjust_path(new_uploader.local_path)
@@ -1548,7 +1563,7 @@ def set_uploader_config_files(uploader_id, current_user_id):
         import uploader.upload.fbapi as fbapi
         import uploader.upload.awapi as awapi
         import uploader.upload.dcapi as dcapi
-        new_uploader = Uploader.query.get(uploader_id)
+        new_uploader = db.session.get(Uploader, uploader_id)
         config_dicts = [
             {'id_val': new_uploader.fb_account_id,
              'config_file_path': fbapi.config_path,
@@ -2052,7 +2067,10 @@ def write_conversions(processor_id, current_user_id, new_data):
 def set_conversions(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
-        os.chdir(adjust_path(cur_processor.local_path))
+        proc_path = cur_processor.local_path
+        if not proc_path:
+            return False
+        os.chdir(adjust_path(proc_path))
         matrix = vm.VendorMatrix()
         for key in set(x.key for x in cur_processor.conversions):
             idx = matrix.vm_df[matrix.vm_df[vmc.vendorkey] == key].index
@@ -2122,7 +2140,10 @@ def set_processor_fees(processor_id, current_user_id):
     try:
         cur_processor = Processor.query.get(processor_id)
         rate_card = cur_processor.rate_card
-        os.chdir(adjust_path(cur_processor.local_path))
+        proc_path = cur_processor.local_path
+        if not proc_path:
+            return False
+        os.chdir(adjust_path(proc_path))
         rate_list = []
         for row in rate_card.rates:
             rate_list.append(dict((col, getattr(row, col))
@@ -2151,7 +2172,7 @@ def set_processor_plan_net(processor_id, current_user_id, default_vm=None):
     try:
         cur_processor = Processor.query.get(processor_id)
         from uploader.upload.creator import MediaPlan
-        base_path = create_local_path(cur_processor)
+        base_path = app_utl.create_local_path(cur_processor)
         os.chdir(adjust_path(base_path))
         if not os.path.exists('mediaplan.csv'):
             return False, 'Plan does not exist.'
@@ -2448,7 +2469,10 @@ def set_processor_config_file(processor_id, current_user_id, config_type,
     try:
         cur_processor = Processor.query.get(processor_id)
         client_name = cur_processor.campaign.product.client.name
-        os.chdir(adjust_path(cur_processor.local_path))
+        proc_path = cur_processor.local_path
+        if not proc_path:
+            return False
+        os.chdir(adjust_path(proc_path))
         file_path = '{}_api_cred'.format(config_type)
         file_name = '{}_dict.csv'.format(config_type)
         file_path = os.path.join(utl.config_path, file_path)
@@ -2544,7 +2568,7 @@ def build_processor_from_request(processor_id, current_user_id):
         _set_task_progress(0)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         cur_processor = Processor.query.get(processor_id)
-        base_path = create_local_path(cur_processor)
+        base_path = app_utl.create_local_path(cur_processor)
         cur_processor.local_path = base_path
         db.session.commit()
         _set_task_progress(12)
@@ -2604,18 +2628,6 @@ def build_processor_from_request(processor_id, current_user_id):
         send_processor_build_email(processor_id, current_user_id, progress)
 
 
-def create_local_path(cur_obj):
-    if not cur_obj.local_path:
-        base_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
-            cur_obj.campaign.product.client.name,
-            cur_obj.campaign.product.name,
-            cur_obj.campaign.name,
-            cur_obj.name)
-    else:
-        base_path = cur_obj.local_path
-    return base_path
-
-
 def get_account_types(processor_id, current_user_id, vk):
     try:
         _set_task_progress(0)
@@ -2661,7 +2673,7 @@ def get_media_plan(processor_id, current_user_id, vk):
     try:
         _set_task_progress(0)
         cur_obj = Processor.query.get(processor_id)
-        base_path = create_local_path(cur_obj)
+        base_path = app_utl.create_local_path(cur_obj)
         mp_path = os.path.join(base_path, 'mediaplan.csv')
         if os.path.exists(mp_path):
             df = pd.read_csv(mp_path)
@@ -2723,7 +2735,7 @@ def get_plan_property(processor_id, current_user_id, vk):
 def check_processor_plan(processor_id, current_user_id, object_type=Processor):
     try:
         cur_obj = object_type.query.get(processor_id)
-        base_path = create_local_path(cur_obj)
+        base_path = app_utl.create_local_path(cur_obj)
         mp_path = os.path.join(base_path, 'mediaplan.csv')
         if os.path.exists(mp_path):
             t = os.path.getmtime(mp_path)
@@ -2748,7 +2760,7 @@ def set_plan_as_datasource(processor_id, current_user_id, base_matrix):
     try:
         _set_task_progress(0)
         cur_obj = Processor.query.get(processor_id)
-        base_path = create_local_path(cur_obj)
+        base_path = app_utl.create_local_path(cur_obj)
         mp_path = os.path.join(base_path, 'mediaplan.csv')
         if os.path.exists(mp_path):
             raw_path = os.path.join(base_path, 'raw_data')
@@ -2791,7 +2803,7 @@ def add_account_types(processor_id, current_user_id):
             cur_act_model = Account
         acts = cur_act_model.query.filter_by(processor_id=processor_id).all()
         acts = [x.key for x in acts if x.key]
-        base_path = adjust_path(create_local_path(cur_proc))
+        base_path = adjust_path(app_utl.create_local_path(cur_proc))
         mp_path = os.path.join(base_path, 'mediaplan.csv')
         if not os.path.exists(mp_path):
             return False, 'Plan does not exist.'
@@ -2830,7 +2842,7 @@ def add_plan_fees_to_processor(processor_id, current_user_id):
         _set_task_progress(0)
         cur_proc = Processor.query.get(processor_id)
         cur_user = User.query.get(current_user_id)
-        base_path = adjust_path(create_local_path(cur_proc))
+        base_path = adjust_path(app_utl.create_local_path(cur_proc))
         mp_path = os.path.join(base_path, 'mediaplan.csv')
         if not os.path.exists(mp_path):
             return False, 'Media plan does not exist.'
@@ -3039,7 +3051,7 @@ def save_media_plan(processor_id, current_user_id, media_plan,
     try:
         cur_obj = object_type.query.get(processor_id)
         cur_user = User.query.get(current_user_id)
-        base_path = create_local_path(cur_obj)
+        base_path = app_utl.create_local_path(cur_obj)
         if not os.path.exists(base_path):
             os.makedirs(base_path)
         object_name = object_type.__name__
@@ -3072,7 +3084,7 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
         cur_user = User.query.get(current_user_id)
         file_name = '/dictionaries/plannet_placement.csv'
         if from_plan:
-            base_path = create_local_path(cur_obj)
+            base_path = app_utl.create_local_path(cur_obj)
             mp_file = os.path.join(base_path, 'mediaplan.csv')
             df = pd.read_csv(mp_file)
             pack_col = dctc.PKD.replace('mp', '')
@@ -3084,7 +3096,7 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
             full_file_path = base_path + file_name
             df.to_csv(full_file_path, index=False)
         elif as_json:
-            base_path = create_local_path(cur_obj)
+            base_path = app_utl.create_local_path(cur_obj)
             cap_file = os.path.join(base_path, 'dictionaries',
                                     'plannet_placement.csv')
             df = pd.read_json(new_data)
@@ -3118,7 +3130,7 @@ def set_spend_cap_config_file(processor_id, current_user_id, dict_col):
             'processor_dim': [dict_col],
             'processor_metric': ['Planned Net Cost']}
         df = pd.DataFrame(cap_config_dict)
-        base_path = create_local_path(cur_obj)
+        base_path = app_utl.create_local_path(cur_obj)
         os.chdir(adjust_path(base_path))
         df.to_csv('config/cap_config.csv', index=False)
         msg_text = ('{} spend cap config was updated.'
@@ -3201,16 +3213,14 @@ def duplicate_processor_in_db(processor_id, current_user_id, form_data):
             new_processor = Processor()
         for k, v in proc_dict.items():
             new_processor.__setattr__(k, v)
-        new_path = '/mnt/c/clients/{}/{}/{}/{}/processor'.format(
-            cur_processor.campaign.product.client.name,
-            cur_processor.campaign.product.name, cur_processor.campaign.name,
-            form_data['new_name'])
-        new_processor.local_path = new_path
         new_processor.name = form_data['new_name']
         new_processor.start_date = form_data['new_start_date']
         new_processor.end_date = form_data['new_end_date']
         if 'new_proc' not in form_data:
             db.session.add(new_processor)
+        db.session.commit()
+        new_path = app_utl.create_local_path(new_processor)
+        new_processor.local_path = new_path
         db.session.commit()
         return new_processor.id
     except:
@@ -3358,13 +3368,11 @@ def duplicate_uploader_in_db(uploader_id, current_user_id, form_data):
         new_uploader = Uploader()
         for k, v in up_dict.items():
             new_uploader.__setattr__(k, v)
-        new_path = '/mnt/c/clients/{}/{}/{}/{}/uploader'.format(
-            cur_uploader.campaign.product.client.name,
-            cur_uploader.campaign.product.name, cur_uploader.campaign.name,
-            form_data['new_name'])
-        new_uploader.local_path = new_path
         new_uploader.name = form_data['new_name']
         db.session.add(new_uploader)
+        db.session.commit()
+        new_path = app_utl.create_local_path(new_uploader)
+        new_uploader.local_path = new_path
         db.session.commit()
         return new_uploader.id
     except:
@@ -6158,10 +6166,14 @@ def get_billing_table(processor_id, current_user_id):
         file_name = adjust_path(file_name)
         if os.path.exists(file_name):
             idf = pd.read_csv('invoices.csv')
-            idf = idf[dimensions + [invoice_cost]]
-            idf[invoice_cost] = idf[invoice_cost].str.split('\n').str[0]
-            idf = utl.data_to_type(idf, float_col=[invoice_cost])
-            df = df.merge(idf, how='left', on=dimensions)
+            cols = dimensions + [invoice_cost]
+            if [x for x in cols if x not in df.columns]:
+                df[invoice_cost] = 0
+            else:
+                idf = idf[cols]
+                idf[invoice_cost] = idf[invoice_cost].str.split('\n').str[0]
+                idf = utl.data_to_type(idf, float_col=[invoice_cost])
+                df = df.merge(idf, how='left', on=dimensions)
         else:
             df[invoice_cost] = 0
         for col in [dctc.PNC, cal.NCF, invoice_cost]:

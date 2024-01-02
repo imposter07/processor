@@ -14,6 +14,7 @@ import processor.reporting.dictcolumns as dctc
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.export as exp
 import uploader.upload.creator as cre
+import app.utils as app_utl
 
 
 class EditProfileForm(FlaskForm):
@@ -79,11 +80,7 @@ class ProcessorForm(FlaskForm):
             raise ValidationError(_l('Please use a different name.'))
 
     def set_choices(self):
-        for obj in [(Client, self.cur_client),
-                    (Product, self.cur_product), (Campaign, self.cur_campaign)]:
-            choices = [('', '')]
-            choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
-            obj[1].choices = choices
+        app_utl.set_form_contents_from_db(self)
 
 
 class APIForm(FlaskForm):
@@ -341,11 +338,7 @@ class ProcessorRequestForm(FlaskForm):
             raise ValidationError(_l('Please use a different name.'))
 
     def set_choices(self):
-        for obj in [(Client, self.cur_client),
-                    (Product, self.cur_product), (Campaign, self.cur_campaign)]:
-            choices = [('', '')]
-            choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
-            obj[1].choices = choices
+        app_utl.set_form_contents_from_db(self)
 
 
 class EditProcessorRequestForm(ProcessorRequestForm):
@@ -539,22 +532,10 @@ class UploaderForm(FlaskForm):
     fb_account_id = StringField(_l('Facebook Account ID'))
     aw_account_id = StringField(_l('Adwords Account ID'))
     dcm_account_id = StringField(_l('DCM Account ID'))
-    cur_client = QuerySelectField(_l('Client'), allow_blank=True,
-                                  query_factory=lambda: Client.query.all(),
-                                  get_label='name')
-    new_client = StringField(_l('Add New Client'))
-    cur_product = QuerySelectField(_l('Product'), allow_blank=True,
-                                   query_factory=lambda: Product.query.all(),
-                                   get_label='name')
-    new_product = StringField(_l('Add New Product'))
-    cur_campaign = QuerySelectField(_l('Campaign'), allow_blank=True,
-                                    query_factory=lambda: Campaign.query.all(),
-                                    get_label='name')
-    new_campaign = StringField(_l('Add New Campaign'))
+    cur_client = SelectField(_l('Client'))
+    cur_product = SelectField(_l('Product'))
+    cur_campaign = SelectField(_l('Campaign'))
     media_plan = FileField('Media Plan')
-    client_name = None
-    product_name = None
-    campaign_name = None
     form_continue = HiddenField('form_continue')
 
     def validate_name(self, name):
@@ -593,6 +574,9 @@ class UploaderForm(FlaskForm):
                                          ' select from dropdown.'))
         else:
             self.campaign_name = self.cur_campaign.data.name
+
+    def set_choices(self):
+        app_utl.set_form_contents_from_db(self)
 
 
 class EditUploaderForm(UploaderForm):
@@ -808,11 +792,7 @@ class ScreenshotForm(FlaskForm):
     creative = SelectField(_l('Creative'))
 
     def set_choices(self):
-        for obj in [(Client, self.cur_client),
-                    (Product, self.cur_product), (Campaign, self.cur_campaign)]:
-            choices = [('', '')]
-            choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
-            obj[1].choices = choices
+        app_utl.set_form_contents_from_db(self)
 
 
 class ProjectForm(FlaskForm):
@@ -837,12 +817,12 @@ class ProjectForm(FlaskForm):
             raise ValidationError(_l('Please use a different name.'))
 
     def set_choices(self):
-        for obj in [(Client, self.cur_client),
-                    (Product, self.cur_product), (Campaign, self.cur_campaign),
-                    (Processor, self.cur_processors), (Plan, self.cur_plans)]:
-            choices = [('', '')]
-            choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
-            obj[1].choices = choices
+        sql_choices = [(Client, self.cur_client),
+                       (Product, self.cur_product),
+                       (Campaign, self.cur_campaign),
+                       (Processor, self.cur_processors),
+                       (Plan, self.cur_plans)]
+        app_utl.set_form_contents_from_db(self, sql_choices)
 
 
 class EditProjectForm(ProjectForm):

@@ -23,6 +23,7 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///{}'.format(
         os.path.join(basedir, 'app-test.db'))
     TESTING = True
+    BASE_UPLOADER_PATH = os.path.join(basedir, 'uploader')
     EXP_DB = 'test_dbconfig.json'
 
 
@@ -88,10 +89,12 @@ def check_docker_running(config, port='5433', database='postgres',
     return config
 
 
-def run_server(with_run=True):
+def run_server(with_run=True, tmp_path_factory=None):
     config = TestConfig
     config = check_docker_running(config)
     app = create_app(config)
+    if tmp_path_factory:
+        app.config['TMP_DIR'] = tmp_path_factory.mktemp('tmp')
     app_context = app.app_context()
     app_context.push()
     with app.app_context():
@@ -118,9 +121,9 @@ def client(app_fixture, user):
 
 
 @pytest.fixture(scope='module')
-def sw():
+def sw(tmp_path_factory):
     sw = utl.SeleniumWrapper()
-    p = Process(target=run_server)
+    p = Process(target=run_server, args=(True, tmp_path_factory))
     p.start()
     yield sw
     sw.quit()

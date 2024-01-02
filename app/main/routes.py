@@ -40,6 +40,7 @@ from app.main import bp
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.calc as cal
 import processor.reporting.analyze as az
+import app.utils as app_utl
 
 
 @bp.before_app_request
@@ -875,7 +876,7 @@ def post_table():
                  'Calc': '.write_plan_calc'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',
-                      'dictionary_order']:
+                      'dictionary_order', 'modalTable']:
         msg_text = 'Saving table {} does not do anything.'.format(table_name)
         msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
         return jsonify({'data': 'success', 'message': msg, 'level': 'warning'})
@@ -2393,26 +2394,27 @@ def uploader():
 @login_required
 def create_uploader():
     form = UploaderForm()
+    form.set_choices()
     cur_user = User.query.filter_by(id=current_user.id).first_or_404()
     if request.method == 'POST':
         form.validate()
-        form_client = Client(name=form.client_name).check_and_add()
-        form_product = Product(
-            name=form.product_name, client_id=form_client.id).check_and_add()
-        form_campaign = Campaign(
-            name=form.campaign_name, product_id=form_product.id).check_and_add()
-        new_path = '/mnt/c/clients/{}/{}/{}/{}/uploader'.format(
-            form_client.name, form_product.name, form_campaign.name,
-            form.name.data)
+        form_client = Client(name=form.cur_client.data).check_and_add()
+        form_product = Product(name=form.cur_product.data,
+                               client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(name=form.cur_campaign.data,
+                                 product_id=form_product.id).check_and_add()
         new_uploader = Uploader(
             name=form.name.data, description=form.description.data,
             user_id=current_user.id, created_at=datetime.utcnow(),
-            local_path=new_path, campaign_id=form_campaign.id,
+            campaign_id=form_campaign.id,
             fb_account_id=form.fb_account_id.data,
             aw_account_id=form.aw_account_id.data,
             dcm_account_id=form.dcm_account_id.data
         )
         db.session.add(new_uploader)
+        db.session.commit()
+        new_path = app_utl.create_local_path(new_uploader)
+        new_uploader.local_path = new_path
         db.session.commit()
         new_uploader.create_object(form.media_plan.data)
         if form.form_continue.data == 'continue':
@@ -2421,9 +2423,10 @@ def create_uploader():
         else:
             return redirect(url_for('main.edit_uploader',
                                     object_name=new_uploader.name))
+    buttons = Processor().get_navigation_buttons('UploaderFacebook')
     return render_template('create_processor.html', user=cur_user,
                            title=_('Uploader'), form=form, edit_progress="25",
-                           edit_name='Basic')
+                           edit_name='Basic', buttons=buttons)
 
 
 def get_uploader_run_links():

@@ -1415,7 +1415,7 @@ def processor_page(object_name):
         return render_template('brandtracker/processor_brandtracker.html',
                                **kwargs)
     else:
-        return render_template('dashboard.html', **kwargs)
+        return render_template('dashboards/dashboard.html', **kwargs)
 
 
 @bp.route('/processor/<object_name>/popup')
@@ -2908,7 +2908,7 @@ def edit_processor_dashboard(object_name):
     kwargs = Processor().get_current_processor(
         object_name, current_page='edit_processor_dashboard', edit_progress=100,
         edit_name='Dashboard', buttons='ProcessorDashboard')
-    return render_template('dashboard.html', **kwargs)
+    return render_template('dashboards/dashboard.html', **kwargs)
 
 
 def set_dashboard_filters_in_db(object_id, form_dicts,
@@ -3006,7 +3006,7 @@ def processor_dashboards_get(object_name):
         chart_type = dash.chart_type
         chart_filters = dash.get_filters_json()
         default_view = dash.default_view
-        dash_html = render_template('_dash_card.html', dash=dash)
+        dash_html = render_template('dashboards/_dash_card.html', dash=dash)
         dash_data.append(
             {'id': dash_id, 'metrics': metrics, 'dimensions': dimensions,
              'chart_type': chart_type, 'chart_filters': chart_filters,
@@ -3329,7 +3329,7 @@ def project_number():
 def project_number_page(object_name):
     kwargs = Project().get_current_project(
         object_name, 'project_number_page', edit_progress=100, edit_name='Page')
-    return render_template('dashboard.html', **kwargs)
+    return render_template('dashboards/dashboard.html', **kwargs)
 
 
 @bp.route('/project_number/<object_name>/edit', methods=['GET', 'POST'])

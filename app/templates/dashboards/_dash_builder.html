@@ -1073,7 +1073,8 @@
         document.getElementById(elemId).innerHTML = '';
         data = sortData(data, yCol[0]);
         let dataLength = (data.length < 10) ? 1 : data.length / 10;
-        let am = autoMargin(elem, 580, 70, 30, dataLength, 1, false, 30);
+        let height = Math.max(data.length * 60, 580);
+        let am = autoMargin(elem, height, 70, 30, dataLength, 1, false, 30);
         let svg = am.svg;
         generateSelect(elem, yCol, "Select0");
         generateSelect(elem, yCol, "Select1", 1);
@@ -1081,7 +1082,7 @@
         let myColor = getColorPal(yCol);
 
         let axes = generateAxis(
-            data, svg, d3.scaleBand(), d3.scaleLinear(), am.width, am.height,
+            data, svg, d3.scaleBand(), d3.scaleLinear(), 250, am.height,
             xCol, yCol[0], false, null, null, null, null, false,
             d3.scaleLinear(), yCol[1], 5);
 
@@ -1665,12 +1666,12 @@
         }
     }
 
-    function convertToFlareFormat(data) {
+    function convertToFlareFormat(data, xCol, yCol) {
         const flare = {name: "flare", children: []};
 
         // Group the data by 'vendortypename'
         const groupedData = data.reduce((acc, obj) => {
-            const typeName = obj.vendortypename;
+            const typeName = obj[yCol[0]];
             if (!acc[typeName]) {
                 acc[typeName] = [];
             }
@@ -1682,8 +1683,8 @@
         for (const typeName in groupedData) {
             const typeChildren = groupedData[typeName].map(obj => {
                 return {
-                    name: obj.vendorname,
-                    size: obj["Net Cost Final"]
+                    name: obj[xCol],
+                    size: obj[yCol[1]]
                 };
             });
 
@@ -1700,7 +1701,7 @@
         data.sort((a, b) => b[yCol[0]] - a[yCol[0]]);
         let dataLength = (data.length < 5) ? 1 : data.length / 5;
         let am = autoMargin(elem, 250, 5, 5, .9, dataLength);
-        let flare = convertToFlareFormat(data);
+        let flare = convertToFlareFormat(data, xCol, yCol);
         let chart = Treemap(flare, {
             value: d => d.size, // size of each node (file); null for internal nodes (folders)
             group: (d, n) => n.ancestors().slice(-2)[0].data.name, // e.g., "animate" in flare/animate/Easing; color

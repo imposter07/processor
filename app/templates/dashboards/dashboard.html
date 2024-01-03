@@ -48,10 +48,10 @@
             color: white;
             text-align: center;
             position: absolute;
-            width: 35%;
-            border-radius: 35%;
+            width: 25%;
+            border-radius: 80%;
             top: -10%;
-            left: 70%;
+            left: 110%;
         }
 
         .color-square:before {
@@ -73,36 +73,62 @@
                         <a class="nav-link active" id="nav-dash-tab"
                            data-toggle="tab" href="#nav-dash" role="tab"
                            aria-controls="nav-dash" aria-selected="true">
-                            <h4>
+                            <h5 class="pl-1 pr-1">
                                 <i class="fas fa-solid fa-chart-column btn btn-secondary"
                                    style="float:right;" aria-hidden="true"></i>
-                            </h4>
+                            </h5>
                         </a>
-                        <a class="nav-link" id="nav-pacing-tab"
-                           data-toggle="tab" href="#nav-pacing" role="tab"
-                           aria-controls="nav-pacing" aria-selected="false"
+                        <a class="nav-link" id="nav-partner-tab"
+                           data-toggle="tab" href="#nav-partner" role="tab"
+                           aria-controls="nav-partner" aria-selected="true"
                            onclick="setTimeout(getPartnerMetrics, 1000);
                                  this.onclick=null;">
-                            <h4>
+                            <h5 class="pl-1 pr-1">
                                 <div class="icon-badge-container">
-                                    <i class="fas fa-solid fa-table-cells btn btn-secondary"
-                                       style="float:right;"
-                                       aria-hidden="true"></i>
                                     <div class="icon-badge"
                                          id="pacingAlertCount"></div>
                                 </div>
                                 <div hidden>
                                     <div id="pacingAlertCountProgress"></div>
                                 </div>
-                            </h4>
+                                Partner
+                            </h5>
                         </a>
-                        <a class="nav-link" id="nav-billing-tab"
+                        <a class="nav-link" id="nav-country-tab"
+                           data-toggle="tab" href="#nav-country" role="tab"
+                           aria-controls="nav-country" aria-selected="true"
+                           onclick="setTimeout(getCountryMetrics, 1000);
+                                 this.onclick=null;">
+                            <h5 class="pl-1 pr-1">Country</h5>
+                        </a>
+                        <a class="nav-link" id="nav-targeting-tab"
+                           data-toggle="tab" href="#nav-targeting" role="tab"
+                           aria-controls="nav-targeting" aria-selected="true"
+                           onclick="setTimeout(getTargetingMetrics, 1000);
+                                 this.onclick=null;">
+                            <h5 class="pl-1 pr-1">Targeting</h5>
+                        </a>
+                        <a class="nav-link" id="nav-placement-tab"
+                           data-toggle="tab" href="#nav-placement" role="tab"
+                           aria-controls="nav-placement" aria-selected="true"
+                           onclick="setTimeout(getPlacementMetrics, 1000);
+                                 this.onclick=null;">
+                            <h5 class="pl-1 pr-1">Placement</h5>
+                        </a>
+                        <a class="nav-link" id="nav-creative-tab"
+                           data-toggle="tab" href="#nav-creative" role="tab"
+                           aria-controls="nav-creative" aria-selected="true"
+                           onclick="setTimeout(getCreativeMetrics, 1000);
+                                 this.onclick=null;">
+                            <h5 class="pl-1 pr-1">Creative</h5>
+                        </a>
+                        <a class="nav-link ml-auto" id="nav-billing-tab"
                            data-toggle="tab" href="#nav-billing" role="tab"
                            aria-controls="nav-billing" aria-selected="true">
-                            <h4>
+                            <h5 class="pl-1 pr-1">
                                 <i class="fas fa-solid fa-money-bill btn btn-secondary"
                                    style="float:right;" aria-hidden="true"></i>
-                            </h4>
+                            </h5>
                         </a>
                     </div>
                 </div>
@@ -317,7 +343,11 @@
                 </div>
             </div>
         </div>
-        {% include 'pacing.html' %}
+        {% include 'dashboards/partner.html' %}
+        {% include 'dashboards/country.html' %}
+        {% include 'dashboards/targeting.html' %}
+        {% include 'dashboards/placement.html' %}
+        {% include 'dashboards/creative.html' %}
         <div class="tab-pane fade show" id="nav-billing" role="tabpanel"
              aria-labelledby="nav-dash-tab"></div>
         <div class="row">
@@ -444,6 +474,74 @@
             getTable('partnerTreeMap', 'partnerTreeMapProgress',
                 'None', 'None', 'None', true, 'None', false, tree_metric_args);
             getTable('pacingMetrics', 'pacingMetricsProgress');
+        }        
+        
+        function getCountryMetrics(filterDict = null, clickElem = null, oldHtml = null,
+                                   allCharts = false) {
+            let metrics = ['kpi'];
+            filterDict = (filterDict) ? filterDict : [];
+            let country_bar_args = getDataTableArgsDict(
+                'generateDualBarChart', ['countryname'],
+                metrics, filterDict, true, undefined, undefined, true);
+            getTable('countryBarMetrics', 'countryBarMetricsProgress',
+                'None', 'None', 'None', true, 'None', false, country_bar_args);
+            let country_metric_args = getDataTableArgsDict(
+                'generateBarChart', ['campaignname', 'countryname'],
+                metrics, filterDict, true, undefined, undefined, false);
+            getTable('countrySummaryMetrics', 'countrySummaryMetricsProgress',
+                'None', 'None', 'None', true, 'None', false, country_metric_args);
+            let tree_metric_args = getDataTableArgsDict('generateTreeMap',
+                ['regionname', 'countryname'], ['netcost'], filterDict, true);
+            getTable('countryTreeMap', 'countryTreeMapProgress',
+                'None', 'None', 'None', true, 'None', false, tree_metric_args);
+        }
+
+        function getTargetingMetrics(filterDict = null, clickElem = null, oldHtml = null,
+                                   allCharts = false) {
+            let metrics = ['kpi'];
+            filterDict = (filterDict) ? filterDict : [];
+            let targeting_bar_args = getDataTableArgsDict(
+                'generateDualBarChart', ['targetingname'],
+                metrics, filterDict, true, undefined, undefined, true);
+            getTable('targetingBarMetrics', 'targetingBarMetricsProgress',
+                'None', 'None', 'None', true, 'None', false, targeting_bar_args);
+            let targeting_metric_args = getDataTableArgsDict(
+                'generateBarChart', ['campaignname', 'targetingname'],
+                metrics, filterDict, true, undefined, undefined, false);
+            getTable('targetingSummaryMetrics', 'targetingSummaryMetricsProgress',
+                'None', 'None', 'None', true, 'None', false, targeting_metric_args);
+        }
+        
+        function getPlacementMetrics(filterDict = null, clickElem = null, oldHtml = null,
+                                   allCharts = false) {
+            let metrics = ['kpi'];
+            filterDict = (filterDict) ? filterDict : [];
+            let placement_bar_args = getDataTableArgsDict(
+                'generateDualBarChart', ['packagedescriptionname'],
+                metrics, filterDict, true, undefined, undefined, true);
+            getTable('placementBarMetrics', 'placementBarMetricsProgress',
+                'None', 'None', 'None', true, 'None', false, placement_bar_args);
+            let placement_metric_args = getDataTableArgsDict(
+                'generateBarChart', ['campaignname', 'packagedescriptionname'],
+                metrics, filterDict, true, undefined, undefined, false);
+            getTable('placementSummaryMetrics', 'placementSummaryMetricsProgress',
+                'None', 'None', 'None', true, 'None', false, placement_metric_args);
+        }     
+        
+        function getCreativeMetrics(filterDict = null, clickElem = null, oldHtml = null,
+                                   allCharts = false) {
+            let metrics = ['kpi'];
+            filterDict = (filterDict) ? filterDict : [];
+            let creative_bar_args = getDataTableArgsDict(
+                'generateDualBarChart', ['creativename'],
+                metrics, filterDict, true, undefined, undefined, true);
+            getTable('creativeBarMetrics', 'creativeBarMetricsProgress',
+                'None', 'None', 'None', true, 'None', false, creative_bar_args);
+            let creative_metric_args = getDataTableArgsDict(
+                'generateBarChart', ['campaignname', 'creativename'],
+                metrics, filterDict, true, undefined, undefined, false);
+            getTable('creativeSummaryMetrics', 'creativeSummaryMetricsProgress',
+                'None', 'None', 'None', true, 'None', false, creative_metric_args);
         }
 
 

@@ -421,7 +421,7 @@
     {% endif %}
     {% if dashboards %}
         {% for dash in dashboards %}
-            {% include '_dash_card.html' %}
+            {% include 'dashboards/_dash_card.html' %}
         {% endfor %}
     {% endif %}
     {% if uploader_objects %}
@@ -1445,7 +1445,7 @@
         });
 
     </script>
-    {% include "_dash_builder.html" %}
+    {% include "dashboards/_dash_builder.html" %}
     {% include "_table_builder.html" %}
     {% include "_report_builder.html" %}
     {% include "_select_builder.html" %}

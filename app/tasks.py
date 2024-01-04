@@ -303,7 +303,8 @@ def run_processor(processor_id, current_user_id, run_args):
                 task_functions = [get_project_numbers, get_glossary_definitions,
                                   get_post_mortems, get_time_savers,
                                   get_ai_playbook_market, get_contact_numbers,
-                                  get_rate_cards, get_plan_calc_tutorial]
+                                  get_rate_cards, get_plan_calc_tutorial,
+                                  get_chat_tutorial]
                 for task_function in task_functions:
                     os.chdir(cur_path)
                     task_function(processor_id, current_user_id)
@@ -6005,6 +6006,16 @@ def get_plan_calc_tutorial(processor_id, current_user_id):
     df = get_google_doc_for_tutorial(
         processor_id, current_user_id,
         sheet_id='1NCetqvNW4-UqJ5utk537dQi78L1K_yUIYm3cE7RVO-c',
+        note_type=name, tutorial_name=name)[0]
+    return [df]
+
+
+@error_handler
+def get_chat_tutorial(processor_id, current_user_id):
+    name = 'App - Chat - Capabilities'
+    df = get_google_doc_for_tutorial(
+        processor_id, current_user_id,
+        sheet_id='1Qeqf5CvvgCDRrtwpmO9MS4RBBbE36MOv5W92UOGnYQY',
         note_type=name, tutorial_name=name)[0]
     return [df]
 

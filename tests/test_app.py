@@ -480,10 +480,14 @@ class TestTutorial:
             p = Processor(name=self.test_name)
             db.session.add(p)
             db.session.commit()
-        p.launch_task('.get_plan_calc_tutorial', '', 1)
+        task_names = ['.get_plan_calc_tutorial', '.get_chat_tutorial']
+        for task_name in task_names:
+            p.launch_task(task_name, '', 1)
         worker.work(burst=True)
         t = Tutorial.query.filter_by(name=self.tutorial_name).first()
         assert t.name == self.tutorial_name
+        all_tuts = Tutorial.query.all()
+        assert len(all_tuts) == len(task_names)
         return t
 
     def test_tutorial(self, sw, login, worker, create_processor):

@@ -513,10 +513,13 @@ class TestUploader:
         url = '{}{}'.format(base_url, main_routes.uploader.__name__)
         name_url = urllib.parse.quote(up_name)
         c_route = main_routes.edit_uploader_campaign.__name__
+        e_route = main_routes.edit_uploader.__name__
         url_dict = {}
-        for url_route in [c_route]:
-            url_str = url_route.split('_')
-            url_str = '{}/{}'.format(url_str[0], url_str[2])
+        for url_route in [c_route, e_route]:
+            url_split = url_route.split('_')
+            url_str = '{}'.format(url_split[0])
+            if len(url_split) > 2:
+                url_str = '{}/{}'.format(url_str, url_split[2])
             url_dict[url_route] = url_str
         if url_type in url_dict:
             url += '/{}/{}'.format(name_url, url_dict[url_type])
@@ -535,6 +538,20 @@ class TestUploader:
         assert sw.browser.current_url == cam_url
         up_main_file = os.path.join(cur_up.local_path, 'main.py')
         assert os.path.isfile(up_main_file)
+        return cur_up
+
+    def test_edit_uploader(self, sw, login, worker):
+        cur_up = Uploader.query.filter_by(name=self.test_name).first()
+        if not cur_up:
+            cur_up = self.test_create_uploader(sw, login, worker)
+        e_url = self.get_url(main_routes.edit_uploader.__name__)
+        sw.go_to_url(e_url, elem_id='loadContinue')
+        new_camp = '{}1'.format(cur_up.campaign.name)
+        form_names = ['cur_campaign']
+        submit_form(sw, form_names, test_name=new_camp)
+        worker.work(burst=True)
+        cur_up = Uploader.query.filter_by(name=self.test_name).first()
+        assert cur_up.campaign.name == new_camp
 
 
 class TestReportingDBReadWrite:

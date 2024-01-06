@@ -2527,12 +2527,14 @@ def edit_uploader(object_name):
                                   edit_progress=20, edit_name='Basic')
     uploader_to_edit = kwargs['object']
     form = EditUploaderForm(object_name)
+    form.set_choices()
+    kwargs['form'] = form
     if request.method == 'POST':
         form.validate()
-        form_client = Client(name=form.client_name).check_and_add()
-        form_product = Product(name=form.product_name,
+        form_client = Client(name=form.cur_client.data).check_and_add()
+        form_product = Product(name=form.cur_product.data,
                                client_id=form_client.id).check_and_add()
-        form_campaign = Campaign(name=form.campaign_name,
+        form_campaign = Campaign(name=form.cur_campaign.data,
                                  product_id=form_product.id).check_and_add()
         uploader_to_edit.name = form.name.data
         uploader_to_edit.description = form.description.data
@@ -2557,13 +2559,12 @@ def edit_uploader(object_name):
             id=form_campaign.product_id).first_or_404()
         form_client = Client.query.filter_by(
             id=form_product.client_id).first_or_404()
-        form.cur_campaign.data = form_campaign
-        form.cur_product.data = form_product
-        form.cur_client.data = form_client
+        form.cur_campaign.data = form_campaign.name
+        form.cur_product.data = form_product.name
+        form.cur_client.data = form_client.name
         form.fb_account_id.data = uploader_to_edit.fb_account_id
         form.aw_account_id.data = uploader_to_edit.aw_account_id
         form.dcm_account_id.data = uploader_to_edit.dcm_account_id
-    kwargs['form'] = form
     return render_template('create_processor.html', **kwargs)
 
 

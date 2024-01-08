@@ -1291,6 +1291,7 @@ def create_uploader(uploader_id, current_user_id, base_path):
                 time.sleep(1)
             else:
                 uploader_add_plan_costs(uploader_id, current_user_id)
+                break
         _set_task_progress(100)
         return True
     except:
@@ -2976,6 +2977,25 @@ def apply_processor_plan(processor_id, current_user_id, vk):
 def uploader_full_placement_creation(upo, mp_df, budget_col):
     name_list = upo.string_to_list(upo.media_plan_columns)
     name_list = [x.strip() for x in name_list]
+    miss_cols = [x for x in name_list if x not in mp_df.columns]
+    env_list = ['device', 'environment']
+    tar_list = ['targeting', 'targeting_bucket']
+    for miss_col in miss_cols:
+        if_need_str = ' (If Needed)'
+        name_str = ' Name'
+        poss_strs = [if_need_str, name_str]
+        new_val = [miss_col.replace(x, '') for x in poss_strs]
+        new_val += ['{}{}'.format(miss_col, x) for x in poss_strs]
+        new_val += [miss_col.capitalize(), miss_col.lower()]
+        for col_list in [env_list, tar_list]:
+            if miss_col.lower() in col_list:
+                new_val += col_list
+                new_val += [x.capitalize() for x in col_list]
+        new_val = [x for x in new_val if x in mp_df.columns]
+        if new_val:
+            name_list = [new_val[0] if x == miss_col else x for x in name_list]
+            upo.media_plan_columns = name_list
+            db.session.commit()
     ndf = full_placement_creation(mp_df, '', vmc.fullplacename,
                                   name_list)
     ndf = ndf.groupby(vmc.fullplacename)[budget_col].sum()
@@ -2991,10 +3011,17 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
         os.chdir(adjust_path(u.local_path))
         uploader_type = 'Facebook'
         object_levels = ['Campaign', 'Adset', 'Ad']
-        mp_df = utl.import_read_csv('mediaplan.xlsx')
-        budget_col = PartnerPlacements.total_budget.name
-        if budget_col not in mp_df.columns:
+        file_name = 'mediaplan.xlsx'
+        if not os.path.exists(file_name):
+            return False
+        mp_df = utl.import_read_csv(file_name)
+        budget_cols = [PartnerPlacements.total_budget.name, 'Planned Net Cost',
+                       'Net Cost']
+        budget_col = [x for x in budget_cols if x in mp_df.columns]
+        if not budget_col:
             return True
+        else:
+            budget_col = budget_col[0]
         for idx, object_level in enumerate(object_levels):
             os.chdir(adjust_path(u.local_path))
             upo = UploaderObjects.query.filter_by(

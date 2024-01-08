@@ -52,6 +52,23 @@ def before_request():
     g.locale = str(get_locale())
 
 
+def error_handler(route_function):
+    @wraps(route_function)
+    def decorated_function(*args, **kwargs):
+        try:
+            result = route_function(*args, **kwargs)
+            return result
+        except:
+            args = request.form.to_dict(flat=False)
+            msg = 'Unhandled exception {}'.format(json.dumps(args))
+            current_app.logger.error(msg, exc_info=sys.exc_info())
+            data = {'data': 'error', 'task': '', 'level': 'error',
+                    'args': request.form.to_dict(flat=False)}
+            return jsonify(data)
+
+    return decorated_function
+
+
 @bp.route('/', methods=['GET', 'POST'])
 @bp.route('/index', methods=['GET', 'POST'])
 @login_required
@@ -2506,6 +2523,7 @@ def uploader_page(object_name):
 @bp.route('/uploader/<object_name>/edit/upload_file',
           methods=['GET', 'POST'])
 @login_required
+@error_handler
 def edit_uploader_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request, object_name)
@@ -2666,6 +2684,10 @@ def edit_uploader_base_objects(object_name, object_level, next_level='Page',
             up_obj.name_create_type = form.name_create_type.data
             db.session.commit()
         elif request.method == 'GET':
+            plan_choices = up_obj.string_to_list(up_obj.media_plan_columns)
+            plan_choices = [(x, x) for x in plan_choices]
+            plan_choices += form.media_plan_columns.choices
+            form.media_plan_columns.choices = plan_choices
             form.name_create_type.data = up_obj.name_create_type
             form.media_plan_columns.data = up_obj.media_plan_columns
             form.partner_name_filter.data = up_obj.partner_filter
@@ -3420,23 +3442,6 @@ def project_billing(object_name):
             next_page = 'main.project_billing'
         return redirect(url_for(next_page, object_name=object_name))
     return render_template('create_processor.html', **kwargs)
-
-
-def error_handler(route_function):
-    @wraps(route_function)
-    def decorated_function(*args, **kwargs):
-        try:
-            result = route_function(*args, **kwargs)
-            return result
-        except:
-            args = request.form.to_dict(flat=False)
-            msg = 'Unhandled exception {}'.format(json.dumps(args))
-            current_app.logger.error(msg, exc_info=sys.exc_info())
-            data = {'data': 'error', 'task': '', 'level': 'error',
-                    'args': request.form.to_dict(flat=False)}
-            return jsonify(data)
-
-    return decorated_function
 
 
 @bp.route('/url_from_view_function', methods=['GET', 'POST'])

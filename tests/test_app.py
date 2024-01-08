@@ -507,6 +507,22 @@ class TestTutorial:
 class TestUploader:
     test_name = 'test'
 
+    @staticmethod
+    def get_mock_plan():
+        data = {
+            'Campaign Phase': ['Launch', 'Launch', 'Launch', 'Launch'],
+            'Partner Name': ['Facebook', 'Facebook', 'Facebook', 'Facebook'],
+            'Country': ['US', 'US', 'CA', 'CA'],
+            'Environment': ['Mobile', 'Desktop', 'Mobile', 'Desktop'],
+            'Targeting': ['Target A', 'Target B', 'Target A', 'Target B'],
+            'Creative': ['Creative 1', 'Creative 2', 'Creative 1',
+                         'Creative 2'],
+            'Copy': ['Copy 1', 'Copy 2', 'Copy 1', 'Copy 2'],
+            'Net Cost': [12000, 11000, 13000, 10000]
+        }
+        df = pd.DataFrame(data)
+        return df
+
     def get_url(self, url_type='', up_name=None):
         if not up_name:
             up_name = self.test_name
@@ -540,18 +556,59 @@ class TestUploader:
         assert os.path.isfile(up_main_file)
         return cur_up
 
-    def test_edit_uploader(self, sw, login, worker):
+    def check_create_uploader(self, sw, login, worker):
         cur_up = Uploader.query.filter_by(name=self.test_name).first()
         if not cur_up:
             cur_up = self.test_create_uploader(sw, login, worker)
         e_url = self.get_url(main_routes.edit_uploader.__name__)
         sw.go_to_url(e_url, elem_id='loadContinue')
+        return cur_up
+
+    def test_edit_uploader(self, sw, login, worker):
+        cur_up = self.check_create_uploader(sw, login, worker)
         new_camp = '{}1'.format(cur_up.campaign.name)
         form_names = ['cur_campaign']
         submit_form(sw, form_names, test_name=new_camp)
         worker.work(burst=True)
         cur_up = Uploader.query.filter_by(name=self.test_name).first()
         assert cur_up.campaign.name == new_camp
+
+    def test_add_plan_uploader(self, sw, login, worker):
+        cur_up = self.check_create_uploader(sw, login, worker)
+        df = self.get_mock_plan()
+        file_name = os.path.join(basedir, 'mediaplantmp.xlsx')
+        df.to_excel(file_name, sheet_name='Media Plan')
+        fp = sw.browser.find_element_by_class_name('filepond--browser')
+        fp.send_keys(file_name)
+        elem_id = 'alertPlaceholder'
+        for x in range(100):
+            elem = sw.browser.find_element_by_id(elem_id)
+            if 'File was saved.' in elem.get_attribute('innerHTML'):
+                break
+            time.sleep(.1)
+        worker.work(burst=True)
+        TestProject.wait_for_jobs_finish()
+        assert os.path.isfile(os.path.join(cur_up.local_path, 'mediaplan.xlsx'))
+        os.remove(file_name)
+
+    def test_campaign_uploader(self, sw, login, worker):
+        cur_up = self.check_create_uploader(sw, login, worker)
+        plan_path = os.path.join(cur_up.local_path, 'mediaplan.xlsx')
+        if not os.path.isfile(plan_path):
+            self.test_add_plan_uploader(sw, login, worker)
+        c_url = self.get_url(main_routes.edit_uploader_campaign.__name__)
+        sw.go_to_url(c_url, elem_id='loadContinue')
+        worker.work(burst=True)
+        edit_camp_id = 'editTableCampaign'
+        drop_id = 'editTableDropdownButton'
+        sw.xpath_from_id_and_click(drop_id, load_elem_id=edit_camp_id)
+        load_id = 'loadingBtn{}'.format(edit_camp_id)
+        sw.xpath_from_id_and_click(edit_camp_id, load_elem_id=load_id)
+        worker.work(burst=True)
+        table_id = 'modalTableUploaderCampaign_wrapper'
+        sw.wait_for_elem_load(table_id, visible=True)
+        rows = sw.count_rows_in_table(table_id)
+        assert rows == 2
 
 
 class TestReportingDBReadWrite:

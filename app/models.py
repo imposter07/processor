@@ -3414,7 +3414,7 @@ class PartnerPlacements(db.Model):
                     g_max = grouped.idxmax()
                     rule_info = {g_max: 1}
                     new_rule = PlanRule(
-                        place_col=str_name, rule_info=rule_info,
+                        place_col=str_name, rule_info=rule_info, type='Create',
                         partner_id=parent.id, plan_id=plan_id)
                     db.session.add(new_rule)
                     db.session.commit()

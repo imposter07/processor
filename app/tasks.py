@@ -5597,13 +5597,16 @@ def get_plan_rules(plan_id, current_user_id):
         name_col = 'column_name'
         df = pd.DataFrame([x.get_form_dict() for x in cur_plan.rules])
         hidden_cols = [Partner.total_budget.name, name_col, PlanRule.order.name,
-                       PlanRule.type.name, PlanRule.plan_id.name,
+                       PlanRule.name.name, PlanRule.plan_id.name,
                        PlanRule.partner_id.name, name_col]
+        select_val_dict = [{PlanRule.type.name: x} for x in ['Create', 'Lookup']]
+        select_val_dict = {PlanRule.type.name: select_val_dict}
         lt = app_utl.LiquidTable(
             df=df, title=name, table_name=name,
-            form_cols=[PlanRule.rule_info.name], specify_form_cols=True,
-            slider_edit_col=PlanRule.rule_info.name,
-            slider_abs_col=Partner.total_budget.name, hidden_cols=hidden_cols)
+            form_cols=[PlanRule.rule_info.name, PlanRule.type.name],
+            specify_form_cols=True, slider_edit_col=PlanRule.rule_info.name,
+            slider_abs_col=Partner.total_budget.name, hidden_cols=hidden_cols,
+            select_val_dict=select_val_dict)
         _set_task_progress(100)
         return [lt.table_dict]
     except:

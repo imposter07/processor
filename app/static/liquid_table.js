@@ -652,8 +652,8 @@ function buildSliderEditCol(elem, newValue, inputElemId) {
         progHtml += sliderContent;
         idx += 1;
     }
-    progHtml += `<div class="btn btn-outline-success" onclick="addNewSliderRow(this)">Add New Row</div>`;
-    progHtml += `<div class="btn btn-outline-success" onclick="toggleSliderFormat(this)">Switch Dollars</div>`;
+    progHtml += `<div id="${inputElemId}AddRow" class="btn btn-outline-success" onclick="addNewSliderRow(this)">Add New Row</div>`;
+    progHtml += `<div id="${inputElemId}SwitchDollars" class="btn btn-outline-success" onclick="toggleSliderFormat(this)">Switch Dollars</div>`;
     elem.insertAdjacentHTML('beforeend', progHtml);
     addSelectize();
     addOnClickForSlider();
@@ -683,7 +683,7 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
         });
         let displayColNames = generateDisplayColumnName(formName);
         let formColHtml = `
-            <div class="col-4 form-group" id="${formName}FormGroupCol">
+            <div class="col form-group" id="${formName}FormGroupCol">
                 <label class="control-label" for="${inputIdHtml}">${displayColNames}</label>
                        ${inputStartHtml} class="form-control form-control-sm"
                        id="${inputIdHtml}" name="${inputIdHtml}"
@@ -909,15 +909,6 @@ function addTopRowCard(tableName, loopIndex, topRowData = null) {
             <div class="card-body">
                 <form id="${topRowFormId}"  class="">
                     ${topRowForm}
-                    <div class="col form-group">
-                        <label class="control-label" for="datePicker` + loopIndex + `">Dates</label>
-                        <input id="datePicker` + loopIndex + `"
-                               class="custom-select custom-select-sm
-                                                      flatpickr flatpickr-input active"
-                               type="text" placeholder="Date"
-                               data-id="range" name="dates` + loopIndex + `"
-                               readonly="readonly" data-input>
-                    </div>
                 </form>
             </div>
         </div>
@@ -1158,6 +1149,13 @@ function syncSingleTableWithForm(loopIndex, formName, tableName, topRowToggle = 
         currentValue += btnElem.outerHTML;
     }
     curElem.innerHTML = currentValue;
+    if (loopIndex < 0) {
+        let addPlaceId = 'addRowsPlaceholder' + tableName;
+        let addPlaceElem = document.getElementById(addPlaceId);
+        let colName = addPlaceElem.children[0].id.replace('selectAdd', '').replace('Placeholder' + tableName, '');
+        let otherElem = document.getElementById(`row${colName}${loopIndex}`);
+        otherElem.innerHTML = currentValue;
+    }
     populateTotalCards(tableName);
 }
 

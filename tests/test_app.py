@@ -1,12 +1,14 @@
 import os
 import time
+import json
 import pytest
 import urllib
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
-    Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader
+    Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
+    PartnerPlacements, PlanRule
 import app.plan.routes as plan_routes
 import app.main.routes as main_routes
 from config import basedir
@@ -305,8 +307,11 @@ class TestPlan:
         sow_route = plan_routes.edit_sow.__name__
         calc_route = plan_routes.calc.__name__
         rfp_route = plan_routes.rfp.__name__
+        rules_route = plan_routes.plan_rules.__name__
         url_dict = {}
-        for url_route in [topline_route, sow_route, calc_route, rfp_route]:
+        url_routes = [topline_route, sow_route, calc_route, rfp_route,
+                      rules_route]
+        for url_route in url_routes:
             url_str = url_route
             if url_route == sow_route:
                 url_str = url_str.split('_')[1]
@@ -356,6 +361,53 @@ class TestPlan:
         assert part.name == part_name
         assert int(part.total_budget) == int(part_budget)
         assert sw.browser.current_url == sow_url
+        sw.go_to_url(edit_url, elem_id='loadingBtnTopline')
+        worker.work(burst=True)
+        phase_id = 'rowpartner_type-1'
+        sw.wait_for_elem_load(phase_id)
+        sw.xpath_from_id_and_click(phase_id, load_elem_id='total_budget-1')
+        phase_id = 'phaseSelect-1'
+        submit_form(sw, [phase_id])
+        worker.work(burst=True)
+        sw.wait_for_elem_load('project_name')
+        p = Plan.query.filter_by(name=self.test_name).first()
+        phase = p.get_current_children()
+        assert phase[0].name == self.test_name
+
+    def test_rules(self, sw, login, worker):
+        cur_plan = Plan.query.filter_by(name=self.test_name).first()
+        if not cur_plan:
+            self.test_topline(sw, login, worker)
+        rule_url = self.get_url(plan_routes.plan_rules.__name__)
+        sw.go_to_url(rule_url, elem_id='loadingBtnPlanRules')
+        worker.work(burst=True)
+        elem_id = 'rowplace_col0'
+        sw.wait_for_elem_load(elem_id)
+        elem = sw.browser.find_element_by_id(elem_id)
+        col_name = PartnerPlacements.environment.name
+        assert elem.get_attribute('innerHTML').strip() == col_name
+        sw.xpath_from_id_and_click(elem_id)
+        elem_id = 'rule_info01SliderKey-selectized'
+        second_name = '{}1'.format(self.test_name)
+        add_row_id = 'rule_info0AddRow'
+        submit_form(sw, [elem_id], submit_id=add_row_id)
+        new_elem_id = elem_id.replace('01', '02')
+        try:
+            sw.browser.find_element_by_id(new_elem_id)
+        except:
+            sw.xpath_from_id_and_click('rule_info0AddRow')
+        submit_form(sw, [new_elem_id], test_name=second_name)
+        worker.work(burst=True)
+        elem_id = 'rule_info0Value'
+        elem = sw.browser.find_element_by_id(elem_id)
+        elem.clear()
+        submit_form(sw, [elem_id], test_name='50')
+        worker.work(burst=True)
+        env_rule = PlanRule.query.filter_by(place_col=col_name).all()
+        assert len(env_rule) == 1
+        data = json.loads(env_rule[0].rule_info)
+        assert data[self.test_name] == .5
+        assert data[second_name] == .5
 
     def test_calc(self, sw, login, worker):
         p = Plan.query.filter_by(name=self.test_name).first()

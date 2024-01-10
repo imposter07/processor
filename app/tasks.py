@@ -1302,8 +1302,8 @@ def create_uploader(uploader_id, current_user_id, base_path):
 
 
 def get_uploader_and_user_from_id(uploader_id, current_user_id):
-    uploader_to_run = Uploader.query.get(uploader_id)
-    user_that_ran = User.query.get(current_user_id)
+    uploader_to_run = db.session.get(Uploader, uploader_id)
+    user_that_ran = db.session.get(User, current_user_id)
     return uploader_to_run, user_that_ran
 
 
@@ -3077,8 +3077,8 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
 def save_media_plan(processor_id, current_user_id, media_plan,
                     object_type=Processor):
     try:
-        cur_obj = object_type.query.get(processor_id)
-        cur_user = User.query.get(current_user_id)
+        cur_obj = db.session.get(object_type, processor_id)
+        cur_user = db.session.get(User, current_user_id)
         base_path = app_utl.create_local_path(cur_obj)
         if not os.path.exists(base_path):
             os.makedirs(base_path)
@@ -5592,7 +5592,7 @@ def download_topline(plan_id, current_user_id):
 def get_plan_rules(plan_id, current_user_id):
     try:
         _set_task_progress(0)
-        cur_plan = Plan.query.get(plan_id)
+        cur_plan = db.session.get(Plan, plan_id)
         name = 'PlanRules'
         name_col = 'column_name'
         df = pd.DataFrame([x.get_form_dict() for x in cur_plan.rules])

@@ -409,6 +409,14 @@ class TestPlan:
         assert data[self.test_name] == .5
         assert data[second_name] == .5
 
+    def test_rules_lookup(self, sw, login, worker):
+        cur_plan = Plan.query.filter_by(name=self.test_name).first()
+        if not cur_plan:
+            self.test_rules(sw, login, worker)
+        rule_url = self.get_url(plan_routes.plan_rules.__name__)
+        sw.go_to_url(rule_url, elem_id='loadingBtnPlanRules')
+        worker.work(burst=True)
+
     def test_calc(self, sw, login, worker):
         p = Plan.query.filter_by(name=self.test_name).first()
         if not p:

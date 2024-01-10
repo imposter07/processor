@@ -135,7 +135,7 @@ class TestChat:
         prompts = p.get_create_prompt(wrap_html=False)
         partner_name = prompt_dict[Partner.__table__.name][0]
         new_budget = 5000
-        new_env = 'mobile'
+        new_env = 'Mobile'
         new_env_per = '75'
         for prompt in prompts:
             msg = prompt

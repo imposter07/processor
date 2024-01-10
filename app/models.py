@@ -2695,11 +2695,11 @@ class Plan(db.Model):
         if not environments:
             environments = ['Mobile', 'Desktop']
         if not creative:
-            creative = ['ciri', 'yen', 'geralt', 'triss']
+            creative = ['Ciri', 'Yen', 'Geralt', 'Triss']
         if not targeting:
-            targeting = ['aaa', 'jrpg', 'mmorpg']
+            targeting = ['Aaa', 'Jrpg', 'Mmorpg']
         if not copy:
-            copy = ['x', 'y']
+            copy = ['X', 'Y']
         pairs = {PartnerPlacements.targeting_bucket.name: targeting,
                  PartnerPlacements.creative_line_item.name: creative,
                  PartnerPlacements.copy.name: copy}
@@ -2825,7 +2825,8 @@ class PlanPhase(db.Model):
 
     @staticmethod
     def get_name_list():
-        return ['launch', 'pre-launch', 'prelaunch', 'pre-order', 'preorder']
+        return ['launch', 'pre-launch', 'prelaunch', 'pre-order', 'preorder',
+                'announce', 'sale']
 
     def get_current_children(self):
         return self.partners.all()
@@ -3382,6 +3383,8 @@ class PartnerPlacements(db.Model):
     @staticmethod
     def find_name_from_message(message, name):
         message = message.split(' ')
+        if '/' in name:
+            name = name.replace(' / ', '/')
         for idx, m in enumerate(message):
             next_m = None
             if not (idx + 1) >= len(message):
@@ -3390,7 +3393,7 @@ class PartnerPlacements(db.Model):
                 m = m.replace(delim, '')
                 if next_m:
                     next_m = next_m.replace(delim, '')
-            if m.lower() == name:
+            if m.lower() == name.lower():
                 name = m
                 break
             elif next_m:
@@ -3412,6 +3415,8 @@ class PartnerPlacements(db.Model):
                 grouped = filtered_df.groupby(db_col)[vmc.impressions].sum()
                 if not grouped.empty:
                     g_max = grouped.idxmax()
+                    if '_' in g_max:
+                        g_max = g_max.split('_')[0]
                     rule_info = {g_max: 1}
                     new_rule = PlanRule(
                         place_col=str_name, rule_info=rule_info, type='Create',
@@ -3435,12 +3440,19 @@ class PartnerPlacements(db.Model):
             date_search = 'date' in str_name
             name_list = utl.get_next_values_from_list(
                 words, col_names, cols, date_search=date_search)
+            if date_search:
+                name_list = [x.replace('date', '').split('end')[0] for x in
+                             name_list]
             name_list = [{db_col: x} for x in name_list]
         else:
             name_list = Client.get_name_list(db_col, min_impressions)
             if name_list:
                 name_list = utl.get_dict_values_from_list(words, name_list,
                                                           True)
+        cur_part = db.session.get(Partner, parent.id)
+        ps = Partner.query.filter_by(plan_phase_id=cur_part.plan_phase_id).all()
+        ps = [x.name.lower() for x in ps]
+        name_list = [x for x in name_list if x[db_col] not in ps]
         if old_rule:
             comp_list = [x[db_col] for x in name_list]
             if isinstance(old_rule.rule_info, str):
@@ -3480,6 +3492,12 @@ class PartnerPlacements(db.Model):
                     name_no_number.append(name)
             for x in name_no_number:
                 rule_info[x] = rem_percent / len(name_no_number)
+            total_rule = 0
+            for k, v in rule_info.items():
+                total_rule += v
+            if total_rule != 1:
+                for k in rule_info:
+                    rule_info[k] = rule_info[k] * (1 / total_rule)
             if old_rule:
                 old_rule.rule_info = rule_info
                 db.session.commit()
@@ -3575,6 +3593,12 @@ class PartnerPlacements(db.Model):
                             val = datetime.today()
                         else:
                             val = val.replace('date', '').replace(' ', '')
+                            if 'end' in val:
+                                val = val.split('end')
+                                if col.name == self.start_date.name:
+                                    val = val[0]
+                                else:
+                                    val = val[1]
                             val = utl.string_to_date(val)
                     setattr(place, col.name, val)
             pname = []
@@ -3586,6 +3610,12 @@ class PartnerPlacements(db.Model):
                             val = datetime.today()
                         elif type(val) == str:
                             val = val.replace('date', '')
+                            if 'end' in val:
+                                val = val.split('end')
+                                if col.name == self.start_date.name:
+                                    val = val[0]
+                                else:
+                                    val = val[1]
                             val = utl.string_to_date(val)
                         val = datetime.strftime(val, '%Y%m%d')
                 elif col == Partner.__table__.name:

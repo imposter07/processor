@@ -72,6 +72,22 @@ def _set_task_progress(progress, attempt=1):
             _set_task_progress(progress, attempt)
 
 
+def error_handler(route_function):
+    @wraps(route_function)
+    def decorated_function(*args, **kwargs):
+        try:
+            _set_task_progress(0)
+            result = route_function(*args, **kwargs)
+            _set_task_progress(100)
+            return result
+        except:
+            msg = 'Unhandled exception {}'.format(json.dumps(args))
+            _set_task_progress(100)
+            app.logger.error(msg, exc_info=sys.exc_info())
+            return [pd.DataFrame()]
+    return decorated_function
+
+
 def export_posts(user_id):
     try:
         user = User.query.get(user_id)
@@ -5636,6 +5652,19 @@ def get_plan_placements(plan_id, current_user_id):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+@error_handler
+def plan_check_placements(plan_id, current_user_id, words, new_g_children,
+                          total_db, message):
+    response = ''
+    if total_db.empty:
+        total_db = PartnerPlacements.get_reporting_db_df()
+    for new_g_child_id in new_g_children:
+        response += PartnerPlacements().check_gg_children(
+            new_g_child_id, words=words, total_db=total_db,
+            msg_text='Checking plan placements', message=message)
+    return response
+
+
 def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
                            total_db=None, message=''):
     try:
@@ -6012,22 +6041,6 @@ def get_ai_playbook_market(processor_id, current_user_id):
             'Unhandled exception - Processor {} User {}'.format(
                 processor_id, current_user_id), exc_info=sys.exc_info())
         return pd.DataFrame()
-
-
-def error_handler(route_function):
-    @wraps(route_function)
-    def decorated_function(*args, **kwargs):
-        try:
-            _set_task_progress(0)
-            result = route_function(*args, **kwargs)
-            _set_task_progress(100)
-            return result
-        except:
-            msg = 'Unhandled exception {}'.format(json.dumps(args))
-            _set_task_progress(100)
-            app.logger.error(msg, exc_info=sys.exc_info())
-            return [pd.DataFrame()]
-    return decorated_function
 
 
 @error_handler

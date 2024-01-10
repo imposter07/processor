@@ -2963,7 +2963,11 @@ def set_dashboard_filters_in_db(object_id, form_dicts,
 @bp.route('/get_dash_form', methods=['GET'])
 @login_required
 def processor_get_dash_form():
+    tab = request.args.get('tab')
     form = ProcessorDashboardForm()
+    default_order = form.get_tabs()
+    form.tab.choices = (
+            [(tab, tab)] + [(x, x) for x in default_order if x != tab])
     form_html = render_template('_form.html', form=form)
     return jsonify({'form_html': form_html})
 
@@ -2990,7 +2994,8 @@ def processor_dashboard_create(object_name):
             processor_id=cur_proc.id, name=form.name.data,
             user_id=current_user.id, chart_type=form.chart_type.data,
             dimensions=form.dimensions.data, metrics=form.metrics.data,
-            default_view=form.default_view.data, created_at=datetime.utcnow())
+            default_view=form.default_view.data, tab=form.tab.data,
+            created_at=datetime.utcnow())
         db.session.add(new_dash)
         db.session.commit()
         set_dashboard_filters_in_db(new_dash.id, form.static_filters.data)
@@ -3029,11 +3034,12 @@ def processor_dashboards_get(object_name):
         chart_type = dash.chart_type
         chart_filters = dash.get_filters_json()
         default_view = dash.default_view
+        tab = dash.tab
         dash_html = render_template('dashboards/_dash_card.html', dash=dash)
         dash_data.append(
             {'id': dash_id, 'metrics': metrics, 'dimensions': dimensions,
              'chart_type': chart_type, 'chart_filters': chart_filters,
-             'default_view': default_view, 'html': dash_html})
+             'default_view': default_view, 'tab': tab, 'html': dash_html})
     return jsonify(dash_data)
 
 

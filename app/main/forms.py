@@ -696,6 +696,9 @@ class ProcessorDashboardForm(FlaskForm):
         'Metrics', choices=[(x, x) for x in exp.ScriptBuilder().metrics])
     default_view = SelectField('Default View',
                                choices=[(x, x) for x in ['Table', 'Chart']])
+    tab = SelectField('Tab', choices=[
+        (x, x) for x in ['Topline', 'Partner', 'Country', 'Targeting',
+                         'Placement', 'Creative']])
     add_child = SubmitField(label='Add Static Filter')
     form_continue = HiddenField('form_continue')
     static_filters = FieldList(FormField(StaticFilterForm, label=''))
@@ -709,6 +712,9 @@ class ProcessorDashboardForm(FlaskForm):
             relation_dict.append(form_dict)
         self.static_filters = relation_dict
         return relation_dict
+
+    def get_tabs(self):
+        return [choice[0] for choice in self.tab.choices]
 
 
 class ProcessorCleanDashboardForm(FlaskForm):

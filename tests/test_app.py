@@ -345,7 +345,8 @@ class TestPlan:
         part_budget = '5000'
         submit_form(sw, form_names=[sel_id], submit_id=submit_id,
                     test_name=part_name)
-        sw.xpath_from_id_and_click('tr0', sleep=0)
+        wait_for_id = 'partnerSelect0-selectized'
+        sw.xpath_from_id_and_click('tr0', load_elem_id=wait_for_id)
         elem_id = 'total_budget0'
         sw.wait_for_elem_load(elem_id)
         submit_form(sw, [elem_id], test_name=part_budget)
@@ -823,7 +824,8 @@ class TestReportingDBReadWrite:
                           ('Lollipop', 'chart_type-selectized', 'clear'),
                           ('environmentname', 'dimensions-selectized', 'clear'),
                           ('impressions', 'metrics-selectized'),
-                          ('Chart', 'default_view-selectized', 'clear')]
+                          ('Chart', 'default_view-selectized', 'clear'),
+                          ('Topline', 'tab-selectized', 'clear')]
         sw.send_keys_from_list(dash_form_fill)
         sw.xpath_from_id_and_click('saveDashButton')
         sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
@@ -837,6 +839,40 @@ class TestReportingDBReadWrite:
         metric_selectize = sw.browser.find_element_by_xpath(
             metric_selectize_path)
         assert metric_selectize.get_attribute('value') == 'Impressions'
+
+    def test_partner_charts(self, set_up, user, login, sw, worker,
+                            export_test_data):
+        ffxiv_proc_url = '{}/processor/{}'.format(
+            base_url, urllib.parse.quote(self.test_proc_name))
+        if not sw.browser.current_url == ffxiv_proc_url:
+            sw.go_to_url(ffxiv_proc_url)
+            worker.work(burst=True)
+            sw.wait_for_elem_load('add-dash')
+        sw.xpath_from_id_and_click('add-dash')
+        sw.wait_for_elem_load('chart_type-selectized', selector=sw.select_xpath)
+        test_partner = 'Test-partner'
+        dash_form_fill = [(test_partner, 'name'),
+                          ('Bar', 'chart_type-selectized', 'clear'),
+                          ('vendortypename', 'dimensions-selectized', 'clear'),
+                          ('clicks', 'metrics-selectized'),
+                          ('Table', 'default_view-selectized', 'clear'),
+                          ('Partner', 'tab-selectized', 'clear')]
+        sw.send_keys_from_list(dash_form_fill)
+        sw.xpath_from_id_and_click('saveDashButton')
+        sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
+        worker.work(burst=True)
+        partner_tab = 'nav-partner-tab'
+        assert sw.browser.find_element_by_id(partner_tab)
+        sw.xpath_from_id_and_click('nav-partner-tab')
+        worker.work(burst=True)
+        assert sw.browser.find_element_by_id('partnerSummaryMetrics')
+        partner_dash = sw.browser.find_element_by_css_selector(
+            '[data-name="{}"]'.format(test_partner))
+        assert partner_dash
+        dash_id = partner_dash.get_attribute('id').replace('card', '')
+        show_chart = "showChartBtn{}Metrics".format(dash_id)
+        sw.wait_for_elem_load(show_chart)
+        assert sw.browser.find_element_by_id(show_chart)
 
     @pytest.fixture(scope="class")
     def request_dashboard(self, sw, worker):

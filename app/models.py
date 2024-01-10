@@ -2054,6 +2054,7 @@ class Dashboard(db.Model):
     dimensions = db.Column(db.Text)
     metrics = db.Column(db.Text)
     default_view = db.Column(db.Text)
+    tab = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     dashboard_filters = db.relationship('DashboardFilter',
                                         backref='dashboard', lazy='dynamic')

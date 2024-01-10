@@ -2750,6 +2750,16 @@ class Plan(db.Model):
         r += Uploader.wrap_example_prompt(x['message'])
         return r
 
+    def launch_placement_task(self, new_g_children, words, message):
+        total_db = pd.DataFrame()
+        msg_text = 'Checking plan placements.'
+        self.launch_task(
+            '.plan_check_placements', _(msg_text),
+            running_user=current_user.id, words=words, total_db=total_db,
+            new_g_children=new_g_children, message=message)
+        db.session.commit()
+        return True
+
 
 class Sow(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -3442,8 +3452,9 @@ class PartnerPlacements(db.Model):
             name_list = utl.get_next_values_from_list(
                 words, col_names, cols, date_search=date_search)
             if date_search:
-                name_list = [x.replace('date', '').split('end')[0] for x in
-                             name_list]
+                name_list = [
+                    PartnerPlacements.fix_date_from_words(str_name, x, True)
+                    for x in name_list]
             name_list = [{db_col: x} for x in name_list]
         else:
             name_list = Client.get_name_list(db_col, min_impressions)
@@ -3526,15 +3537,23 @@ class PartnerPlacements(db.Model):
 
     def check_gg_children(self, parent_id, words, total_db, msg_text,
                           message=''):
+        if current_user:
+            running_user_id = current_user.id
+        else:
+            for x in range(1, 5):
+                running_user = db.session.get(User, x)
+                if running_user:
+                    running_user_id = running_user.id
+                    break
         parent = db.session.get(Partner, parent_id)
         g_parent = db.session.get(PlanPhase, parent.plan_phase_id)
         gg_parent = db.session.get(Plan, g_parent.plan_id)
         gg_parent.launch_task(
-            '.check_plan_gg_children', _(msg_text),
-            running_user=current_user.id, parent_id=parent_id, words=words,
+            '.check_plan_gg_children', msg_text,
+            running_user=running_user_id, parent_id=parent_id, words=words,
             total_db=total_db, message=message)
         db.session.commit()
-        return True
+        return 'True'
 
     def check_col_in_words(self, words, parent_id, total_db=pd.DataFrame(),
                            message=''):
@@ -3557,6 +3576,30 @@ class PartnerPlacements(db.Model):
             response = 'Added rules for {} for columns {}'.format(
                 parent.name, ','.join([x.place_col for x in new_rules]))
         return response
+
+    @staticmethod
+    def fix_date_from_words(col, val, to_str=False):
+        sd_name = PartnerPlacements.start_date.name
+        ed_name = PartnerPlacements.end_date.name
+        col_name = col
+        if hasattr(col, 'name'):
+            col_name = col.name
+        if col_name in [sd_name, ed_name]:
+            if not val:
+                val = datetime.today()
+            elif isinstance(val, str):
+                for bad_str in ['date', ' ', 'is', 'and']:
+                    val = val.replace(bad_str, '')
+                if 'end' in val:
+                    val = val.split('end')
+                    if col_name == sd_name:
+                        val = val[0]
+                    else:
+                        val = val[1]
+                val = utl.string_to_date(val)
+            if to_str:
+                val = datetime.strftime(val, '%Y%m%d')
+        return val
 
     def create_from_rules(self, parent_id):
         parent = db.session.get(Partner, parent_id)
@@ -3589,36 +3632,14 @@ class PartnerPlacements(db.Model):
             for col in self.__table__.columns:
                 if col.name in temp_dict and temp_dict[col.name]:
                     val = temp_dict[col.name]
-                    if col.name in [self.start_date.name, self.end_date.name]:
-                        if not val:
-                            val = datetime.today()
-                        else:
-                            val = val.replace('date', '').replace(' ', '')
-                            if 'end' in val:
-                                val = val.split('end')
-                                if col.name == self.start_date.name:
-                                    val = val[0]
-                                else:
-                                    val = val[1]
-                            val = utl.string_to_date(val)
+                    val = PartnerPlacements.fix_date_from_words(col, val)
                     setattr(place, col.name, val)
             pname = []
             for col in col_order:
                 if col in place.__dict__:
                     val = place.__dict__[col]
-                    if col in [self.start_date.name, self.end_date.name]:
-                        if not val:
-                            val = datetime.today()
-                        elif type(val) == str:
-                            val = val.replace('date', '')
-                            if 'end' in val:
-                                val = val.split('end')
-                                if col.name == self.start_date.name:
-                                    val = val[0]
-                                else:
-                                    val = val[1]
-                            val = utl.string_to_date(val)
-                        val = datetime.strftime(val, '%Y%m%d')
+                    val = PartnerPlacements.fix_date_from_words(col, val,
+                                                                to_str=True)
                 elif col == Partner.__table__.name:
                     val = parent.name
                 elif col == PlanPhase.__table__.name:

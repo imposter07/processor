@@ -340,7 +340,7 @@ def set_form_contents_from_db(cur_obj, sql_choices=None):
 def create_local_path(cur_obj):
     if not cur_obj.local_path:
         file_path_elems = [
-            'mnt', 'c', 'clients', cur_obj.campaign.product.client.name,
+            '/mnt', 'c', 'clients', cur_obj.campaign.product.client.name,
             cur_obj.campaign.product.name, cur_obj.campaign.name, cur_obj.name,
             cur_obj.__table__.name]
         base_path = ''

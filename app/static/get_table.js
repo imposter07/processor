@@ -278,8 +278,10 @@ function getTableError(error, kwargs) {
 
 function setDownloadBarAndLoadingBtn(elemId) {
     let elem = document.getElementById(elemId);
-    setDownloadBar(elem, '', false);
-    loadingBtn(elem);
+    if (elem) {
+        setDownloadBar(elem, '', false);
+        loadingBtn(elem);
+    }
 }
 
 async function getTable(tableName, clickElem, oldHtml = 'None', vendorKey= 'None',

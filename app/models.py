@@ -1843,6 +1843,10 @@ class Uploader(db.Model):
         else:
             pre = 'To upload next level: '
         response = '{}{}'.format(pre, response)
+        msg = ('<br>To view a preview table of what will be '
+               'uploaded  use this prompt: {}'.format(
+            response.replace('Run', '')))
+        response += msg
         return response
 
     def run_object(self, words):

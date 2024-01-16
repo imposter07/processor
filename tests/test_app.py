@@ -308,9 +308,10 @@ class TestPlan:
         calc_route = plan_routes.calc.__name__
         rfp_route = plan_routes.rfp.__name__
         rules_route = plan_routes.plan_rules.__name__
+        place_route = plan_routes.plan_placements.__name__
         url_dict = {}
         url_routes = [topline_route, sow_route, calc_route, rfp_route,
-                      rules_route]
+                      rules_route, place_route]
         for url_route in url_routes:
             url_str = url_route
             if url_route == sow_route:
@@ -319,6 +320,18 @@ class TestPlan:
         if url_type in url_dict:
             url += '/{}/{}'.format(name_url, url_dict[url_type])
         return url
+
+    def check_and_get_plan(self, sw, login, worker, url=''):
+        cur_plan = Plan.query.filter_by(name=self.test_name).first()
+        if not cur_plan:
+            self.test_topline(sw, login, worker)
+            cur_plan = Plan.query.filter_by(name=self.test_name).first()
+        if url:
+            elem_id = ''.join(x.capitalize() for x in url.split('_'))
+            url = self.get_url(url)
+            sw.go_to_url(url, elem_id='loadingBtn{}'.format(elem_id))
+            worker.work(burst=True)
+        return cur_plan
 
     def test_create_plan(self, sw, login, worker):
         create_url = self.get_url()
@@ -376,12 +389,8 @@ class TestPlan:
         assert phase[0].name == self.test_name
 
     def test_rules(self, sw, login, worker):
-        cur_plan = Plan.query.filter_by(name=self.test_name).first()
-        if not cur_plan:
-            self.test_topline(sw, login, worker)
-        rule_url = self.get_url(plan_routes.plan_rules.__name__)
-        sw.go_to_url(rule_url, elem_id='loadingBtnPlanRules')
-        worker.work(burst=True)
+        url = plan_routes.plan_rules.__name__
+        self.check_and_get_plan(sw, login, worker, url)
         elem_id = 'rowplace_col0'
         sw.wait_for_elem_load(elem_id)
         elem = sw.browser.find_element_by_id(elem_id)
@@ -411,23 +420,24 @@ class TestPlan:
         assert data[second_name] == .5
 
     def test_rules_lookup(self, sw, login, worker):
-        cur_plan = Plan.query.filter_by(name=self.test_name).first()
-        if not cur_plan:
-            self.test_rules(sw, login, worker)
-        rule_url = self.get_url(plan_routes.plan_rules.__name__)
-        sw.go_to_url(rule_url, elem_id='loadingBtnPlanRules')
+        url = plan_routes.plan_rules.__name__
+        self.check_and_get_plan(sw, login, worker, url)
+
+    def test_placements(self, sw, login, worker):
+        url = plan_routes.plan_placements.__name__
+        cur_plan = self.check_and_get_plan(sw, login, worker, url)
+        elem_id = 'rowbudget0'
+        load_elem_id = 'budget0'
+        sw.wait_for_elem_load(elem_id)
+        sw.xpath_from_id_and_click(elem_id, load_elem_id=load_elem_id)
+        submit_form(sw, [load_elem_id])
         worker.work(burst=True)
+        cur_place = cur_plan.phases[0].partners[0].placements.first()
+        assert cur_place.budget == self.test_name
 
     def test_calc(self, sw, login, worker):
-        p = Plan.query.filter_by(name=self.test_name).first()
-        if not p:
-            self.test_create_plan(sw, login, worker)
-            p = Plan.query.filter_by(name=self.test_name).first()
-        edit_url = self.get_url('calc')
-        sw.go_to_url(edit_url, elem_id='loadingBtnCalc')
-        assert sw.browser.current_url == edit_url
-        worker.work(burst=True)
-        TestProject.wait_for_jobs_finish()
+        url = plan_routes.calc.__name__
+        p = self.check_and_get_plan(sw, login, worker, url)
         elem_id = 'rowHeaders0'
         sw.wait_for_elem_load(elem_id)
         elem = sw.browser.find_element_by_id(elem_id)

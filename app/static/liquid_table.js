@@ -755,7 +755,7 @@ function addRowToTable(rowData, tableName, customTableCols) {
                 <div class="card-body">
                     <div class="${formHolderName}" id="${formHolderName}${loopIndex}" >
                         <form id="form${tableName}${loopIndex}"  class="row">
-                            <div class="col-4 form-group">
+                            <div class="col form-group">
                                 <label class="control-label" for="deleteRow${loopIndex}">DELETE</label>
                                 <button id="deleteRow${loopIndex}" onclick="deleteRow(${loopIndex}, ${tableName});"
                                         class="btn btn-block btn-outline-danger text-left" type="button" href="">
@@ -1758,6 +1758,28 @@ function getMetadata(elementId) {
     return data;
 }
 
+function editInlineOnBlur() {
+    let formElem = this;
+    let tmpFormElemId = `${formElem.id}TMP`;
+    let tmpFormElem = document.getElementById(tmpFormElemId);
+    tmpFormElem.insertAdjacentElement('afterend', formElem);
+    let rowElem = document.getElementById(`row${formElem.id}`);
+    rowElem.style.display = '';
+}
+
+function editInlineOnClick() {
+    let rowElem = this;
+    let formElem = document.getElementById(rowElem.id.replace('row', ''));
+    let tmpFormElemId = `${formElem.id}TMP`;
+    let tmpFormElem = document.getElementById(tmpFormElemId);
+    if (!(tmpFormElem)) {
+        formElem.insertAdjacentHTML('afterend', `<div id="${tmpFormElemId}"></div>`);
+    }
+    rowElem.style.display = 'none';
+    rowElem.insertAdjacentElement('afterend', formElem);
+    addOnClickEvent(`#${formElem.id}`, editInlineOnBlur,'blur');
+}
+
 function createLiquidTable(data, kwargs) {
     let tableName = kwargs['tableName'];
     let tableData = data['data'];
@@ -1784,6 +1806,7 @@ function createLiquidTable(data, kwargs) {
     let tableButtons = existsInJson(tableData, 'table_buttons');
     let filterDict = existsInJson(tableData, 'filter_dict');
     let metadata =  existsInJson(tableData, 'metadata');
+    let inlineEdit =  existsInJson(tableData, 'inline_edit');
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
@@ -1820,4 +1843,7 @@ function createLiquidTable(data, kwargs) {
     addOnClickEvent('button[id^=addRows]', addRowsOnClick);
     addOnClickEvent('button[id^=addTopRow]', addTopRowOnClick);
     addOnClickEvent('button[id^=downloadBtn]', downloadLiquidTable);
+    if (inlineEdit) {
+        addOnClickEvent('td[id^=row]', editInlineOnClick);
+    }
 }

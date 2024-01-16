@@ -369,7 +369,8 @@ class LiquidTable(object):
                  highlight_type='blank', slider_edit_col='', slider_abs_col='',
                  prog_colors='success', download_table=False, filter_dict=None,
                  hidden_cols=None, link_cols=None, cell_pick_cols=None,
-                 metadata=None, total_default_val=0, table_name='liquidTable'):
+                 metadata=None, total_default_val=0,
+                 inline_edit=False, table_name='liquidTable'):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -409,6 +410,7 @@ class LiquidTable(object):
         self.cell_pick_cols = cell_pick_cols
         self.metadata = metadata
         self.total_default_val = total_default_val
+        self.inline_edit = inline_edit
         if self.slider_edit_col:
             self.accordion = True
         self.df = df
@@ -433,7 +435,7 @@ class LiquidTable(object):
             self.new_modal_button, self.col_filter, self.search_bar,
             self.chart_btn, self.chart_func, self.chart_show, self.row_on_click,
             self.table_buttons, self.custom_cols, self.filter_dict,
-            self.metadata, self.total_default_val)
+            self.metadata, self.total_default_val, self.inline_edit)
 
     def create_buttons(self):
         if not self.table_buttons:
@@ -509,7 +511,7 @@ class LiquidTable(object):
                         table_name, new_modal_button, col_filter, search_bar,
                         chart_btn, chart_func, chart_show, row_on_click,
                         table_buttons, custom_cols, filter_dict, metadata,
-                        total_default_val):
+                        total_default_val, inline_edit):
         table_dict = {'data': data, 'rows_name': self.rows_name, 'cols': cols,
                       'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
                       'totals': totals, 'title': title,
@@ -525,7 +527,8 @@ class LiquidTable(object):
                       'table_buttons': table_buttons,
                       'custom_cols': custom_cols, 'filter_dict': filter_dict,
                       'metadata': metadata,
-                      'total_default_val': total_default_val}
+                      'total_default_val': total_default_val,
+                      'inline_edit': inline_edit}
         return table_dict
 
     @staticmethod

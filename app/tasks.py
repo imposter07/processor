@@ -5636,12 +5636,13 @@ def get_plan_rules(plan_id, current_user_id):
 def get_plan_placements(plan_id, current_user_id):
     try:
         _set_task_progress(0)
-        cur_plan = Plan.query.get(plan_id)
+        cur_plan = db.session.get(Plan, plan_id)
         df = cur_plan.get_placements_as_df()
         name = 'PlanPlacements'
         lt = app_utl.LiquidTable(
             df=df, title=name, table_name=name, download_table=True,
-            specify_form_cols=False, accordion=True)
+            specify_form_cols=True, accordion=False, inline_edit=True,
+            form_cols=df.columns.to_list())
         _set_task_progress(100)
         return [lt.table_dict]
     except:
@@ -6340,9 +6341,11 @@ def write_plan_placements(plan_id, current_user_id, new_data=None):
         _set_task_progress(0)
         df = pd.read_json(new_data)
         df = pd.DataFrame(df[0][1])
-        df = df.to_dict(orient='records')
-        set_processor_values(plan_id, current_user_id, df, PartnerPlacements,
-                             Plan)
+        col = PartnerPlacements.partner_id.name
+        for part_id in df[col].unique():
+            tdf = df[df[col] == part_id].to_dict(orient='records')
+            set_processor_values(part_id, current_user_id, tdf,
+                                 PartnerPlacements, Partner)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

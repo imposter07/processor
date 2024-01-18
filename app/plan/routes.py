@@ -220,7 +220,6 @@ def save_topline():
             relation_db_item=cur_phase, form_search_name='partnerSelect',
             delete_children=True)
         new_part = Partner.query.filter_by(plan_phase_id=cur_phase.id).all()
-        # db_df = PartnerPlacements().get_reporting_db_df()
         config_path = os.path.join('processor', 'config')
         aly = az.Analyze(load_chat=True, chat_path=config_path)
         for part in new_part:

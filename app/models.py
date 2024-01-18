@@ -2350,6 +2350,22 @@ class Tutorial(db.Model):
             tutorial_level=last_stage - 1, tutorial_id=self.id).first()
         return user_complete
 
+    @staticmethod
+    def get_all_tutorial_sheets():
+        g_n = 'Glossary of Advertising and Gaming Abbreviations'
+        g = (None, 'Glossary', g_n)
+        ts_n = 'Time Savers - Software Helpers'
+        ts_n_2 = ts_n.split(' - ')[0]
+        ts = ('1QbKl6SSgm1DG7pYpXO76gGiuPQ5cV3umYgePkHwKf8Y', ts_n_2, ts_n)
+        ai_n = 'AI - Playbook - Market'
+        ai = ('139kGYyzlioabc1DlrH9ncyEhhQCk8DQl65ra1adLKXc',ai_n, ai_n)
+        e_n = 'Effective RF Planning Model'
+        e = ('1NCetqvNW4-UqJ5utk537dQi78L1K_yUIYm3cE7RVO-c', e_n, e_n)
+        c_n = 'App - Chat - Capabilities'
+        c = ('1Qeqf5CvvgCDRrtwpmO9MS4RBBbE36MOv5W92UOGnYQY', c_n, c_n)
+        sheet_list = [g, ts, ai, e, c]
+        return sheet_list
+
 
 class TutorialStage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2754,13 +2770,15 @@ class Plan(db.Model):
         r += Uploader.wrap_example_prompt(x['message'])
         return r
 
-    def launch_placement_task(self, new_g_children, words, message):
+    def launch_placement_task(self, new_g_children, words, message,
+                              brand_new_ids=None):
         total_db = pd.DataFrame()
         msg_text = 'Checking plan placements.'
         self.launch_task(
             '.plan_check_placements', _(msg_text),
             running_user=current_user.id, words=words, total_db=total_db,
-            new_g_children=new_g_children, message=message)
+            new_g_children=new_g_children, message=message,
+            brand_new_ids=brand_new_ids)
         db.session.commit()
         return True
 
@@ -3371,18 +3389,28 @@ class PartnerPlacements(db.Model):
         return cols
 
     @staticmethod
-    def get_reporting_db_df():
+    def get_reporting_db_df(vendor_names=None):
         cols = PartnerPlacements.get_cols_for_db()
         parameter = '|'.join(cols)
-        total_db = ProcessorAnalysis.query.filter_by(
-            processor_id=23, key='database_cache', parameter=parameter,
-            filter_col='').order_by(ProcessorAnalysis.date).first()
-        if total_db:
-            total_db = pd.read_json(total_db.data)
+        kwargs = {'filter_col': ''}
+        if vendor_names:
+            kwargs['filter_col'] = prc_model.Vendor.vendorname.name
         else:
-            total_db = pd.DataFrame()
-            for col in cols:
-                total_db[col] = ['None']
+            vendor_names = ['']
+        total_db = pd.DataFrame()
+        for vendor_name in vendor_names:
+            if vendor_name:
+                kwargs['filter_val'] = vendor_name
+            tdf = ProcessorAnalysis.query.filter_by(
+                processor_id=23, key='database_cache', parameter=parameter,
+                **kwargs).order_by(ProcessorAnalysis.date).first()
+            if tdf:
+                tdf = pd.read_json(tdf.data)
+            else:
+                tdf = pd.DataFrame()
+                for col in cols:
+                    tdf[col] = ['None']
+            total_db = pd.concat([total_db, tdf], ignore_index=True, sort=False)
         return total_db
 
     @staticmethod

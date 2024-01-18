@@ -38,6 +38,7 @@ import processor.reporting.dictcolumns as dctc
 import processor.reporting.importhandler as ih
 import processor.reporting.gsapi as gsapi
 from processor.reporting.vendormatrix import full_placement_creation
+import processor.reporting.models as prc_model
 import uploader.upload.utils as u_utl
 import uploader.upload.creator as cre
 
@@ -249,11 +250,13 @@ def processor_failed_email(processor_id, current_user_id, exception_text):
 def update_cached_data_in_processor_run(processor_id, current_user_id):
     try:
         _set_task_progress(0)
+        ven_col = prc_model.Vendor.vendorname.name
         dim_list = [
-            ['vendorname'], ['countryname'], ['kpiname'], ['environmentname'],
+            [ven_col], ['countryname'], ['kpiname'], ['environmentname'],
             ['productname'], ['eventdate'], ['campaignname'], ['clientname'],
             ['vendorname', 'vendortypename']]
         filter_dicts = [[]]
+        cols = []
         if processor_id == 23:
             today = dt.datetime.today()
             thirty = today - dt.timedelta(days=30)
@@ -273,9 +276,20 @@ def update_cached_data_in_processor_run(processor_id, current_user_id):
             app.logger.info('Getting db col: {}'.format(col))
             os.chdir(cur_path)
             for filter_dict in filter_dicts:
-                get_data_tables_from_db(
+                df = get_data_tables_from_db(
                     processor_id, current_user_id, dimensions=col,
                     metrics=['kpi'], filter_dict=filter_dict, use_cache=False)
+                if col == cols and not filter_dict:
+                    ven_list = df[0].groupby(ven_col)[vmc.impressions].sum()
+                    ven_list = ven_list[ven_list > 100000].index.to_list()
+                    for vendor in ven_list:
+                        os.chdir(cur_path)
+                        tdf = df[0][df[0][ven_col] == vendor]
+                        t_filter_dict = [{ven_col: [vendor]}]
+                        update_analysis_in_db_reporting_cache(
+                            processor_id, current_user_id, df=tdf,
+                            dimensions=col, metrics=['kpi'],
+                            filter_dict=t_filter_dict)
         _set_task_progress(100)
         return True
     except:
@@ -316,11 +330,9 @@ def run_processor(processor_id, current_user_id, run_args):
             update_cached_data_in_processor_run(processor_id, current_user_id)
             update_all_notes_table(processor_id, current_user_id)
             if processor_id == 23:
-                task_functions = [get_project_numbers, get_glossary_definitions,
-                                  get_post_mortems, get_time_savers,
-                                  get_ai_playbook_market, get_contact_numbers,
-                                  get_rate_cards, get_plan_calc_tutorial,
-                                  get_chat_tutorial]
+                task_functions = [
+                    get_project_numbers, get_post_mortems, get_contact_numbers,
+                    get_rate_cards, get_all_tutorials_from_google_doc]
                 for task_function in task_functions:
                     os.chdir(cur_path)
                     task_function(processor_id, current_user_id)
@@ -5655,10 +5667,14 @@ def get_plan_placements(plan_id, current_user_id):
 
 @error_handler
 def plan_check_placements(plan_id, current_user_id, words, new_g_children,
-                          total_db, message):
+                          total_db, message, brand_new_ids=None):
     response = ''
     if total_db.empty:
-        total_db = PartnerPlacements.get_reporting_db_df()
+        vendor_names = []
+        if brand_new_ids:
+            vendor_names = [db.session.get(Partner, x).name for x in
+                            brand_new_ids]
+        total_db = PartnerPlacements.get_reporting_db_df(vendor_names)
     for new_g_child_id in new_g_children:
         response += PartnerPlacements().check_gg_children(
             new_g_child_id, words=words, total_db=total_db,
@@ -5994,74 +6010,13 @@ def get_processor_data_source_table(processor_id, current_user_id):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def get_glossary_definitions(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        df = get_google_doc_for_tutorial(
-            processor_id, current_user_id, None, 'Glossary',
-            'Glossary of Advertising and Gaming Abbreviations')[0]
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id), exc_info=sys.exc_info())
-        return pd.DataFrame()
-
-
-def get_time_savers(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        df = get_google_doc_for_tutorial(
-            processor_id, current_user_id,
-            '1QbKl6SSgm1DG7pYpXO76gGiuPQ5cV3umYgePkHwKf8Y',
-            'Time Savers', 'Time Savers - Software Helpers')[0]
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id), exc_info=sys.exc_info())
-        return pd.DataFrame()
-
-
-def get_ai_playbook_market(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        df = get_google_doc_for_tutorial(
-            processor_id, current_user_id,
-            '139kGYyzlioabc1DlrH9ncyEhhQCk8DQl65ra1adLKXc',
-            'AI - Playbook - Market', 'AI - Playbook - Market')[0]
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id), exc_info=sys.exc_info())
-        return pd.DataFrame()
-
-
 @error_handler
-def get_plan_calc_tutorial(processor_id, current_user_id):
-    name = 'Effective RF Planning Model'
-    df = get_google_doc_for_tutorial(
-        processor_id, current_user_id,
-        sheet_id='1NCetqvNW4-UqJ5utk537dQi78L1K_yUIYm3cE7RVO-c',
-        note_type=name, tutorial_name=name)[0]
-    return [df]
-
-
-@error_handler
-def get_chat_tutorial(processor_id, current_user_id):
-    name = 'App - Chat - Capabilities'
-    df = get_google_doc_for_tutorial(
-        processor_id, current_user_id,
-        sheet_id='1Qeqf5CvvgCDRrtwpmO9MS4RBBbE36MOv5W92UOGnYQY',
-        note_type=name, tutorial_name=name)[0]
-    return [df]
+def get_all_tutorials_from_google_doc(processor_id, current_user_id):
+    sheet_list = Tutorial.get_all_tutorial_sheets()
+    for s in sheet_list:
+        get_google_doc_for_tutorial(
+            processor_id, current_user_id, s[0], s[1], s[2])
+    return True
 
 
 @error_handler

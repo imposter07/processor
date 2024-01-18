@@ -543,7 +543,6 @@ class TestProject:
 
 class TestTutorial:
     test_name = TestPlan.test_name
-    tutorial_name = 'Effective RF Planning Model'
 
     def test_get_tutorial(self, sw, login, worker, create_processor):
         p = Processor.query.filter_by(name=self.test_name).first()
@@ -551,20 +550,22 @@ class TestTutorial:
             p = Processor(name=self.test_name)
             db.session.add(p)
             db.session.commit()
-        task_names = ['.get_plan_calc_tutorial', '.get_chat_tutorial']
+        task_names = ['.get_all_tutorials_from_google_doc']
         for task_name in task_names:
             p.launch_task(task_name, '', 1)
         worker.work(burst=True)
-        t = Tutorial.query.filter_by(name=self.tutorial_name).first()
-        assert t.name == self.tutorial_name
+        sheets = Tutorial.get_all_tutorial_sheets()
+        for sheet in sheets:
+            sheet_name = sheet[2]
+            t = Tutorial.query.filter_by(name=sheet_name).first()
+            assert t.name == sheet_name
         all_tuts = Tutorial.query.all()
-        assert len(all_tuts) == len(task_names)
-        return t
+        assert len(all_tuts) == len(sheets)
 
     def test_tutorial(self, sw, login, worker, create_processor):
-        t = Tutorial.query.filter_by(name=self.tutorial_name).first()
+        t = Tutorial.query.all()
         if not t:
-            t = self.test_get_tutorial(sw, login, worker, create_processor)
+            self.test_get_tutorial(sw, login, worker, create_processor)
         elem_id = 'tutorialCardBody'
         sw.go_to_url(base_url, elem_id=elem_id)
         link_xpath = '//*[@id="{}"]/div/div/h5/a'.format(elem_id)

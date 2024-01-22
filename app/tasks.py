@@ -3274,6 +3274,7 @@ def duplicate_processor_in_db(processor_id, current_user_id, form_data):
         new_processor.end_date = form_data['new_end_date']
         if 'new_proc' not in form_data:
             db.session.add(new_processor)
+        new_processor.local_path = ''
         db.session.commit()
         new_path = app_utl.create_local_path(new_processor)
         new_processor.local_path = new_path
@@ -6296,8 +6297,10 @@ def write_plan_placements(plan_id, current_user_id, new_data=None):
         _set_task_progress(0)
         df = pd.read_json(new_data)
         df = pd.DataFrame(df[0][1])
+        odf = get_plan_placements(plan_id, current_user_id)
         col = PartnerPlacements.partner_id.name
-        for part_id in df[col].unique():
+        unique_ids = df[col].unique()
+        for part_id in unique_ids:
             tdf = df[df[col] == part_id].to_dict(orient='records')
             set_processor_values(part_id, current_user_id, tdf,
                                  PartnerPlacements, Partner)

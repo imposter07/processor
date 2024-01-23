@@ -377,7 +377,6 @@
                 'generateProgressBars', ['vendorname'], ['netcost', 'plannednetcost'], filterDict, true);
             getTable('deliveryMetrics', 'deliveryMetricsProgress', 'None', 'None',
                 'None', true, 'None', false, delivery_metric_args);
-            buildCustomCharts('Topline');
             if (!allCharts) {
                 let pacing_alert_args = getDataTableArgsDict(
                     'generateAlertCount', ['vendorname'], ['netcost', 'plannednetcost'], filterDict);
@@ -448,7 +447,8 @@
                     chartType, [colName], metrics, filterDict, true);
                 getTable(chartId, `${chartId}Progress`, 'None', 'None',
                     'None', true, 'None', false, secondary_metric_args);
-            })
+            });
+            buildCustomCharts('Topline');
         }
 
         function getPartnerMetrics(filterDict = null, clickElem = null, oldHtml = null,

@@ -374,7 +374,7 @@ class Task(db.Model):
         job = self.get_rq_job()
         return job.meta.get('progress', 0) if job is not None else 100
 
-    def wait_for_job(self, loops=1000):
+    def wait_for_job(self, loops=100):
         for x in range(loops):
             if self.get_progress() == 100:
                 return True

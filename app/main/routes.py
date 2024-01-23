@@ -422,6 +422,7 @@ def unfollow_processor(object_name):
 
 @bp.route('/get_completed_task', methods=['GET', 'POST'])
 @login_required
+@error_handler
 def get_completed_task():
     task = Task.query.get(request.form['task'])
     table_name, cur_proc, proc_arg, job_name = get_table_arguments()
@@ -431,6 +432,7 @@ def get_completed_task():
 
 @bp.route('/get_task_progress', methods=['GET', 'POST'])
 @login_required
+@error_handler
 def get_task_progress():
     proc_arg = {'use_cache': (
             'args' in request.form and 'use_cache' in request.form['args'])}

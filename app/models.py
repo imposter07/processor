@@ -379,16 +379,17 @@ class Task(db.Model):
             if self.get_progress() == 100:
                 return True
             else:
-                time.sleep(.5)
+                time.sleep(.1)
         return False
 
     def check_return_value(self, job, force_return):
-        if force_return and not job.result:
-            job = self.get_rq_job()
-            time.sleep(5)
-            if not job.result:
-                time.sleep(1)
-                self.check_return_value(job, force_return)
+        if force_return and job and not job.result:
+            for x in range(10):
+                job = self.get_rq_job()
+                if job.result:
+                    break
+                else:
+                    time.sleep(.1)
         return job
 
     def wait_and_get_job(self, loops=1000, force_return=False):
@@ -3633,6 +3634,23 @@ class PartnerPlacements(db.Model):
                 val = datetime.strftime(val, '%Y%m%d')
         return val
 
+    def create_placement_name(self, place_dict, parent):
+        col_order = self.get_col_order()
+        pname = []
+        for col in col_order:
+            if col in place_dict:
+                val = place_dict[col]
+                val = self.fix_date_from_words(col, val, to_str=True)
+            elif col == Partner.__table__.name:
+                val = parent.name
+            elif col == PlanPhase.__table__.name:
+                val = parent.plan.name
+            else:
+                val = ''
+            pname.append(val)
+        pname = '_'.join(pname)
+        return pname
+
     def create_from_rules(self, parent_id):
         parent = db.session.get(Partner, parent_id)
         parent_budget = float(parent.total_budget)
@@ -3642,7 +3660,6 @@ class PartnerPlacements(db.Model):
         keys = [list(x.keys()) for x in rule_dict.values()]
         combos = list(itertools.product(*keys))
         data = []
-        col_order = self.get_col_order()
         old_placements = PartnerPlacements.query.filter_by(
             partner_id=parent_id).all()
         for p in old_placements:
@@ -3666,20 +3683,8 @@ class PartnerPlacements(db.Model):
                     val = temp_dict[col.name]
                     val = PartnerPlacements.fix_date_from_words(col, val)
                     setattr(place, col.name, val)
-            pname = []
-            for col in col_order:
-                if col in place.__dict__:
-                    val = place.__dict__[col]
-                    val = PartnerPlacements.fix_date_from_words(col, val,
-                                                                to_str=True)
-                elif col == Partner.__table__.name:
-                    val = parent.name
-                elif col == PlanPhase.__table__.name:
-                    val = parent.plan.name
-                else:
-                    val = ''
-                pname.append(val)
-            pname = '_'.join(pname)
+            pname = PartnerPlacements.create_placement_name(
+                PartnerPlacements, place.__dict__, parent)
             setattr(place, self.name.name, pname)
             db.session.add(place)
             db.session.commit()

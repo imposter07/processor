@@ -8,7 +8,8 @@ import app.utils as app_utl
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
     Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, Client, \
-    Product
+    Product, Processor
+import app.tasks as app_tasks
 
 
 def test_index(client, user):
@@ -187,11 +188,16 @@ class TestChat:
 
 class TestUtils:
 
-    def test_parse_filter_dict_from_clients(self, user, app_fixture):
+    @staticmethod
+    def check_and_add_parents():
         name = Client.get_default_name()[0]
         cli = Client(name=name).check_and_add()
         pro = Product(name=name, client_id=cli.id).check_and_add()
         cam = Campaign(name=name, product_id=pro.id).check_and_add()
+        return name, cli, pro, cam
+
+    def test_parse_filter_dict_from_clients(self, user, app_fixture):
+        name, cli, pro, cam = self.check_and_add_parents()
         new_name = '{}0'.format(name)
         cam1 = Campaign(name=new_name, product_id=pro.id).check_and_add()
         for idx, cur_name in enumerate([name, new_name]):
@@ -217,3 +223,22 @@ class TestUtils:
             results, None, None, filter_dict, db_model=Project)
         objs = objs.all()
         assert len(objs) == len(p)
+
+
+class TestTasks:
+
+    def test_duplicate_in_db(self, user, app_fixture):
+        name, cli, pro, cam = TestUtils.check_and_add_parents()
+        old_proc = Processor(name=name, campaign_id=cam.id)
+        db.session.add(old_proc)
+        db.session.commit()
+        new_name = '{}0'.format(name)
+        form_data = {'new_name': new_name}
+        for col in ['new_start_date', 'new_end_date']:
+            form_data[col] = dt.datetime.today()
+        new_id = app_tasks.duplicate_processor_in_db(old_proc.id, 1, form_data)
+        new_proc = db.session.get(Processor, new_id)
+        assert new_proc.name == new_name
+        assert new_name in new_proc.local_path
+        for cur_proc in [old_proc, new_proc]:
+            db.session.delete(cur_proc)

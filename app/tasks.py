@@ -3261,7 +3261,7 @@ def processor_fix_requests(processor_id, current_user_id):
 
 def duplicate_processor_in_db(processor_id, current_user_id, form_data):
     try:
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         proc_dict = cur_processor.to_dict()
         if 'new_proc' in form_data:
             new_processor = Processor.query.get(form_data['new_proc'])

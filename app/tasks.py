@@ -2010,14 +2010,26 @@ def set_processor_values(processor_id, current_user_id, form_sources, table,
     else:
         key = table.processor_id.name
     old_items = table.query.filter_by(**{key: processor_id}).all()
+    form_ids = []
+    for form in form_sources:
+        cur_item = None
+        if 'id' in form:
+            cur_id = form['id']
+            form_ids.append(cur_id)
+            cur_item = db.session.get(table, cur_id)
+        if cur_item:
+            for k, v in form.items():
+                cur_dict = cur_item.__dict__
+                if k in cur_dict and v != cur_dict and v != 'id':
+                    setattr(cur_item, k, v)
+        else:
+            t = table()
+            t.set_from_form(form, cur_processor)
+            db.session.add(t)
     if old_items:
         for item in old_items:
-            db.session.delete(item)
-        db.session.commit()
-    for form_source in form_sources:
-        t = table()
-        t.set_from_form(form_source, cur_processor)
-        db.session.add(t)
+            if item.id not in form_ids:
+                db.session.delete(item)
     db.session.commit()
     msg_text = "{} {} {} set.".format(
         parent_model.__name__, cur_processor.name, table.__name__)
@@ -6298,12 +6310,13 @@ def write_plan_placements(plan_id, current_user_id, new_data=None):
         df = pd.read_json(new_data)
         df = pd.DataFrame(df[0][1])
         odf = get_plan_placements(plan_id, current_user_id)
+
         col = PartnerPlacements.partner_id.name
         unique_ids = df[col].unique()
         for part_id in unique_ids:
             tdf = df[df[col] == part_id].to_dict(orient='records')
-            set_processor_values(part_id, current_user_id, tdf,
-                                 PartnerPlacements, Partner)
+            set_processor_values(part_id, current_user_id, form_sources=tdf,
+                                 table=PartnerPlacements, parent_model=Partner)
         _set_task_progress(100)
     except:
         _set_task_progress(100)

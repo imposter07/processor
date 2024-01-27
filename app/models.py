@@ -1280,18 +1280,15 @@ class Account(db.Model):
     password = db.Column(db.Text)
 
     def get_form_dict(self):
-        form_dict = {
-            'key': self.key,
-            'account_id': self.account_id,
-            'campaign_id': self.campaign_id
-        }
-        return form_dict
+        fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
+                   if not k.startswith("_")])
+        return fd
 
     def set_from_form(self, form, current_processor):
         self.processor_id = current_processor.id
-        self.key = form['key']
-        self.account_id = form['account_id']
-        self.campaign_id = form['campaign_id']
+        for col in self.__table__.columns:
+            if col.name in form:
+                setattr(self, col.name, form[col.name])
 
     def get_dict_for_processor(self, name, start_date):
         proc_dict = {
@@ -3692,7 +3689,7 @@ class PartnerPlacements(db.Model):
 
     def get_form_dict(self):
         fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
-                   if not k.startswith("_") and k != 'id'])
+                   if not k.startswith("_")])
         cur_partner = ''
         cur_phase = ''
         if self.partner_id:
@@ -3707,7 +3704,7 @@ class PartnerPlacements(db.Model):
 
     def set_from_form(self, form, current_object):
         for col in self.__table__.columns:
-            if col.name in form:
+            if col.name in form and col.name != PartnerPlacements.id.name:
                 setattr(self, col.name, form[col.name])
 
     @staticmethod

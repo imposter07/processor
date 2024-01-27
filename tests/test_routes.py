@@ -8,7 +8,7 @@ import app.utils as app_utl
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
     Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, Client, \
-    Product, Processor
+    Product, Processor, Account
 import app.tasks as app_tasks
 
 
@@ -227,11 +227,17 @@ class TestUtils:
 
 class TestTasks:
 
-    def test_duplicate_in_db(self, user, app_fixture):
+    @staticmethod
+    def create_test_processor():
         name, cli, pro, cam = TestUtils.check_and_add_parents()
-        old_proc = Processor(name=name, campaign_id=cam.id)
-        db.session.add(old_proc)
+        proc = Processor(name=name, campaign_id=cam.id)
+        db.session.add(proc)
         db.session.commit()
+        return proc
+
+    def test_duplicate_in_db(self, user, app_fixture):
+        old_proc = self.create_test_processor()
+        name = old_proc.name
         new_name = '{}0'.format(name)
         form_data = {'new_name': new_name}
         for col in ['new_start_date', 'new_end_date']:
@@ -242,3 +248,27 @@ class TestTasks:
         assert new_name in new_proc.local_path
         for cur_proc in [old_proc, new_proc]:
             db.session.delete(cur_proc)
+
+    def test_set_processor_values(self, user, app_fixture):
+        old_proc = self.create_test_processor()
+        new_acc = Account.query.filter_by(processor_id=old_proc.id).all()
+        assert len(new_acc) == 0
+        form_sources = [{'key': x} for x in range(3)]
+        app_tasks.set_processor_values(old_proc.id, user.id, form_sources,
+                                       table=Account)
+        new_acc = Account.query.filter_by(processor_id=old_proc.id).all()
+        assert len(new_acc) == len(form_sources)
+        form_sources = [x.get_form_dict() for x in new_acc[:2]]
+        app_tasks.set_processor_values(old_proc.id, user.id, form_sources,
+                                       table=Account)
+        new_acc = Account.query.filter_by(processor_id=old_proc.id).all()
+        assert len(new_acc) == len(form_sources)
+        new_key = 'new_key'
+        changed_id = form_sources[0]['id']
+        form_sources[0]['key'] = new_key
+        app_tasks.set_processor_values(old_proc.id, user.id, form_sources,
+                                       table=Account)
+        new_acc = Account.query.filter_by(processor_id=old_proc.id).all()
+        assert len(new_acc) == len(form_sources)
+        change_acc = db.session.get(Account, changed_id)
+        assert change_acc.key == new_key

@@ -882,6 +882,8 @@ class TestReportingDBReadWrite:
         partner_tab = 'nav-partner-tab'
         assert sw.browser.find_element_by_id(partner_tab)
         sw.xpath_from_id_and_click('nav-partner-tab')
+        custom_charts = sw.browser.find_element_by_id('customChartsPartner')
+        sw.scroll_to_elem(custom_charts)
         worker.work(burst=True)
         assert sw.browser.find_element_by_id('partnerSummaryMetrics')
         partner_dash = sw.browser.find_element_by_css_selector(

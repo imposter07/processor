@@ -688,6 +688,7 @@
             if ("{{ edit_name }}" === 'Import') {
                 let unnamedImports = emptyVendorKeyNameCheck();
                 if (unnamedImports) {
+                    displayAlert('All API cards must be named before saving.', 'danger');
                     return;
                 }
             }
@@ -696,6 +697,9 @@
                 loadingBtn(this, this.style, this.className);
                 let cont = (this.id.replace('load', '') === 'Continue') ? 'continue' : '';
                 SubmitForm(cont, 'form_continue');
+            }
+            else {
+                document.getElementById('base_form_id').reportValidity()
             }
         }
 

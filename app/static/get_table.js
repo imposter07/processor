@@ -94,8 +94,6 @@ function parseTableResponse(tableName, pond, vendorKey, data, callbackFunc) {
             createLiquidTable(data, {'tableName': newTableName});
         } else if (tableName === 'Pacing Table') {
             generatePacingTable(tableName, data['data']['data'], data['plan_cols'])
-        } else if (tableName === 'Daily Pacing') {
-            generateDailyPacing(tableName, data['data']['data'], data['data']['plan_cols'])
         } else if (callbackFunc) {
             callbackFunc(data, true, tableName)
         }

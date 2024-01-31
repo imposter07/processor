@@ -1047,22 +1047,6 @@ def get_table_return(task, table_name, proc_arg, job_name,
         msg = job.result[1]
         table_data = df_to_html(df, table_name, job_name)
         data = {'html_data': table_data, 'msg': msg}
-    elif job_name == '.get_daily_pacing':
-        plan_cols = job.result[1]
-        final_cols = plan_cols + [
-            vmc.date, cal.NCF, 'Daily Spend Goal', 'Day Pacing']
-        html_dfs = []
-        for tmp_df in df:
-            if isinstance(tmp_df, type(pd.DataFrame())):
-                row_names = [str(tmp_df[x].iloc[0]) for x in plan_cols]
-                row_names = ''.join(row_names)
-                row_names = utl.remove_special_characters(row_names)
-                final_cols = [
-                    col for col in final_cols if col in tmp_df.columns]
-                tmp_df = tmp_df[final_cols]
-                tmp_df = df_to_html(tmp_df, row_names)
-                html_dfs.append(tmp_df)
-        data = {'data': {'data': html_dfs, 'plan_cols': plan_cols}}
     elif utl.LiquidTable.id_col in df and df[utl.LiquidTable.id_col]:
         data = {'data': df}
     elif 'return_func' in proc_arg and 'table_name' not in proc_arg:

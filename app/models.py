@@ -1030,7 +1030,6 @@ class Processor(db.Model):
                      'screenshotImage': '.get_screenshot_image',
                      'notesTable': '.get_notes_table',
                      'pacingMetrics': '.get_processor_pacing_metrics',
-                     'Daily Pacing': '.get_daily_pacing',
                      'datasource_table': '.get_processor_data_source_table',
                      'singleNoteTable': '.get_single_notes_table',
                      'billingTable': '.get_billing_table',

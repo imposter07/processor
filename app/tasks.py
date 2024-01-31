@@ -3804,6 +3804,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         if old_analysis and use_cache:
             if old_analysis.date == datetime.today().date():
                 df = pd.read_json(old_analysis.data).sort_index()
+                df = df[~((df == 'None') | (df == 0)).all(axis=1)]
                 _set_task_progress(100)
                 return [df]
         dimensions_sql = ['event.{}'.format(x) if x == 'eventdate'
@@ -3881,6 +3882,7 @@ def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
         cols = utl.db_df_translation(
             metrics, adjust_path(cur_processor.local_path), reverse=True)
         df = df.rename(columns=cols)
+        df = df[~((df == 'None') | (df == 0)).all(axis=1)]
         update_analysis_in_db_reporting_cache(
             processor_id, current_user_id, df, dimensions, metrics, filter_dict)
         _set_task_progress(100)
@@ -4097,42 +4099,6 @@ def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
             'Unhandled exception - Processor {} User {} Parameter {} Metrics {}'
             ' Filter Dict {}'.format(
                 processor_id, current_user_id, parameter, metrics, filter_dict),
-            exc_info=sys.exc_info())
-        return [pd.DataFrame([{
-            'Result': 'DATA WAS UNABLE TO BE LOADED. Pacing Table only '
-                      'available when planned spends are based on Vendor,'
-                      ' Campaign, Country/Region, and or Environment'}]), []]
-
-
-def get_daily_pacing(processor_id, current_user_id, parameter=None,
-                     dimensions=None, metrics=None, filter_dict=None):
-    try:
-        _set_task_progress(0)
-        cur_proc = Processor.query.filter_by(id=processor_id).first_or_404()
-        os.chdir(cur_proc.local_path)
-        matrix = vm.VendorMatrix()
-        data_source = matrix.get_data_source('Plan Net')
-        plan_cols = data_source.p[vmc.fullplacename]
-        daily_analysis = ProcessorAnalysis.query.filter_by(
-            processor_id=cur_proc.id, key=az.Analyze.daily_delivery_col).first()
-        daily_analysis = daily_analysis.data
-        daily_dfs = []
-        sort_ascending = [True for _ in plan_cols]
-        sort_ascending.append(False)
-        for analysis in daily_analysis:
-            adf = pd.DataFrame(analysis)
-            adf = adf.sort_values(
-                plan_cols + [vmc.date], ascending=sort_ascending)
-            daily_dfs.append(adf)
-        _set_task_progress(100)
-        return [daily_dfs, plan_cols]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {} Parameter {} '
-            'Dimensions {} Metrics {}  Filter Dict {}'.format(
-                processor_id, current_user_id, dimensions, parameter, metrics,
-                filter_dict),
             exc_info=sys.exc_info())
         return [pd.DataFrame([{
             'Result': 'DATA WAS UNABLE TO BE LOADED. Pacing Table only '

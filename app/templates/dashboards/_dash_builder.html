@@ -384,8 +384,8 @@
                 let coord = (flip) ? 1 : 0;
                 if (timeX) {
                     let x0 = scaleX.invert(d3.pointer(event, currentThis)[coord]);
-                    let i = bisectDate(data, x0, 1)
-                    let d0 = data[i - 1]
+                    let i = bisectDate(data, x0, 1);
+                    let d0 = data[i - 1];
                     let d1 = data[i];
                     return x0 - d0[xCol] > d1[xCol] - x0 ? d1 : d0
                 } else {
@@ -588,6 +588,7 @@
         data.forEach(function (d) {
             d[xCol] = parseDate(d[xCol]);
         });
+        data.sort((a, b) => a[xCol] - b[xCol]);
         generateSelect(elem, yCol)
         // A color scale: one color for each group
         let myColor = getColorPal(yCol)
@@ -713,6 +714,7 @@
         data.forEach(function (d) {
             d[xCol] = parseDate(d[xCol]);
         });
+        data.sort((a, b) => a[xCol] - b[xCol]);
         generateSelect(elem, yCol, "Select0");
         generateSelect(elem, yCol, "Select1", 1);
         // generateSelect(elem, filterCols, 'SelectDimension')
@@ -1459,8 +1461,7 @@
             let selectedOption = $(e.currentTarget).val();
             update(selectedOption, pos1)
         }, 'change', true, false);
-
-        let keys = Object.keys(data[0]);
+        let keys = Object.keys(data[0]).filter(key => key !== 'index');
         update(keys[keys.length - 1], pos0);
         update(keys[keys.length - 2], pos1);
     }
@@ -1666,12 +1667,12 @@
         }
     }
 
-    function convertToFlareFormat(data, xCol, yCol) {
+    function convertToFlareFormat(data, cols) {
         const flare = {name: "flare", children: []};
 
-        // Group the data by 'vendortypename'
+        // Group the data
         const groupedData = data.reduce((acc, obj) => {
-            const typeName = obj[yCol[0]];
+            const typeName = obj[cols[0]];
             if (!acc[typeName]) {
                 acc[typeName] = [];
             }
@@ -1683,8 +1684,8 @@
         for (const typeName in groupedData) {
             const typeChildren = groupedData[typeName].map(obj => {
                 return {
-                    name: obj[xCol],
-                    size: obj[yCol[1]]
+                    name: obj[cols[1]],
+                    size: obj[cols[2]]
                 };
             });
 
@@ -1698,10 +1699,16 @@
     }
 
     function generateTreeMap(elem, data, xCol, yCol) {
-        data.sort((a, b) => b[yCol[0]] - a[yCol[0]]);
+        // Requires data columns to be ordered by: dimension grouping,
+        // dimension, metric
+        let cols = [];
+        Object.keys(data[0]).forEach(function(key) {
+            cols.unshift(key);
+        });
+        data.sort((a, b) => b[cols[0]] - a[cols[0]]);
         let dataLength = (data.length < 5) ? 1 : data.length / 5;
         let am = autoMargin(elem, 250, 5, 5, .9, dataLength);
-        let flare = convertToFlareFormat(data, xCol, yCol);
+        let flare = convertToFlareFormat(data, cols);
         let chart = Treemap(flare, {
             value: d => d.size, // size of each node (file); null for internal nodes (folders)
             group: (d, n) => n.ancestors().slice(-2)[0].data.name, // e.g., "animate" in flare/animate/Easing; color
@@ -1883,20 +1890,6 @@
         }
     }
 
-    function generatePacingTable(elemID, data, xCol, yCol) {
-        let elem = document.getElementById(elemID);
-        elem.innerHTML += data;
-        elem.style.height = "100%";
-        let cols = xCol + [, 'Planned Net Cost', 'Uncapped'];
-        cols = cols.split(",");
-        addEdit(elemID, cols, 'pacingTableSaveButton');
-        getProgBars(elemID, "Delivery", "% Through Campaign", "Start Date");
-        hideColumn(elemID, "% Through Campaign");
-        addAccordianSetup(elemID);
-        getTable('Daily Pacing', elem.id);
-        animateBar();
-    }
-
     function addSort(tableName, bodyName) {
         const headerId = 'pacingHeader';
         const rows = document.getElementById(tableName).getElementsByTagName('tr');
@@ -1930,49 +1923,6 @@
                 iconCell.innerHTML += icon
             }
         }
-    }
-
-    function generateDailyPacing(elem, data, xCol, yCol) {
-        const table = document.getElementById('Pacing Table');
-        const body = table.getElementsByTagName('tbody');
-        const rows = table.querySelectorAll('[id*="tr"]');
-        const tableHeadElems = Array.from(table.getElementsByTagName('th'));
-        body[0].id = 'accordianPacing';
-        for (let i = 0, row; row = rows[i]; i++) {
-            for (let j = 0, datum; datum = data[j]; j++) {
-                let dailyBreakout = datum['data']['name'];
-                let rowBreakouts = [];
-                for (let k = 0; k < xCol.length; k++) {
-                    rowBreakouts.push(row.cells[k].innerHTML);
-                }
-                let rowBreakout = rowBreakouts.join("_");
-                rowBreakout = rowBreakout.replace(/[^a-zA-Z0-9 ]/g, '');
-                rowBreakout = rowBreakout.replace(/\s/g, '');
-                if (rowBreakout === dailyBreakout) {
-                    hiddenElemHTML = `
-                        <tr id="trHidden` + i + `">
-                            <td class="hiddenRow" colspan="` + tableHeadElems.length + `">
-                            <div  id="collapseRow` + i + `" class="collapse"
-                                 aria-labelledby="heading` + i + `"
-                                 data-parent="#accordianPacing">
-                                <div class="card-body" style="height:300px !important; overflow-y: scroll !important">
-                                    <div class="accordion" id="accordianRow` + i + `">`
-                        + data[j]['data']['data'] +
-                        `</div>
-                                </div>
-                            </div>
-                            </td>
-                        </tr>`;
-                    row.insertAdjacentHTML('afterend', hiddenElemHTML);
-                    addConditionalArrows('accordianRow' + i, 'Day Pacing', 20);
-                    for (let k = 0; k < xCol.length; k++) {
-                        hideColumn(rowBreakout, xCol[k]);
-                    }
-                    break;
-                }
-            }
-        }
-        addSort('Pacing Table', 'accordianPacing');
     }
 
     function generateAlertCount(elem, data, xCol, yCol) {

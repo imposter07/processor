@@ -34,7 +34,6 @@ from app.models import User, Post, Message, Notification, Processor, \
     Notes, ProcessorReports, Tutorial, TutorialStage, Task, Plan, Walkthrough, \
     Conversation, Chat, WalkthroughSlide, Rfp, Specs, Contacts
 
-from functools import wraps
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -50,23 +49,6 @@ def before_request():
         db.session.commit()
         g.search_form = SearchForm()
     g.locale = str(get_locale())
-
-
-def error_handler(route_function):
-    @wraps(route_function)
-    def decorated_function(*args, **kwargs):
-        try:
-            result = route_function(*args, **kwargs)
-            return result
-        except:
-            args = request.form.to_dict(flat=False)
-            msg = 'Unhandled exception {}'.format(json.dumps(args))
-            current_app.logger.error(msg, exc_info=sys.exc_info())
-            data = {'data': 'error', 'task': '', 'level': 'error',
-                    'args': request.form.to_dict(flat=False)}
-            return jsonify(data)
-
-    return decorated_function
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -422,7 +404,7 @@ def unfollow_processor(object_name):
 
 @bp.route('/get_completed_task', methods=['GET', 'POST'])
 @login_required
-@error_handler
+@app_utl.error_handler
 def get_completed_task():
     task = Task.query.get(request.form['task'])
     table_name, cur_proc, proc_arg, job_name = get_table_arguments()
@@ -432,7 +414,7 @@ def get_completed_task():
 
 @bp.route('/get_task_progress', methods=['GET', 'POST'])
 @login_required
-@error_handler
+@app_utl.error_handler
 def get_task_progress():
     proc_arg = {'use_cache': (
             'args' in request.form and 'use_cache' in request.form['args'])}
@@ -2525,7 +2507,7 @@ def uploader_page(object_name):
 @bp.route('/uploader/<object_name>/edit/upload_file',
           methods=['GET', 'POST'])
 @login_required
-@error_handler
+@app_utl.error_handler
 def edit_uploader_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
         utl.parse_upload_file_request(request, object_name)
@@ -3454,7 +3436,7 @@ def project_billing(object_name):
 
 @bp.route('/url_from_view_function', methods=['GET', 'POST'])
 @login_required
-@error_handler
+@app_utl.error_handler
 def url_from_view_function():
     object_name = request.form['object_name']
     view_function = request.form['view_function']

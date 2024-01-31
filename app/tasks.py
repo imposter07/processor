@@ -48,29 +48,29 @@ if not app:
     app.app_context().push()
 
 
-def _set_task_progress(progress, attempt=1):
-    try:
-        job = get_current_job()
-        if job:
-            job.meta['progress'] = progress
-            job.save_meta()
-            task = db.session.get(Task, job.get_id())
-            if task:
-                cu = task.user
-                if cu:
-                    cu.add_notification(
-                        'task_progress', {'task_id': job.get_id(),
-                                          'progress': progress})
-                if progress >= 100:
-                    task.complete = True
-                db.session.commit()
-    except:
-        attempt += 1
-        if attempt > 10:
-            app.logger.error('Unhandled exception', exc_info=sys.exc_info())
-        else:
-            db.session.rollback()
-            _set_task_progress(progress, attempt)
+def _set_task_progress(progress):
+    total_attempts = 10
+    for attempt in range(total_attempts):
+        try:
+            job = get_current_job()
+            if job:
+                job.meta['progress'] = progress
+                job.save_meta()
+                task = db.session.get(Task, job.get_id())
+                if task:
+                    cu = task.user
+                    if cu:
+                        cu.add_notification(
+                            'task_progress', {'task_id': job.get_id(),
+                                              'progress': progress})
+                    if progress >= 100:
+                        task.complete = True
+                    db.session.commit()
+        except:
+            if attempt > (total_attempts - 2):
+                app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+            else:
+                db.session.rollback()
 
 
 def error_handler(route_function):
@@ -78,6 +78,9 @@ def error_handler(route_function):
     def decorated_function(*args, **kwargs):
         try:
             _set_task_progress(0)
+            json_args = json.dumps(args)
+            log_msg = 'Task: {}. Args {}.'.format(route_function, json_args)
+            app.logger.info(log_msg)
             result = route_function(*args, **kwargs)
             _set_task_progress(100)
             return result
@@ -1513,7 +1516,11 @@ def get_uploader_relation_values_from_position(rel_pos, df, vk, object_level,
     cdf = pd.read_excel(uploader_file_translation(object_level,
                                                   uploader_type=uploader_type))
     cdf = cdf[col].str.split('_', expand=True)
-    max_split = max(x for x in cdf.columns if isinstance(x, int))
+    int_list = [x for x in cdf.columns if isinstance(x, int)]
+    if not int_list:
+        app.logger.warning('Could not split name.')
+        return df
+    max_split = max(int_list)
     if max(rel_pos) > max_split:
         df = pd.DataFrame([
             {'Result': 'RELATION VALUE {} IS GREATER THAN THE MAX {}.  '
@@ -1996,8 +2003,7 @@ def get_uploader_creative(uploader_id, current_user_id):
 
 
 def set_processor_values(processor_id, current_user_id, form_sources, table,
-                         parent_model=Processor):
-    _set_task_progress(0)
+                         parent_model=Processor, additional_filter=None):
     cur_processor, user_that_ran = get_processor_and_user_from_id(
         processor_id=processor_id, current_user_id=current_user_id,
         db_model=parent_model)
@@ -2009,7 +2015,12 @@ def set_processor_values(processor_id, current_user_id, form_sources, table,
         key = table.partner_id.name
     else:
         key = table.processor_id.name
-    old_items = table.query.filter_by(**{key: processor_id}).all()
+    filter_dict = {key: processor_id}
+    if additional_filter:
+        for k, v in additional_filter.items():
+            filter_dict[k] = v
+    old_items = table.query.filter_by(**filter_dict).all()
+    change_log = {'add': [], 'delete': [], 'update': []}
     form_ids = []
     for form in form_sources:
         cur_item = None
@@ -2022,13 +2033,17 @@ def set_processor_values(processor_id, current_user_id, form_sources, table,
                 cur_dict = cur_item.__dict__
                 if k in cur_dict and v != cur_dict and v != 'id':
                     setattr(cur_item, k, v)
+                    update_dict = {'col': k, 'id': cur_item.id, 'val': v}
+                    change_log['update'].append(update_dict)
         else:
             t = table()
             t.set_from_form(form, cur_processor)
             db.session.add(t)
+            change_log['add'].append(t.id)
     if old_items:
         for item in old_items:
             if item.id not in form_ids:
+                change_log['delete'].append(item.id)
                 db.session.delete(item)
     db.session.commit()
     msg_text = "{} {} {} set.".format(
@@ -2042,6 +2057,8 @@ def set_processor_values(processor_id, current_user_id, form_sources, table,
         parent_model = Plan
     processor_post_message(cur_processor, user_that_ran, msg_text,
                            object_name=parent_model.__name__)
+    app.logger.info('Updated {}: {}'.format(table.__name__, change_log))
+    return change_log
 
 
 def set_processor_accounts(processor_id, current_user_id, form_sources):
@@ -3096,11 +3113,11 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
                 ndf = get_uploader_file(
                     uploader_id, current_user_id, object_level=object_level,
                     parameter='edit_relation', uploader_type=uploader_type,
-                    vk=prev_primary)[0]
-                if 'Result' in ndf.columns:
+                    vk=prev_primary)
+                if not ndf or 'Result' in ndf[0].columns:
                     continue
                 df = df.loc[df['impacted_column_name'] != prev_primary]
-                df = pd.concat([df, ndf], ignore_index=True, sort=False)
+                df = pd.concat([df, ndf[0]], ignore_index=True, sort=False)
                 u_utl.write_df(df, file_name)
             os.chdir(cur_path)
             uploader_create_objects(
@@ -5658,24 +5675,16 @@ def get_plan_rules(plan_id, current_user_id):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+@error_handler
 def get_plan_placements(plan_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_plan = db.session.get(Plan, plan_id)
-        df = cur_plan.get_placements_as_df()
-        name = 'PlanPlacements'
-        lt = app_utl.LiquidTable(
-            df=df, title=name, table_name=name, download_table=True,
-            specify_form_cols=True, accordion=False, inline_edit=True,
-            form_cols=df.columns.to_list())
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Plan {} User {}'.format(
-                plan_id, current_user_id), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_plan = db.session.get(Plan, plan_id)
+    df = cur_plan.get_placements_as_df()
+    name = 'PlanPlacements'
+    lt = app_utl.LiquidTable(
+        df=df, title=name, table_name=name, download_table=True,
+        specify_form_cols=True, accordion=False, inline_edit=True,
+        form_cols=df.columns.to_list())
+    return [lt.table_dict]
 
 
 @error_handler
@@ -5780,9 +5789,11 @@ def get_notes_table(user_id, running_user):
             a = ProcessorAnalysis.query.filter_by(
                 processor_id=23, key='database_cache',
                 parameter=col_name).first()
-            df = pd.read_json(a.data)
-            df = df.rename(columns={col_name: col}).to_dict(orient='records')
-            select_val_dict[col] = df
+            if a:
+                df = pd.read_json(a.data)
+                df = df.rename(columns={col_name: col}).to_dict(
+                    orient='records')
+                select_val_dict[col] = df
         form_cols = ['note_text', 'created_at', 'username', 'processor_name']
         date_cols = ['start_date', 'end_date']
         form_cols += select_cols
@@ -6304,26 +6315,52 @@ def write_plan_rules(plan_id, current_user_id, new_data=None):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
-def write_plan_placements(plan_id, current_user_id, new_data=None):
-    try:
-        _set_task_progress(0)
-        df = pd.read_json(new_data)
-        df = pd.DataFrame(df[0][1])
-        odf = get_plan_placements(plan_id, current_user_id)
+def update_rules_from_change_log(plan_id, current_user_id, part_id, change_log):
+    add_types = ['add', 'delete']
+    for add_type in add_types:
+        if add_type in change_log and change_log[add_type]:
+            add_rule = PlanRule.query.filter_by(
+                plan_id=plan_id, partner_id=part_id, type=add_type).first()
+            if not add_rule:
+                add_rule = PlanRule(plan_id=plan_id, partner_id=part_id,
+                                    type=add_type)
+                db.session.add(add_rule)
+                db.session.commit()
+            if add_rule.rule_info != change_log[add_type]:
+                add_rule.rule_info = change_log[add_type]
+    update_type = 'update'
+    if update_type in change_log and change_log[update_type]:
+        form_sources = []
+        for x in change_log[update_type]:
+            cur_place = db.session.get(PartnerPlacements,
+                                       x[PartnerPlacements.id.name])
+            form_source = {PlanRule.id.name: x[PlanRule.id.name],
+                           PlanRule.type.name: update_type,
+                           PlanRule.place_col.name: x['col'],
+                           PlanRule.rule_info.name: x['val'],
+                           PlanRule.name.name: '',
+                           PlanRule.plan_id.name: str(plan_id),
+                           PlanRule.partner_id.name: str(cur_place.partner_id)}
+            form_sources.append(form_source)
+        additional_filter = {PlanRule.type.name: update_type}
+        set_processor_values(
+            plan_id, current_user_id, form_sources, table=PlanRule,
+            parent_model=Plan, additional_filter=additional_filter)
 
-        col = PartnerPlacements.partner_id.name
-        unique_ids = df[col].unique()
-        for part_id in unique_ids:
-            tdf = df[df[col] == part_id].to_dict(orient='records')
-            set_processor_values(part_id, current_user_id, form_sources=tdf,
-                                 table=PartnerPlacements, parent_model=Partner)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Plan {} User {}'.format(
-            plan_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+
+@error_handler
+def write_plan_placements(plan_id, current_user_id, new_data=None):
+    df = pd.read_json(new_data)
+    df = pd.DataFrame(df[0][1])
+    col = PartnerPlacements.partner_id.name
+    unique_ids = df[col].unique()
+    for part_id in unique_ids:
+        tdf = df[df[col] == part_id].to_dict(orient='records')
+        change_log = set_processor_values(
+            part_id, current_user_id, form_sources=tdf,
+            table=PartnerPlacements, parent_model=Partner)
+        update_rules_from_change_log(plan_id, current_user_id, part_id,
+                                     change_log)
 
 
 def write_plan_calc(plan_id, current_user_id, new_data=None):

@@ -1,5 +1,6 @@
 import io
 import os
+import sys
 import json
 import re
 from app import db
@@ -7,10 +8,11 @@ import pandas as pd
 import datetime as dt
 from app.models import Task, Processor, User, Campaign, Project, Client, \
     Product, Dashboard
-from flask import current_app, render_template
+from flask import current_app, render_template, jsonify, request
 from flask_babel import _
 import uploader.upload.creator as cre
 from xlrd.biffh import XLRDError
+from functools import wraps
 
 
 def launch_task(cur_class, name, description, running_user, task_class_args,
@@ -22,6 +24,22 @@ def launch_task(cur_class, name, description, running_user, task_class_args,
                 user_id=cur_class.user_id, **task_class_args)
     db.session.add(task)
     return task
+
+
+def error_handler(route_function):
+    @wraps(route_function)
+    def decorated_function(*args, **kwargs):
+        try:
+            result = route_function(*args, **kwargs)
+            return result
+        except:
+            args = request.form.to_dict(flat=False)
+            msg = 'Unhandled exception {}'.format(json.dumps(args))
+            current_app.logger.error(msg, exc_info=sys.exc_info())
+            data = {'data': 'error', 'task': '', 'level': 'error', 'args': args}
+            return jsonify(data)
+
+    return decorated_function
 
 
 def get_file_in_memory_from_request(current_request, current_key):

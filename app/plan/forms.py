@@ -78,3 +78,8 @@ class CreateSowForm(FlaskForm):
 class RfpForm(FlaskForm):
     form_continue = HiddenField('form_continue')
     add_rfp_file = FileField(_l('Add New RFP'))
+
+
+class PartnerPlacementForm(FlaskForm):
+    form_continue = HiddenField('form_continue')
+    add_plan_file = FileField(_l('Replace Current Placements'))

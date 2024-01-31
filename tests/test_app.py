@@ -426,14 +426,18 @@ class TestPlan:
     def test_placements(self, sw, login, worker):
         url = plan_routes.plan_placements.__name__
         cur_plan = self.check_and_get_plan(sw, login, worker, url)
-        elem_id = 'rowbudget0'
         load_elem_id = 'budget0'
+        elem_id = 'row{}'.format(load_elem_id)
         sw.wait_for_elem_load(elem_id)
         sw.xpath_from_id_and_click(elem_id, load_elem_id=load_elem_id)
         submit_form(sw, [load_elem_id])
         worker.work(burst=True)
         cur_place = cur_plan.phases[0].partners[0].placements.first()
         assert cur_place.budget == self.test_name
+        new_rule = PlanRule.query.filter_by(plan_id=cur_plan.id,
+                                            type='update').first()
+        assert new_rule.place_col == PartnerPlacements.budget.name
+        assert new_rule.rule_info == self.test_name
 
     def test_calc(self, sw, login, worker):
         url = plan_routes.calc.__name__
@@ -472,7 +476,7 @@ class TestPlan:
         assert elem.get_attribute("class") == 'shadeCell0'
         assert elem.get_attribute('innerHTML') == selected_val
 
-    def test_rate_card_rfp(self, sw, login, worker, create_processor):
+    def test_rate_card_rfp(self, sw, login, worker):
         plan_name = 'Rate Card Database'
         p = Processor.query.filter_by(name=self.test_name).first()
         if not p:
@@ -544,7 +548,7 @@ class TestProject:
 class TestTutorial:
     test_name = TestPlan.test_name
 
-    def test_get_tutorial(self, sw, login, worker, create_processor):
+    def test_get_tutorial(self, sw, login, worker):
         p = Processor.query.filter_by(name=self.test_name).first()
         if not p:
             p = Processor(name=self.test_name)
@@ -562,10 +566,10 @@ class TestTutorial:
         all_tuts = Tutorial.query.all()
         assert len(all_tuts) == len(sheets)
 
-    def test_tutorial(self, sw, login, worker, create_processor):
+    def test_tutorial(self, sw, login, worker):
         t = Tutorial.query.all()
         if not t:
-            self.test_get_tutorial(sw, login, worker, create_processor)
+            self.test_get_tutorial(sw, login, worker)
         elem_id = 'tutorialCardBody'
         sw.go_to_url(base_url, elem_id=elem_id)
         link_xpath = '//*[@id="{}"]/div/div/h5/a'.format(elem_id)
@@ -826,11 +830,10 @@ class TestReportingDBReadWrite:
             base_url, urllib.parse.quote(self.test_proc_name))
         sw.go_to_url(ffxiv_proc_url)
         worker.work(burst=True)
-        sw.wait_for_elem_load('add-dash')
-        add_dash = sw.browser.find_element_by_id("add-dash")
-        assert add_dash
-        add_dash.click()
-        sw.wait_for_elem_load('chart_type-selectized', selector=sw.select_xpath)
+        add_dash_id = 'add-dash'
+        sw.wait_for_elem_load(add_dash_id)
+        sw.xpath_from_id_and_click(add_dash_id,
+                                   load_elem_id='chart_type-selectized')
         dash_form_fill = [('Test', 'name'),
                           ('Lollipop', 'chart_type-selectized', 'clear'),
                           ('environmentname', 'dimensions-selectized', 'clear'),
@@ -861,9 +864,10 @@ class TestReportingDBReadWrite:
         if not sw.browser.current_url == ffxiv_proc_url:
             sw.go_to_url(ffxiv_proc_url)
             worker.work(burst=True)
-            sw.wait_for_elem_load('add-dash')
-        sw.xpath_from_id_and_click('add-dash')
-        sw.wait_for_elem_load('chart_type-selectized', selector=sw.select_xpath)
+        add_dash_id = 'add-dash'
+        sw.wait_for_elem_load(add_dash_id)
+        sw.xpath_from_id_and_click(add_dash_id,
+                                   load_elem_id='chart_type-selectized')
         test_partner = 'Test-partner'
         dash_form_fill = [(test_partner, 'name'),
                           ('Bar', 'chart_type-selectized', 'clear'),

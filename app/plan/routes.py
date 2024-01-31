@@ -1,7 +1,6 @@
 import os
 import json
 from app import db
-import app.utils as utl
 from flask_babel import _
 from app.plan import bp
 from datetime import datetime
@@ -10,9 +9,10 @@ import processor.reporting.analyze as az
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
-    CreateSowForm, RfpForm
+    CreateSowForm, RfpForm, PartnerPlacementForm
 from app.models import Client, Product, Campaign, Plan, Post, Partner, \
     PlanPhase, Sow, Processor, PartnerPlacements
+import app.utils as app_utl
 
 
 @bp.route('/plan', methods=['GET', 'POST'])
@@ -179,12 +179,12 @@ def save_topline():
             new_data = [x['value'] for x in phase_data
                         if x['name'] == col_name][0]
             if col == 'dates':
-                phase_dict = utl.get_sd_ed_in_dict(phase_dict, new_data)
+                phase_dict = app_utl.get_sd_ed_in_dict(phase_dict, new_data)
             else:
                 phase_dict[col] = new_data
         phase_list.append(phase_dict)
     old_phase = PlanPhase.query.filter_by(plan_id=cur_plan.id).all()
-    utl.sync_new_form_data_with_database(
+    app_utl.sync_new_form_data_with_database(
         form_dict=phase_list, old_db_items=old_phase, db_model=PlanPhase,
         relation_db_item=cur_plan, form_search_name='phaseSelect',
         delete_children=True)
@@ -210,12 +210,12 @@ def save_topline():
                 else:
                     continue
                 if col == 'dates':
-                    tl_dict = utl.get_sd_ed_in_dict(tl_dict, new_data)
+                    tl_dict = app_utl.get_sd_ed_in_dict(tl_dict, new_data)
                 else:
                     tl_dict[col] = new_data
             topline_list.append(tl_dict)
         old_part = Partner.query.filter_by(plan_phase_id=cur_phase.id).all()
-        utl.sync_new_form_data_with_database(
+        app_utl.sync_new_form_data_with_database(
             form_dict=topline_list, old_db_items=old_part, db_model=Partner,
             relation_db_item=cur_phase, form_search_name='partnerSelect',
             delete_children=True)
@@ -294,12 +294,31 @@ def plan_rules(object_name):
     return render_template('plan/plan.html', **kwargs)
 
 
+@bp.route('/plan/<object_name>/plan_placements/upload_file',
+          methods=['GET', 'POST'])
+@login_required
+@app_utl.error_handler
+def plan_placements_upload_file(object_name):
+    current_key, object_name, object_form, object_level = \
+        app_utl.parse_upload_file_request(request, object_name)
+    cur_plan = Plan.query.filter_by(name=object_name).first_or_404()
+    mem, file_name, file_type = \
+        app_utl.get_file_in_memory_from_request(request, current_key)
+    msg_text = 'Adding placements for {}'.format(cur_plan.name)
+    cur_plan.launch_task(
+        '.add_placements_from_file', _(msg_text),
+        running_user=current_user.id, new_data=mem)
+    db.session.commit()
+    msg = 'File was saved.'
+    return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
+
+
 @bp.route('/plan/<object_name>/plan_placements', methods=['GET', 'POST'])
 @login_required
 def plan_placements(object_name):
     kwargs = Plan().get_current_plan(
         object_name, 'edit_plan', edit_progress=100, edit_name='PlanPlacements')
-    kwargs['form'] = PlanToplineForm()
+    kwargs['form'] = PartnerPlacementForm()
     return render_template('plan/plan.html', **kwargs)
 
 
@@ -314,12 +333,13 @@ def rfp(object_name):
 
 @bp.route('/plan/<object_name>/rfp/upload_file', methods=['GET', 'POST'])
 @login_required
+@app_utl.error_handler
 def rfp_upload_file(object_name):
     current_key, object_name, object_form, object_level = \
-        utl.parse_upload_file_request(request, object_name)
+        app_utl.parse_upload_file_request(request, object_name)
     cur_plan = Plan.query.filter_by(name=object_name).first_or_404()
     mem, file_name, file_type = \
-        utl.get_file_in_memory_from_request(request, current_key)
+        app_utl.get_file_in_memory_from_request(request, current_key)
     msg_text = 'Adding RFP for {}'.format(cur_plan.name)
     cur_plan.launch_task(
         '.add_rfp_from_file', _(msg_text),

@@ -3544,7 +3544,8 @@ class PartnerPlacements(db.Model):
                 db.session.commit()
             else:
                 old_rule = PlanRule(place_col=str_name, rule_info=rule_info,
-                                    partner_id=parent.id, plan_id=plan_id)
+                                    partner_id=parent.id, plan_id=plan_id,
+                                    type='Create')
                 db.session.add(old_rule)
                 db.session.commit()
             new_rules.append(old_rule)
@@ -3559,7 +3560,7 @@ class PartnerPlacements(db.Model):
         if not old_rule:
             old_rule = PlanRule(
                 place_col=str_name, rule_info={'': 1},
-                partner_id=parent.id, plan_id=plan_id)
+                partner_id=parent.id, plan_id=plan_id, type='Create')
             db.session.add(old_rule)
             db.session.commit()
         return new_rules, words
@@ -3632,7 +3633,7 @@ class PartnerPlacements(db.Model):
 
     def create_placement_name(self, place_dict, parent):
         col_order = self.get_col_order()
-        pname = []
+        placement_name = []
         for col in col_order:
             if col in place_dict:
                 val = place_dict[col]
@@ -3643,23 +3644,26 @@ class PartnerPlacements(db.Model):
                 val = parent.plan.name
             else:
                 val = ''
-            pname.append(val)
-        pname = '_'.join(pname)
-        return pname
+            placement_name.append(val)
+        placement_name = '_'.join(placement_name)
+        return placement_name
 
-    def create_from_rules(self, parent_id):
-        parent = db.session.get(Partner, parent_id)
-        parent_budget = float(parent.total_budget)
+    @staticmethod
+    def get_combos_from_rules(parent_id):
         rules = PlanRule.query.filter_by(partner_id=parent_id).all()
-        rule_dict = {x.place_col: json.loads(x.rule_info) if type(
-            x.rule_info) != dict else x.rule_info for x in rules}
+        rule_dict = {
+            x.place_col: json.loads(x.rule_info)
+            if not isinstance(x.rule_info, dict) else x.rule_info
+            for x in rules}
         keys = [list(x.keys()) for x in rule_dict.values()]
         combos = list(itertools.product(*keys))
+        return combos, rule_dict
+
+    def create_from_rules(self, parent_id, current_user_id):
+        parent = db.session.get(Partner, parent_id)
+        parent_budget = float(parent.total_budget)
+        combos, rule_dict = self.get_combos_from_rules(parent_id)
         data = []
-        old_placements = PartnerPlacements.query.filter_by(
-            partner_id=parent_id).all()
-        for p in old_placements:
-            db.session.delete(p)
         for combo in combos:
             temp_dict = {}
             value_product = 1
@@ -3669,21 +3673,20 @@ class PartnerPlacements(db.Model):
                 temp_dict[col_name] = key
                 value_product *= value
             temp_dict[Plan.total_budget.name] = value_product * parent_budget
-            data.append(temp_dict)
-            place = PartnerPlacements(
-                start_date=parent.start_date, end_date=parent.end_date,
-                total_budget=temp_dict[PartnerPlacements.total_budget.name],
-                partner_id=parent.id)
+            temp_dict[PartnerPlacements.start_date.name] = parent.start_date
+            temp_dict[PartnerPlacements.end_date.name] = parent.end_date
+            temp_dict[PartnerPlacements.partner_id.name] = parent.id
             for col in self.__table__.columns:
                 if col.name in temp_dict and temp_dict[col.name]:
-                    val = temp_dict[col.name]
-                    val = PartnerPlacements.fix_date_from_words(col, val)
-                    setattr(place, col.name, val)
-            pname = PartnerPlacements.create_placement_name(
-                PartnerPlacements, place.__dict__, parent)
-            setattr(place, self.name.name, pname)
-            db.session.add(place)
-            db.session.commit()
+                    temp_dict[col.name] = PartnerPlacements.fix_date_from_words(
+                        col, temp_dict[col.name])
+            placement_name = PartnerPlacements().create_placement_name(
+                temp_dict, parent)
+            temp_dict[PartnerPlacements.name.name] = placement_name
+            data.append(temp_dict)
+        from app.utils import set_db_values
+        set_db_values(parent_id, current_user_id, form_sources=data,
+                      table=PartnerPlacements, parent_model=Partner)
         return data
 
     def get_form_dict(self):

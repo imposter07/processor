@@ -228,9 +228,9 @@ class TestUtils:
 class TestTasks:
 
     @staticmethod
-    def create_test_processor():
+    def create_test_processor(db_object=Processor):
         name, cli, pro, cam = TestUtils.check_and_add_parents()
-        proc = Processor(name=name, campaign_id=cam.id)
+        proc = db_object(name=name, campaign_id=cam.id)
         db.session.add(proc)
         db.session.commit()
         return proc
@@ -249,26 +249,62 @@ class TestTasks:
         for cur_proc in [old_proc, new_proc]:
             db.session.delete(cur_proc)
 
-    def test_set_processor_values(self, user, app_fixture):
+    def test_set_db_values(self, user, app_fixture):
         old_proc = self.create_test_processor()
         new_acc = Account.query.filter_by(processor_id=old_proc.id).all()
         assert len(new_acc) == 0
         form_sources = [{'key': x} for x in range(3)]
-        app_tasks.set_processor_values(old_proc.id, user.id, form_sources,
-                                       table=Account)
+        app_utl.set_db_values(old_proc.id, user.id, form_sources,
+                              table=Account)
         new_acc = Account.query.filter_by(processor_id=old_proc.id).all()
         assert len(new_acc) == len(form_sources)
         form_sources = [x.get_form_dict() for x in new_acc[:2]]
-        app_tasks.set_processor_values(old_proc.id, user.id, form_sources,
-                                       table=Account)
+        app_utl.set_db_values(old_proc.id, user.id, form_sources,
+                              table=Account)
         new_acc = Account.query.filter_by(processor_id=old_proc.id).all()
         assert len(new_acc) == len(form_sources)
         new_key = 'new_key'
         changed_id = form_sources[0]['id']
         form_sources[0]['key'] = new_key
-        app_tasks.set_processor_values(old_proc.id, user.id, form_sources,
-                                       table=Account)
+        app_utl.set_db_values(old_proc.id, user.id, form_sources,
+                              table=Account)
         new_acc = Account.query.filter_by(processor_id=old_proc.id).all()
         assert len(new_acc) == len(form_sources)
         change_acc = db.session.get(Account, changed_id)
         assert change_acc.key == new_key
+
+
+class TestPlan:
+
+    def test_create_from_rules(self, user, app_fixture):
+        cur_plan = TestTasks.create_test_processor(Plan)
+        cur_phase = PlanPhase(name=cur_plan.name, plan_id=cur_plan.id)
+        db.session.add(cur_phase)
+        db.session.commit()
+        total_budget = 100
+        cur_part = Partner(name=cur_plan.name, plan_phase_id=cur_phase.id,
+                           total_budget=total_budget)
+        db.session.add(cur_part)
+        db.session.commit()
+        place_col = PartnerPlacements.country.name
+        rule_info = {'a': .5, 'b': .5}
+        plan_rule = PlanRule(
+            type='Create', plan_id=cur_plan.id, partner_id=cur_part.id,
+            rule_info=rule_info, place_col=place_col)
+        db.session.add(plan_rule)
+        db.session.commit()
+        data = PartnerPlacements().create_from_rules(parent_id=cur_part.id,
+                                                     current_user_id=user.id)
+        assert len(data) == len(rule_info)
+        places = PartnerPlacements.query.filter_by(partner_id=cur_part.id).all()
+        assert len(places) == len(data)
+        place_budget = 0
+        for place in places:
+            place_budget += place.total_budget
+            cur_country = place.__dict__[place_col]
+            assert cur_country in rule_info
+            assert place.total_budget == rule_info[cur_country] * total_budget
+        assert place_budget == total_budget
+        plan_rule = PlanRule(
+            type='Create', plan_id=cur_plan.id, partner_id=cur_part.id,
+            rule_info=rule_info, place_col=place_col)

@@ -7,7 +7,7 @@ from app import db
 import pandas as pd
 import datetime as dt
 from app.models import Task, Processor, User, Campaign, Project, Client, \
-    Product, Dashboard
+    Product, Dashboard, Plan, RfpFile, Partner, Post, Uploader, Message
 from flask import current_app, render_template, jsonify, request
 from flask_babel import _
 import uploader.upload.creator as cre
@@ -370,6 +370,101 @@ def create_local_path(cur_obj):
     else:
         base_path = cur_obj.local_path
     return base_path
+
+
+def object_post_message(proc, usr, text, run_complete=False,
+                        request_id=False, object_name='Processor'):
+    if len(text) > 139:
+        msg_body = text[:139]
+    else:
+        msg_body = text
+    msg = Message(author=usr, recipient=usr, body=msg_body)
+    db.session.add(msg)
+    usr.add_notification('unread_message_count', usr.new_messages())
+    if object_name == Uploader.__name__:
+        post = Post(body=text, author=usr, uploader_id=proc.id)
+    elif object_name == Plan.__name__:
+        post = Post(body=text, author=usr, plan_id=proc.id)
+    else:
+        post = Post(body=text, author=usr, processor_id=proc.id)
+    if request_id:
+        post.request_id = request_id
+    db.session.add(post)
+    db.session.commit()
+    usr.add_notification(
+        'task_complete', {'text': text,
+                          'timestamp': post.timestamp.isoformat(),
+                          'post_id': post.id})
+    db.session.commit()
+    if run_complete:
+        proc.last_run_time = dt.datetime.utcnow()
+        db.session.commit()
+
+
+def get_obj_user(object_id, current_user_id, db_model=Processor):
+    processor_to_run = db.session.get(db_model, object_id)
+    user_that_ran = db.session.get(User, current_user_id)
+    return processor_to_run, user_that_ran
+
+
+def set_db_values(object_id, current_user_id, form_sources, table,
+                  parent_model=Processor, additional_filter=None):
+    cur_processor, user_that_ran = get_obj_user(
+        object_id=object_id, current_user_id=current_user_id,
+        db_model=parent_model)
+    if parent_model == Plan:
+        key = table.plan_id.name
+    elif parent_model == RfpFile:
+        key = table.rfp_file_id.name
+    elif parent_model == Partner:
+        key = table.partner_id.name
+    else:
+        key = table.processor_id.name
+    filter_dict = {key: object_id}
+    if additional_filter:
+        for k, v in additional_filter.items():
+            filter_dict[k] = v
+    old_items = table.query.filter_by(**filter_dict).all()
+    change_log = {'add': [], 'delete': [], 'update': []}
+    form_ids = []
+    for form in form_sources:
+        cur_item = None
+        if 'id' in form:
+            cur_id = form['id']
+            form_ids.append(cur_id)
+            cur_item = db.session.get(table, cur_id)
+        if cur_item:
+            for k, v in form.items():
+                cur_dict = cur_item.__dict__
+                if k in cur_dict and v != cur_dict and v != 'id':
+                    setattr(cur_item, k, v)
+                    update_dict = {'col': k, 'id': cur_item.id, 'val': v}
+                    change_log['update'].append(update_dict)
+        else:
+            t = table()
+            t.set_from_form(form, cur_processor)
+            db.session.add(t)
+            change_log['add'].append(t.id)
+    if old_items:
+        for item in old_items:
+            if item.id not in form_ids:
+                change_log['delete'].append(item.id)
+                db.session.delete(item)
+    db.session.commit()
+    msg_text = "{} {} {} set.".format(
+        parent_model.__name__, cur_processor.name, table.__name__)
+    if parent_model in [RfpFile, Partner]:
+        if parent_model == Partner:
+            plan_id = cur_processor.plan.plan_id
+        else:
+            plan_id = cur_processor.plan_id
+        cur_processor = db.session.get(Plan, plan_id)
+        parent_model = Plan
+    object_post_message(cur_processor, user_that_ran, msg_text,
+                        object_name=parent_model.__name__)
+    update_msg = 'Updated {}: {}'.format(table.__name__, change_log)
+    current_app.logger.info(update_msg)
+    return change_log
 
 
 class LiquidTable(object):

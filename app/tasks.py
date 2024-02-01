@@ -18,7 +18,7 @@ from rq import get_current_job
 from app import create_app, db
 from app.email import send_email
 from sqlalchemy import or_, and_
-from app.models import User, Post, Task, Processor, Message, \
+from app.models import User, Post, Task, Processor, \
     ProcessorDatasources, Uploader, Account, RateCard, Rates, Conversion, \
     TaskScheduler, Requests, UploaderObjects, UploaderRelations, \
     ProcessorAnalysis, Project, ProjectNumberMax, Client, Product, Campaign, \
@@ -127,47 +127,6 @@ def adjust_path(path):
             if path[:len(x[0])] == x[0]:
                 path = x[1] + path[len(x[0]):]
     return path
-
-
-def get_processor_and_user_from_id(processor_id, current_user_id,
-                                   db_model=Processor):
-    processor_to_run = db.session.get(db_model, processor_id)
-    user_that_ran = db.session.get(User, current_user_id)
-    return processor_to_run, user_that_ran
-
-
-def processor_post_message(proc, usr, text, run_complete=False,
-                           request_id=False, object_name='Processor'):
-    try:
-        if len(text) > 139:
-            msg_body = text[:139]
-        else:
-            msg_body = text
-        msg = Message(author=usr, recipient=usr, body=msg_body)
-        db.session.add(msg)
-        usr.add_notification('unread_message_count', usr.new_messages())
-        if object_name == Uploader.__name__:
-            post = Post(body=text, author=usr, uploader_id=proc.id)
-        elif object_name == Plan.__name__:
-            post = Post(body=text, author=usr, plan_id=proc.id)
-        else:
-            post = Post(body=text, author=usr, processor_id=proc.id)
-        if request_id:
-            post.request_id = request_id
-        db.session.add(post)
-        db.session.commit()
-        usr.add_notification(
-            'task_complete', {'text': text,
-                              'timestamp': post.timestamp.isoformat(),
-                              'post_id': post.id})
-        db.session.commit()
-        if run_complete:
-            proc.last_run_time = datetime.utcnow()
-            db.session.commit()
-    except:
-        db.session.rollback()
-        processor_post_message(proc, usr, text, request_id=request_id,
-                               object_name=object_name)
 
 
 def copy_file(old_file, new_file, attempt=1, max_attempts=100):
@@ -304,11 +263,11 @@ def update_cached_data_in_processor_run(processor_id, current_user_id):
 
 def run_processor(processor_id, current_user_id, run_args):
     try:
-        processor_to_run, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        processor_to_run, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         post_body = ('Running {} for processor: {}...'.format(
             run_args, processor_to_run.name))
-        processor_post_message(processor_to_run, user_that_ran, post_body)
+        app_utl.object_post_message(processor_to_run, user_that_ran, post_body)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         _set_task_progress(0)
         old_file_path = adjust_path(processor_to_run.local_path)
@@ -340,8 +299,8 @@ def run_processor(processor_id, current_user_id, run_args):
                     os.chdir(cur_path)
                     task_function(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
-        processor_post_message(proc=processor_to_run, usr=user_that_ran,
-                               text=msg_text, run_complete=True)
+        app_utl.object_post_message(proc=processor_to_run, usr=user_that_ran,
+                                    text=msg_text, run_complete=True)
         _set_task_progress(100)
         return True
     except:
@@ -351,7 +310,7 @@ def run_processor(processor_id, current_user_id, run_args):
         processor_to_run = db.session.get(Processor, processor_id)
         user_that_ran = db.session.get(User, current_user_id)
         msg_text = ("{} run failed.".format(processor_to_run.name))
-        processor_post_message(processor_to_run, user_that_ran, msg_text)
+        app_utl.object_post_message(processor_to_run, user_that_ran, msg_text)
         processor_failed_email(processor_id, current_user_id, sys.exc_info())
         return False
 
@@ -395,8 +354,8 @@ def copy_tree_no_overwrite(old_path, new_path, first_run=True, overwrite=False):
 
 def write_translational_dict(processor_id, current_user_id, new_data):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         os.chdir(adjust_path(cur_processor.local_path))
         tc = dct.DictTranslationConfig()
         df = pd.read_json(new_data)
@@ -407,7 +366,7 @@ def write_translational_dict(processor_id, current_user_id, new_data):
         tc.write(df, dctc.filename_tran_config)
         msg_text = ('{} processor translational dict was updated.'
                     ''.format(cur_processor.name))
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -435,8 +394,8 @@ def set_initial_constant_file(cur_processor):
 
 def create_processor(processor_id, current_user_id, base_path):
     try:
-        new_processor, user_create = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        new_processor, user_create = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         old_path = adjust_path(base_path)
         new_path = adjust_path(new_processor.local_path)
         if not new_path:
@@ -446,7 +405,7 @@ def create_processor(processor_id, current_user_id, base_path):
         copy_tree_no_overwrite(old_path, new_path)
         set_initial_constant_file(new_processor)
         msg_text = "Processor {} was created.".format(new_processor.name)
-        processor_post_message(new_processor, user_create, msg_text)
+        app_utl.object_post_message(new_processor, user_create, msg_text)
         _set_task_progress(100)
         return True
     except:
@@ -495,8 +454,8 @@ def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
 
 def get_processor_sources(processor_id, current_user_id):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         _set_task_progress(0)
         os.chdir('processor')
         default_param_ic = vm.ImportConfig(matrix=True)
@@ -507,7 +466,7 @@ def get_processor_sources(processor_id, current_user_id):
             default_param=default_param_ic)
         add_data_sources_from_processor(cur_processor, data_sources)
         msg_text = "Processor {} sources refreshed.".format(cur_processor.name)
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
         db.session.commit()
     except:
@@ -519,8 +478,8 @@ def get_processor_sources(processor_id, current_user_id):
 def set_processor_imports(processor_id, current_user_id, form_imports,
                           set_in_db=True):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         _set_task_progress(0)
         if set_in_db:
             from app.main.routes import set_processor_imports_in_db
@@ -554,7 +513,7 @@ def set_processor_imports(processor_id, current_user_id, form_imports,
                 data_source = matrix.get_data_source(vk=vk)
                 data_source.write(processor_dict['raw_file'])
         msg_text = "Processor {} imports set.".format(cur_processor.name)
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         os.chdir(cur_path)
         get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
@@ -569,8 +528,8 @@ def set_processor_imports(processor_id, current_user_id, form_imports,
 
 def set_data_sources(processor_id, current_user_id, form_sources):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         old_sources = ProcessorDatasources.query.filter_by(
             processor_id=cur_processor.id).all()
         _set_task_progress(0)
@@ -604,7 +563,7 @@ def set_data_sources(processor_id, current_user_id, form_sources):
         if len(form_sources) == 1:
             name = form_sources[0]['vendor_key']
             msg_text += "  {} was saved.".format(name)
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -809,8 +768,8 @@ def get_raw_data(processor_id, current_user_id, vk=None, parameter=None):
 def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
                    new_name=False, file_type='.csv'):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir('processor')
         default_param_ic = vm.ImportConfig(matrix=True)
@@ -855,7 +814,7 @@ def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
             data_source.write(df)
         msg_text = ('{} processor raw_data: {} was updated.'
                     ''.format(cur_processor.name, vk))
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         os.chdir(cur_path)
         get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
@@ -890,8 +849,8 @@ def get_dictionary(processor_id, current_user_id, vk):
 def write_dictionary(processor_id, current_user_id, new_data, vk,
                      object_level=None):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
@@ -905,7 +864,7 @@ def write_dictionary(processor_id, current_user_id, new_data, vk,
                 app.logger.warning('File not found error: {}'.format(e))
             msg_text = ('{} processor dictionary: {} was deleted.'
                         ''.format(cur_processor.name, vk))
-            processor_post_message(cur_processor, user_that_ran, msg_text)
+            app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
             _set_task_progress(100)
             return True
         if 'index' in df.columns:
@@ -922,7 +881,7 @@ def write_dictionary(processor_id, current_user_id, new_data, vk,
         dic.write(df)
         msg_text = ('{} processor dictionary: {} was updated.'
                     ''.format(cur_processor.name, vk))
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -933,8 +892,8 @@ def write_dictionary(processor_id, current_user_id, new_data, vk,
 
 def write_dictionary_order(processor_id, current_user_id, new_data, vk):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         _set_task_progress(0)
         df = pd.read_json(new_data)
@@ -950,7 +909,7 @@ def write_dictionary_order(processor_id, current_user_id, new_data, vk):
         matrix.write()
         msg_text = ('{} processor auto dictionary order: {} was updated.'
                     ''.format(cur_processor.name, vk))
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         os.chdir(cur_path)
         get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
@@ -992,8 +951,8 @@ def get_vendormatrix(processor_id, current_user_id):
 
 def write_vendormatrix(processor_id, current_user_id, new_data):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
@@ -1008,7 +967,7 @@ def write_vendormatrix(processor_id, current_user_id, new_data):
         matrix.write()
         msg_text = ('{} processor vendormatrix was updated.'
                     ''.format(cur_processor.name))
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         os.chdir(cur_path)
         get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
@@ -1048,7 +1007,7 @@ def write_constant_dict(processor_id, current_user_id, new_data):
         dcc.write(df, dctc.filename_con_config)
         msg_text = ('{} processor constant dict was updated.'
                     ''.format(cur_processor.name))
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -1102,7 +1061,7 @@ def write_relational_config(processor_id, current_user_id, new_data,
         msg_text = ('{} processor relational dict {} was updated.'
                     ''.format(cur_processor.name,
                               parameter if parameter else 'config'))
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -1139,8 +1098,8 @@ def get_import_config_file(processor_id, current_user_id, vk):
 
 def write_import_config_file(processor_id, current_user_id, new_data, vk):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
@@ -1160,7 +1119,7 @@ def write_import_config_file(processor_id, current_user_id, new_data, vk):
             f_lib.dump(config_file, f)
         msg_text = ('{} processor config file: {} was updated.'
                     ''.format(cur_processor.name, vk))
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         os.chdir(cur_path)
         get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
@@ -1173,8 +1132,8 @@ def write_import_config_file(processor_id, current_user_id, new_data, vk):
 
 def write_tableau_config_file(processor_id, current_user_id):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         os.chdir(adjust_path(cur_processor.local_path))
         file_name = os.path.join('config', 'tabconfig.json')
         if cur_processor.tableau_datasource:
@@ -1185,7 +1144,7 @@ def write_tableau_config_file(processor_id, current_user_id):
                 json.dump(tab_config, f)
             msg_text = ('{} processor tableau config file was updated.'
                         ''.format(cur_processor.name))
-            processor_post_message(cur_processor, user_that_ran, msg_text)
+            app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -1255,8 +1214,8 @@ def get_rate_card(processor_id, current_user_id, vk):
 
 def write_rate_card(processor_id, current_user_id, new_data, vk):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         rate_card_name = '{}|{}'.format(cur_processor.name,
                                         user_that_ran.username)
         rate_card = RateCard.query.filter_by(name=rate_card_name).first()
@@ -1278,7 +1237,7 @@ def write_rate_card(processor_id, current_user_id, new_data, vk):
         db.session.commit()
         msg_text = ('{} processor rate card was updated.'
                     ''.format(cur_processor.name))
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -1312,8 +1271,8 @@ def create_uploader(uploader_id, current_user_id, base_path):
             os.makedirs(new_path)
         copy_tree_no_overwrite(old_path, new_path)
         msg_text = "Uploader was created."
-        processor_post_message(new_uploader, user_create, msg_text,
-                               object_name='Uploader')
+        app_utl.object_post_message(new_uploader, user_create, msg_text,
+                                    object_name='Uploader')
         set_uploader_config_files(uploader_id, current_user_id)
         os.chdir(cur_path)
         save_task = '.{}'.format(save_media_plan.__name__)
@@ -1382,8 +1341,8 @@ def run_uploader(uploader_id, current_user_id, run_args):
             uploader_id=uploader_id, current_user_id=current_user_id)
         post_body = ('Running {} for uploader: {}...'.format(
             run_args, uploader_to_run.name))
-        processor_post_message(uploader_to_run, user_that_ran, post_body,
-                               object_name='Uploader')
+        app_utl.object_post_message(uploader_to_run, user_that_ran, post_body,
+                                    object_name='Uploader')
         _set_task_progress(0)
         file_path = adjust_path(uploader_to_run.local_path)
         from uploader.main import main
@@ -1391,9 +1350,9 @@ def run_uploader(uploader_id, current_user_id, run_args):
         error_dict = main(run_args)
         parse_uploader_error_dict(uploader_id, current_user_id, error_dict)
         msg_text = ("{} finished running.".format(uploader_to_run.name))
-        processor_post_message(proc=uploader_to_run, usr=user_that_ran,
-                               text=msg_text, run_complete=True,
-                               object_name='Uploader')
+        app_utl.object_post_message(proc=uploader_to_run, usr=user_that_ran,
+                                    text=msg_text, run_complete=True,
+                                    object_name='Uploader')
         _set_task_progress(100)
         return True
     except:
@@ -1403,8 +1362,8 @@ def run_uploader(uploader_id, current_user_id, run_args):
         uploader_to_run = Uploader.query.get(uploader_id)
         user_that_ran = User.query.get(current_user_id)
         msg_text = ("{} run failed.".format(uploader_to_run.name))
-        processor_post_message(uploader_to_run, user_that_ran, msg_text,
-                               object_name='Uploader')
+        app_utl.object_post_message(uploader_to_run, user_that_ran, msg_text,
+                                    object_name='Uploader')
         return False
 
 
@@ -1687,8 +1646,8 @@ def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
             u_utl.write_df(df, file_name)
         msg_text = ('{} uploader {} was updated.'
                     ''.format(file_name, cur_up.name))
-        processor_post_message(cur_up, user_that_ran, msg_text,
-                               object_name='Uploader')
+        app_utl.object_post_message(cur_up, user_that_ran, msg_text,
+                                    object_name='Uploader')
         os.chdir(cur_path)
         uploader_create_objects(
             uploader_id, current_user_id, object_level, uploader_type)
@@ -1921,8 +1880,8 @@ def uploader_create_objects(uploader_id, current_user_id,
         run_uploader(uploader_id, current_user_id, run_args='--create')
         msg_text = ('{} uploader {} creation file was updated.'
                     ''.format(cur_up.name, object_level))
-        processor_post_message(cur_up, user_that_ran, msg_text,
-                               object_name='Uploader')
+        app_utl.object_post_message(cur_up, user_that_ran, msg_text,
+                                    object_name='Uploader')
         os.chdir(cur_path)
         _set_task_progress(100)
     except:
@@ -2002,87 +1961,18 @@ def get_uploader_creative(uploader_id, current_user_id):
             uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
-def set_processor_values(processor_id, current_user_id, form_sources, table,
-                         parent_model=Processor, additional_filter=None):
-    cur_processor, user_that_ran = get_processor_and_user_from_id(
-        processor_id=processor_id, current_user_id=current_user_id,
-        db_model=parent_model)
-    if parent_model == Plan:
-        key = table.plan_id.name
-    elif parent_model == RfpFile:
-        key = table.rfp_file_id.name
-    elif parent_model == Partner:
-        key = table.partner_id.name
-    else:
-        key = table.processor_id.name
-    filter_dict = {key: processor_id}
-    if additional_filter:
-        for k, v in additional_filter.items():
-            filter_dict[k] = v
-    old_items = table.query.filter_by(**filter_dict).all()
-    change_log = {'add': [], 'delete': [], 'update': []}
-    form_ids = []
-    for form in form_sources:
-        cur_item = None
-        if 'id' in form:
-            cur_id = form['id']
-            form_ids.append(cur_id)
-            cur_item = db.session.get(table, cur_id)
-        if cur_item:
-            for k, v in form.items():
-                cur_dict = cur_item.__dict__
-                if k in cur_dict and v != cur_dict and v != 'id':
-                    setattr(cur_item, k, v)
-                    update_dict = {'col': k, 'id': cur_item.id, 'val': v}
-                    change_log['update'].append(update_dict)
-        else:
-            t = table()
-            t.set_from_form(form, cur_processor)
-            db.session.add(t)
-            change_log['add'].append(t.id)
-    if old_items:
-        for item in old_items:
-            if item.id not in form_ids:
-                change_log['delete'].append(item.id)
-                db.session.delete(item)
-    db.session.commit()
-    msg_text = "{} {} {} set.".format(
-        parent_model.__name__, cur_processor.name, table.__name__)
-    if parent_model in [RfpFile, Partner]:
-        if parent_model == Partner:
-            plan_id = cur_processor.plan.plan_id
-        else:
-            plan_id = cur_processor.plan_id
-        cur_processor = db.session.get(Plan, plan_id)
-        parent_model = Plan
-    processor_post_message(cur_processor, user_that_ran, msg_text,
-                           object_name=parent_model.__name__)
-    app.logger.info('Updated {}: {}'.format(table.__name__, change_log))
-    return change_log
-
-
+@error_handler
 def set_processor_accounts(processor_id, current_user_id, form_sources):
-    try:
-        set_processor_values(processor_id=processor_id,
-                             current_user_id=current_user_id,
-                             form_sources=form_sources, table=Account)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+    app_utl.set_db_values(object_id=processor_id,
+                          current_user_id=current_user_id,
+                          form_sources=form_sources, table=Account)
 
 
+@error_handler
 def set_processor_conversions(processor_id, current_user_id, form_sources):
-    try:
-        set_processor_values(processor_id=processor_id,
-                             current_user_id=current_user_id,
-                             form_sources=form_sources, table=Conversion)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+    app_utl.set_db_values(object_id=processor_id,
+                          current_user_id=current_user_id,
+                          form_sources=form_sources, table=Conversion)
 
 
 def get_processor_conversions(processor_id, current_user_id):
@@ -2111,16 +2001,10 @@ def get_processor_conversions(processor_id, current_user_id):
 
 
 def write_conversions(processor_id, current_user_id, new_data):
-    try:
-        form_sources = json.loads(new_data)
-        set_processor_values(processor_id=processor_id,
-                             current_user_id=current_user_id,
-                             form_sources=form_sources, table=Conversion)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+    form_sources = json.loads(new_data)
+    app_utl.set_db_values(object_id=processor_id,
+                          current_user_id=current_user_id,
+                          form_sources=form_sources, table=Conversion)
 
 
 def set_conversions(processor_id, current_user_id):
@@ -3151,7 +3035,7 @@ def save_media_plan(processor_id, current_user_id, media_plan,
             if not cur_obj.get_task_in_progress(create_task):
                 uploader_add_plan_costs(processor_id, current_user_id)
         msg_text = ('{} media plan was updated'.format(cur_obj.name))
-        processor_post_message(cur_obj, cur_user, msg_text,
+        app_utl.object_post_message(cur_obj, cur_user, msg_text,
                                object_name=object_name)
         _set_task_progress(100)
         return True
@@ -3194,7 +3078,7 @@ def save_spend_cap_file(processor_id, current_user_id, new_data,
             with open(cur_obj.local_path + file_name, 'wb') as f:
                 shutil.copyfileobj(new_data, f, length=131072)
         msg_text = 'Spend cap file was saved.'
-        processor_post_message(cur_obj, cur_user, msg_text)
+        app_utl.object_post_message(cur_obj, cur_user, msg_text)
         _set_task_progress(100)
         return True, ''
     except:
@@ -3220,7 +3104,7 @@ def set_spend_cap_config_file(processor_id, current_user_id, dict_col):
         df.to_csv('config/cap_config.csv', index=False)
         msg_text = ('{} spend cap config was updated.'
                     ''.format(cur_obj.name))
-        processor_post_message(cur_obj, cur_user, msg_text)
+        app_utl.object_post_message(cur_obj, cur_user, msg_text)
         _set_task_progress(100)
         return True, ''
     except:
@@ -3249,8 +3133,8 @@ def processor_fix_request(processor_id, current_user_id, fix):
             msg_text = ('{} processor request #{} was auto completed by ALI, '
                         'and marked as resolved!'
                         ''.format(cur_processor.name, fix.id))
-            processor_post_message(cur_processor, ali_user, msg_text,
-                                   request_id=fix.id)
+            app_utl.object_post_message(cur_processor, ali_user, msg_text,
+                                        request_id=fix.id)
             db.session.commit()
         return fixed
     except:
@@ -3277,7 +3161,7 @@ def processor_fix_requests(processor_id, current_user_id):
             fix_result_dict[fix.id] = result
         msg_text = ('{} processor requests were updated.'
                     ''.format(cur_processor.name))
-        processor_post_message(cur_processor, cur_user, msg_text)
+        app_utl.object_post_message(cur_processor, cur_user, msg_text)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -3319,8 +3203,8 @@ def duplicate_processor_in_db(processor_id, current_user_id, form_data):
 def set_vendormatrix_dates(processor_id, current_user_id, start_date=None,
                            end_date=None):
     try:
-        cur_processor, user_that_ran = get_processor_and_user_from_id(
-            processor_id=processor_id, current_user_id=current_user_id)
+        cur_processor, user_that_ran = app_utl.get_obj_user(
+            object_id=processor_id, current_user_id=current_user_id)
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         os.chdir(adjust_path(cur_processor.local_path))
         matrix = vm.VendorMatrix()
@@ -3347,7 +3231,7 @@ def set_vendormatrix_dates(processor_id, current_user_id, start_date=None,
         matrix.write()
         msg_text = ('{} processor vendormatrix dates were updated.'
                     ''.format(cur_processor.name))
-        processor_post_message(cur_processor, user_that_ran, msg_text)
+        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
         os.chdir(cur_path)
         get_processor_sources(processor_id, current_user_id)
         _set_task_progress(100)
@@ -5677,7 +5561,8 @@ def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
         r = PartnerPlacements.check_col_in_words(
             PartnerPlacements, words, parent_id, total_db=total_db,
             message=message)
-        PartnerPlacements.create_from_rules(PartnerPlacements, parent_id)
+        PartnerPlacements.create_from_rules(PartnerPlacements, parent_id,
+                                            current_user_id)
         _set_task_progress(100)
         return r
     except:
@@ -6268,10 +6153,11 @@ def write_plan_rules(plan_id, current_user_id, new_data=None):
         df = pd.read_json(new_data)
         df = pd.DataFrame(df[0][1])
         df = df.to_dict(orient='records')
-        set_processor_values(plan_id, current_user_id, df, PlanRule, Plan)
+        app_utl.set_db_values(plan_id, current_user_id, df, PlanRule, Plan)
         for phase in cur_plan.phases:
             for part in phase.partners:
-                PartnerPlacements.create_from_rules(PartnerPlacements, part.id)
+                PartnerPlacements.create_from_rules(PartnerPlacements, part.id,
+                                                    current_user_id)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -6309,7 +6195,7 @@ def update_rules_from_change_log(plan_id, current_user_id, part_id, change_log):
                            PlanRule.partner_id.name: str(cur_place.partner_id)}
             form_sources.append(form_source)
         additional_filter = {PlanRule.type.name: update_type}
-        set_processor_values(
+        app_utl.set_db_values(
             plan_id, current_user_id, form_sources, table=PlanRule,
             parent_model=Plan, additional_filter=additional_filter)
 
@@ -6322,7 +6208,7 @@ def write_plan_placements(plan_id, current_user_id, new_data=None):
     unique_ids = df[col].unique()
     for part_id in unique_ids:
         tdf = df[df[col] == part_id].to_dict(orient='records')
-        change_log = set_processor_values(
+        change_log = app_utl.set_db_values(
             part_id, current_user_id, form_sources=tdf,
             table=PartnerPlacements, parent_model=Partner)
         update_rules_from_change_log(plan_id, current_user_id, part_id,
@@ -6335,8 +6221,8 @@ def write_plan_calc(plan_id, current_user_id, new_data=None):
         df = pd.read_json(new_data)
         df = pd.DataFrame(df[0][1])
         df = df.to_dict(orient='records')
-        set_processor_values(plan_id, current_user_id, df, PlanEffectiveness,
-                             Plan)
+        app_utl.set_db_values(plan_id, current_user_id, df, PlanEffectiveness,
+                              Plan)
         _set_task_progress(100)
     except:
         _set_task_progress(100)
@@ -6401,7 +6287,8 @@ def add_contacts_from_file(plan_id, current_user_id, new_data, cur_rfp,
         df = df.rename(columns=cols)
         df = df.fillna('None')
         df = df.to_dict(orient='records')
-        set_processor_values(cur_rfp.id, current_user_id, df, Contacts, RfpFile)
+        app_utl.set_db_values(cur_rfp.id, current_user_id, df, Contacts,
+                              RfpFile)
         _set_task_progress(100)
         return True
     except:
@@ -6431,7 +6318,7 @@ def add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
         cols = {v: k for k, v in cols.items()}
         df = df.rename(columns=cols)
         df = df.to_dict(orient='records')
-        set_processor_values(cur_rfp.id, current_user_id, df, Specs, RfpFile)
+        app_utl.set_db_values(cur_rfp.id, current_user_id, df, Specs, RfpFile)
         _set_task_progress(100)
         return True
     except:
@@ -6452,8 +6339,8 @@ def set_placements_from_rfp(plan_id, current_user_id, cur_rfp):
             cur_partner = db.session.get(Partner, int(partner_id))
             tdf = df[df[partner_col] == partner_id]
             tdf = tdf.to_dict(orient='records')
-            set_processor_values(cur_partner.id, current_user_id, tdf,
-                                 PartnerPlacements, Partner)
+            app_utl.set_db_values(cur_partner.id, current_user_id, tdf,
+                                  PartnerPlacements, Partner)
         _set_task_progress(100)
         return True
     except:
@@ -6547,7 +6434,7 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
         cols = {v: k for k, v in cols.items()}
         df = df.rename(columns=cols)
         df = df.to_dict(orient='records')
-        set_processor_values(cur_rfp.id, current_user_id, df, Rfp, RfpFile)
+        app_utl.set_db_values(cur_rfp.id, current_user_id, df, Rfp, RfpFile)
         add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
                             part_translation)
         add_contacts_from_file(plan_id, current_user_id, new_data, cur_rfp,

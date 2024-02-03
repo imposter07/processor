@@ -437,7 +437,7 @@ class TestPlan:
         new_rule = PlanRule.query.filter_by(plan_id=cur_plan.id,
                                             type='update').first()
         assert new_rule.place_col == PartnerPlacements.budget.name
-        assert new_rule.rule_info == self.test_name
+        assert new_rule.rule_info['val'] == self.test_name
 
     def test_calc(self, sw, login, worker):
         url = plan_routes.calc.__name__

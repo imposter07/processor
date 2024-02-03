@@ -431,12 +431,15 @@ def set_db_values(object_id, current_user_id, form_sources, table,
         cur_item = None
         if 'id' in form:
             cur_id = form['id']
-            form_ids.append(cur_id)
             cur_item = db.session.get(table, cur_id)
+        elif (hasattr(table, 'unique_name') and table.unique_name and
+              'name' in form and form['name']):
+            cur_item = table.query.filter_by(name=form['name']).first()
         if cur_item:
+            form_ids.append(cur_item.id)
             for k, v in form.items():
                 cur_dict = cur_item.__dict__
-                if k in cur_dict and v != cur_dict and v != 'id':
+                if k in cur_dict and v != cur_dict and k != 'id':
                     setattr(cur_item, k, v)
                     update_dict = {'col': k, 'id': cur_item.id, 'val': v}
                     change_log['update'].append(update_dict)

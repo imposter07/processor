@@ -3335,6 +3335,7 @@ class PartnerPlacements(db.Model):
     media_channel = db.Column(db.Text)
     total_budget = db.Column(db.Numeric)
     partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
+    unique_name = True
 
     @property
     def plan_phase(self):
@@ -3650,7 +3651,8 @@ class PartnerPlacements(db.Model):
 
     @staticmethod
     def get_combos_from_rules(parent_id):
-        rules = PlanRule.query.filter_by(partner_id=parent_id).all()
+        rules = PlanRule.query.filter_by(partner_id=parent_id,
+                                         type='Create').all()
         rule_dict = {
             x.place_col: json.loads(x.rule_info)
             if not isinstance(x.rule_info, dict) else x.rule_info
@@ -3658,6 +3660,18 @@ class PartnerPlacements(db.Model):
         keys = [list(x.keys()) for x in rule_dict.values()]
         combos = list(itertools.product(*keys))
         return combos, rule_dict
+
+    @staticmethod
+    def apply_manual_rules(parent_id, data):
+        rules = PlanRule.query.filter_by(partner_id=parent_id).all()
+        for rule in rules:
+            if rule.type == 'update':
+                cur_id = rule.rule_info['id']
+                new_val = rule.rule_info['val']
+                cur_place = db.session.get(PartnerPlacements, cur_id)
+                setattr(cur_place, rule.place_col, new_val)
+        db.session.commit()
+        return data
 
     def create_from_rules(self, parent_id, current_user_id):
         parent = db.session.get(Partner, parent_id)
@@ -3672,7 +3686,8 @@ class PartnerPlacements(db.Model):
                 value = rule_dict[col_name][key]
                 temp_dict[col_name] = key
                 value_product *= value
-            temp_dict[Plan.total_budget.name] = value_product * parent_budget
+            place_budget = float(value_product) * float(parent_budget)
+            temp_dict[Plan.total_budget.name] = place_budget
             temp_dict[PartnerPlacements.start_date.name] = parent.start_date
             temp_dict[PartnerPlacements.end_date.name] = parent.end_date
             temp_dict[PartnerPlacements.partner_id.name] = parent.id
@@ -3687,6 +3702,7 @@ class PartnerPlacements(db.Model):
         from app.utils import set_db_values
         set_db_values(parent_id, current_user_id, form_sources=data,
                       table=PartnerPlacements, parent_model=Partner)
+        data = self.apply_manual_rules(parent_id, data)
         return data
 
     def get_form_dict(self):
@@ -3776,7 +3792,9 @@ class PlanRule(db.Model):
         self.partner_id = int(form[PlanRule.partner_id.name].strip())
         self.place_col = form[PlanRule.place_col.name].strip()
         self.type = form[PlanRule.type.name].strip()
-        self.rule_info = form[PlanRule.rule_info.name].strip()
+        self.rule_info = form[PlanRule.rule_info.name]
+        if not isinstance(self.rule_info, dict):
+            self.rule_info = self.rule_info.strip()
 
     @staticmethod
     def get_current_children():

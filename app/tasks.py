@@ -6186,10 +6186,11 @@ def update_rules_from_change_log(plan_id, current_user_id, part_id, change_log):
         for x in change_log[update_type]:
             cur_place = db.session.get(PartnerPlacements,
                                        x[PartnerPlacements.id.name])
+            rule_info = {'id': x['id'], 'val': x['val']}
             form_source = {PlanRule.id.name: x[PlanRule.id.name],
                            PlanRule.type.name: update_type,
                            PlanRule.place_col.name: x['col'],
-                           PlanRule.rule_info.name: x['val'],
+                           PlanRule.rule_info.name: rule_info,
                            PlanRule.name.name: '',
                            PlanRule.plan_id.name: str(plan_id),
                            PlanRule.partner_id.name: str(cur_place.partner_id)}

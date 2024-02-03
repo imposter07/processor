@@ -276,6 +276,19 @@ class TestTasks:
 
 class TestPlan:
 
+    @staticmethod
+    def check_plan(data, rule_info, cur_part, total_budget, place_col):
+        assert len(data) == len(rule_info)
+        places = PartnerPlacements.query.filter_by(partner_id=cur_part.id).all()
+        assert len(places) == len(data)
+        place_budget = 0
+        for place in places:
+            place_budget += place.total_budget
+            cur_country = place.__dict__[place_col]
+            assert cur_country in rule_info
+            assert place.total_budget == rule_info[cur_country] * total_budget
+        assert place_budget == total_budget
+
     def test_create_from_rules(self, user, app_fixture):
         cur_plan = TestTasks.create_test_processor(Plan)
         cur_phase = PlanPhase(name=cur_plan.name, plan_id=cur_plan.id)
@@ -287,7 +300,8 @@ class TestPlan:
         db.session.add(cur_part)
         db.session.commit()
         place_col = PartnerPlacements.country.name
-        rule_info = {'a': .5, 'b': .5}
+        first_val = 'a'
+        rule_info = {first_val: .5, 'b': .5}
         plan_rule = PlanRule(
             type='Create', plan_id=cur_plan.id, partner_id=cur_part.id,
             rule_info=rule_info, place_col=place_col)
@@ -295,16 +309,17 @@ class TestPlan:
         db.session.commit()
         data = PartnerPlacements().create_from_rules(parent_id=cur_part.id,
                                                      current_user_id=user.id)
-        assert len(data) == len(rule_info)
-        places = PartnerPlacements.query.filter_by(partner_id=cur_part.id).all()
-        assert len(places) == len(data)
-        place_budget = 0
-        for place in places:
-            place_budget += place.total_budget
-            cur_country = place.__dict__[place_col]
-            assert cur_country in rule_info
-            assert place.total_budget == rule_info[cur_country] * total_budget
-        assert place_budget == total_budget
+        self.check_plan(data, rule_info, cur_part, total_budget, place_col)
+        place = PartnerPlacements.query.filter_by(
+            **{place_col: first_val}).first()
+        new_val = 'c'
+        update_rule_info = {'id': place.id, 'val': new_val}
         plan_rule = PlanRule(
-            type='Create', plan_id=cur_plan.id, partner_id=cur_part.id,
-            rule_info=rule_info, place_col=place_col)
+            type='update', plan_id=cur_plan.id, partner_id=cur_part.id,
+            rule_info=update_rule_info, place_col=place_col)
+        db.session.add(plan_rule)
+        db.session.commit()
+        data = PartnerPlacements().create_from_rules(parent_id=cur_part.id,
+                                                     current_user_id=user.id)
+        rule_info[new_val] = rule_info.pop(first_val)
+        self.check_plan(data, rule_info, cur_part, total_budget, place_col)

@@ -434,10 +434,17 @@ class TestPlan:
         worker.work(burst=True)
         cur_place = cur_plan.phases[0].partners[0].placements.first()
         assert cur_place.budget == self.test_name
-        new_rule = PlanRule.query.filter_by(plan_id=cur_plan.id,
-                                            type='update').first()
+        new_rule = PlanRule.query.filter_by(
+            plan_id=cur_plan.id, type='update').first()
         assert new_rule.place_col == PartnerPlacements.budget.name
         assert new_rule.rule_info['val'] == self.test_name
+
+    def test_add_plan(self, sw, login, worker):
+        url = plan_routes.plan_placements.__name__
+        cur_plan = self.check_and_get_plan(sw, login, worker, url)
+        df = TestUploader().upload_plan(sw, worker)
+        cur_places = cur_plan.get_placements()
+        assert len(cur_places) == len(df)
 
     def test_calc(self, sw, login, worker):
         url = plan_routes.calc.__name__
@@ -649,8 +656,7 @@ class TestUploader:
         cur_up = Uploader.query.filter_by(name=self.test_name).first()
         assert cur_up.campaign.name == new_camp
 
-    def test_add_plan_uploader(self, sw, login, worker):
-        cur_up = self.check_create_uploader(sw, login, worker)
+    def upload_plan(self, sw, worker):
         df = self.get_mock_plan()
         file_name = os.path.join(basedir, 'mediaplantmp.xlsx')
         df.to_excel(file_name, sheet_name='Media Plan')
@@ -664,8 +670,13 @@ class TestUploader:
             time.sleep(.1)
         worker.work(burst=True)
         TestProject.wait_for_jobs_finish()
-        assert os.path.isfile(os.path.join(cur_up.local_path, 'mediaplan.xlsx'))
         os.remove(file_name)
+        return df
+
+    def test_add_plan_uploader(self, sw, login, worker):
+        cur_up = self.check_create_uploader(sw, login, worker)
+        self.upload_plan(sw, worker)
+        assert os.path.isfile(os.path.join(cur_up.local_path, 'mediaplan.xlsx'))
 
     def test_campaign_uploader(self, sw, login, worker):
         cur_up = self.check_create_uploader(sw, login, worker)

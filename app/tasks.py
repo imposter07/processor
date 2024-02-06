@@ -6202,13 +6202,64 @@ def update_rules_from_change_log(plan_id, current_user_id, part_id, change_log):
 
 
 @error_handler
-def write_plan_placements(plan_id, current_user_id, new_data=None):
-    df = pd.read_json(new_data)
-    df = pd.DataFrame(df[0][1])
+def write_plan_placements(plan_id, current_user_id, new_data=None,
+                          file_type=None):
+    if file_type:
+        df = utl.import_read_csv(new_data, file_check=False,
+                                 file_type=file_type)
+    else:
+        df = pd.read_json(new_data)
+        df = pd.DataFrame(df[0][1])
+    mp = cre.MediaPlan
+    cur_plan = db.session.get(Plan, plan_id)
+    phase_col = [mp.placement_phase, mp.campaign_name, mp.old_placement_phase,
+                 mp.campaign_phase, mp.old_campaign_phase,
+                 PlanPhase.__table__.name]
+    phase_col += [x.strip() for x in phase_col]
+    phase_col += [x.replace(' (If Needed)', '') for x in phase_col]
+    phase_col = [x for x in phase_col if x in df.columns][0]
+    cost_col = [vmc.cost, PartnerPlacements.total_budget.name]
+    cost_col = [x for x in cost_col if x in df.columns][0]
+    df = utl.data_to_type(df, float_col=[cost_col])
+    form_sources = df.groupby(phase_col)[cost_col].sum().reset_index()
+    form_sources[PlanPhase.name.name] = form_sources[phase_col]
+    form_sources = form_sources.to_dict(orient='records')
+    app_utl.set_db_values(plan_id, current_user_id, form_sources=form_sources,
+                          table=PlanPhase, parent_model=Plan)
+    part_col = [mp.partner_name, Partner.__table__.name]
+    part_col = [x for x in part_col if x in df.columns][0]
+    form_sources = df.groupby([part_col, phase_col])[cost_col].sum()
+    form_sources = form_sources.reset_index()
+    cur_phases = [x for x in cur_plan.phases.all()]
+    for cur_phase in cur_phases:
+        form_source = form_sources[form_sources[phase_col] == cur_phase.name]
+        cols = [Partner.__table__.name, Partner.name.name]
+        for col in cols:
+            form_source[col] = form_source[part_col]
+        form_source[Partner.total_budget.name] = form_source[cost_col]
+        form_source = form_source.to_dict(orient='records')
+        app_utl.set_db_values(cur_phase.id, current_user_id,
+                              form_sources=form_source,
+                              table=Partner, parent_model=PlanPhase)
     col = PartnerPlacements.partner_id.name
+    if col not in df.columns:
+        poss_cols = [Partner.__name__, cre.MediaPlan.partner_name]
+        poss_cols = [x for x in poss_cols if x in df.columns]
+        if poss_cols:
+            col = poss_cols[0]
+    cur_part = cur_plan.get_partners()
+    part_dict = {x.name: x.id for x in cur_part}
+    df[col] = df[col].replace(part_dict)
     unique_ids = df[col].unique()
     for part_id in unique_ids:
-        tdf = df[df[col] == part_id].to_dict(orient='records')
+        tdf = df[df[col] == part_id]
+        col_dict = {x: x.replace(' ', '_').lower() for x in df.columns}
+        tdf = tdf.rename(columns=col_dict).to_dict(orient='records')
+        part_id = int(part_id)
+        cur_part = db.session.get(Partner, part_id)
+        for x in tdf:
+            name = PartnerPlacements().create_placement_name(x, cur_part)
+            x['name'] = name
         change_log = app_utl.set_db_values(
             part_id, current_user_id, form_sources=tdf,
             table=PartnerPlacements, parent_model=Partner)

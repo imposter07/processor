@@ -306,8 +306,8 @@ def plan_placements_upload_file(object_name):
         app_utl.get_file_in_memory_from_request(request, current_key)
     msg_text = 'Adding placements for {}'.format(cur_plan.name)
     cur_plan.launch_task(
-        '.add_placements_from_file', _(msg_text),
-        running_user=current_user.id, new_data=mem)
+        '.write_plan_placements', _(msg_text),
+        running_user=current_user.id, new_data=mem, file_type=file_type)
     db.session.commit()
     msg = 'File was saved.'
     return jsonify({'data': 'success', 'message': msg, 'level': 'success'})

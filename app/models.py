@@ -2662,16 +2662,27 @@ class Plan(db.Model):
         return arg_trans
 
     def get_placements_as_df(self):
-        data = []
-        for plan_phase in self.phases:
-            for plan_part in plan_phase.partners:
-                place = [x.get_form_dict() for x in plan_part.placements]
-                data.extend(place)
+        data = [x.get_form_dict() for x in self.get_placements()]
         df = pd.DataFrame(data)
         cols = PartnerPlacements.get_col_order()
         cols = cols + [x for x in df.columns if x not in cols]
         df = df[cols]
         return df
+
+    def get_partners(self):
+        data = []
+        for plan_phase in self.phases.all():
+            for plan_part in plan_phase.partners.all():
+                data.append(plan_part)
+        return data
+
+    def get_placements(self):
+        data = []
+        cur_partners = self.get_partners()
+        for cur_partner in cur_partners:
+            places = [x for x in cur_partner.placements]
+            data.extend(places)
+        return data
 
     def get_create_args_from_other(self, other_obj):
         return []
@@ -2830,6 +2841,7 @@ class PlanPhase(db.Model):
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
     partners = db.relationship('Partner', backref='plan', lazy='dynamic')
+    unique_name = True
 
     def get_form_dict(self):
         sd = self.start_date if self.start_date else datetime.today()
@@ -2886,6 +2898,7 @@ class Partner(db.Model):
     rfp = db.relationship('Rfp', backref='partner', lazy='dynamic')
     specs = db.relationship('Specs', backref='p_partner', lazy='dynamic')
     contacts = db.relationship('Contacts', backref='p_partner', lazy='dynamic')
+    unique_name = True
 
     def get_form_dict(self, cur_phase=None):
         form_dict = {
@@ -2911,13 +2924,15 @@ class Partner(db.Model):
                 form[k.replace('Select', '')] = form[k]
         self.plan_phase_id = current_plan.id
         self.name = form['partner']
-        self.partner_type = form['partner_type']
-        self.estimated_cpm = form['cpm']
-        self.estimated_cpc = form['cpc']
-        self.cplpv = form['cplpv']
-        self.cpbc = form['cpbc']
-        self.cpv = form['cpv']
-        self.cpcv = form['cpcv']
+        partner_type = (
+            form['partner_type'] if 'partner_type' in form else 'None')
+        self.partner_type = partner_type
+        self.estimated_cpm = form['cpm'] if 'cpm' in form else 0
+        self.estimated_cpc = form['cpc'] if 'cpc' in form else 0
+        self.cplpv = form['cplpv'] if 'cplpv' in form else 0
+        self.cpbc = form['cpbc'] if 'cpbc' in form else 0
+        self.cpv = form['cpv'] if 'cpv' in form else 0
+        self.cpcv = form['cpcv'] if 'cpcv' in form else 0
         self.start_date = utl.check_dict_for_key(
             form, 'start_date', datetime.today().date())
         self.end_date = utl.check_dict_for_key(
@@ -3627,6 +3642,7 @@ class PartnerPlacements(db.Model):
                         val = val[0]
                     else:
                         val = val[1]
+                val = val.strip()
                 val = utl.string_to_date(val)
             if to_str:
                 val = datetime.strftime(val, '%Y%m%d')
@@ -3724,6 +3740,8 @@ class PartnerPlacements(db.Model):
         for col in self.__table__.columns:
             if col.name in form and col.name != PartnerPlacements.id.name:
                 setattr(self, col.name, form[col.name])
+        if current_object:
+            self.partner_id = current_object.id
 
     @staticmethod
     def get_current_children():

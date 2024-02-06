@@ -7,7 +7,8 @@ from app import db
 import pandas as pd
 import datetime as dt
 from app.models import Task, Processor, User, Campaign, Project, Client, \
-    Product, Dashboard, Plan, RfpFile, Partner, Post, Uploader, Message
+    Product, Dashboard, Plan, RfpFile, Partner, Post, Uploader, Message, \
+    PlanPhase
 from flask import current_app, render_template, jsonify, request
 from flask_babel import _
 import uploader.upload.creator as cre
@@ -418,6 +419,8 @@ def set_db_values(object_id, current_user_id, form_sources, table,
         key = table.rfp_file_id.name
     elif parent_model == Partner:
         key = table.partner_id.name
+    elif parent_model == PlanPhase:
+        key = table.plan_phase_id.name
     else:
         key = table.processor_id.name
     filter_dict = {key: object_id}
@@ -434,7 +437,8 @@ def set_db_values(object_id, current_user_id, form_sources, table,
             cur_item = db.session.get(table, cur_id)
         elif (hasattr(table, 'unique_name') and table.unique_name and
               'name' in form and form['name']):
-            cur_item = table.query.filter_by(name=form['name']).first()
+            filter_dict['name'] = form['name']
+            cur_item = table.query.filter_by(**filter_dict).first()
         if cur_item:
             form_ids.append(cur_item.id)
             for k, v in form.items():
@@ -447,16 +451,20 @@ def set_db_values(object_id, current_user_id, form_sources, table,
             t = table()
             t.set_from_form(form, cur_processor)
             db.session.add(t)
-            change_log['add'].append(t.id)
+            item_name = t.name if hasattr(t, 'name') else None
+            add_dict = {'id': t.id, 'name': item_name}
+            change_log['add'].append(add_dict)
     if old_items:
         for item in old_items:
             if item.id not in form_ids:
-                change_log['delete'].append(item.id)
+                item_name = item.name if hasattr(item, 'name') else None
+                delete_dict = {'id': item.id, 'name': item_name}
+                change_log['delete'].append(delete_dict)
                 db.session.delete(item)
     db.session.commit()
     msg_text = "{} {} {} set.".format(
         parent_model.__name__, cur_processor.name, table.__name__)
-    if parent_model in [RfpFile, Partner]:
+    if parent_model in [RfpFile, Partner, PlanPhase]:
         if parent_model == Partner:
             plan_id = cur_processor.plan.plan_id
         else:

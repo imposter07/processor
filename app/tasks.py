@@ -5527,6 +5527,11 @@ def get_plan_rules(plan_id, current_user_id):
 
 @error_handler
 def get_plan_placements(plan_id, current_user_id):
+    write_name = '.{}'.format(write_plan_placements.__name__)
+    write_task = Task.query.filter_by(name=write_name, complete=False,
+                                      plan_id=plan_id).first()
+    if write_task:
+        write_task.wait_for_job()
     cur_plan = db.session.get(Plan, plan_id)
     df = cur_plan.get_placements_as_df()
     name = 'PlanPlacements'
@@ -5584,9 +5589,10 @@ def get_screenshot_table(processor_id, current_user_id):
         db_class.input_config('dbconfig.json')
         db_class.connect()
         command = """
-        SELECT * 
-        FROM lqas.ss_view 
-        WHERE eventdate = (SELECT MAX("eventdate") FROM lqas.ss_view)
+            SELECT * 
+            FROM lqas.ss_view 
+            WHERE eventdate BETWEEN (SELECT MAX(eventdate) FROM lqas.ss_view) - INTERVAL '7 days' 
+                         AND (SELECT MAX(eventdate) FROM lqas.ss_view);
         """
         db_class.cursor.execute(command)
         data = db_class.cursor.fetchall()
@@ -6186,7 +6192,9 @@ def update_rules_from_change_log(plan_id, current_user_id, part_id, change_log):
         for x in change_log[update_type]:
             cur_place = db.session.get(PartnerPlacements,
                                        x[PartnerPlacements.id.name])
-            rule_info = {'id': x['id'], 'val': x['val']}
+            val = PartnerPlacements.fix_date_from_words(
+                col=x['col'], val=x['val'], to_str=True)
+            rule_info = {'id': x['id'], 'val': val}
             form_source = {PlanRule.id.name: x[PlanRule.id.name],
                            PlanRule.type.name: update_type,
                            PlanRule.place_col.name: x['col'],
@@ -6210,6 +6218,7 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
     else:
         df = pd.read_json(new_data)
         df = pd.DataFrame(df[0][1])
+    df = PartnerPlacements.translate_plan_names(df)
     mp = cre.MediaPlan
     cur_plan = db.session.get(Plan, plan_id)
     phase_col = [mp.placement_phase, mp.campaign_name, mp.old_placement_phase,
@@ -6218,7 +6227,7 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
     phase_col += [x.strip() for x in phase_col]
     phase_col += [x.replace(' (If Needed)', '') for x in phase_col]
     phase_col = [x for x in phase_col if x in df.columns][0]
-    cost_col = [vmc.cost, PartnerPlacements.total_budget.name]
+    cost_col = [vmc.cost, PartnerPlacements.total_budget.name, dctc.PNC]
     cost_col = [x for x in cost_col if x in df.columns][0]
     df = utl.data_to_type(df, float_col=[cost_col])
     form_sources = df.groupby(phase_col)[cost_col].sum().reset_index()
@@ -6243,7 +6252,8 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
                               table=Partner, parent_model=PlanPhase)
     col = PartnerPlacements.partner_id.name
     if col not in df.columns:
-        poss_cols = [Partner.__name__, cre.MediaPlan.partner_name]
+        poss_cols = [Partner.__name__, cre.MediaPlan.partner_name,
+                     Partner.__table__.name]
         poss_cols = [x for x in poss_cols if x in df.columns]
         if poss_cols:
             col = poss_cols[0]

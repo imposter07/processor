@@ -310,7 +310,8 @@ def plan_placements_upload_file(object_name):
         running_user=current_user.id, new_data=mem, file_type=file_type)
     db.session.commit()
     msg = 'File was saved.'
-    return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
+    return jsonify({'data': 'success', 'message': msg, 'level': 'success',
+                    'table': 'PlanPlacements'})
 
 
 @bp.route('/plan/<object_name>/plan_placements', methods=['GET', 'POST'])

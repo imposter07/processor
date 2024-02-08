@@ -439,12 +439,22 @@ class TestPlan:
         assert new_rule.place_col == PartnerPlacements.budget.name
         assert new_rule.rule_info['val'] == self.test_name
 
-    def test_add_plan(self, sw, login, worker):
+    def test_add_plan(self, sw, login, worker, check_for_plan=False):
         url = plan_routes.plan_placements.__name__
         cur_plan = self.check_and_get_plan(sw, login, worker, url)
-        df = TestUploader().upload_plan(sw, worker)
+        df = TestUploader().upload_plan(sw, worker,
+                                        check_for_plan=check_for_plan)
         cur_places = cur_plan.get_placements()
+        worker.work(burst=True)
         assert len(cur_places) == len(df)
+
+    def test_add_plan_local(self, sw, login, worker):
+        self.test_add_plan(sw, login, worker, check_for_plan=True)
+
+    def test_topline_after_plan(self, sw, login, worker):
+        url = plan_routes.plan_placements.__name__
+        if sw.browser.current_url != url:
+            self.test_add_plan(sw, login, worker)
 
     def test_calc(self, sw, login, worker):
         url = plan_routes.calc.__name__
@@ -590,22 +600,6 @@ class TestTutorial:
 class TestUploader:
     test_name = 'test'
 
-    @staticmethod
-    def get_mock_plan():
-        data = {
-            'Campaign Phase': ['Launch', 'Launch', 'Launch', 'Launch'],
-            'Partner Name': ['Facebook', 'Facebook', 'Facebook', 'Facebook'],
-            'Country': ['US', 'US', 'CA', 'CA'],
-            'Environment': ['Mobile', 'Desktop', 'Mobile', 'Desktop'],
-            'Targeting': ['Target A', 'Target B', 'Target A', 'Target B'],
-            'Creative': ['Creative 1', 'Creative 2', 'Creative 1',
-                         'Creative 2'],
-            'Copy': ['Copy 1', 'Copy 2', 'Copy 1', 'Copy 2'],
-            'Net Cost': [12000, 11000, 13000, 10000]
-        }
-        df = pd.DataFrame(data)
-        return df
-
     def get_url(self, url_type='', up_name=None):
         if not up_name:
             up_name = self.test_name
@@ -656,8 +650,9 @@ class TestUploader:
         cur_up = Uploader.query.filter_by(name=self.test_name).first()
         assert cur_up.campaign.name == new_camp
 
-    def upload_plan(self, sw, worker):
-        df = self.get_mock_plan()
+    @staticmethod
+    def upload_plan(sw, worker, check_for_plan=False):
+        df = Plan.get_mock_plan(basedir, check_for_plan)
         file_name = os.path.join(basedir, 'mediaplantmp.xlsx')
         df.to_excel(file_name, sheet_name='Media Plan')
         fp = sw.browser.find_element_by_class_name('filepond--browser')

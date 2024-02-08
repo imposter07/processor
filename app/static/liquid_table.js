@@ -253,7 +253,7 @@ function addDays(date, days) {
     return result
 }
 
-function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell") {
+function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell", tableName='') {
     if (!dateRange) {
         const elem = document.querySelector('#datePicker' + loopIndex);
         if (elem) {
@@ -269,7 +269,8 @@ function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell") {
     let calEnd = '';
     let element = '';
     let elementId = '';
-    let weeks = document.querySelectorAll('*[id^="col20"]');
+    let tableHead = document.getElementById(`${tableName}TableHeader`);
+    let weeks = tableHead.querySelectorAll('*[id^="col20"]');
     weeks.forEach(week => {
         weekString = week.id.replace('col', '');
         calStart = new Date(weekString);
@@ -662,13 +663,15 @@ function buildSliderEditCol(elem, newValue, inputElemId) {
 
 function buildFormFromCols(loopIndex, formNames, tableName) {
     let fromFromCols = '';
+    let table = document.getElementById(tableName + 'TableHeader');
     let dateCols = ['start_date', 'end_date'];
-    let weekColsExist = document.querySelectorAll('*[id^="col20"]').length !== 0;
+    let weekColsExist = table.querySelectorAll('*[id^="col20"]').length !== 0;
     if ((checkIfExists(formNames, dateCols)) || (weekColsExist)) {
         fromFromCols = getDateForm(loopIndex);
         formNames = removeValues(formNames, dateCols);
     }
-    let topRowIds = getTopRowIds(tableName);
+    let topRowIds = document.getElementById(`${tableName}Table`).getAttribute('data-theadids');
+    topRowIds = JSON.parse(topRowIds);
     formNames.forEach((formName) => {
         let colName = 'col' + formName;
         let colType = document.getElementById(colName).dataset['type'];
@@ -678,9 +681,11 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
         let inputEndHtml = (inputCheck) ? '</select>' : '';
         let inputIdHtml = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
         let topRowData = '';
-        topRowIds.forEach(topRowId => {
-            topRowData += ' data-' + topRowId + '=""'
-        });
+        if (topRowIds) {
+            topRowIds.forEach(topRowId => {
+                topRowData += ' data-' + topRowId + '=""'
+            });
+        }
         let displayColNames = generateDisplayColumnName(formName);
         let formColHtml = `
             <div class="col form-group" id="${formName}FormGroupCol">
@@ -703,9 +708,10 @@ function getTableHeadElems(tableName) {
     return tableHeadElems
 }
 
-function findInQuerySelectorAll(findName, selectorIdVal, selectorPrefix = '') {
+function findInQuerySelectorAll(findName, selectorIdVal, selectorPrefix = '', tableName = '') {
+    let table = document.getElementById(tableName);
     let selector = `${selectorPrefix}[id^='${selectorIdVal}']`;
-    let selectorElems = document.querySelectorAll(selector);
+    let selectorElems = table.querySelectorAll(selector);
     let selectorElem = Array.from(selectorElems).find(elem => {return elem.innerHTML === findName});
     if (selectorElem){
         return selectorElem.id.replace(selectorIdVal, '');
@@ -782,8 +788,8 @@ function addRowToTable(rowData, tableName, customTableCols) {
         ${hiddenRowHtml}`;
     d1.insertAdjacentHTML('beforeend', rowCard);
     addDatePicker(`#datePicker${loopIndex}`);
-    addSelectize(`[id$='Select${loopIndex}']`);
-    addOnClickEvent('[id^=topRowHeader]', editTopRowOnClick);
+    addSelectize(`#trHidden${loopIndex} [id$='Select${loopIndex}']`);
+    addOnClickEvent(`#${tableName}TableTHead [id^=topRowHeader]`, editTopRowOnClick);
     sortTable(bodyId, tableName + 'TableHeader');
     if (customTableCols) {
         for (let customFunc of customTableCols) {
@@ -799,7 +805,8 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
     let topRowsName = document.getElementById(tableName + 'TableSlideCol').getAttribute('data-value');
     if (topRowsName in rowData) {
         let topRowCurName = rowData[topRowsName];
-        let topRowIndex = findInQuerySelectorAll(topRowCurName, 'row' + topRowsName);
+        let topRowIndex = findInQuerySelectorAll(topRowCurName,
+            'row' + topRowsName, '', tableName);
         topRowElem = document.getElementById('topRowHeader' + tableName + topRowIndex);
         topRowElem.click();
     }
@@ -837,7 +844,7 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
     });
     syncTableWithForm(loopIndex, rowFormNames, tableName);
     let cellClass = `shadeCell${loopIndex % 10}`;
-    shadeDates(loopIndex, null, cellClass);
+    shadeDates(loopIndex, null, cellClass, tableName);
     if (topRowElem) {
         topRowElem.click();
     }
@@ -860,7 +867,7 @@ function addRow(rowData = null, tableName, customTableCols) {
     let loopIndex = '';
     if (rowData) {
         let rowName = document.getElementById(`${tableName}Table`).getAttribute('data-value');
-        loopIndex = findInQuerySelectorAll(rowData[rowName.toLowerCase()], `row${rowName}`);
+        loopIndex = findInQuerySelectorAll(rowData[rowName.toLowerCase()], `row${rowName}`, '', tableName);
         if (!loopIndex) {
             loopIndex = addRowToTable(rowData, tableName, customTableCols);
         }
@@ -1067,7 +1074,7 @@ function addDatePicker(selector = '[id^=datePicker]') {
     $(selector).change(function () {
         let loopIndex = this.id.replace('datePicker', '');
         let shadeColor = loopIndex.replace('-', '')
-        shadeDates(loopIndex, null, 'shadeCell' + shadeColor);
+        shadeDates(loopIndex, null, 'shadeCell' + shadeColor, tableName);
     });
 }
 
@@ -1119,22 +1126,25 @@ function syncSingleTableWithForm(loopIndex, formName, tableName, topRowToggle = 
     let currentElem = document.getElementById(currentElemId);
     let currentValue = (inputCheck) ? currentElem.selectize.getValue() : currentElem.value;
     if (!inputCheck && !topRowToggle) {
-        let table = document.getElementById(tableName);
+        let topRowHeader = document.getElementById(`${tableName}TableTHead`);
         let topRowElemIdSelector = 'topRowHeader' + tableName;
-        let selectedElem = table.querySelectorAll(`[id^='${topRowElemIdSelector}'].shadeCell`);
+        let selectedElem = topRowHeader.querySelectorAll(`[id^='${topRowElemIdSelector}'].shadeCell`);
         if (selectedElem.length !== 0) {
             let topRowId = selectedElem[0].id.replace(topRowElemIdSelector, '');
             currentElem.dataset[topRowId] = currentElem.value;
         }
         else {
-            let topRowIds = getTopRowIds(tableName);
-            let topRowVal = currentElem.value;
-            if (!curColElem.dataset['type'].includes('metrics')) {
-                topRowVal = topRowVal / topRowIds.length;
+            let topRowIds = document.getElementById(`${tableName}Table`).getAttribute('data-theadids');
+            topRowIds = JSON.parse(topRowIds);
+            if (topRowIds) {
+                let topRowVal = currentElem.value;
+                if (!curColElem.dataset['type'].includes('metrics')) {
+                    topRowVal = topRowVal / topRowIds.length;
+                }
+                topRowIds.forEach(topRowId => {
+                    currentElem.dataset[topRowId] = topRowVal;
+                })
             }
-            topRowIds.forEach(topRowId => {
-                currentElem.dataset[topRowId] = topRowVal;
-            })
         }
     }
     if (formName.toLowerCase().includes('cost')) {
@@ -1308,8 +1318,10 @@ function addDataToFormForNewTopRow(tableName, topRowId) {
 
 function addTopRow(topRowData, tableName) {
     let thead = document.getElementById(tableName + 'TableTHead');
-    let rowName = document.getElementById(`${tableName}Table`).getAttribute('data-value');
+    let table = document.getElementById(`${tableName}Table`);
+    let rowName = table.getAttribute('data-value');
     let tHeadIds = getTopRowIds(tableName);
+    table.setAttribute('data-theadids', JSON.stringify(tHeadIds));
     let minId = (tHeadIds.length !== 0) ? (Math.min.apply(Math, tHeadIds) - 1).toString() : '-1';
     let minIdSelector = `row${rowName}${minId}`;
     let colorClass = "shadeCell" + minId.replace('-', '');
@@ -1320,7 +1332,7 @@ function addTopRow(topRowData, tableName) {
     firstCell.classList.add('text-uppercase');
     firstCell.classList.add('font-weight-bold');
     document.getElementById(minIdSelector).innerHTML = topRowData.name;
-    shadeDates(minId, [topRowData.start_date, topRowData.end_date], colorClass);
+    shadeDates(minId, [topRowData.start_date, topRowData.end_date], colorClass, tableName);
     addTopRowCard(tableName, minId, topRowData);
     addDataToFormForNewTopRow(tableName, minId);
 }

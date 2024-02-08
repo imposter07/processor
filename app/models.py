@@ -1,4 +1,5 @@
 import rq
+import os
 import ast
 import jwt
 import pytz
@@ -2790,6 +2791,28 @@ class Plan(db.Model):
         db.session.commit()
         return True
 
+    @staticmethod
+    def get_mock_plan(basedir='', check_for_plan=False):
+        file_name = os.path.join(basedir, 'mediaplan.xlsx')
+        if check_for_plan and os.path.exists(file_name):
+            df = utl.import_read_csv(file_name)
+        else:
+            data = {
+                'Campaign Phase': ['Launch', 'Launch', 'Launch', 'Launch'],
+                'Partner Name': ['Facebook', 'Facebook', 'Facebook',
+                                 'Facebook'],
+                'Country': ['US', 'US', 'CA', 'CA'],
+                'Environment': ['Mobile', 'Desktop', 'Mobile', 'Desktop'],
+                'Targeting': ['Target A', 'Target B', 'Target A',
+                              'Target B'],
+                'Creative': ['Creative 1', 'Creative 2', 'Creative 1',
+                             'Creative 2'],
+                'Copy': ['Copy 1', 'Copy 2', 'Copy 1', 'Copy 2'],
+                'Net Cost': [12000, 11000, 13000, 10000]
+            }
+            df = pd.DataFrame(data)
+        return df
+
 
 class Sow(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -3369,6 +3392,60 @@ class PartnerPlacements(db.Model):
         return cols
 
     @staticmethod
+    def get_plan_col_translation():
+        p = PartnerPlacements
+        data_dict = {
+            p.budget: [cre.MediaPlan.campaign_id],
+            Partner.__table__: [cre.MediaPlan.partner_name],
+            p.country: [cre.MediaPlan.country_name],
+            p.targeting_bucket: [cre.MediaPlan.targeting],
+            p.creative_line_item: [cre.MediaPlan.creative],
+            p.copy: [cre.MediaPlan.copy],
+            p.retailer: [cre.MediaPlan.data_source],
+            p.buy_model: [cre.MediaPlan.buy_model],
+            p.buy_rate: [cre.MediaPlan.buy_rate],
+            p.start_date: [cre.MediaPlan.start_date],
+            p.serving: [cre.MediaPlan.serving],
+            p.ad_rate: [cre.MediaPlan.ad_rate],
+            p.reporting_rate: [cre.MediaPlan.report_rate],
+            p.kpi: [cre.MediaPlan.kpi],
+            p.data_type_1: [cre.MediaPlan.placement_objective],
+            PlanPhase.__table__: [cre.MediaPlan.placement_phase],
+            p.service_fee_rate: [cre.MediaPlan.service_fee_rate],
+            p.verification_rate: [cre.MediaPlan.verification_rate],
+            p.reporting_source: [cre.MediaPlan.reporting_source],
+            p.environment: [cre.MediaPlan.device],
+            p.size: [cre.MediaPlan.ad_size],
+            p.ad_type: [cre.MediaPlan.ad_type],
+            p.placement_description: [cre.MediaPlan.placement_description],
+            p.package_description: [cre.MediaPlan.package_description],
+            p.media_channel: [cre.MediaPlan.creative_description]}
+        return data_dict
+
+    @staticmethod
+    def translate_plan_names(df):
+        col_dict = PartnerPlacements.get_plan_col_translation()
+        col_translation_dict = {}
+        df_cols = {}
+        for x in df.columns:
+            df_cols[x] = x
+            df_cols[x.replace(' ', '').replace('\n', '')] = x
+        for k, v in col_dict.items():
+            if k.name in df.columns:
+                continue
+            for v_col in v:
+                v_cols = [v_col, '{}\n(If Needed) '.format(v_col)]
+                v_cols += [x.replace(' ', '').replace('\n', '') for x in v_cols]
+                pot_cols = [x for x in v_cols if x in df_cols]
+                if pot_cols:
+                    pot_cols = df_cols[pot_cols[0]]
+                    col_translation_dict[pot_cols] = k.name
+                    break
+        if col_translation_dict:
+            df = df.rename(columns=col_translation_dict)
+        return df
+
+    @staticmethod
     def get_col_order(for_loop=False, as_string=True):
         p = PartnerPlacements
         cols = [
@@ -3661,7 +3738,7 @@ class PartnerPlacements(db.Model):
                 val = parent.plan.name
             else:
                 val = ''
-            placement_name.append(val)
+            placement_name.append(str(val))
         placement_name = '_'.join(placement_name)
         return placement_name
 

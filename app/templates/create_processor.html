@@ -474,6 +474,9 @@
         function filePondAlert(response) {
             let data = JSON.parse(response);
             displayAlert(data['message'], data['level']);
+            if ('table' in data && data['table']) {
+                getTable(data['table'], data['table']);
+            }
         }
 
         function addFilePond() {

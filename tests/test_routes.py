@@ -2,6 +2,7 @@ import os
 import pytest
 import pandas as pd
 import datetime as dt
+from config import basedir
 import processor.reporting.utils as utl
 import processor.reporting.analyze as az
 import app.utils as app_utl
@@ -323,3 +324,21 @@ class TestPlan:
                                                      current_user_id=user.id)
         rule_info[new_val] = rule_info.pop(first_val)
         self.check_plan(data, rule_info, cur_part, total_budget, place_col)
+
+    def test_write_plan_placements(self, user, app_fixture,
+                                   check_for_plan=False):
+        cur_plan = TestTasks.create_test_processor(Plan)
+        df = Plan.get_mock_plan(basedir, check_for_plan)
+        file_type = '.csv'
+        file_name = 'mediaplantmp{}'.format(file_type)
+        df.to_csv(file_name)
+        app_tasks.write_plan_placements(
+            cur_plan.id, user.id, new_data=file_name, file_type=file_type)
+        cur_places = cur_plan.get_placements()
+        assert len(cur_places) == len(df)
+        os.remove(file_name)
+        return cur_plan, df
+
+    def test_write_plan_placements_local(self, user, app_fixture):
+        self.test_write_plan_placements(
+            user, app_fixture, check_for_plan=True)

@@ -5591,8 +5591,7 @@ def get_screenshot_table(processor_id, current_user_id):
         command = """
             SELECT * 
             FROM lqas.ss_view 
-            WHERE eventdate BETWEEN (SELECT MAX(eventdate) FROM lqas.ss_view) - INTERVAL '7 days' 
-                         AND (SELECT MAX(eventdate) FROM lqas.ss_view);
+            WHERE eventdate BETWEEN '2024-01-27' AND '2024-01-29';
         """
         db_class.cursor.execute(command)
         data = db_class.cursor.fetchall()
@@ -6231,6 +6230,7 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
     cost_col = [x for x in cost_col if x in df.columns][0]
     df = utl.data_to_type(df, float_col=[cost_col])
     form_sources = df.groupby(phase_col)[cost_col].sum().reset_index()
+    form_sources[phase_col] = form_sources[phase_col].str.replace('_', '-')
     form_sources[PlanPhase.name.name] = form_sources[phase_col]
     form_sources = form_sources.to_dict(orient='records')
     app_utl.set_db_values(plan_id, current_user_id, form_sources=form_sources,

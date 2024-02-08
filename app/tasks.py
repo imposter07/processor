@@ -5591,7 +5591,7 @@ def get_screenshot_table(processor_id, current_user_id):
         command = """
             SELECT * 
             FROM lqas.ss_view 
-            WHERE eventdate BETWEEN '2024-01-27' AND '2024-01-29';
+            WHERE eventdate BETWEEN '2024-01-25' AND '2024-01-27';
         """
         db_class.cursor.execute(command)
         data = db_class.cursor.fetchall()

@@ -336,6 +336,13 @@ class TestPlan:
             cur_plan.id, user.id, new_data=file_name, file_type=file_type)
         cur_places = cur_plan.get_placements()
         assert len(cur_places) == len(df)
+        pdf = cur_plan.get_placements_as_df()
+        pdf = PartnerPlacements.translate_plan_names(pdf)
+        df = PartnerPlacements.translate_plan_names(df)
+        cost_col = PartnerPlacements.total_budget.name
+        assert float(pdf[cost_col].sum()) == float(df[cost_col].sum())
+        col_order = PartnerPlacements.get_col_order()
+        assert len(col_order) == len(cur_places[0].name.split('_'))
         os.remove(file_name)
         return cur_plan, df
 

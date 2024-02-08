@@ -3419,7 +3419,8 @@ class PartnerPlacements(db.Model):
             p.ad_type: [cre.MediaPlan.ad_type],
             p.placement_description: [cre.MediaPlan.placement_description],
             p.package_description: [cre.MediaPlan.package_description],
-            p.media_channel: [cre.MediaPlan.creative_description]}
+            p.media_channel: [cre.MediaPlan.creative_description],
+            p.total_budget: [vmc.cost, dctc.PNC]}
         return data_dict
 
     @staticmethod

@@ -146,7 +146,7 @@ function sortTableEvent() {
 }
 
 function sortTable(bodyName, tableHeaderId) {
-    addOnClickEvent("th:not([id*='thHidden'])", sortTableEvent, 'click', false);
+    addOnClickEvent(`#${tableHeaderId} th:not([id*='thHidden'])`, sortTableEvent, 'click', false);
 }
 
 function addOnClickEvent(elemSelector, clickFunction, type = 'click', preventDefault = true,

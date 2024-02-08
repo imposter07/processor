@@ -234,7 +234,7 @@ function createTableElements(tableName, rowsName,
             <div id="${tableName}TableBaseCol" class="col">
                 <table id="${tableName}Table" data-value="${rowsName}" data-accordion="${collapseStr}"
                        data-specifyform="${specifyFormCols}" data-rowclick="${rowOnClick}"
-                       data-colfilter="${colFilter}"
+                       data-colfilter="${colFilter}" data-totalrows="-1"
                        class="table table-striped table-responsive-sm small"></table>
             </div>
             <div id="${tableName}ChartCol" class="col" style="display: none">
@@ -746,8 +746,7 @@ function addRowToTable(rowData, tableName, customTableCols) {
     }
     d1 = document.getElementById(bodyId);
     let formHolderName = tableName + 'FormHolder';
-    let loopIndex = d1.querySelectorAll(`.${formHolderName}:last-child`);
-    loopIndex = (loopIndex.length !== 0) ? (parseInt(loopIndex[loopIndex.length- 1].id.replace(formHolderName, '')) + 1).toString() : '0';
+    let loopIndex = parseInt(curTable.getAttribute('data-totalrows')) + 1;
     let tableHeadElems = getTableHeadElems(tableName);
     let tableHeaders = getRowHtml(loopIndex, tableName, rowData);
     let rowFormNames = getRowFormNames(tableName);
@@ -797,6 +796,7 @@ function addRowToTable(rowData, tableName, customTableCols) {
         }
     }
     checkCellPickCol(loopIndex);
+    curTable.setAttribute('data-totalrows', loopIndex.toString());
     return loopIndex
 }
 
@@ -864,17 +864,9 @@ function applyCustomFunction(customFunc, loopIndex) {
 }
 
 function addRow(rowData = null, tableName, customTableCols) {
-    let loopIndex = '';
+    let loopIndex = addRowToTable(rowData, tableName, customTableCols);
     if (rowData) {
-        let rowName = document.getElementById(`${tableName}Table`).getAttribute('data-value');
-        loopIndex = findInQuerySelectorAll(rowData[rowName.toLowerCase()], `row${rowName}`, '', tableName);
-        if (!loopIndex) {
-            loopIndex = addRowToTable(rowData, tableName, customTableCols);
-        }
         addRowDetailsToForm(rowData, loopIndex, tableName);
-    }
-    else {
-        loopIndex = addRowToTable(rowData, tableName, customTableCols);
     }
     toggleMetrics(tableName);
     return loopIndex;
@@ -1701,12 +1693,17 @@ function downloadLiquidTable() {
     }
 }
 
+function getDates(selector= '#datePicker') {
+    const fp = document.querySelector(selector)._flatpickr;
+    return [{eventdate: fp.selectedDates}]
+}
+
 function filterLiquidTable() {
     let tableName = this.id.replace('FilterButton', '');
     let filterElemId = `${tableName}Filter`;
     let filterElem = document.getElementById(filterElemId);
     let selectElems = filterElem.querySelectorAll(`select`);
-    let filterDict = [];
+    let filterDict = getDates(`#Date${filterElemId}`);
     selectElems.forEach(selectElem => {
         filterDict = getFilters(selectElem.id, filterDict);
     });
@@ -1724,21 +1721,32 @@ function buildFilterDict(tableName, filterDict) {
     for (let key in filterDict) {
         const cell = document.createElement('div');
         cell.classList.add('col');
-        const select = document.createElement('select');
-        let name= `${key}${tableName}Filter`
-        select.name = key;
-        select.id = name + 'Select';
-        select.multiple = true;
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = `Select ${key}...`;
-        select.appendChild(option);
-        filterDict[key].forEach(value => {
+        let name= `${key}${tableName}Filter`;
+        let select = '';
+        if (key === 'Date') {
+            select = document.createElement('input');
+            select.classList.add('custom-select');
+            select.classList.add('custom-select-sm');
+            select.classList.add('flatpickr');
+            select.classList.add('flatpickr-input');
+            select.classList.add('active');
+            select.id = name;
+        } else {
+            select = document.createElement('select');
+            select.name = key;
+            select.id = name + 'Select';
+            select.multiple = true;
             const option = document.createElement('option');
-            option.value = value;
-            option.textContent = value;
+            option.value = '';
+            option.textContent = `Select ${key}...`;
             select.appendChild(option);
-        });
+            filterDict[key].forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+        }
         cell.appendChild(select);
         filterRow.appendChild(cell);
     }
@@ -1752,6 +1760,10 @@ function buildFilterDict(tableName, filterDict) {
     filterRow.appendChild(button);
     table.insertBefore(filterRow, table.firstChild);
     addOnClickEvent('#' + buttonId, filterLiquidTable);
+    let datePicker = document.getElementById(`Date${tableName}Filter`);
+    if (datePicker) {
+        addDatePicker('#' + datePicker.id)
+    }
 }
 
 function addMetadata(tableName, metadata) {

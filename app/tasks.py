@@ -77,7 +77,7 @@ def error_handler(route_function):
     @wraps(route_function)
     def decorated_function(*args, **kwargs):
         try:
-            _set_task_progress(0)
+            _set_task_progress(50)
             json_args = json.dumps(args)
             log_msg = 'Task: {}. Args {}.'.format(route_function, json_args)
             app.logger.info(log_msg)
@@ -5578,36 +5578,35 @@ def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
         return False
 
 
+@error_handler
 # noinspection SqlResolve
-def get_screenshot_table(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.export as export
-        os.chdir(adjust_path(cur_processor.local_path))
-        db_class = export.DB()
-        db_class.input_config('dbconfig.json')
-        db_class.connect()
-        command = """
-            SELECT * 
-            FROM lqas.ss_view 
-            WHERE eventdate BETWEEN '2024-01-25' AND '2024-01-27';
-        """
-        db_class.cursor.execute(command)
-        data = db_class.cursor.fetchall()
-        columns = [i[0] for i in db_class.cursor.description]
-        df = pd.DataFrame(data=data, columns=columns)
-        df = df.fillna(0)
-        lt = app_utl.LiquidTable(df=df, table_name='screenshot',
-                                 row_on_click='screenshotImage')
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+def get_screenshot_table(processor_id, current_user_id, filter_dict=None):
+    cur_processor = Processor.query.get(processor_id)
+    os.chdir(adjust_path(cur_processor.local_path))
+    db_class = exp.DB()
+    db_class.input_config('dbconfig.json')
+    db_class.connect()
+    if filter_dict:
+        sd = filter_dict[0][prc_model.Event.eventdate.name][0]
+        ed = filter_dict[0][prc_model.Event.eventdate.name][1]
+    else:
+        ed = dt.datetime.today()
+        sd = ed - dt.timedelta(days=3)
+    command = """
+        SELECT * 
+        FROM lqas.ss_view 
+        WHERE eventdate BETWEEN '{}' AND '{}';
+    """.format(sd, ed)
+    db_class.cursor.execute(command)
+    data = db_class.cursor.fetchall()
+    columns = [i[0] for i in db_class.cursor.description]
+    df = pd.DataFrame(data=data, columns=columns)
+    df = df.fillna(0)
+    filter_dict = {vmc.date: ''}
+    lt = app_utl.LiquidTable(df=df, table_name='screenshot',
+                             row_on_click='screenshotImage',
+                             filter_dict=filter_dict)
+    return [lt.table_dict]
 
 
 def get_screenshot_image(processor_id, current_user_id, vk=None):
@@ -6229,8 +6228,8 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
     cost_col = [vmc.cost, PartnerPlacements.total_budget.name, dctc.PNC]
     cost_col = [x for x in cost_col if x in df.columns][0]
     df = utl.data_to_type(df, float_col=[cost_col])
+    df[phase_col] = df[phase_col].str.replace('_', '-')
     form_sources = df.groupby(phase_col)[cost_col].sum().reset_index()
-    form_sources[phase_col] = form_sources[phase_col].str.replace('_', '-')
     form_sources[PlanPhase.name.name] = form_sources[phase_col]
     form_sources = form_sources.to_dict(orient='records')
     app_utl.set_db_values(plan_id, current_user_id, form_sources=form_sources,
@@ -6583,7 +6582,7 @@ def get_contacts(plan_id, current_user_id):
 
 
 def get_filter_dict_values():
-    filter_dict = {}
+    filter_dict = {vmc.date: ''}
     db_models = [Client, User, Product, Campaign, Processor, Project]
     for db_model in db_models:
         if db_model == User:
@@ -6598,48 +6597,41 @@ def get_filter_dict_values():
     return filter_dict
 
 
+@error_handler
 def get_project_number(current_user_id, running_user, filter_dict=None):
-    try:
-        _set_task_progress(0)
-        get_project_numbers(0, running_user, filter_dict=filter_dict)
-        today = datetime.today()
-        sd = today - dt.timedelta(days=30)
-        ed = today + dt.timedelta(days=7)
-        results = db.session.query(Project).filter(
-            or_(
-                and_(Project.flight_start_date >= sd,
-                     Project.flight_start_date <= ed),
-                and_(Project.flight_end_date >= sd,
-                     Project.flight_end_date <= ed),
-                and_(Project.flight_start_date <= sd,
-                     Project.flight_end_date >= ed)
-            )
+    get_project_numbers(0, running_user, filter_dict=filter_dict)
+    today = datetime.today()
+    sd = today - dt.timedelta(days=30)
+    ed = today + dt.timedelta(days=7)
+    results = db.session.query(Project).filter(
+        or_(
+            and_(Project.flight_start_date >= sd,
+                 Project.flight_start_date <= ed),
+            and_(Project.flight_end_date >= sd,
+                 Project.flight_end_date <= ed),
+            and_(Project.flight_start_date <= sd,
+                 Project.flight_end_date >= ed)
         )
-        if filter_dict:
-            results = app_utl.parse_filter_dict_from_clients(
-                results, None, None, filter_dict, db_model=Project)
-        else:
-            results = results.all()
-        filter_dict = get_filter_dict_values()
-        week_str = app_utl.LiquidTable.convert_sd_ed_to_weeks(sd, ed)
-        data = [x.get_form_dict() for x in results]
-        col_list = []
-        if data:
-            col_list = list(data[0].keys())
-        col_list += week_str
-        name = 'ProjectNumber'
-        lt = app_utl.LiquidTable(
-            col_list=col_list, data=data, title=name, table_name=name,
-            download_table=True, specify_form_cols=False, accordion=True,
-            row_on_click='projectObjects', filter_dict=filter_dict,
-            link_cols={Project.project_number.name: 'main.project_edit'})
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - User {}'.format(current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    )
+    if filter_dict:
+        results = app_utl.parse_filter_dict_from_clients(
+            results, None, None, filter_dict, db_model=Project)
+    else:
+        results = results.all()
+    filter_dict = get_filter_dict_values()
+    week_str = app_utl.LiquidTable.convert_sd_ed_to_weeks(sd, ed)
+    data = [x.get_form_dict() for x in results]
+    col_list = []
+    if data:
+        col_list = list(data[0].keys())
+    col_list += week_str
+    name = 'ProjectNumber'
+    lt = app_utl.LiquidTable(
+        col_list=col_list, data=data, title=name, table_name=name,
+        download_table=True, specify_form_cols=False, accordion=True,
+        row_on_click='projectObjects', filter_dict=filter_dict,
+        link_cols={Project.project_number.name: 'main.project_edit'})
+    return [lt.table_dict]
 
 
 def get_plan_calc(plan_id, current_user_id):

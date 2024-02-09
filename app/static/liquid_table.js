@@ -434,16 +434,24 @@ function getCellContent(rowData, colName) {
 }
 
 function getDateForm(loopIndex) {
-    return `
-        <div class="col form-group">
-            <label class="control-label" for="datePicker${loopIndex}">Dates</label>
-            <input id="datePicker${loopIndex}"
-                   class="custom-select custom-select-sm
-                                          flatpickr flatpickr-input active"
-                   type="text" placeholder="Date"
-                   data-id="range" name="dates${loopIndex}"
-                   readonly="readonly" data-input>
-        </div>`
+    let dateFormGroup = document.createElement('div');
+    dateFormGroup.className = 'col form-group';
+    let label = document.createElement('label');
+    label.className = 'control-label';
+    label.setAttribute('for', `datePicker${loopIndex}`);
+    label.textContent = 'Dates';
+    let input = document.createElement('input');
+    input.id = `datePicker${loopIndex}`;
+    input.className = 'custom-select custom-select-sm flatpickr flatpickr-input active';
+    input.type = 'text';
+    input.placeholder = 'Date';
+    input.setAttribute('data-id', 'range');
+    input.name = `dates${loopIndex}`;
+    input.readOnly = true;
+    input.setAttribute('data-input', '');
+    dateFormGroup.appendChild(label);
+    dateFormGroup.appendChild(input);
+    return dateFormGroup;
 }
 
 function changeSliderValues(slider, newValue) {
@@ -662,12 +670,13 @@ function buildSliderEditCol(elem, newValue, inputElemId) {
 }
 
 function buildFormFromCols(loopIndex, formNames, tableName) {
-    let fromFromCols = '';
+    let formElements = [];
     let table = document.getElementById(tableName + 'TableHeader');
     let dateCols = ['start_date', 'end_date'];
     let weekColsExist = table.querySelectorAll('*[id^="col20"]').length !== 0;
-    if ((checkIfExists(formNames, dateCols)) || (weekColsExist)) {
-        fromFromCols = getDateForm(loopIndex);
+    if (checkIfExists(formNames, dateCols) || weekColsExist) {
+        let dateFormElements = getDateForm(loopIndex);
+        formElements = formElements.concat(dateFormElements);
         formNames = removeValues(formNames, dateCols);
     }
     let topRowIds = document.getElementById(`${tableName}Table`).getAttribute('data-theadids');
@@ -675,32 +684,45 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
     formNames.forEach((formName) => {
         let colName = 'col' + formName;
         let colType = document.getElementById(colName).dataset['type'];
-        let inputCheck = colType === 'select';
-        let inputStartHtml = (inputCheck) ? '<select ' : `<input type="text" value="" step="any"`;
-        let inputInnerHtml = (inputCheck) ? document.getElementById('colSelect' + formName).innerHTML : '';
-        let inputEndHtml = (inputCheck) ? '</select>' : '';
-        let inputIdHtml = (inputCheck) ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
-        let topRowData = '';
+        let input = colType === 'select' ? document.createElement('select') : document.createElement('input');
+        if (colType !== 'select') {
+            input.type = "text";
+            input.step = "any";
+        }
+        let inputId = (colType === 'select') ? formName.toLowerCase() + 'Select' + loopIndex : formName + loopIndex;
+        input.className = "form-control form-control-sm";
+        input.id = inputId;
+        input.name = inputId;
+        input.setAttribute('onchange', `syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')`);
+        input.setAttribute('oninput', `syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')`);
         if (topRowIds) {
             topRowIds.forEach(topRowId => {
-                topRowData += ' data-' + topRowId + '=""'
+                input.setAttribute('data-' + topRowId, "");
             });
         }
+        if (colType === 'select') {
+            let selectInnerHTML = document.getElementById('colSelect' + formName).innerHTML;
+            input.innerHTML = selectInnerHTML;
+        }
+
         let displayColNames = generateDisplayColumnName(formName);
-        let formColHtml = `
-            <div class="col form-group" id="${formName}FormGroupCol">
-                <label class="control-label" for="${inputIdHtml}">${displayColNames}</label>
-                       ${inputStartHtml} class="form-control form-control-sm"
-                       id="${inputIdHtml}" name="${inputIdHtml}"
-                       onchange="syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')"
-                       oninput="syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')"
-                       ${topRowData}>
-                ${inputInnerHtml}${inputEndHtml}
-            </div>`;
-        fromFromCols += formColHtml;
+        let formGroupDiv = document.createElement('div');
+        formGroupDiv.className = "col form-group";
+        formGroupDiv.id = `${formName}FormGroupCol`;
+
+        let label = document.createElement('label');
+        label.className = "control-label";
+        label.setAttribute('for', inputId);
+        label.textContent = displayColNames;
+
+        formGroupDiv.appendChild(label);
+        formGroupDiv.appendChild(input);
+
+        formElements.push(formGroupDiv);
     });
-    return fromFromCols
+    return formElements;
 }
+
 
 function getTableHeadElems(tableName) {
     let tableHeadElems = document.getElementById(tableName + 'TableHeader');
@@ -737,55 +759,78 @@ function checkCellPickCol(loopIndex) {
     }
 }
 
+function createVisibleRow(loopIndex, curTable, tableName, rowData) {
+    let tr = document.createElement('tr');
+    tr.id = `tr${loopIndex}`;
+    tr.setAttribute('data-toggle', curTable.getAttribute('data-accordion') || '');
+    tr.setAttribute('data-target', `#collapseRow${loopIndex}`);
+    tr.className = 'accordion-toggle';
+    tr.setAttribute('data-table', tableName);
+    let rowOnClick = curTable.getAttribute('data-rowclick');
+    if (rowOnClick) {
+        tr.setAttribute('onclick', `getTableOnClick(event, '${rowOnClick}')`);
+    }
+    tr.innerHTML = getRowHtml(loopIndex, tableName, rowData);
+    return tr
+}
+
+function createHiddenRow(loopIndex, tableName, bodyId) {
+    let hiddenTr = document.createElement('tr');
+    hiddenTr.id = `trHidden${loopIndex}`;
+    let td = document.createElement('td');
+    td.colSpan = getTableHeadElems(tableName).length;
+    td.className = 'hiddenRow';
+    let divCollapse = document.createElement('div');
+    divCollapse.id = `collapseRow${loopIndex}`;
+    divCollapse.className = 'collapse';
+    divCollapse.setAttribute('aria-labelledby', `heading${loopIndex}`);
+    divCollapse.setAttribute('data-parent', `#${bodyId}`);
+    let cardBody = document.createElement('div');
+    cardBody.className = 'card-body';
+    let formHolderDiv = document.createElement('div');
+    formHolderDiv.className = `${tableName}FormHolder`;
+    formHolderDiv.id = `${tableName}FormHolder${loopIndex}`;
+    let formElements = buildFormFromCols(loopIndex, getRowFormNames(tableName), tableName);
+    let form = document.createElement('form');
+    form.id = `form${tableName}${loopIndex}`;
+    form.className = 'row';
+    formElements.forEach(element => {
+        form.appendChild(element);
+    });
+    let deleteButtonDiv = document.createElement('div');
+    deleteButtonDiv.className = 'col form-group';
+    let deleteButton = document.createElement('button');
+    deleteButton.id = `deleteRow${loopIndex}`;
+    deleteButton.className = 'btn btn-block btn-outline-danger text-left';
+    deleteButton.type = 'button';
+    deleteButton.innerHTML = '<i class="fas fa-trash" role="button" aria-hidden="true"></i> DELETE';
+    deleteButton.setAttribute('onclick', `deleteRow(${loopIndex}, '${tableName}');`);
+    deleteButtonDiv.appendChild(deleteButton);
+    form.insertBefore(deleteButtonDiv, form.firstChild);
+    formHolderDiv.appendChild(form);
+    cardBody.appendChild(formHolderDiv);
+    divCollapse.appendChild(cardBody);
+    td.appendChild(divCollapse);
+    hiddenTr.appendChild(td);
+    return hiddenTr;
+}
+
 function addRowToTable(rowData, tableName, customTableCols) {
     let curTable = document.getElementById(tableName + 'Table');
     let bodyId = tableName + 'Body';
-    let d1 = document.getElementById(bodyId);
-    if (!(d1)) {
-        curTable.innerHTML += `<tbody id="${bodyId}"></tbody>`;
+    let tbody = document.getElementById(bodyId);
+    if (!tbody) {
+        tbody = document.createElement('tbody');
+        tbody.id = bodyId;
+        curTable.appendChild(tbody);
     }
-    d1 = document.getElementById(bodyId);
-    let formHolderName = tableName + 'FormHolder';
     let loopIndex = parseInt(curTable.getAttribute('data-totalrows')) + 1;
-    let tableHeadElems = getTableHeadElems(tableName);
-    let tableHeaders = getRowHtml(loopIndex, tableName, rowData);
-    let rowFormNames = getRowFormNames(tableName);
-    let rowForm = buildFormFromCols(loopIndex, rowFormNames, tableName);
-    let hiddenRowHtml = `
-        <tr id="trHidden${loopIndex}">
-            <td colspan="${tableHeadElems.length}" class="hiddenRow">
-            <div id="collapseRow${loopIndex}" class="collapse"
-                 aria-labelledby="heading${loopIndex}"
-                 data-parent="#${bodyId}">
-                <div class="card-body">
-                    <div class="${formHolderName}" id="${formHolderName}${loopIndex}" >
-                        <form id="form${tableName}${loopIndex}"  class="row">
-                            <div class="col form-group">
-                                <label class="control-label" for="deleteRow${loopIndex}">DELETE</label>
-                                <button id="deleteRow${loopIndex}" onclick="deleteRow(${loopIndex}, ${tableName});"
-                                        class="btn btn-block btn-outline-danger text-left" type="button" href="">
-                                    <i class="fas fa-trash" role="button" aria-hidden="true"></i>
-                                    DELETE
-                                </button>
-                            </div>
-                            ${rowForm}
-                        </form>
-                    </div>
-                </div>
-            </div>
-            </td>
-        </tr>`;
-    let collapseStr = curTable.getAttribute('data-accordion');
-    let rowOnClick = curTable.getAttribute('data-rowclick');
-    rowOnClick = (rowOnClick) ? `onclick="getTableOnClick(event, '${rowOnClick}')"` : '';
-    let rowCard = `
-        <tr id="tr${loopIndex}" data-toggle="${collapseStr}" ${rowOnClick}
-            data-target="#collapseRow${loopIndex}" class="accordion-toggle"
-            data-table="${tableName}">
-            ${tableHeaders}
-        </tr>
-        ${hiddenRowHtml}`;
-    d1.insertAdjacentHTML('beforeend', rowCard);
+    let tr = createVisibleRow(loopIndex, curTable, tableName, rowData);
+    let hiddenTr = createHiddenRow(loopIndex, tableName, bodyId);
+    let fragment = document.createDocumentFragment();
+    fragment.appendChild(tr);
+    fragment.appendChild(hiddenTr);
+    tbody.appendChild(fragment);
     addDatePicker(`#datePicker${loopIndex}`);
     addSelectize(`#trHidden${loopIndex} [id$='Select${loopIndex}']`);
     addOnClickEvent(`#${tableName}TableTHead [id^=topRowHeader]`, editTopRowOnClick);
@@ -898,22 +943,26 @@ function addTopRowCard(tableName, loopIndex, topRowData = null) {
     let formNames = [topRowName, 'total_budget'];
     let topRowCardId = 'topRowCard' + tableName + loopIndex;
     let topRowFormId = 'topRowForm' + tableName + loopIndex;
-    let topRowForm = buildFormFromCols(loopIndex, formNames, tableName);
-    let topRowCard = `
-        <div id="${topRowCardId}"
-            class="card shadow outer text-center" style="display: none;">
-            <div class="card-header">
-
-            </div>
-            <div class="card-body">
-                <form id="${topRowFormId}"  class="">
-                    ${topRowForm}
-                </form>
-            </div>
-        </div>
-    `
+        let topRowCard = document.createElement('div');
+    topRowCard.id = topRowCardId;
+    topRowCard.className = "card shadow outer text-center";
+    topRowCard.style.display = 'none';
+    let cardHeader = document.createElement('div');
+    cardHeader.className = "card-header";
+    let cardBody = document.createElement('div');
+    cardBody.className = "card-body";
+    let topRowForm = document.createElement('form');
+    topRowForm.id = topRowFormId;
+    topRowForm.className = "";
+    let formElements = buildFormFromCols(loopIndex, formNames, tableName);
+    formElements.forEach(element => {
+        topRowForm.appendChild(element);
+    });
+    cardBody.appendChild(topRowForm);
+    topRowCard.appendChild(cardHeader);
+    topRowCard.appendChild(cardBody);
     let elem = document.getElementById(tableName + 'TableSlide');
-    elem.insertAdjacentHTML('beforeend', topRowCard);
+    elem.appendChild(topRowCard);
     toggleTopRowCard(tableName, loopIndex);
     addOnClickEvent('[id^=topRowHeader]', editTopRowOnClick);
     addSelectize();

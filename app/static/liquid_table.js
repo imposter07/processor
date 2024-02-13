@@ -255,9 +255,15 @@ function addDays(date, days) {
 
 function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell", tableName='') {
     if (!dateRange) {
-        const elem = document.querySelector('#datePicker' + loopIndex);
+        const elem = document.getElementById('datePicker' + loopIndex);
         if (elem) {
-            dateRange = elem._flatpickr.selectedDates;
+            if (elem._flatpickr) {
+                dateRange = elem._flatpickr.selectedDates;
+            } else {
+                dateRange = [
+                    elem.getAttribute('data-start-date'),
+                    elem.getAttribute('data-end-date')]
+            }
         } else {
             return false
         }
@@ -285,6 +291,15 @@ function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell", tableN
             element.classList.remove(cellClass);
         }
     });
+    ['start_date', 'end_date'].forEach(elemName => {
+        let elemId = `row${elemName}${loopIndex}`;
+        let elem = document.getElementById(elemId);
+        if (elem) {
+            let newVal = (elemName === 'start_date') ? startDate : endDate;
+            newVal = newVal.toISOString().substring(0, 10);
+            elem.textContent = newVal;
+        }
+    })
 }
 
 function liquidTableToObject(tableName) {
@@ -433,7 +448,7 @@ function getCellContent(rowData, colName) {
     return cellContent
 }
 
-function getDateForm(loopIndex) {
+function getDateForm(loopIndex, tableName) {
     let dateFormGroup = document.createElement('div');
     dateFormGroup.className = 'col form-group';
     let label = document.createElement('label');
@@ -446,6 +461,7 @@ function getDateForm(loopIndex) {
     input.type = 'text';
     input.placeholder = 'Date';
     input.setAttribute('data-id', 'range');
+    input.setAttribute('data-table', tableName);
     input.name = `dates${loopIndex}`;
     input.readOnly = true;
     input.setAttribute('data-input', '');
@@ -675,7 +691,7 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
     let dateCols = ['start_date', 'end_date'];
     let weekColsExist = table.querySelectorAll('*[id^="col20"]').length !== 0;
     if (checkIfExists(formNames, dateCols) || weekColsExist) {
-        let dateFormElements = getDateForm(loopIndex);
+        let dateFormElements = getDateForm(loopIndex, tableName);
         formElements = formElements.concat(dateFormElements);
         formNames = removeValues(formNames, dateCols);
     }
@@ -683,7 +699,8 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
     topRowIds = JSON.parse(topRowIds);
     formNames.forEach((formName) => {
         let colName = 'col' + formName;
-        let colType = document.getElementById(colName).dataset['type'];
+        let col = document.getElementById(colName);
+        let colType = col.dataset['type'];
         let input = colType === 'select' ? document.createElement('select') : document.createElement('input');
         if (colType !== 'select') {
             input.type = "text";
@@ -693,26 +710,26 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
         input.className = "form-control form-control-sm";
         input.id = inputId;
         input.name = inputId;
+        input.dataset.lpignore = 'true';
         input.setAttribute('onchange', `syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')`);
         input.setAttribute('oninput', `syncSingleTableWithForm(${loopIndex}, '${formName}', '${tableName}')`);
         if (topRowIds) {
             topRowIds.forEach(topRowId => {
-                input.setAttribute('data-' + topRowId, "");
+                input.dataset[topRowId] = "";
             });
         }
         if (colType === 'select') {
-            let selectInnerHTML = document.getElementById('colSelect' + formName).innerHTML;
-            input.innerHTML = selectInnerHTML;
+            input.innerHTML = document.getElementById('colSelect' + formName).innerHTML;
         }
 
-        let displayColNames = generateDisplayColumnName(formName);
+        let displayColNames = col.dataset['displayname'];
         let formGroupDiv = document.createElement('div');
         formGroupDiv.className = "col form-group";
         formGroupDiv.id = `${formName}FormGroupCol`;
 
         let label = document.createElement('label');
         label.className = "control-label";
-        label.setAttribute('for', inputId);
+        label.htmlFor = inputId;
         label.textContent = displayColNames;
 
         formGroupDiv.appendChild(label);
@@ -723,26 +740,31 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
     return formElements;
 }
 
-
 function getTableHeadElems(tableName) {
-    let tableHeadElems = document.getElementById(tableName + 'TableHeader');
-    tableHeadElems = Array.from(tableHeadElems.getElementsByTagName('th'));
-    return tableHeadElems
+    const table = document.getElementById(`${tableName}Table`);
+    let ids = JSON.parse(table.dataset['headelems']);
+    let elements = [];
+    ids.forEach(id => {
+        const elem = document.getElementById(id);
+        if (elem) elements.push(elem);
+    });
+    return elements
 }
 
 function findInQuerySelectorAll(findName, selectorIdVal, selectorPrefix = '', tableName = '') {
     let table = document.getElementById(tableName);
     let selector = `${selectorPrefix}[id^='${selectorIdVal}']`;
     let selectorElems = table.querySelectorAll(selector);
-    let selectorElem = Array.from(selectorElems).find(elem => {return elem.innerHTML === findName});
-    if (selectorElem){
+    let selectorElem = Array.from(selectorElems).find(elem => {
+        return elem.innerHTML.trim() === findName});
+    if (selectorElem) {
         return selectorElem.id.replace(selectorIdVal, '');
     }
 }
 
-function getRowFormNames(tableName){
+function getRowFormNames(tableName) {
     let tableHeadElems = getTableHeadElems(tableName);
-    return tableHeadElems.filter(col => col.dataset['form'] === 'true').map(col => col.id.replace('col', ''));
+    return tableHeadElems.filter(col => col.dataset['form'] === 'true').map(col => col.id.substring(3));
 }
 
 function checkCellPickCol(loopIndex) {
@@ -797,6 +819,7 @@ function createHiddenRow(loopIndex, tableName, bodyId) {
     formElements.forEach(element => {
         form.appendChild(element);
     });
+    form.autocomplete = "off";
     let deleteButtonDiv = document.createElement('div');
     deleteButtonDiv.className = 'col form-group';
     let deleteButton = document.createElement('button');
@@ -845,6 +868,18 @@ function addRowToTable(rowData, tableName, customTableCols) {
     return loopIndex
 }
 
+function checkSetDate(rowData, loopIndex, rowFormNames) {
+    if ('start_date' in rowData) {
+        let datePickerElement = document.getElementById("datePicker" + loopIndex);
+        if (datePickerElement) {
+            datePickerElement.setAttribute('data-start-date', rowData.start_date);
+            datePickerElement.setAttribute('data-end-date', rowData.end_date);
+            rowFormNames = removeValues(rowFormNames, ['start_date', 'end_date']);
+        }
+    }
+    return rowFormNames
+}
+
 function addRowDetailsToForm(rowData, loopIndex, tableName) {
     let topRowElem = '';
     let topRowsName = document.getElementById(tableName + 'TableSlideCol').getAttribute('data-value');
@@ -856,14 +891,7 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
         topRowElem.click();
     }
     let rowFormNames = getRowFormNames(tableName);
-    if ('start_date' in rowData) {
-        let fp = document.getElementById("datePicker" + loopIndex);
-        if (fp) {
-            fp = fp._flatpickr;
-            fp.setDate([rowData.start_date, rowData.end_date]);
-            rowFormNames = removeValues(rowFormNames, ['start_date', 'end_date']);
-        }
-    }
+    rowFormNames =  checkSetDate(rowData, loopIndex, rowFormNames);
     rowFormNames.forEach((rowFormName) => {
         let colName = 'col' + rowFormName;
         let colElem = document.getElementById(colName);
@@ -976,8 +1004,11 @@ function addTopRowCard(tableName, loopIndex, topRowData = null) {
             value: topRowData.name
         });
         selectize.setValue(topRowData.name);
-        let fp = document.getElementById("datePicker" + loopIndex)._flatpickr;
-        fp.setDate([topRowData.start_date, topRowData.end_date]);
+        let dateElemId = "datePicker" + loopIndex;
+        let dateElem = document.getElementById(dateElemId);
+        dateElem.setAttribute('data-start-date', topRowData.start_date);
+        dateElem.setAttribute('data-end-date', topRowData.end_date);
+        addDatePicker('#' + dateElemId);
     }
 }
 
@@ -1108,15 +1139,29 @@ function addTopRowOnClick() {
     addElemRemoveLoadingBtn(this.id);
 }
 
+function addDatePickerOnEvent() {
+    if (!this._flatpickr) {
+        flatpickr(this, {
+            mode: "range",
+            onClose: function(selectedDates, dateStr, instance) {
+                let loopIndex = instance.input.id.replace('datePicker', '');
+                let shadeColor = loopIndex.replace('-', '');
+                let tableName = instance.input.getAttribute('data-table');
+                shadeDates(loopIndex, null, 'shadeCell' + shadeColor, tableName);
+            },
+            onReady: function(selectedDates, dateStr, instance) {
+                let startDate = instance.input.getAttribute('data-start-date');
+                let endDate = instance.input.getAttribute('data-end-date');
+                if (startDate && endDate) {
+                    instance.setDate([startDate, endDate], true);
+                }
+            }
+        });
+    }
+}
+
 function addDatePicker(selector = '[id^=datePicker]') {
-    $(selector).flatpickr({
-        mode: "range",
-    });
-    $(selector).change(function () {
-        let loopIndex = this.id.replace('datePicker', '');
-        let shadeColor = loopIndex.replace('-', '')
-        shadeDates(loopIndex, null, 'shadeCell' + shadeColor, tableName);
-    });
+    addOnClickEvent(selector, addDatePickerOnEvent, 'focus');
 }
 
 function addRows(rows, tableName, customTableCols) {
@@ -1386,18 +1431,23 @@ function addCurrentTopRows(topRowsData, tableName) {
 }
 
 function generateDisplayColumnName(colName) {
-    return colName.toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ');
+    return colName
+        .toUpperCase()
+        .replace('ESTIMATED_', 'e')
+        .replace(/_/g, ' ');
 }
 
 function addTableColumn(col, specifyFormCol, thead, name) {
     let colName = col['name'];
     let formCol = (!(specifyFormCol)) ? 'true' : col['form'];
     let highlightRow = encodeURIComponent(JSON.stringify(existsInJson(col, 'highlight_row')));
+    let displayName = generateDisplayColumnName(colName);
     thead.innerHTML += `
             <th data-form="${formCol}" data-type="${col['type']}"
                 data-highlight_row="${highlightRow}" data-name="${colName}"
                 data-tableid="${name}Table" data-link="${col['link_col']}"
-                id="col${colName}">${generateDisplayColumnName(colName)}
+                data-displayname="${displayName}"
+                id="col${colName}">${displayName}
             </th>`;
     if (col['hidden']) {
         document.getElementById('col' + colName).style.display = 'none';
@@ -1443,7 +1493,7 @@ function addTableColumn(col, specifyFormCol, thead, name) {
         if (colSelectElem) {
             colSelectElem = colSelectElem.selectize;
             colSelectElem.addOption({
-                text: generateDisplayColumnName(colName),
+                text: displayName,
                 id: colName,
                 value: colName
             });
@@ -1473,10 +1523,13 @@ function addTableColumns(cols, name) {
     }
     let specifyFormCol = table.getAttribute('data-specifyform');
     let addHiddenCol = false;
+    let colIds = [];
     cols.forEach(col => {
         thead = addTableColumn(col, specifyFormCol, thead, name);
         addHiddenCol = (col['type'] === 'cell_pick_col') ? true : addHiddenCol;
+        colIds.push(`col${col['name']}`);
     });
+    table.setAttribute('data-headelems', JSON.stringify(colIds));
     if (addHiddenCol) {
         let pickCol = document.getElementById('colcell_pick_col');
         if (pickCol) {
@@ -1679,7 +1732,7 @@ function createLiquidTableChart(tableName, tableRows, chartFunc) {
         let firstCellId = elem.id.replace('col', 'row') + '0';
         let cell = document.getElementById(firstCellId);
         if (cell) {
-            let value = cell.textContent || cell.innerText;
+            let value = cell.textContent;
             value = value.replace(/[$%,]/g, '');
             let cellName = elem.id.replace('col', '');
             (isNaN(value)) ? xCols.push(cellName) : yCols.push(cellName);
@@ -1744,7 +1797,8 @@ function downloadLiquidTable() {
 
 function getDates(selector= '#datePicker') {
     const fp = document.querySelector(selector)._flatpickr;
-    return [{eventdate: fp.selectedDates}]
+    let returnVal = (fp) ? fp.selectedDates : '';
+    return [{eventdate: returnVal}]
 }
 
 function filterLiquidTable() {
@@ -1833,16 +1887,19 @@ function getMetadata(elementId) {
 
 function editInlineOnBlur() {
     let formElem = this;
+    let formElemId = (formElem.id.includes('datePicker')) ? formElem.id.replace('datePicker', 'start_date') : formElem.id;
     let tmpFormElemId = `${formElem.id}TMP`;
     let tmpFormElem = document.getElementById(tmpFormElemId);
     tmpFormElem.insertAdjacentElement('afterend', formElem);
-    let rowElem = document.getElementById(`row${formElem.id}`);
+    let rowElem = document.getElementById(`row${formElemId}`);
     rowElem.style.display = '';
 }
 
 function editInlineOnClick() {
     let rowElem = this;
-    let formElem = document.getElementById(rowElem.id.replace('row', ''));
+    let formElemId = rowElem.id.replace('row', '');
+    formElemId = (formElemId.includes('start_date')) ? formElemId.replace('start_date', 'datePicker') : formElemId;
+    let formElem = document.getElementById(formElemId);
     let tmpFormElemId = `${formElem.id}TMP`;
     let tmpFormElem = document.getElementById(tmpFormElemId);
     if (!(tmpFormElem)) {
@@ -1912,10 +1969,9 @@ function createLiquidTable(data, kwargs) {
         addMetadata(tableName, metadata);
     }
     addSelectize();
-    addDatePicker();
-    addOnClickEvent('button[id^=addRows]', addRowsOnClick);
-    addOnClickEvent('button[id^=addTopRow]', addTopRowOnClick);
-    addOnClickEvent('button[id^=downloadBtn]', downloadLiquidTable);
+    addOnClickEvent(`#${tableName} button[id^=addRows]`, addRowsOnClick);
+    addOnClickEvent(`#${tableName} button[id^=addTopRow]`, addTopRowOnClick);
+    addOnClickEvent(`#${tableName} button[id^=downloadBtn]`, downloadLiquidTable);
     if (inlineEdit) {
         addOnClickEvent('td[id^=row]', editInlineOnClick);
     }

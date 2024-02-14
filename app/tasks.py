@@ -25,7 +25,7 @@ from app.models import User, Post, Task, Processor, \
     Tutorial, TutorialStage, Walkthrough, WalkthroughSlide, Plan, Sow, Notes, \
     ProcessorReports, Partner, PlanRule, Brandtracker, \
     PartnerPlacements, Rfp, RfpFile, Specs, Contacts, PlanPhase, \
-    PlanEffectiveness
+    PlanEffectiveness, InsertionOrder
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -2268,17 +2268,17 @@ def send_processor_analysis_email(processor_id, current_user_id):
             send_email('[Liquid App] {} | Analysis | {}'.format(
                 cur_processor.name,
                 datetime.today().date().strftime('%Y-%m-%d')),
-                       sender=app.config['ADMINS'][0],
-                       recipients=[user.email],
-                       text_body=render_template(
-                           'email/processor_analysis.txt', user=user,
-                           processor_name=processor_name,
-                           analysis=text_body),
-                       html_body=render_template(
-                           'email/processor_analysis.html', user=user,
-                           processor_name=processor_name,
-                           analysis=text_body),
-                       sync=True)
+                sender=app.config['ADMINS'][0],
+                recipients=[user.email],
+                text_body=render_template(
+                    'email/processor_analysis.txt', user=user,
+                    processor_name=processor_name,
+                    analysis=text_body),
+                html_body=render_template(
+                    'email/processor_analysis.html', user=user,
+                    processor_name=processor_name,
+                    analysis=text_body),
+                sync=True)
     except:
         _set_task_progress(100)
         app.logger.error('Unhandled exception - Processor {} User {}'.format(
@@ -3050,7 +3050,7 @@ def save_media_plan(processor_id, current_user_id, media_plan,
                 uploader_add_plan_costs(processor_id, current_user_id)
         msg_text = ('{} media plan was updated'.format(cur_obj.name))
         app_utl.object_post_message(cur_obj, cur_user, msg_text,
-                               object_name=object_name)
+                                    object_name=object_name)
         _set_task_progress(100)
         return True
     except:
@@ -5383,6 +5383,97 @@ def get_sow(plan_id, current_user_id):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+def make_io_table(data, font_name='Helvetica-Bold', font_size=5, padding=10):
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.platypus import Table
+    df = pd.DataFrame(data)
+    df.dropna(axis=1, how='all', inplace=True)
+    df['planned_units'] = df['planned_units'].apply(
+        lambda x: f"{float(x):,.0f}" if pd.notna(x) else x)
+    df['total_net_cost'] = df['total_net_cost'].apply(
+        lambda x: f"${float(x):,.2f}" if pd.notna(x) else x)
+    df['CPU'] = df['CPU'].apply(lambda x: f"${float(x):,.2f}" if pd.notna(x) else x)
+    data = [df.columns.tolist()] + df.values.tolist()
+    table_start_position = 20
+    total_width = landscape(A4)[0] - 1 * table_start_position
+    max_widths = []
+    for col in zip(*data):
+        max_content_width = max(
+            pdfmetrics.stringWidth(str(cell), font_name, font_size) + padding for cell in col if
+            cell is not None)
+        max_widths.append(max_content_width)
+    remaining_width = total_width - sum(max_widths)
+    number_of_columns = len(max_widths)
+    additional_width_per_column = remaining_width / number_of_columns
+    max_widths = [width + additional_width_per_column for width in max_widths]
+    headers = data[0]
+    total_row = ['Total']
+    for header in headers[1:]:
+        col_data = [row[headers.index(header)] for row in data[1:]]
+        if header in ['flight start', 'flight end'] or all(
+                isinstance(cell, (str,)) and '-' in cell for cell in col_data if cell is not None):
+            total_row.append(col_data[0])
+        elif header == 'total_net_cost':
+            total_value = sum(float(cell.replace("$", "").replace(",", "")) for cell in col_data if
+                              cell is not None and isinstance(cell, str) and "$" in cell)
+            total_row.append(f"${total_value:,.2f}")
+        elif header == 'planned_units':
+            total_value = sum(
+                float(cell.replace(",", "")) for cell in col_data if cell is not None and isinstance(cell, str))
+            total_row.append(f"{total_value:,.0f}")
+        else:
+            total_row.append('')
+    data.append(total_row)
+    table = Table(data, colWidths=max_widths, repeatRows=1)
+    return table
+
+
+def io_top_page(canvas, doc, partner_id):
+    from reportlab.lib.units import inch
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph
+    cur_io = InsertionOrder.query.filter_by(partner_id=partner_id).first()
+    logo = "app/static/logo-dark.png"
+    canvas.drawImage(logo, 0.25 * inch, 6.9 * inch, width=2 * inch, preserveAspectRatio=True)
+    canvas.setFont('Helvetica-Bold', 5)
+    data = [
+        (20, 1, "INSERTION ORDER: {}".format(cur_io.insertion_order)),
+        (20, 1.1, "PROJECT NUMBER#: {}".format(cur_io.project_number)),
+        (20, 1.2, "DATE: {}".format(cur_io.document_date)),
+        (20, 1.4, "Billing Contact: {}".format(cur_io.billing_contact)),
+        (20, 1.5, "ATTN: {}".format(cur_io.attn)),
+        (20, 1.6, "138 Eucalyptus Drive"),
+        (20, 1.7, "El Segundo, CA 90245"),
+        (20, 1.8, "T: (310) 450-2653"),
+        (20, 1.9, "invoices@liquidadvertising.com"),
+        (20, 2.1, "BUY DETAILS (italicized impressions are estimated "
+                  "based on daily traffic)"),
+        (250, 1, "MEDIA: {}".format(cur_io.media_representative)),
+        (250, 1.4, "Publisher Contact: {}".format(cur_io.publisher_contact)),
+        (250, 1.5, cur_io.publisher_contact_email),
+        (500, 1, "Client: {}".format(cur_io.client)),
+        (500, 1.4, "Agency Contact: {}".format(cur_io.agency_contact)),
+        (500, 1.5, cur_io.agency_contact_email)
+    ]
+    for y_pos, x_pos, text in data:
+        canvas.drawString(y_pos, doc.pagesize[1] - x_pos * inch, text)
+    notes_style = ParagraphStyle(
+        name='NotesStyle',
+        fontName='Helvetica-Bold',
+        fontSize=7,
+        leading=7,
+        alignment=1
+    )
+    notes_text = ("NOTES TO PUBLISHER:<br/>PROJECT# AND CAMPAIGN NAME MUST "
+                  "APPEAR ON ALL INVOICES FOR PAYMENT.<br/>DO NOT COMBINE MULTIPLE "
+                  "CAMPAIGNS ON A SINGLE INVOICE.<br/>SEND ALL INVOICES TO "
+                  "INVOICES@LIQUIDADVERTISING.COM.")
+    notes_paragraph = Paragraph(notes_text, notes_style)
+    notes_w, notes_h = notes_paragraph.wrap(doc.width, doc.topMargin)
+    notes_paragraph.drawOn(canvas, doc.leftMargin, doc.pagesize[1] - notes_h - 0.3 * inch)
+
+
 def get_topline(plan_id, current_user_id):
     try:
         _set_task_progress(0)
@@ -6657,7 +6748,7 @@ def get_plan_calc(plan_id, current_user_id):
         d = {PlanEffectiveness.brand: (brand_low, brand_high),
              PlanEffectiveness.msg: (msg_low, msg_high),
              PlanEffectiveness.media: (media_low, media_high)
-        }
+             }
         df = pd.DataFrame()
         for k, v in d.items():
             tdf = pd.DataFrame({PlanEffectiveness.factors_low: v[0],

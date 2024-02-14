@@ -2860,6 +2860,38 @@ class Sow(db.Model):
         self.ad_serving = float(budget_val) * .007
 
 
+class InsertionOrder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
+    insertion_order = db.Column(db.String)
+    project_number = db.Column(db.Integer)
+    document_date = db.Column(db.String)
+    billing_contact = db.Column(db.String)
+    attn = db.Column(db.String)
+    media_representative = db.Column(db.String)
+    publisher_contact = db.Column(db.String)
+    publisher_contact_email = db.Column(db.String)
+    client = db.Column(db.String)
+    agency_contact = db.Column(db.String)
+    agency_contact_email = db.Column(db.String)
+    campaign_name = db.Column(db.String)
+
+    def create_from_plan(self, cur_plan):
+        self.id = cur_plan.id
+        self.insertion_order = cur_plan.insertion_order
+        self.project_number = cur_plan.project_number
+        self.document_date = cur_plan.document_date
+        self.billing_contact = cur_plan.billing_contact
+        self.attn = cur_plan.attn
+        self.media_representative = cur_plan.media_representative
+        self.publisher_contact = cur_plan.publisher_contact
+        self.publisher_contact_email = cur_plan.publisher_contact_email
+        self.client = cur_plan.client
+        self.agency_contact = cur_plan.agency_contact
+        self.agency_contact_email = cur_plan.agency_contact_email
+        self.campaign_name = cur_plan.campaign_name
+
+
 class PlanPhase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), index=True)

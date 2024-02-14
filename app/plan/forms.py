@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import SelectField, HiddenField, StringField, \
     DateField, TextAreaField, DecimalField, FloatField, SelectMultipleField, \
-    IntegerField, FileField
+    IntegerField, FileField, FormField
 
 from wtforms.validators import ValidationError, DataRequired, Regexp
 from flask_babel import lazy_gettext as _l
@@ -73,6 +73,35 @@ class CreateSowForm(FlaskForm):
     fax = StringField('Liquid fax', validators=[DataRequired()])
     ad_serving = DecimalField('Ad serving cost', validators=[DataRequired()])
     form_continue = HiddenField('form_continue')
+
+
+class CreateIoForm(FlaskForm):
+    insertion_order = StringField('Insertion_order', validators=[DataRequired()])
+    project_number = IntegerField('Project number', validators=[DataRequired()])
+    document_date = DateField('Date', validators=[DataRequired()])
+    billing_contact = StringField('Billing contact', validators=[DataRequired()])
+    attn = StringField('Attn', validators=[DataRequired()])
+    media_representative = StringField('Media representative', validators=[DataRequired()])
+    publisher_contact = StringField('Publisher contact', validators=[DataRequired()])
+    publisher_contact_email = StringField('Publisher contact email',
+                                          validators=[DataRequired()])
+    client = StringField('Client', validators=[DataRequired()])
+    agency_contact = StringField('Agency contact', validators=[DataRequired()])
+    agency_contact_email = StringField('Agency contact email',
+                                       validators=[DataRequired()])
+    campaign_name = StringField('String field')
+
+
+class IoDashboardForm(FlaskForm):
+    io_partner_key = SelectField(_l('Partners'))
+    form_continue = HiddenField('form_continue')
+    partners = FormField(CreateIoForm, label='')
+
+    def set_partner_choices(self, plan_id):
+        plan = Plan.query.filter_by(
+                            id=plan_id).first()
+        choices = [(x.name, x.name) for x in plan.get_current_partners()]
+        self.io_partner_key.choices = choices
 
 
 class RfpForm(FlaskForm):

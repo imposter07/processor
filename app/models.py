@@ -359,7 +359,9 @@ class Task(db.Model):
     description = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     complete = db.Column(db.Boolean, default=False)
-    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    total_time = db.Column(db.Numeric)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'), index=True)
     uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
     plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
@@ -2016,12 +2018,13 @@ class UploaderRelations(db.Model):
 
 class ProcessorAnalysis(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
-    key = db.Column(db.Text)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'),
+                             index=True)
+    key = db.Column(db.Text, index=True)
     data = db.Column(db.JSON)
     message = db.Column(db.Text)
-    date = db.Column(db.Date)
-    parameter = db.Column(db.Text)
+    date = db.Column(db.Date, index=True)
+    parameter = db.Column(db.Text, index=True)
     parameter_2 = db.Column(db.Text)
     filter_col = db.Column(db.Text)
     filter_val = db.Column(db.Text)

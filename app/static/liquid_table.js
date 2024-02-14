@@ -296,6 +296,9 @@ function shadeDates(loopIndex, dateRange = null, cellClass = "shadeCell", tableN
         let elem = document.getElementById(elemId);
         if (elem) {
             let newVal = (elemName === 'start_date') ? startDate : endDate;
+            if (!(newVal instanceof Date) || isNaN(newVal.getTime())) {
+                newVal = new Date();
+            }
             newVal = newVal.toISOString().substring(0, 10);
             elem.textContent = newVal;
         }

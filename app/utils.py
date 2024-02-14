@@ -451,6 +451,7 @@ def set_db_values(object_id, current_user_id, form_sources, table,
             t = table()
             t.set_from_form(form, cur_processor)
             db.session.add(t)
+            db.session.commit()
             item_name = t.name if hasattr(t, 'name') else None
             add_dict = {'id': t.id, 'name': item_name}
             change_log['add'].append(add_dict)

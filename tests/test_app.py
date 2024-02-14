@@ -344,6 +344,15 @@ class TestPlan:
         edit_url = self.get_url(plan_routes.topline.__name__)
         assert sw.browser.current_url == edit_url
 
+    @staticmethod
+    def set_topline_cost(sw, part_budget='5000', submit_id='loadContinue'):
+        wait_for_id = 'partnerSelect0-selectized'
+        sw.xpath_from_id_and_click('tr0', load_elem_id=wait_for_id)
+        elem_id = 'total_budget0'
+        sw.wait_for_elem_load(elem_id)
+        submit_form(sw, [elem_id], test_name=part_budget,
+                    submit_id=submit_id)
+
     def test_topline(self, sw, login, worker):
         edit_url = self.get_url(plan_routes.topline.__name__)
         if not sw.browser.current_url == edit_url:
@@ -358,11 +367,7 @@ class TestPlan:
         part_budget = '5000'
         submit_form(sw, form_names=[sel_id], submit_id=submit_id,
                     test_name=part_name)
-        wait_for_id = 'partnerSelect0-selectized'
-        sw.xpath_from_id_and_click('tr0', load_elem_id=wait_for_id)
-        elem_id = 'total_budget0'
-        sw.wait_for_elem_load(elem_id)
-        submit_form(sw, [elem_id], test_name=part_budget)
+        self.set_topline_cost(sw, part_budget)
         sow_url = self.get_url(plan_routes.edit_sow.__name__)
         worker.work(burst=True)
         TestProject.wait_for_jobs_finish()
@@ -447,6 +452,10 @@ class TestPlan:
         cur_places = cur_plan.get_placements()
         worker.work(burst=True)
         assert len(cur_places) == len(df)
+        last_row = 'tr{}'.format(len(df) - 1)
+        sw.wait_for_elem_load(last_row)
+        elem = sw.browser.find_element_by_id(last_row)
+        assert elem
 
     def test_add_plan_local(self, sw, login, worker):
         self.test_add_plan(sw, login, worker, check_for_plan=True)

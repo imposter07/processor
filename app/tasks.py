@@ -48,7 +48,7 @@ if not app:
     app.app_context().push()
 
 
-def _set_task_progress(progress):
+def _set_task_progress(progress, total_time=0.0):
     total_attempts = 10
     for attempt in range(total_attempts):
         try:
@@ -65,6 +65,8 @@ def _set_task_progress(progress):
                                               'progress': progress})
                     if progress >= 100:
                         task.complete = True
+                        if total_time:
+                            task.total_time = total_time
                     db.session.commit()
         except:
             if attempt > (total_attempts - 2):
@@ -73,16 +75,26 @@ def _set_task_progress(progress):
                 db.session.rollback()
 
 
+def serialize_arg(arg):
+    try:
+        return json.dumps(arg)
+    except TypeError as e:
+        return json.dumps({'Non-serializable argument': 'TypeError'})
+
+
 def error_handler(route_function):
     @wraps(route_function)
     def decorated_function(*args, **kwargs):
         try:
+            start = time.time()
             _set_task_progress(50)
-            json_args = json.dumps(args)
+            json_args = json.dumps([serialize_arg(arg) for arg in args])
             log_msg = 'Task: {}. Args {}.'.format(route_function, json_args)
             app.logger.info(log_msg)
             result = route_function(*args, **kwargs)
-            _set_task_progress(100)
+            end = time.time()
+            total_time = end - start
+            _set_task_progress(100, total_time=total_time)
             return result
         except:
             msg = 'Unhandled exception {}'.format(json.dumps(args))
@@ -209,56 +221,58 @@ def processor_failed_email(processor_id, current_user_id, exception_text):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+@error_handler
+def update_total_db_analysis(processor_id, current_user_id, df, ven_col,
+                             cur_path, col, batch_size=100):
+    ven_list = df[0].groupby(ven_col)[vmc.impressions].sum()
+    ven_list = ven_list[ven_list > 100000].index.to_list()
+    for idx, vendor in enumerate(ven_list):
+        os.chdir(cur_path)
+        tdf = df[0][df[0][ven_col] == vendor]
+        t_filter_dict = [{ven_col: [vendor]}]
+        update_analysis_in_db_reporting_cache(
+            processor_id, current_user_id, df=tdf,
+            dimensions=col, metrics=['kpi'],
+            filter_dict=t_filter_dict, commit=False)
+        if idx % batch_size == 0 or idx == len(ven_list):
+            app.logger.info('Committing: #{}'.format(idx))
+            db.session.commit()
+
+
+@error_handler
 def update_cached_data_in_processor_run(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        ven_col = prc_model.Vendor.vendorname.name
-        dim_list = [
-            [ven_col], ['countryname'], ['kpiname'], ['environmentname'],
-            ['productname'], ['eventdate'], ['campaignname'], ['clientname'],
-            ['vendorname', 'vendortypename']]
-        filter_dicts = [[]]
-        cols = []
-        if processor_id == 23:
-            today = dt.datetime.today()
-            thirty = today - dt.timedelta(days=30)
-            today = today.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-            thirty = thirty.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-            filter_dict = [{'eventdate': [thirty, today]}]
-            filter_dicts.append(filter_dict)
-            dims = [[x] for x in
-                    ['placementdescriptionname', 'packagedescriptionname',
-                     'mediachannelname', 'targetingbucketname',
-                     'creativelineitemname', 'copyname']]
-            dim_list.extend(dims)
-            cols = PartnerPlacements.get_cols_for_db()
-            dim_list.append(cols)
-        cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        for col in dim_list:
-            app.logger.info('Getting db col: {}'.format(col))
-            os.chdir(cur_path)
-            for filter_dict in filter_dicts:
-                df = get_data_tables_from_db(
-                    processor_id, current_user_id, dimensions=col,
-                    metrics=['kpi'], filter_dict=filter_dict, use_cache=False)
-                if col == cols and not filter_dict:
-                    ven_list = df[0].groupby(ven_col)[vmc.impressions].sum()
-                    ven_list = ven_list[ven_list > 100000].index.to_list()
-                    for vendor in ven_list:
-                        os.chdir(cur_path)
-                        tdf = df[0][df[0][ven_col] == vendor]
-                        t_filter_dict = [{ven_col: [vendor]}]
-                        update_analysis_in_db_reporting_cache(
-                            processor_id, current_user_id, df=tdf,
-                            dimensions=col, metrics=['kpi'],
-                            filter_dict=t_filter_dict)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+    ven_col = prc_model.Vendor.vendorname.name
+    dim_list = [
+        [ven_col], ['countryname'], ['kpiname'], ['environmentname'],
+        ['productname'], ['eventdate'], ['campaignname'], ['clientname'],
+        ['vendorname', 'vendortypename']]
+    filter_dicts = [[]]
+    cols = []
+    if processor_id == 23:
+        today = dt.datetime.today()
+        thirty = today - dt.timedelta(days=30)
+        today = today.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        thirty = thirty.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        filter_dict = [{'eventdate': [thirty, today]}]
+        filter_dicts.append(filter_dict)
+        dims = [[x] for x in
+                ['placementdescriptionname', 'packagedescriptionname',
+                 'mediachannelname', 'targetingbucketname',
+                 'creativelineitemname', 'copyname']]
+        dim_list.extend(dims)
+        cols = PartnerPlacements.get_cols_for_db()
+        dim_list.append(cols)
+    cur_path = adjust_path(os.path.abspath(os.getcwd()))
+    for col in dim_list:
+        app.logger.info('Getting db col: {}'.format(col))
+        os.chdir(cur_path)
+        for filter_dict in filter_dicts:
+            df = get_data_tables_from_db(
+                processor_id, current_user_id, dimensions=col,
+                metrics=['kpi'], filter_dict=filter_dict, use_cache=False)
+            if col == cols and not filter_dict:
+                update_total_db_analysis(processor_id, current_user_id,
+                                         df, ven_col, cur_path, col)
 
 
 def run_processor(processor_id, current_user_id, run_args):
@@ -4406,59 +4420,53 @@ def update_automatic_requests(processor_id, current_user_id):
         return False
 
 
+@error_handler
 def update_analysis_in_db_reporting_cache(processor_id, current_user_id, df,
                                           dimensions, metrics, filter_dict,
-                                          check=False):
-    try:
-        _set_task_progress(0)
-        cur_processor = db.session.get(Processor, processor_id)
-        dimensions_str = '|'.join(dimensions)
-        metrics_str = '|'.join(metrics)
-        if not filter_dict:
-            filter_dict = {}
-        filter_dict = {k: v for x in filter_dict for k, v in x.items() if v}
-        filter_col_str = '|'.join(filter_dict.keys())
-        filter_val = []
-        for k, v in filter_dict.items():
-            if v:
-                new_list = v
-                if k == 'eventdate':
-                    old_date = '%Y-%m-%dT%H:%M:%S.%fZ'
-                    new_date = '%Y-%m-%d'
-                    sd = datetime.strptime(v[0], old_date).strftime(new_date)
-                    ed = datetime.strptime(v[1], old_date).strftime(new_date)
-                    new_list = [sd, ed]
-                filter_val.append(','.join(new_list))
-        filter_val_str = '|'.join(filter_val)
-        old_analysis = ProcessorAnalysis.query.filter_by(
-            processor_id=cur_processor.id, key=az.Analyze.database_cache,
-            parameter=dimensions_str, parameter_2=metrics_str,
-            filter_col=filter_col_str, filter_val=filter_val_str).first()
-        if check:
-            _set_task_progress(100)
-            return old_analysis
-        if old_analysis:
-            old_analysis.data = df.to_json()
-            old_analysis.date = datetime.today().date()
-            db.session.commit()
-            cur_analysis = old_analysis
-        else:
-            new_analysis = ProcessorAnalysis(
-                key=az.Analyze.database_cache, parameter=dimensions_str,
-                parameter_2=metrics_str, filter_col=filter_col_str,
-                filter_val=filter_val_str, data=df.to_json(),
-                processor_id=cur_processor.id, date=datetime.today().date())
-            db.session.add(new_analysis)
-            db.session.commit()
-            cur_analysis = new_analysis
+                                          check=False, commit=True):
+    cur_processor = db.session.get(Processor, processor_id)
+    dimensions_str = '|'.join(dimensions)
+    metrics_str = '|'.join(metrics)
+    if not filter_dict:
+        filter_dict = {}
+    filter_dict = {k: v for x in filter_dict for k, v in x.items() if v}
+    filter_col_str = '|'.join(filter_dict.keys())
+    filter_val = []
+    for k, v in filter_dict.items():
+        if v:
+            new_list = v
+            if k == 'eventdate':
+                old_date = '%Y-%m-%dT%H:%M:%S.%fZ'
+                new_date = '%Y-%m-%d'
+                sd = datetime.strptime(v[0], old_date).strftime(new_date)
+                ed = datetime.strptime(v[1], old_date).strftime(new_date)
+                new_list = [sd, ed]
+            filter_val.append(','.join(new_list))
+    filter_val_str = '|'.join(filter_val)
+    old_analysis = ProcessorAnalysis.query.filter_by(
+        processor_id=cur_processor.id, key=az.Analyze.database_cache,
+        parameter=dimensions_str, parameter_2=metrics_str,
+        filter_col=filter_col_str, filter_val=filter_val_str).first()
+    if check:
         _set_task_progress(100)
-        return cur_analysis
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id), exc_info=sys.exc_info())
-        return None
+        return old_analysis
+    if old_analysis:
+        old_analysis.data = df.to_json()
+        old_analysis.date = datetime.today().date()
+        if commit:
+            db.session.commit()
+        cur_analysis = old_analysis
+    else:
+        new_analysis = ProcessorAnalysis(
+            key=az.Analyze.database_cache, parameter=dimensions_str,
+            parameter_2=metrics_str, filter_col=filter_col_str,
+            filter_val=filter_val_str, data=df.to_json(),
+            processor_id=cur_processor.id, date=datetime.today().date())
+        db.session.add(new_analysis)
+        if commit:
+            db.session.commit()
+        cur_analysis = new_analysis
+    return cur_analysis
 
 
 def update_analysis_in_db(processor_id, current_user_id):

@@ -188,6 +188,7 @@ def save_topline():
         form_dict=phase_list, old_db_items=old_phase, db_model=PlanPhase,
         relation_db_item=cur_plan, form_search_name='phaseSelect',
         delete_children=True)
+    brand_new_ids = []
     for phase_idx in data:
         phase_name = [
             x for x in data[phase_idx]['Phase'] if
@@ -214,16 +215,16 @@ def save_topline():
                 else:
                     tl_dict[col] = new_data
             topline_list.append(tl_dict)
-        old_part = Partner.query.filter_by(plan_phase_id=cur_phase.id).all()
-        app_utl.sync_new_form_data_with_database(
-            form_dict=topline_list, old_db_items=old_part, db_model=Partner,
-            relation_db_item=cur_phase, form_search_name='partnerSelect',
-            delete_children=True)
-        new_part = Partner.query.filter_by(plan_phase_id=cur_phase.id).all()
-        config_path = os.path.join('processor', 'config')
-        aly = az.Analyze(load_chat=True, chat_path=config_path)
-        for part in new_part:
-            aly.chat.check_gg_children([], part)
+        change_log = app_utl.set_db_values(
+            cur_phase.id, current_user.id, form_sources=topline_list,
+            table=Partner, parent_model=PlanPhase)
+        if 'add' in change_log and change_log['add']:
+            new_ids = [x['id'] for x in change_log['add']]
+            brand_new_ids.extend(new_ids)
+    cur_partners = [x.id for x in cur_plan.get_partners()]
+    cur_plan.launch_placement_task(cur_partners, words=[], message='',
+                                   brand_new_ids=brand_new_ids)
+
     return jsonify({'message': 'This data source {} was saved!'.format(
         obj_name), 'level': 'success'})
 

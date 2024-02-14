@@ -2956,6 +2956,7 @@ class Partner(db.Model):
     rfp = db.relationship('Rfp', backref='partner', lazy='dynamic')
     specs = db.relationship('Specs', backref='p_partner', lazy='dynamic')
     contacts = db.relationship('Contacts', backref='p_partner', lazy='dynamic')
+    insertion_order = db.relationship('InsertionOrder', backref='p_partner', lazy='dynamic')
     unique_name = True
 
     def get_form_dict(self, cur_phase=None):

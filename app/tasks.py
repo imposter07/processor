@@ -37,6 +37,7 @@ import processor.reporting.vendormatrix as vm
 import processor.reporting.dictcolumns as dctc
 import processor.reporting.importhandler as ih
 import processor.reporting.gsapi as gsapi
+import processor.reporting.awss3 as awss3
 from processor.reporting.vendormatrix import full_placement_creation
 import processor.reporting.models as prc_model
 import uploader.upload.utils as u_utl
@@ -101,6 +102,7 @@ def error_handler(route_function):
             _set_task_progress(100)
             app.logger.error(msg, exc_info=sys.exc_info())
             return [pd.DataFrame()]
+
     return decorated_function
 
 
@@ -4705,11 +4707,22 @@ def write_report_builder(processor_id, current_user_id, new_data=None):
         report_data = new_report['report'][0]
         update_report_in_db(processor_id, current_user_id, new_data,
                             report_name, report_date)
-        if 'sendEmail' in new_report['saveOptions']:
-            for ind in range(len(report_data)):
-                if 'data' in report_data[ind]:
+        s3 = awss3.S3()
+        s3.input_config()
+        for ind in range(len(report_data)):
+            if report_data[ind]['selected'] == 'false':
+                continue
+            if 'data' in report_data[ind]:
+                if 'imgURI' in report_data[ind]['data']['cols']:
+                    name = report_data[ind]['data']['data'][0]['name']
+                    img_uri = report_data[ind]['data']['data'][0]['imgURI']
+                    data = utl.base64_to_binary(img_uri)
+                    url = s3.s3_upload_file_get_presigned_url(data, name)
+                    report_data[ind]['url'] = url
+                else:
                     report_data[ind]['df'] = pd.DataFrame(
                         data=report_data[ind]['data']['data'])
+        if 'sendEmail' in new_report['saveOptions']:
             user = User.query.get(current_user_id)
             send_email('[Liquid App] {} | Analysis | {}'.format(
                 cur_processor.name,
@@ -5606,7 +5619,8 @@ def get_plan_rules(plan_id, current_user_id):
         hidden_cols = [Partner.total_budget.name, name_col, PlanRule.order.name,
                        PlanRule.name.name, PlanRule.plan_id.name,
                        PlanRule.partner_id.name, name_col]
-        select_val_dict = [{PlanRule.type.name: x} for x in ['Create', 'Lookup']]
+        select_val_dict = [{PlanRule.type.name: x} for x in
+                           ['Create', 'Lookup']]
         select_val_dict = {PlanRule.type.name: select_val_dict}
         lt = app_utl.LiquidTable(
             df=df, title=name, table_name=name,

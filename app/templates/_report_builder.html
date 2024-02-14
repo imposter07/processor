@@ -1,31 +1,36 @@
-
 <style>
     .h2 {
-      min-height: 46px;
+        min-height: 46px;
     }
+
     .checkbox {
         vertical-align: middle;
     }
+
     .hover {
         opacity: .5;
     }
-    .d-none{
+
+    .d-none {
         display: none !important;
     }
+
     .bi-grip-vertical {
         align-self: center !important;
         vertical-align: middle;
         cursor: move;
         transform: scale(1.5);
     }
+
     .btn:focus {
         outline: none;
         box-shadow: none;
     }
 </style>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js_utils.js') }}"></script>
 <script>
-
-    function toggleCheckbox(elem, checkbox, hover=false, leave=false) {
+    function toggleCheckbox(elem, checkbox, hover = false, leave = false) {
         if (hover && checkbox.checked) return;
         if ((!checkbox.checked && !hover) || (!checkbox.checked && leave)) {
             if (!hover) elem.dataset.selected = "false";
@@ -48,8 +53,7 @@
                             grandchild.classList.add("hover");
                             let checkbox = grandchild.querySelector('input[type="checkbox"]');
                             if (checkbox) checkbox.checked = false;
-                        }
-                        else {
+                        } else {
                             grandchild.classList.remove("hover");
                             let checkbox = grandchild.querySelector('input[type="checkbox"]');
                             let analysis = grandchild.querySelector('span');
@@ -93,7 +97,7 @@
             dropzone = dropzone.closest("[id*='section']");
         }
         let children = dropzone.parentNode.childNodes;
-        for (let i=0; i < children.length; i++) {
+        for (let i = 0; i < children.length; i++) {
             if (children[i].id.toString().toLowerCase() === id) {
                 return [draggableElement, dropzone, "afterend"];
             }
@@ -111,7 +115,7 @@
         event.dataTransfer.clearData();
     }
 
-    function onDragLeave(event){
+    function onDragLeave(event) {
         event.currentTarget.classList.remove("border-top");
         event.currentTarget.classList.remove("border-bottom");
     }
@@ -124,7 +128,7 @@
         preventDrag(event);
         const position = findPos(event);
         let border = (position[2] === "beforebegin") ?
-           "border-top" : "border-bottom";
+            "border-top" : "border-bottom";
         event.currentTarget.classList.add(border);
     }
 
@@ -134,7 +138,7 @@
 
     function onDragStart(event) {
         event.currentTarget.childNodes.forEach(child => {
-            if (!child.draggable === true){
+            if (!child.draggable === true) {
                 child.ondragstart = "preventDrag(event)"
             }
         });
@@ -152,11 +156,21 @@
 
     function addDragDrop(elem) {
         elem.draggable = true;
-        elem.addEventListener('dragstart', function(e) {onDragStart(e)}, false);
-        elem.addEventListener('dragend', function(e) {onDragEnd(e)}, false);
-        elem.addEventListener('dragover', function(e) {onDragOver(e)}, false);
-        elem.addEventListener('dragleave', function(e) {onDragLeave(e)}, false);
-        elem.addEventListener('drop', function(e) {onDrop(e)}, false);
+        elem.addEventListener('dragstart', function (e) {
+            onDragStart(e)
+        }, false);
+        elem.addEventListener('dragend', function (e) {
+            onDragEnd(e)
+        }, false);
+        elem.addEventListener('dragover', function (e) {
+            onDragOver(e)
+        }, false);
+        elem.addEventListener('dragleave', function (e) {
+            onDragLeave(e)
+        }, false);
+        elem.addEventListener('drop', function (e) {
+            onDrop(e)
+        }, false);
     }
 
     function storeJsonAsDataAttr(data, elem) {
@@ -179,34 +193,41 @@
         });
     }
 
+    function buildSection(data) {
+        let newSection = document.createElement('div');
+        newSection.id = ('section' + data['key']).toLowerCase();
+        newSection.classList.add('mb-3');
+        let newHeader = document.createElement('div');
+        newHeader.id = ("header" + data['key']).toLowerCase();
+        newHeader.classList.add('d-flex');
+        newHeader.classList.add('align-items-center"');
+        let checkbox = addCheckBox(newHeader);
+        checkbox.classList.add('mt-3');
+        checkbox.classList.add('mb-3');
+        addGrip(newHeader);
+        addDragDrop(newHeader);
+        newSection.appendChild(newHeader);
+        let header = document.createElement('h2');
+        header.classList.add('pl-2');
+        header.classList.add('m-0');
+        header.contentEditable = 'true';
+        header.style.display = "inline";
+        header.innerHTML = data['message'];
+        header.id = (data['key'] + 'text').toLowerCase();
+        newHeader.appendChild(header);
+        storeJsonAsDataAttr(data, newHeader);
+        let reportElem = document.getElementById("reportBuilder");
+        reportElem.appendChild(newSection);
+        if (newHeader.dataset.selected === 'false') {
+            checkbox.checked = false;
+            toggleCheckbox(newHeader, checkbox);
+        }
+    }
+
     function buildReportElem(data) {
         if (data['format'] === "HEADING_1") {
-            let newSection = document.createElement('div');
-            newSection.id = ('section' + data['key']).toLowerCase();
-            newSection.classList.add('mb-3');
-            let newHeader = document.createElement('div');
-            newHeader.id = ("header" + data['key']).toLowerCase();
-            newHeader.classList.add('d-flex');
-            newHeader.classList.add('align-items-center"');
-            let checkbox = addCheckBox(newHeader);
-            checkbox.classList.add('mt-3');
-            checkbox.classList.add('mb-3');
-            addGrip(newHeader);
-            addDragDrop(newHeader);
-            newSection.appendChild(newHeader);
-            let header = document.createElement('h2');
-            header.classList.add('pl-2');
-            header.classList.add('m-0');
-            header.contentEditable = 'true';
-            header.style.display = "inline";
-            header.innerHTML = data['message'];
-            header.id = (data['key'] + 'text').toLowerCase();
-            newHeader.appendChild(header);
-            storeJsonAsDataAttr(data, newHeader);
-            let reportElem = document.getElementById("reportBuilder");
-            reportElem.appendChild(newSection)
-        }
-        else {
+            buildSection(data);
+        } else {
             let key = data["key"];
             let dataId = (data['key'] + data['parameter'] + data['parameter_2']
                 + data['split_col']).toLowerCase();
@@ -248,58 +269,124 @@
         }
     }
 
-    function getAnalysisJson(elem) {
+    function getReportCharts(date) {
+        let chartFuncs = getAllChartFunctions();
+        date = convertDateToISO(date);
+        chartFuncs.forEach(function (func) {
+            func([{
+                'eventdate': ['0001-01-01T00:00:00.000Z',
+                    date.toString()]
+            }], null, null, false, true)
+        });
+    }
+
+    function buildReportCharts() {
+        let data = {'key': 'Charts', 'message': 'Charts'};
+        buildSection(data);
+        let reportCharts = ['dailyMetrics', 'deliveryMetrics',
+            'partnerBarMetrics', 'partnerSummaryMetrics', 'partnerTreeMetrics',
+            'pacingMetrics', 'countryBarMetrics', 'countrySummaryMetrics',
+            'targetingSummaryMetrics', 'placementBarMetrics',
+            'placementSummaryMetrics', 'creativeSummaryMetrics'];
+        let header = document.getElementById('section' + data['key'].toLowerCase());
+        reportCharts.forEach(function (chart) {
+            let id = `${chart.toLowerCase()}bullet`;
+            let newBullet = document.createElement('div');
+            newBullet.id = id;
+            let newAnalysis = document.createElement('div');
+            let checkbox = addCheckBox(newAnalysis);
+            addGrip(newAnalysis);
+            addDragDrop(newBullet);
+            newBullet.appendChild(newAnalysis);
+            let text = document.createElement('span');
+            text.classList.add('pl-2');
+            text.classList.add('pr-2');
+            text.classList.add('align-middle');
+            text.contentEditable = 'true';
+            let chartName = chart.charAt(0).toUpperCase() + chart.slice(1);
+            chartName = chartName.split(/(?=[A-Z])|\s+/).join(' ');
+            text.innerHTML += chartName;
+            text.id = (id + 'text').toLowerCase();
+            newAnalysis.appendChild(text);
+            let html =
+                `<div id="${chart}" class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
+                    <div id="${chart}"></div>
+                    <div id="${chart}Progress"></div>
+                </div>`;
+            newBullet.insertAdjacentHTML('beforeend', html);
+            header.appendChild(newBullet);
+            storeJsonAsDataAttr({'key': chart}, newAnalysis);
+            if (newAnalysis.dataset.selected === 'false') {
+                checkbox.checked = false;
+                toggleCheckbox(newAnalysis, checkbox);
+            }
+        });
+    }
+
+    async function getAnalysisJson(elem, name, date) {
         let analysisJson = {};
         for (let key in elem.firstChild.dataset) {
-          analysisJson[key] = elem.firstChild.dataset[key];
+            analysisJson[key] = elem.firstChild.dataset[key];
         }
         let tableDiv = elem.querySelector('#' + elem.id + "data");
         let tableElem = elem.querySelector('#' + elem.id + "dataTable");
+        let chartElem = elem.querySelector(`[id$='Metrics']`);
+        let textElem = elem.querySelector('#' + elem.id + "text");
+        analysisJson['message'] = (textElem) ? textElem.textContent : '';
         if (tableDiv) {
-            if (!tableElem) {
-                analysisJson['message'] = '';
-            }
-            else {
-                let textElem = elem.querySelector('#' + elem.id + "text");
-                if (textElem) analysisJson['message'] = textElem.textContent;
+            if (tableElem) {
                 let data = getTableAsArray(elem.id + "dataTable");
                 let cols = Object.keys(data[0]);
                 analysisJson['data'] = {'data': data, 'cols': cols};
             }
-        }
-        else {
+        } else if (chartElem) {
+            let jinjaValues = document.getElementById('jinjaValues').dataset;
+            name = name + date + jinjaValues['title'] + "_" +
+                jinjaValues['object_name'] + "_" + chartElem.id + ".png";
+            let data = await downloadLiquidTable(chartElem.id, true, name, true);
+            let cols = Object.keys(data[0]);
+            analysisJson['data'] = {'data': data, 'cols': cols};
+        } else {
             analysisJson['message'] = elem.textContent;
         }
         return analysisJson
     }
 
-    function getSectionJson(elem) {
+    async function buildSectionJson(child, name, date) {
+        let bulletJson = {};
+        for (let key in child.dataset) {
+            bulletJson[key] = child.dataset[key];
+        }
+        if (Object.keys(bulletJson).length === 0) {
+            bulletJson = await getAnalysisJson(child, name, date);
+        } else bulletJson['message'] = child.textContent;
+        return bulletJson;
+    }
+
+    async function getSectionJson(elem, name, date) {
         let sectionJson = [];
-        elem.childNodes.forEach(child => {
-            let bulletJson = {};
-            for (let key in child.dataset) {
-              bulletJson[key] = child.dataset[key];
-            }
-            if (Object.keys(bulletJson).length === 0) {
-                bulletJson = getAnalysisJson(child);
-            }
-            else bulletJson['message'] = child.textContent;
-            sectionJson.push(bulletJson);
-        });
+        const children = elem.childNodes;
+        for (const child of children) {
+            let bulletJson = await buildSectionJson(child, name, date);
+            sectionJson.push(bulletJson)
+        }
         return sectionJson
     }
 
-    function saveReportBuilder() {
+    async function saveReportBuilder() {
         let name = document.getElementById("name").value;
         let date = document.getElementById("report_date").value;
         let report = [];
         let reportBuilder = document.getElementById("reportBuilder");
-        reportBuilder.childNodes.forEach(child => {
-            if (child.id === "saveRow") return;
-            report = report.concat(getSectionJson(child));
-        });
-        let results = {'report': [report], 'name': name, 'report_date': date,
-            'saveOptions': []};
+        const children = reportBuilder.childNodes;
+        for (const child of children) {
+            if (child.id === "saveRow") continue;
+            report = report.concat(await getSectionJson(child, name, date));
+        }
+        let results = {
+            'report': [report], 'name': name, 'report_date': date,
+            'saveOptions': []
+        };
         let saveRow = document.getElementById("saveRow");
         saveRow.childNodes.forEach(child => {
             if (child.dataset) {
@@ -310,7 +397,7 @@
         });
         SendDataTable('reportBuilder', null, '', '', results);
     }
-    
+
     function toggleSaveOption(e) {
         let selected = e.currentTarget.dataset['selected'];
         e.currentTarget.classList = (selected === "true") ? "btn btn-outline-primary rounded-pill" :
@@ -320,8 +407,8 @@
         e.currentTarget.classList.add("mr-1");
         e.currentTarget.setAttribute('data-selected', selected);
     }
-    
-    function addSaveOption(elem, id, text, saveOpt, selected="false") {
+
+    function addSaveOption(elem, id, text, saveOpt, selected = "false") {
         let saveBtn = document.createElement('button');
         let saveId = id;
         let classList = (selected === "true") ? "btn btn-primary rounded-pill" :
@@ -348,7 +435,7 @@
         let saveBtn = document.createElement('button');
         saveBtn.type = "button";
         saveBtn.classList = "btn btn-success ml-auto";
-        saveBtn.id =id;
+        saveBtn.id = id;
         saveBtn.innerText = "Save Selected Options";
         elem.appendChild(saveBtn);
         addOnClickEvent("#" + id, saveReportBuilder);
@@ -367,7 +454,7 @@
         let nameField = document.getElementById('name');
         delete nameField.dataset.options;
         nameField.selectize.clearOptions();
-        names.forEach(function(name) {
+        names.forEach(function (name) {
             nameField.selectize.addOption(
                 {
                     value: name,
@@ -418,6 +505,7 @@
         analysis.forEach(item => {
             buildReportElem(item);
         });
+        buildReportCharts(date.value);
         checkHideHeaders(reportBuilder);
         loadJS();
         addOnClickEvent(nameQuery, getReportBuilder, 'change');
@@ -447,4 +535,15 @@
         };
         makeRequest(url, 'POST', requestData, buildReportElems, 'json', kwargs);
     }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        let dateId = "report_date";
+        let date = document.getElementById(dateId).value;
+        window.addEventListener('scroll', function () {
+            getReportCharts(date);
+        });
+        window.addEventListener('resize', function () {
+            getReportCharts(date);
+        });
+    });
 </script>

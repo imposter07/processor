@@ -3,9 +3,12 @@
 <p>This processor can be found at: https://lqadata.com/processor/{{ processor_name }}</p>
 {% for x in analysis %}
     {% if x['selected'] == 'true' %}
-        <p style="margin-left:{{ x['tab'] * 2 }}em;">{{ x['message'] }}</p>
+        <p>{{ x['message'] }}</p>
         {% if 'df' in x %}
-            <p style="margin-left:{{ x['tab'] * 2 }}em;">{{ x['df'].to_html()|safe }}</p>
+            <p>{{ x['df'].to_html()|safe }}</p>
+        {% endif %}
+        {% if 'url' in x %}
+            <img src="{{x['url']}}" height="175" width="350" class="bobby img-circle">
         {% endif %}
     {% endif %}
 {% endfor %}

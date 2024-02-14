@@ -28,6 +28,15 @@ function convertFormDataToDict(formData) {
     return data
 }
 
+function convertDateToISO(inputDate) {
+    // Takes Date YYYY-MM-DD
+    // Re-formats as 'YYYY-MM-DDTHH:MM:SS.SSSSZ'
+    const [year, month, day] = inputDate.split('-');
+    const dateObject = new Date(year, month - 1, day);
+    const formattedDate = dateObject.toISOString();
+    return formattedDate;
+}
+
 function prepareFormsForRequest(formIds) {
     let data = {};
     formIds.forEach(formId => {
@@ -374,38 +383,45 @@ function displayAlert(message, level) {
     fadeInElement(alertPlaceholderElem);
 }
 
-function downloadSvg(svgElem, styleElem = null, name='svg.png') {
-    let svgString = (new XMLSerializer()).serializeToString(svgElem);
-    if (styleElem) {
-        let styleString = (new XMLSerializer()).serializeToString(styleElem);
-        svgString = ''.concat(
-            svgString.slice(0, -6), styleString, svgString.slice(-6)
-        );
-    }
-    const svgBlob = new Blob([svgString], {
-        type: 'image/svg+xml;charset=utf-8'
+function downloadSvg(svgElem, styleElem = null, name = 'svg.png', binary = false) {
+    return new Promise((resolve, reject) => {
+        let svgString = (new XMLSerializer()).serializeToString(svgElem);
+        if (styleElem) {
+            let styleString = (new XMLSerializer()).serializeToString(styleElem);
+            svgString = ''.concat(
+                svgString.slice(0, -6), styleString, svgString.slice(-6)
+            );
+        }
+        const svgBlob = new Blob([svgString], {
+            type: 'image/svg+xml;charset=utf-8'
+        });
+        const url = URL.createObjectURL(svgBlob);
+        const image = new Image();
+        image.width = svgElem.width.baseVal.value;
+        image.height = svgElem.height.baseVal.value;
+        image.onload = function () {
+            const canvas = document.createElement('canvas');
+            canvas.width = image.width;
+            canvas.height = image.height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(image, 0, 0);
+            URL.revokeObjectURL(url);
+            const imgURI = canvas.toDataURL('image/png');
+
+            if (binary) {
+                resolve({ name, imgURI });
+            } else {
+                const downloadLink = document.createElement('a');
+                downloadLink.download = name;
+                downloadLink.target = '_blank';
+                downloadLink.href = imgURI;
+                downloadLink.click();
+                resolve(imgURI);
+            }
+        };
+        image.src = url;
     });
-    const url = URL.createObjectURL(svgBlob);
-    const image = new Image();
-    image.width = svgElem.width.baseVal.value;
-    image.height = svgElem.height.baseVal.value;
-    image.onload = function () {
-        const canvas = document.createElement('canvas');
-        canvas.width = image.width;
-        canvas.height = image.height;
-
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(image, 0, 0);
-        URL.revokeObjectURL(url);
-        const imgURI = canvas.toDataURL('image/png');
-
-        const downloadLink = document.createElement('a');
-        downloadLink.download = name;
-        downloadLink.target = '_blank';
-        downloadLink.href = imgURI;
-        downloadLink.click();
-    };
-    image.src = url;
 }
 
 function getFilters(elemId, filterDict) {

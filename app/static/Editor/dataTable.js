@@ -365,13 +365,13 @@ function getMetricTableAsArray() {
 
 function getTableAsArray(tableId, cols=[]) {
     let rows = document.getElementById(tableId).getElementsByTagName('tr');
-    let tableArray = []
+    let tableArray = [];
     for (var i = 1, row; row = rows[i]; i++) {
         if (row.id.includes("Hidden")) {
             continue
         }
-        col = rows[i].children
-        row = {}
+        col = rows[i].children;
+        row = {};
         for (var j = 0, col; col = rows[0].cells[j]; j++) {
             if ((cols.length === 0) || (cols.includes(rows[0].cells[j].innerHTML))) {
                 let col_name = rows[0].cells[j].innerText.replace(/(\r\n|\n|\r)/gm, "");

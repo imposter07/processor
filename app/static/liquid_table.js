@@ -1780,19 +1780,29 @@ function getTableOnClick(e, imgToGet) {
     getTable(imgToGet, imgElem.id, 'None', vk);
 }
 
-function downloadLiquidTable() {
-    let tableId = this.dataset['table_name'];
+async function downloadLiquidTable(tableId, asArray = false, name = null,
+                                   binary = false) {
+    tableId = typeof (tableId) === 'string' ? tableId : this.dataset['table_name'];
     let liquid_table_args = getMetadata(tableId);
     let tableElem = document.getElementById(tableId + 'TableBaseCol');
+    if (!tableElem) {return [{}]}
     if (tableElem.style.display === 'none') {
         let chartElem = document.getElementById(tableId + 'ChartPlaceholder');
         let svg = chartElem.querySelector('svg');
         let svgStyles = document.getElementById('customSvgStyles');
         let jinjaValues = document.getElementById('jinjaValues').dataset;
-        let name = jinjaValues['title']  + "_" + jinjaValues['object_name'] + "_" + tableId + ".png";
-        downloadSvg(svg, svgStyles, name)
-    }
-    else {
+        name = (name) ? name : jinjaValues['title'] + "_" + jinjaValues['object_name'] + "_" + tableId + ".png";
+        let data;
+        if (binary) {
+            data = await downloadSvg(svg, svgStyles, name, binary);
+        }
+        else {
+            data = downloadSvg(svg, svgStyles, name, binary);
+        }
+        return [data]
+    } else if (asArray) {
+        return getTableAsArray(tableId + 'TableBaseCol');
+    } else {
         getTable('downloadTable', this.id, 'None', tableId,
             'None', true, 'None', false, liquid_table_args);
     }
@@ -1883,7 +1893,9 @@ function getMetadata(elementId) {
     const element = document.getElementById(elementId);
     const data = {};
     for (const key in element.dataset) {
-        data[key] = JSON.parse(element.dataset[key]);
+        if (key !== 'called') {
+            data[key] = JSON.parse(element.dataset[key]);
+        }
     }
     return data;
 }

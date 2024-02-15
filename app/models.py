@@ -2783,12 +2783,15 @@ class Plan(db.Model):
         return r
 
     def launch_placement_task(self, new_g_children, words, message,
-                              brand_new_ids=None):
+                              brand_new_ids=None, current_user_id=None):
+        cu = current_user
+        if not cu:
+            cu = db.session.get(User, current_user_id)
         total_db = pd.DataFrame()
         msg_text = 'Checking plan placements.'
         self.launch_task(
-            '.plan_check_placements', _(msg_text),
-            running_user=current_user.id, words=words, total_db=total_db,
+            '.plan_check_placements', msg_text,
+            running_user=cu.id, words=words, total_db=total_db,
             new_g_children=new_g_children, message=message,
             brand_new_ids=brand_new_ids)
         db.session.commit()
@@ -2956,7 +2959,8 @@ class Partner(db.Model):
     rfp = db.relationship('Rfp', backref='partner', lazy='dynamic')
     specs = db.relationship('Specs', backref='p_partner', lazy='dynamic')
     contacts = db.relationship('Contacts', backref='p_partner', lazy='dynamic')
-    insertion_order = db.relationship('InsertionOrder', backref='p_partner', lazy='dynamic')
+    insertion_order = db.relationship('InsertionOrder', backref='p_partner',
+                                      lazy='dynamic')
     unique_name = True
 
     def get_form_dict(self, cur_phase=None):

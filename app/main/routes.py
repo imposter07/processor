@@ -1,6 +1,7 @@
 import io
 import os
 import sys
+import time
 import html
 import json
 import zipfile
@@ -37,7 +38,6 @@ from app.models import User, Post, Message, Notification, Processor, \
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
-import processor.reporting.calc as cal
 import processor.reporting.analyze as az
 import app.utils as app_utl
 
@@ -874,6 +874,7 @@ def post_table():
                  'reportBuilder': '.write_report_builder',
                  'PlanRules': '.write_plan_rules',
                  'PlanPlacements': '.write_plan_placements',
+                 'Topline': '.write_topline',
                  'Calc': '.write_plan_calc'}
     msg = '<strong>{}</strong>, {}'.format(current_user.username, msg_text)
     if table_name in ['delete_dict', 'imports', 'data_sources', 'OutputData',

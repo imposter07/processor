@@ -321,12 +321,13 @@ async function getTable(tableName, clickElem, oldHtml = 'None', vendorKey= 'None
 }
 
 function sendDataTableResponse(data, kwargs) {
+    let jinjaValues = document.getElementById('jinjaValues').dataset;
     let tableName = kwargs['tableName'];
     let newPage = kwargs['newPage'];
     let formContinue = kwargs['formContinue'];
     let oldPage = kwargs['oldPage'];
     let saveBtnElemId = kwargs['saveBtnElemId'];
-    if ("{{ edit_name }}" === 'Import') {
+    if (jinjaValues['edit_name'] === 'Import') {
         reloadPage();
     } else {
         $('#' + tableName).modal('hide');

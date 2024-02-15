@@ -5406,15 +5406,16 @@ def make_io_table(data, font_name='Helvetica-Bold', font_size=5, padding=10):
         lambda x: f"{float(x):,.0f}" if pd.notna(x) else x)
     df['total_net_cost'] = df['total_net_cost'].apply(
         lambda x: f"${float(x):,.2f}" if pd.notna(x) else x)
-    df['CPU'] = df['CPU'].apply(lambda x: f"${float(x):,.2f}" if pd.notna(x) else x)
+    df['CPU'] = df['CPU'].apply(
+        lambda x: f"${float(x):,.2f}" if pd.notna(x) else x)
     data = [df.columns.tolist()] + df.values.tolist()
     table_start_position = 20
     total_width = landscape(A4)[0] - 1 * table_start_position
     max_widths = []
     for col in zip(*data):
         max_content_width = max(
-            pdfmetrics.stringWidth(str(cell), font_name, font_size) + padding for cell in col if
-            cell is not None)
+            pdfmetrics.stringWidth(str(cell), font_name, font_size) + padding
+            for cell in col if cell is not None)
         max_widths.append(max_content_width)
     remaining_width = total_width - sum(max_widths)
     number_of_columns = len(max_widths)
@@ -5425,15 +5426,19 @@ def make_io_table(data, font_name='Helvetica-Bold', font_size=5, padding=10):
     for header in headers[1:]:
         col_data = [row[headers.index(header)] for row in data[1:]]
         if header in ['flight start', 'flight end'] or all(
-                isinstance(cell, (str,)) and '-' in cell for cell in col_data if cell is not None):
+                isinstance(cell, (str,)) and '-' in cell for cell in col_data if
+                cell is not None):
             total_row.append(col_data[0])
         elif header == 'total_net_cost':
-            total_value = sum(float(cell.replace("$", "").replace(",", "")) for cell in col_data if
-                              cell is not None and isinstance(cell, str) and "$" in cell)
+            total_value = sum(
+                float(cell.replace("$", "").replace(
+                    ",", "")) for cell in col_data if
+                cell is not None and isinstance(cell, str) and "$" in cell)
             total_row.append(f"${total_value:,.2f}")
         elif header == 'planned_units':
             total_value = sum(
-                float(cell.replace(",", "")) for cell in col_data if cell is not None and isinstance(cell, str))
+                float(cell.replace(",", "")) for cell in col_data
+                if cell is not None and isinstance(cell, str))
             total_row.append(f"{total_value:,.0f}")
         else:
             total_row.append('')
@@ -5448,7 +5453,8 @@ def io_top_page(canvas, doc, partner_id):
     from reportlab.platypus import Paragraph
     cur_io = InsertionOrder.query.filter_by(partner_id=partner_id).first()
     logo = "app/static/logo-dark.png"
-    canvas.drawImage(logo, 0.25 * inch, 6.9 * inch, width=2 * inch, preserveAspectRatio=True)
+    canvas.drawImage(logo, 0.25 * inch, 6.9 * inch, width=2 * inch,
+                     preserveAspectRatio=True)
     canvas.setFont('Helvetica-Bold', 5)
     data = [
         (20, 1, "INSERTION ORDER: {}".format(cur_io.insertion_order)),
@@ -5478,73 +5484,130 @@ def io_top_page(canvas, doc, partner_id):
         leading=7,
         alignment=1
     )
-    notes_text = ("NOTES TO PUBLISHER:<br/>PROJECT# AND CAMPAIGN NAME MUST "
-                  "APPEAR ON ALL INVOICES FOR PAYMENT.<br/>DO NOT COMBINE MULTIPLE "
-                  "CAMPAIGNS ON A SINGLE INVOICE.<br/>SEND ALL INVOICES TO "
-                  "INVOICES@LIQUIDADVERTISING.COM.")
+    notes_text = (
+        "NOTES TO PUBLISHER:<br/>PROJECT# AND CAMPAIGN NAME MUST " 
+        "APPEAR ON ALL INVOICES FOR PAYMENT.<br/>DO NOT COMBINE MULTIPLE "
+        "CAMPAIGNS ON A SINGLE INVOICE.<br/>SEND ALL INVOICES TO "
+        "INVOICES@LIQUIDADVERTISING.COM.")
     notes_paragraph = Paragraph(notes_text, notes_style)
     notes_w, notes_h = notes_paragraph.wrap(doc.width, doc.topMargin)
-    notes_paragraph.drawOn(canvas, doc.leftMargin, doc.pagesize[1] - notes_h - 0.3 * inch)
+    notes_paragraph.drawOn(canvas, doc.leftMargin,
+                           doc.pagesize[1] - notes_h - 0.3 * inch)
 
 
+@error_handler
 def get_topline(plan_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_plan = db.session.get(Plan, plan_id)
-        partners = []
-        for phase in cur_plan.phases:
-            partners.extend(
-                [x.get_form_dict(phase)
-                 for x in Partner.query.filter_by(plan_phase_id=phase.id)])
-        partner_list, partner_type_list = Partner.get_name_list()
-        partner_name = Partner.__table__.name
-        partner_type_name = Partner.partner_type.name
-        phase_name = 'Phase'
-        total_budget = Partner.total_budget.name
-        if not cur_plan.start_date:
-            cur_plan.start_date = dt.datetime.today()
-            db.session.commit()
-        if not cur_plan.end_date:
-            cur_plan.end_date = dt.datetime.today()
-            db.session.commit()
-        sd = cur_plan.start_date
-        ed = cur_plan.end_date
-        weeks = [sd + dt.timedelta(days=x)
-                 for i, x in enumerate(range((ed - sd).days)) if i % 7 == 0]
-        weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
-        form_cols = [total_budget, 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
-        def_metric_cols = ['cpm', 'Impressions', 'cpc', 'Clicks']
-        metric_cols = def_metric_cols + [
-            'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
-            'cpv', 'Video Views 100', 'cpcv']
-        col_list = ([partner_type_name, partner_name, total_budget,
-                     phase_name] +
-                    weeks_str + metric_cols)
-        phase_list = [{phase_name: x} for x in ['Launch', 'Pre-Launch']]
-        select_val_dict = {
-            partner_name: partner_list,
-            partner_type_name: partner_type_list,
-            phase_name: phase_list
-        }
-        phases = [x.get_form_dict() for x in cur_plan.phases.all()]
-        description = 'Plan details broken out by partner.'
-        title = 'Plan Table - {}'.format(cur_plan.name)
-        lt = app_utl.LiquidTable(
-            col_list, data=partners, top_rows=phases, totals=True, title=title,
-            description=description, columns_toggle=True, accordion=True,
-            specify_form_cols=True, select_val_dict=select_val_dict,
-            select_box=partner_name, download_table=True,
-            form_cols=form_cols + [partner_name, partner_type_name],
-            metric_cols=metric_cols, def_metric_cols=def_metric_cols,
-            header=phase_name, highlight_row=total_budget, table_name='Topline')
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                plan_id, current_user_id), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_plan = db.session.get(Plan, plan_id)
+    partners = []
+    for phase in cur_plan.phases:
+        partners.extend(
+            [x.get_form_dict(phase)
+             for x in Partner.query.filter_by(plan_phase_id=phase.id)])
+    partner_list, partner_type_list = Partner.get_name_list()
+    partner_name = Partner.__table__.name
+    partner_type_name = Partner.partner_type.name
+    phase_name = 'Phase'
+    total_budget = Partner.total_budget.name
+    if not cur_plan.start_date:
+        cur_plan.start_date = dt.datetime.today()
+        db.session.commit()
+    if not cur_plan.end_date:
+        cur_plan.end_date = dt.datetime.today()
+        db.session.commit()
+    sd = cur_plan.start_date
+    ed = cur_plan.end_date
+    weeks = [sd + dt.timedelta(days=x)
+             for i, x in enumerate(range((ed - sd).days)) if i % 7 == 0]
+    weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
+    form_cols = [total_budget, 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
+    def_metric_cols = ['cpm', 'Impressions', 'cpc', 'Clicks']
+    metric_cols = def_metric_cols + [
+        'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
+        'cpv', 'Video Views 100', 'cpcv']
+    col_list = ([partner_type_name, partner_name, total_budget,
+                 phase_name] +
+                weeks_str + metric_cols)
+    phase_list = [{phase_name: x} for x in ['Launch', 'Pre-Launch']]
+    select_val_dict = {
+        partner_name: partner_list,
+        partner_type_name: partner_type_list,
+        phase_name: phase_list
+    }
+    phases = [x.get_form_dict() for x in cur_plan.phases.all()]
+    description = 'Plan details broken out by partner.'
+    title = 'Plan Table - {}'.format(cur_plan.name)
+    lt = app_utl.LiquidTable(
+        col_list, data=partners, top_rows=phases, totals=True, title=title,
+        description=description, columns_toggle=True, accordion=True,
+        specify_form_cols=True, select_val_dict=select_val_dict,
+        select_box=partner_name, download_table=True,
+        form_cols=form_cols + [partner_name, partner_type_name],
+        metric_cols=metric_cols, def_metric_cols=def_metric_cols,
+        header=phase_name, highlight_row=total_budget, table_name='Topline')
+    return [lt.table_dict]
+
+
+@error_handler
+def write_topline(plan_id, current_user_id, new_data=None):
+    cur_plan = db.session.get(Plan, plan_id)
+    data = json.loads(new_data)
+    topline_list = []
+    phase_list = []
+    for phase_idx in data:
+        phase = data[phase_idx]
+        phase_data = phase['Phase']
+        phase_dict = {}
+        for col in ['phaseSelect', 'total_budget', 'dates']:
+            col_name = '{}{}'.format(col, phase_idx)
+            new_data = [x['value'] for x in phase_data
+                        if x['name'] == col_name][0]
+            if col == 'dates':
+                phase_dict = app_utl.get_sd_ed_in_dict(phase_dict, new_data)
+            else:
+                phase_dict[col] = new_data
+        phase_dict['name'] = phase_dict['phaseSelect']
+        phase_list.append(phase_dict)
+    app_utl.set_db_values(
+        cur_plan.id, current_user_id, form_sources=phase_list,
+        table=PlanPhase, parent_model=Plan)
+    brand_new_ids = []
+    for phase_idx in data:
+        phase_name = [
+            x for x in data[phase_idx]['Phase'] if
+            x['name'] == 'phaseSelect{}'.format(phase_idx)][0]['value']
+        cur_phase = PlanPhase.query.filter_by(name=phase_name,
+                                              plan_id=cur_plan.id).first()
+        partner_data = data[phase_idx]['partner']
+        part_num_list = [int(x['name'].replace('total_budget', ''))
+                         for x in partner_data if 'total_budget' in x['name']]
+        for x in part_num_list:
+            tl_dict = {}
+            for col in ['partner_typeSelect', 'partnerSelect',
+                        'total_budget', 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv',
+                        'cpcv', 'dates']:
+                col_name = '{}{}'.format(col, x)
+                new_data = [x['value'] for x in partner_data
+                            if x['name'] == col_name]
+                if new_data:
+                    new_data = new_data[0]
+                else:
+                    continue
+                if col == 'dates':
+                    tl_dict = app_utl.get_sd_ed_in_dict(tl_dict, new_data)
+                else:
+                    tl_dict[col] = new_data
+            tl_dict['name'] = tl_dict['partnerSelect']
+            topline_list.append(tl_dict)
+        change_log = app_utl.set_db_values(
+            cur_phase.id, current_user_id, form_sources=topline_list,
+            table=Partner, parent_model=PlanPhase)
+        if 'add' in change_log and change_log['add']:
+            new_ids = [x['id'] for x in change_log['add']]
+            brand_new_ids.extend(new_ids)
+    cur_partners = [x.id for x in cur_plan.get_partners()]
+    cur_plan.launch_placement_task(cur_partners, words=[], message='',
+                                   brand_new_ids=brand_new_ids,
+                                   current_user_id=current_user_id)
 
 
 def download_topline(plan_id, current_user_id):
@@ -6649,7 +6712,7 @@ def get_rfp(plan_id, current_user_id):
 def get_specs(plan_id, current_user_id):
     try:
         _set_task_progress(0)
-        cur_plan = Plan.query.get(plan_id)
+        cur_plan = db.session.get(Plan, plan_id)
         rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
         data = []
         for rfp_file in rfp_files:

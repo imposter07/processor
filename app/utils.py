@@ -410,6 +410,8 @@ def get_obj_user(object_id, current_user_id, db_model=Processor):
 
 def set_db_values(object_id, current_user_id, form_sources, table,
                   parent_model=Processor, additional_filter=None):
+    update_msg = 'Attempt {}: {}'.format(table.__name__, form_sources)
+    current_app.logger.info(update_msg)
     cur_processor, user_that_ran = get_obj_user(
         object_id=object_id, current_user_id=current_user_id,
         db_model=parent_model)

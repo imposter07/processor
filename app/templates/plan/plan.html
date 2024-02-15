@@ -2,56 +2,6 @@
 {% block app_content_2 %}
     <div id="{{ edit_name }}"></div>
     <script>
-        function submitToplineForm(formContinue, tableName) {
-            let formTopline = {};
-            let topRowIdPrefix = 'topRowHeader' + tableName;
-            let topRowsName = document.getElementById(tableName + 'TableSlideCol').getAttribute('data-value');
-            let rowName = document.getElementById(`${tableName}Table`).getAttribute('data-value');
-            let topRowElems = document.querySelectorAll(`[id^="${topRowIdPrefix}"]`);
-            Array.prototype.map.call(topRowElems, function (elem) {
-                elem.click();
-                let curIdx = elem.id.replace(topRowIdPrefix, '');
-                formTopline[curIdx] = {topRowsName: {}, rowName: {}}
-                formTopline[curIdx][topRowsName] = $(`[id^=topRowForm${tableName}${curIdx}]`).serializeArray();
-                formTopline[curIdx][rowName] =  $(`[id^=form${tableName}]`).serializeArray();
-                elem.click();
-            });
-            saveToplineTable(formTopline, formContinue);
-        }
-
-        function saveToplineTable(formTopline, formContinue) {
-            $.ajax({
-                type: "POST",
-                url: "/save_topline",
-                data: {
-                    object_name: "{{ object_name }}",
-                    object_type: "{{ title }}",
-                    object_level: "{{ edit_name }}",
-                    placement_form: JSON.stringify(formTopline)
-                },
-            }).done(function (data, status) {
-                displayAlert(data['message'], data['level'])
-                if (data['level'] === 'success') {
-                    let element = document.getElementsByClassName('jumbotron')[0];
-                    let originalColor = element.style.backgroundColor;
-                    element.style.backgroundColor = "#b3ecff";
-                    let t = setTimeout(function () {
-                        element.style.backgroundColor = originalColor;
-                    }, (2 * 1000));
-                if (formContinue) {
-                    window.location.href = window.location.href.replace(
-                        '#', '').replace('topline', 'sow')
-                    }
-                }
-
-            }).fail(function (jqXHR, textStatus) {
-
-            }).always(function () {
-                addElemRemoveLoadingBtn('loadRefresh');
-                unanimateBar();
-            });
-        }
-
         document.addEventListener("DOMContentLoaded", function() {
             let tableName = document.getElementById('jinjaValues').dataset['edit_name'];
             let routeNames = ['Topline', 'PlanRules', 'PlanPlacements', 'RFP',

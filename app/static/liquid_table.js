@@ -327,6 +327,17 @@ function liquidTableToObject(tableName) {
 }
 
 function saveLiquidTable(formContinue, tableName) {
+    let newPage = '';
+    let oldPage = '';
+    let listTabs = document.getElementById('listTabs');
+    if (listTabs) {
+        let btnPrimary = listTabs.querySelector('.btn-primary');
+        let nextBtn = btnPrimary.nextElementSibling;
+        btnPrimary = btnPrimary.href.split('/');
+        oldPage = btnPrimary[btnPrimary.length - 1];
+        nextBtn = nextBtn.href.split('/');
+        newPage = nextBtn[nextBtn.length - 1];
+    }
     let formTopline = {};
     let tableId = `${tableName}Table`
     let topRowIdPrefix = 'topRowHeader' + tableName;
@@ -347,7 +358,7 @@ function saveLiquidTable(formContinue, tableName) {
         formTopline[curIdx][rowName] = $(`[id^=form${tableName}]`).serializeArray();
         elem.click();
     });
-    SendDataTable(tableName, formContinue, '', '', formTopline);
+    SendDataTable(tableName, formContinue, oldPage, newPage, formTopline);
 }
 
 function returnBaseFormId() {

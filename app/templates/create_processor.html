@@ -520,15 +520,12 @@
             let validForm = document.getElementById('base_form_id').reportValidity();
             if (validForm) {
                 const liquidTables = {'Bill': 'billingTable'};
-                const additionalKeys = ['PlanRules', 'PlanPlacements', 'Calc'];
+                const additionalKeys = ['PlanRules', 'PlanPlacements', 'Calc', 'Topline'];
                 additionalKeys.forEach(key => {
                     liquidTables[key] = key;
                 });
                 if (editName === "Clean") {
                     submitCleanForm(form_continue);
-                }
-                else if (editName === "Topline") {
-                    submitToplineForm(form_continue, editName);
                 }
                 else if (editName === "Plan") {
                     let curPage = window.location.pathname.split("/").pop();

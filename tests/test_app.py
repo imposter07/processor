@@ -345,13 +345,20 @@ class TestPlan:
         assert sw.browser.current_url == edit_url
 
     @staticmethod
-    def set_topline_cost(sw, part_budget='5000', submit_id='loadContinue'):
+    def set_topline_cost(worker, sw, part_budget='5000',
+                         submit_id='loadContinue'):
+        elem_id = 'tr0'
+        sw.wait_for_elem_load(elem_id)
         wait_for_id = 'partnerSelect0-selectized'
-        sw.xpath_from_id_and_click('tr0', load_elem_id=wait_for_id)
+        sw.xpath_from_id_and_click(elem_id, load_elem_id=wait_for_id)
         elem_id = 'total_budget0'
         sw.wait_for_elem_load(elem_id)
+        elem = sw.browser.find_element_by_id(elem_id)
+        elem.click()
+        elem.clear()
         submit_form(sw, [elem_id], test_name=part_budget,
                     submit_id=submit_id)
+        worker.work(burst=True)
 
     def test_topline(self, sw, login, worker):
         edit_url = self.get_url(plan_routes.topline.__name__)
@@ -367,10 +374,8 @@ class TestPlan:
         part_budget = '5000'
         submit_form(sw, form_names=[sel_id], submit_id=submit_id,
                     test_name=part_name)
-        self.set_topline_cost(sw, part_budget)
+        self.set_topline_cost(worker, sw, part_budget)
         sow_url = self.get_url(plan_routes.edit_sow.__name__)
-        worker.work(burst=True)
-        TestProject.wait_for_jobs_finish()
         p = Plan.query.filter_by(name=self.test_name).first()
         phase = p.get_current_children()
         assert len(phase) == 1
@@ -411,7 +416,8 @@ class TestPlan:
             sw.browser.find_element_by_id(new_elem_id)
         except:
             sw.xpath_from_id_and_click('rule_info0AddRow')
-        submit_form(sw, [new_elem_id], test_name=second_name)
+        submit_form(sw, [new_elem_id], test_name=second_name,
+                    submit_id='loadRefresh')
         worker.work(burst=True)
         elem_id = 'rule_info0Value'
         elem = sw.browser.find_element_by_id(elem_id)
@@ -437,11 +443,13 @@ class TestPlan:
         sw.xpath_from_id_and_click(elem_id, load_elem_id=load_elem_id)
         submit_form(sw, [load_elem_id])
         worker.work(burst=True)
-        cur_place = cur_plan.phases[0].partners[0].placements.first()
+        cur_place = cur_plan.get_placements()
+        cur_place = cur_place[0]
         assert cur_place.budget == self.test_name
+        budget_col = PartnerPlacements.budget.name
         new_rule = PlanRule.query.filter_by(
-            plan_id=cur_plan.id, type='update').first()
-        assert new_rule.place_col == PartnerPlacements.budget.name
+            plan_id=cur_plan.id, type='update', place_col=budget_col).first()
+        assert new_rule.place_col == budget_col
         assert new_rule.rule_info['val'] == self.test_name
 
     def test_add_plan(self, sw, login, worker, check_for_plan=False):
@@ -456,6 +464,7 @@ class TestPlan:
         sw.wait_for_elem_load(last_row)
         elem = sw.browser.find_element_by_id(last_row)
         assert elem
+        return df, cur_plan
 
     def test_add_plan_local(self, sw, login, worker):
         self.test_add_plan(sw, login, worker, check_for_plan=True)
@@ -856,7 +865,9 @@ class TestReportingDBReadWrite:
                           ('Chart', 'default_view-selectized', 'clear'),
                           ('Topline', 'tab-selectized', 'clear')]
         sw.send_keys_from_list(dash_form_fill)
-        sw.xpath_from_id_and_click('saveDashButton')
+        save_id = 'saveDashButton'
+        sw.wait_for_elem_load(save_id)
+        sw.xpath_from_id_and_click(save_id)
         sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
         worker.work(burst=True)
         sw.wait_for_elem_load("getAllCharts")

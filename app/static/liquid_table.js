@@ -740,7 +740,9 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
         let formGroupDiv = document.createElement('div');
         formGroupDiv.className = "col form-group";
         formGroupDiv.id = `${formName}FormGroupCol`;
-
+        if (formName === 'id') {
+            formGroupDiv.style.display = 'none';
+        }
         let label = document.createElement('label');
         label.className = "control-label";
         label.htmlFor = inputId;
@@ -982,10 +984,10 @@ function addRowsOnClick() {
 
 function addTopRowCard(tableName, loopIndex, topRowData = null) {
     let topRowName = document.getElementById(tableName + 'TableSlideCol').getAttribute('data-value');
-    let formNames = [topRowName, 'total_budget'];
+    let formNames = [topRowName, 'total_budget', 'id'];
     let topRowCardId = 'topRowCard' + tableName + loopIndex;
     let topRowFormId = 'topRowForm' + tableName + loopIndex;
-        let topRowCard = document.createElement('div');
+    let topRowCard = document.createElement('div');
     topRowCard.id = topRowCardId;
     topRowCard.className = "card shadow outer text-center";
     topRowCard.style.display = 'none';
@@ -1023,6 +1025,8 @@ function addTopRowCard(tableName, loopIndex, topRowData = null) {
         dateElem.setAttribute('data-start-date', topRowData.start_date);
         dateElem.setAttribute('data-end-date', topRowData.end_date);
         addDatePicker('#' + dateElemId);
+        let idElem = document.getElementById(`id${loopIndex}`);
+        idElem.value = topRowData.id;
     }
 }
 
@@ -1358,7 +1362,11 @@ function populateTotalCards(tableName) {
                         if (summableName === 'Impressions') {
                             rowValue = rowValue * 1000;
                         }
-                        document.getElementById('row' + summableName + rowNum).innerHTML = formatNumber(rowValue);
+                        let rowId = `row${summableName}${rowNum}`;
+                        let row = document.getElementById(rowId);
+                        if (row) {
+                            row.innerHTML = formatNumber(rowValue);
+                        }
                     }
                     rowValue = isNaN(rowValue) ? 0 : rowValue;
                     data[idx]['numeric_value'] += rowValue;
@@ -1435,6 +1443,8 @@ function addTopRow(topRowData, tableName) {
     shadeDates(minId, [topRowData.start_date, topRowData.end_date], colorClass, tableName);
     addTopRowCard(tableName, minId, topRowData);
     addDataToFormForNewTopRow(tableName, minId);
+    tHeadIds = getTopRowIds(tableName);
+    table.setAttribute('data-theadids', JSON.stringify(tHeadIds));
 }
 
 function addCurrentTopRows(topRowsData, tableName) {

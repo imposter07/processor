@@ -538,12 +538,15 @@
 
     document.addEventListener("DOMContentLoaded", function () {
         let dateId = "report_date";
-        let date = document.getElementById(dateId).value;
-        window.addEventListener('scroll', function () {
-            getReportCharts(date);
-        });
-        window.addEventListener('resize', function () {
-            getReportCharts(date);
-        });
+        let date = document.getElementById(dateId)
+        if (date) {
+            date = date.value;
+            window.addEventListener('scroll', function () {
+                getReportCharts(date);
+            });
+            window.addEventListener('resize', function () {
+                getReportCharts(date);
+            });
+        }
     });
 </script>

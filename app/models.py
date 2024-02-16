@@ -2908,6 +2908,7 @@ class PlanPhase(db.Model):
         sd = self.start_date if self.start_date else datetime.today()
         ed = self.end_date if self.end_date else datetime.today()
         form_dict = {
+            'id': self.id,
             'name': self.name,
             'start_date': datetime.strftime(sd, '%Y-%m-%d'),
             'end_date': datetime.strftime(ed, '%Y-%m-%d')
@@ -2965,6 +2966,7 @@ class Partner(db.Model):
 
     def get_form_dict(self, cur_phase=None):
         form_dict = {
+            'id': self.id,
             'partner_type': self.partner_type,
             'partner': self.name,
             'total_budget': self.total_budget,
@@ -2990,17 +2992,18 @@ class Partner(db.Model):
         partner_type = (
             form['partner_type'] if 'partner_type' in form else 'None')
         self.partner_type = partner_type
-        self.estimated_cpm = form['cpm'] if 'cpm' in form else 0
-        self.estimated_cpc = form['cpc'] if 'cpc' in form else 0
-        self.cplpv = form['cplpv'] if 'cplpv' in form else 0
-        self.cpbc = form['cpbc'] if 'cpbc' in form else 0
-        self.cpv = form['cpv'] if 'cpv' in form else 0
-        self.cpcv = form['cpcv'] if 'cpcv' in form else 0
-        self.start_date = utl.check_dict_for_key(
-            form, 'start_date', datetime.today().date())
-        self.end_date = utl.check_dict_for_key(
-            form, 'end_date', datetime.today().date() + timedelta(days=7))
-        self.total_budget = utl.check_dict_for_key(form, 'total_budget', 0)
+        for col in self.__table__.columns:
+            col_name = col.name.replace('estimated_', '')
+            if col.name in form:
+                missing_val = 'None'
+                if isinstance(col.type, db.Numeric):
+                    missing_val = 0
+                elif isinstance(col.type, db.Date):
+                    missing_val = datetime.today().date()
+                    if col.name == Partner.end_date.name:
+                        missing_val += timedelta(days=7)
+                new_val = utl.check_dict_for_key(form, col.name, missing_val)
+                setattr(self, col.name, new_val)
 
     @staticmethod
     def get_name_list(parameter='vendorname|vendortypename'):
@@ -3066,6 +3069,19 @@ class Partner(db.Model):
         c = (self.placements.all() + self.rules.all() + self.rfp.all() +
              self.specs.all() + self.contacts.all())
         return c
+
+    @staticmethod
+    def get_metric_cols():
+        p = Partner
+        cpm = p.estimated_cpm.name.split('_')[1]
+        cpc = p.estimated_cpc.name.split('_')[1]
+        form_cols = [p.total_budget.name, cpm, cpc, p.cplpv.name, p.cpbc.name,
+                     p.cpv.name, p.cpcv.name]
+        def_metric_cols = [cpm, vmc.impressions, cpc, vmc.clicks]
+        metric_cols = def_metric_cols + [
+            p.cplpv.name, vmc.landingpage, p.cpbc.name, vmc.btnclick, vmc.views,
+            p.cpv.name, vmc.views100, p.cpcv.name]
+        return form_cols, metric_cols, def_metric_cols
 
 
 class RfpFile(db.Model):
@@ -3844,11 +3860,16 @@ class PartnerPlacements(db.Model):
                    if not k.startswith("_")])
         cur_partner = ''
         cur_phase = ''
+        p = Partner
+        cols = [p.estimated_cpm, p.estimated_cpc, p.cplpv, p.cpbc, p.cpv,
+                p.cpcv]
         if self.partner_id:
             cur_partner = db.session.get(Partner, self.partner_id)
             if cur_partner:
                 cur_phase = db.session.get(PlanPhase, cur_partner.plan_phase_id)
                 cur_phase = cur_phase.name
+            for col in cols:
+                fd[col.name] = cur_partner.__dict__[col.name]
             cur_partner = cur_partner.name
         fd[Partner.__table__.name] = cur_partner
         fd[PlanPhase.__table__.name] = cur_phase

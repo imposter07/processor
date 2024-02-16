@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import json
 import yaml
@@ -5498,15 +5499,12 @@ def io_top_page(canvas, doc, partner_id):
 @error_handler
 def get_topline(plan_id, current_user_id):
     cur_plan = db.session.get(Plan, plan_id)
-    partners = []
-    for phase in cur_plan.phases:
-        partners.extend(
-            [x.get_form_dict(phase)
-             for x in Partner.query.filter_by(plan_phase_id=phase.id)])
+    partners = [x.get_form_dict() for x in cur_plan.get_partners()]
     partner_list, partner_type_list = Partner.get_name_list()
     partner_name = Partner.__table__.name
-    partner_type_name = Partner.partner_type.name
-    phase_name = 'Phase'
+    partner_id = Partner.id.name
+    partner_type = Partner.partner_type.name
+    phase_name = re.split('(?<=.)(?=[A-Z])', PlanPhase.__name__)[1]
     total_budget = Partner.total_budget.name
     if not cur_plan.start_date:
         cur_plan.start_date = dt.datetime.today()
@@ -5519,29 +5517,26 @@ def get_topline(plan_id, current_user_id):
     weeks = [sd + dt.timedelta(days=x)
              for i, x in enumerate(range((ed - sd).days)) if i % 7 == 0]
     weeks_str = [dt.datetime.strftime(x, '%Y-%m-%d') for x in weeks]
-    form_cols = [total_budget, 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv', 'cpcv']
-    def_metric_cols = ['cpm', 'Impressions', 'cpc', 'Clicks']
-    metric_cols = def_metric_cols + [
-        'cplpv', 'Landing Page', 'cpbc', 'Button Clicks', 'Views',
-        'cpv', 'Video Views 100', 'cpcv']
-    col_list = ([partner_type_name, partner_name, total_budget,
-                 phase_name] +
-                weeks_str + metric_cols)
-    phase_list = [{phase_name: x} for x in ['Launch', 'Pre-Launch']]
+    form_cols, metric_cols, def_metric_cols = Partner.get_metric_cols()
+    cols = [partner_id, partner_type, partner_name, total_budget, phase_name]
+    cols += weeks_str + metric_cols
+    phase_list = ['-'.join(x.capitalize() for x in x.split('-')) for x in
+                  PlanPhase.get_name_list()]
+    phase_list = [{phase_name: x} for x in phase_list]
     select_val_dict = {
         partner_name: partner_list,
-        partner_type_name: partner_type_list,
+        partner_type: partner_type_list,
         phase_name: phase_list
     }
     phases = [x.get_form_dict() for x in cur_plan.phases.all()]
     description = 'Plan details broken out by partner.'
     title = 'Plan Table - {}'.format(cur_plan.name)
     lt = app_utl.LiquidTable(
-        col_list, data=partners, top_rows=phases, totals=True, title=title,
+        cols, data=partners, top_rows=phases, totals=True, title=title,
         description=description, columns_toggle=True, accordion=True,
         specify_form_cols=True, select_val_dict=select_val_dict,
-        select_box=partner_name, download_table=True,
-        form_cols=form_cols + [partner_name, partner_type_name],
+        select_box=partner_name, download_table=True, hidden_cols=[partner_id],
+        form_cols=form_cols + [partner_name, partner_type, partner_id],
         metric_cols=metric_cols, def_metric_cols=def_metric_cols,
         header=phase_name, highlight_row=total_budget, table_name='Topline')
     return [lt.table_dict]
@@ -5557,7 +5552,7 @@ def write_topline(plan_id, current_user_id, new_data=None):
         phase = data[phase_idx]
         phase_data = phase['Phase']
         phase_dict = {}
-        for col in ['phaseSelect', 'total_budget', 'dates']:
+        for col in ['phaseSelect', 'total_budget', 'dates', 'id']:
             col_name = '{}{}'.format(col, phase_idx)
             new_data = [x['value'] for x in phase_data
                         if x['name'] == col_name][0]
@@ -5711,10 +5706,14 @@ def get_plan_placements(plan_id, current_user_id):
     cur_plan = db.session.get(Plan, plan_id)
     df = cur_plan.get_placements_as_df()
     name = 'PlanPlacements'
+    form_cols, metric_cols, def_metric_cols = Partner.get_metric_cols()
+    form_cols += [x for x in df.columns.to_list() if x not in metric_cols]
     lt = app_utl.LiquidTable(
         df=df, title=name, table_name=name, download_table=True,
         specify_form_cols=True, accordion=False, inline_edit=True,
-        form_cols=df.columns.to_list())
+        form_cols=form_cols, metric_cols=metric_cols,
+        def_metric_cols=def_metric_cols, columns_toggle=True,
+        hidden_cols=[PartnerPlacements.id.name])
     return [lt.table_dict]
 
 
@@ -5735,23 +5734,14 @@ def plan_check_placements(plan_id, current_user_id, words, new_g_children,
     return response
 
 
+@error_handler
 def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
                            total_db=None, message=''):
-    try:
-        _set_task_progress(0)
-        r = PartnerPlacements.check_col_in_words(
-            PartnerPlacements, words, parent_id, total_db=total_db,
-            message=message)
-        PartnerPlacements.create_from_rules(PartnerPlacements, parent_id,
-                                            current_user_id)
-        _set_task_progress(100)
-        return r
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Plan {} User {}'.format(
-                plan_id, current_user_id), exc_info=sys.exc_info())
-        return False
+    r = PartnerPlacements.check_col_in_words(
+        PartnerPlacements, words, parent_id, total_db=total_db,
+        message=message)
+    PartnerPlacements.create_from_rules(PartnerPlacements, parent_id,
+                                        current_user_id)
 
 
 @error_handler
@@ -6369,8 +6359,7 @@ def update_rules_from_change_log(plan_id, current_user_id, part_id, change_log):
             val = PartnerPlacements.fix_date_from_words(
                 col=x['col'], val=x['val'], to_str=True)
             rule_info = {'id': x['id'], 'val': val}
-            form_source = {PlanRule.id.name: x[PlanRule.id.name],
-                           PlanRule.type.name: update_type,
+            form_source = {PlanRule.type.name: update_type,
                            PlanRule.place_col.name: x['col'],
                            PlanRule.rule_info.name: rule_info,
                            PlanRule.name.name: '',

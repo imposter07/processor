@@ -2988,21 +2988,20 @@ class Partner(db.Model):
             if 'Select' in k:
                 form[k.replace('Select', '')] = form[k]
         self.plan_phase_id = current_plan.id
-        self.name = form['partner']
-        partner_type = (
-            form['partner_type'] if 'partner_type' in form else 'None')
-        self.partner_type = partner_type
-        for col in self.__table__.columns:
-            col_name = col.name.replace('estimated_', '')
-            if col.name in form:
-                missing_val = 'None'
-                if isinstance(col.type, db.Numeric):
-                    missing_val = 0
-                elif isinstance(col.type, db.Date):
-                    missing_val = datetime.today().date()
-                    if col.name == Partner.end_date.name:
-                        missing_val += timedelta(days=7)
-                new_val = utl.check_dict_for_key(form, col.name, missing_val)
+        self.name = form[Partner.__table__.name]
+        omit_cols = [Partner.name.name]
+        cols = [x for x in self.__table__.columns if x.name not in omit_cols]
+        for col in cols:
+            missing_val = 'None'
+            if isinstance(col.type, db.Numeric):
+                missing_val = 0
+            elif isinstance(col.type, db.Date):
+                missing_val = datetime.today().date()
+                if col.name == Partner.end_date.name:
+                    missing_val += timedelta(days=7)
+            new_val = utl.check_dict_for_key(form, col.name, missing_val)
+            is_key_col = col.primary_key or col.foreign_keys
+            if (is_key_col and new_val != missing_val) or not is_key_col:
                 setattr(self, col.name, new_val)
 
     @staticmethod
@@ -3594,10 +3593,12 @@ class PartnerPlacements(db.Model):
 
     @staticmethod
     def get_default_value_for_col(parent, total_db, db_col, str_name, plan_id):
+        new_rule = None
+        if total_db.empty:
+            return new_rule
         ven_col = prc_model.Vendor.vendorname.name
         filtered_df = total_db[total_db[ven_col] == parent.name]
         exclude_values = [0, 'None', None, '0', '0.0', 0.0]
-        new_rule = None
         if db_col in filtered_df.columns:
             mask = ~filtered_df[db_col].isin(exclude_values)
             filtered_df = filtered_df[mask]
@@ -3738,6 +3739,8 @@ class PartnerPlacements(db.Model):
     def check_col_in_words(self, words, parent_id, total_db=pd.DataFrame(),
                            message=''):
         response = ''
+        if not words:
+            words = []
         parent = db.session.get(Partner, parent_id)
         g_parent = db.session.get(PlanPhase, parent.plan_phase_id)
         plan_id = g_parent.plan_id
@@ -3813,14 +3816,30 @@ class PartnerPlacements(db.Model):
 
     @staticmethod
     def apply_manual_rules(parent_id, data):
+        current_app.logger.info('Apply rules to {}: {}'.format(parent_id, data))
         rules = PlanRule.query.filter_by(partner_id=parent_id).all()
+        delete_names = []
+        data_with_id = {d['id']: d for d in data if 'id' in d}
+        data_without_id = [d for d in data if 'id' not in d]
         for rule in rules:
             if rule.type == 'update':
                 cur_id = rule.rule_info['id']
                 new_val = rule.rule_info['val']
-                cur_place = db.session.get(PartnerPlacements, cur_id)
-                setattr(cur_place, rule.place_col, new_val)
-        db.session.commit()
+                if cur_id and cur_id in data_with_id:
+                    data_with_id[cur_id][rule.place_col] = new_val
+            elif rule.type == 'add':
+                for place_dict in rule.rule_info:
+                    cur_id = place_dict.get('id')
+                    cur_place = db.session.get(PartnerPlacements, cur_id)
+                    data_with_id[cur_id] = cur_place.get_form_dict()
+            elif rule.type == 'delete':
+                delete_names.extend([x['name'] for x in rule.rule_info])
+        if delete_names:
+            data_with_id = {k: v for k, v in data_with_id.items() if
+                            v['name'] not in delete_names}
+            data_without_id = [x for x in data_without_id if
+                               x['name'] not in delete_names]
+        data = list(data_with_id.values()) + data_without_id
         return data
 
     def create_from_rules(self, parent_id, current_user_id):
@@ -3848,11 +3867,15 @@ class PartnerPlacements(db.Model):
             placement_name = PartnerPlacements().create_placement_name(
                 temp_dict, parent)
             temp_dict[PartnerPlacements.name.name] = placement_name
+            cur_placement = PartnerPlacements.query.filter_by(
+                name=placement_name, partner_id=parent_id).first()
+            if cur_placement:
+                temp_dict[PartnerPlacements.id.name] = cur_placement.id
             data.append(temp_dict)
+        data = self.apply_manual_rules(parent_id, data)
         from app.utils import set_db_values
         set_db_values(parent_id, current_user_id, form_sources=data,
                       table=PartnerPlacements, parent_model=Partner)
-        data = self.apply_manual_rules(parent_id, data)
         return data
 
     def get_form_dict(self):

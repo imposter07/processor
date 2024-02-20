@@ -470,9 +470,17 @@ class TestPlan:
         self.test_add_plan(sw, login, worker, check_for_plan=True)
 
     def test_topline_after_plan(self, sw, login, worker):
-        url = plan_routes.plan_placements.__name__
-        if sw.browser.current_url != url:
-            self.test_add_plan(sw, login, worker)
+        url = plan_routes.topline.__name__
+        df, cur_plan = self.test_add_plan(sw, login, worker)
+        self.check_and_get_plan(sw, login, worker, url)
+        budget = '1000'
+        self.set_topline_cost(worker, sw, part_budget=budget,
+                              submit_id='loadRefresh')
+        cur_places = cur_plan.get_placements()
+        assert len(cur_places) == len(df)
+        cur_partners = cur_plan.get_partners()
+        assert len(cur_partners) == 1
+        assert int(cur_partners[0].total_budget) == int(budget)
 
     def test_calc(self, sw, login, worker):
         url = plan_routes.calc.__name__
@@ -873,9 +881,10 @@ class TestReportingDBReadWrite:
         sw.wait_for_elem_load("getAllCharts")
         sw.xpath_from_id_and_click('getAllCharts')
         worker.work(burst=True)
-        sw.wait_for_elem_load("showChartBtndash1Metrics")
+        show_chart_id = "showChartBtndash1Metrics"
+        sw.wait_for_elem_load(show_chart_id)
         assert sw.browser.find_element_by_id("dash1Metrics")
-        assert sw.browser.find_element_by_id("showChartBtndash1Metrics")
+        assert sw.browser.find_element_by_id(show_chart_id)
         metric_selectize_path = (
             "//*[@id=\"dash1MetricsChartPlaceholderSelect\"]/option")
         sw.wait_for_elem_load(metric_selectize_path, selector=sw.select_xpath)
@@ -894,8 +903,10 @@ class TestReportingDBReadWrite:
         sw.wait_for_elem_load(add_dash_id)
         sw.xpath_from_id_and_click(add_dash_id,
                                    load_elem_id='chart_type-selectized')
+        name_id = 'name'
+        sw.wait_for_elem_load(name_id)
         test_partner = 'Test-partner'
-        dash_form_fill = [(test_partner, 'name'),
+        dash_form_fill = [(test_partner, name_id),
                           ('Bar', 'chart_type-selectized', 'clear'),
                           ('vendortypename', 'dimensions-selectized', 'clear'),
                           ('clicks', 'metrics-selectized'),
@@ -912,8 +923,9 @@ class TestReportingDBReadWrite:
         sw.scroll_to_elem(custom_charts)
         worker.work(burst=True)
         assert sw.browser.find_element_by_id('partnerSummaryMetrics')
-        partner_dash = sw.browser.find_element_by_css_selector(
-            '[data-name="{}"]'.format(test_partner))
+        selector = '[data-name="{}"]'.format(test_partner)
+        sw.wait_for_elem_load(selector, sw.select_css)
+        partner_dash = sw.browser.find_element_by_css_selector(selector)
         assert partner_dash
         dash_id = partner_dash.get_attribute('id').replace('card', '')
         show_chart = "showChartBtn{}Metrics".format(dash_id)

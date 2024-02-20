@@ -5719,7 +5719,7 @@ def get_plan_placements(plan_id, current_user_id):
 
 @error_handler
 def plan_check_placements(plan_id, current_user_id, words, new_g_children,
-                          total_db, message, brand_new_ids=None):
+                          total_db, message='', brand_new_ids=None):
     response = ''
     if total_db.empty:
         vendor_names = []
@@ -5736,7 +5736,7 @@ def plan_check_placements(plan_id, current_user_id, words, new_g_children,
 
 @error_handler
 def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
-                           total_db=None, message=''):
+                           total_db=pd.DataFrame(), message=''):
     r = PartnerPlacements.check_col_in_words(
         PartnerPlacements, words, parent_id, total_db=total_db,
         message=message)
@@ -6316,25 +6316,17 @@ def write_billing_table(processor_id, current_user_id, new_data=None):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+@error_handler
 def write_plan_rules(plan_id, current_user_id, new_data=None):
-    try:
-        _set_task_progress(0)
-        cur_plan = db.session.get(Plan, plan_id)
-        df = pd.read_json(new_data)
-        df = pd.DataFrame(df[0][1])
-        df = df.to_dict(orient='records')
-        app_utl.set_db_values(plan_id, current_user_id, df, PlanRule, Plan)
-        for phase in cur_plan.phases:
-            for part in phase.partners:
-                PartnerPlacements.create_from_rules(PartnerPlacements, part.id,
-                                                    current_user_id)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Plan {} User {}'.format(
-            plan_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_plan = db.session.get(Plan, plan_id)
+    df = pd.read_json(new_data)
+    df = pd.DataFrame(df[0][1])
+    df = df.to_dict(orient='records')
+    app_utl.set_db_values(plan_id, current_user_id, df, PlanRule, Plan)
+    for phase in cur_plan.phases:
+        for part in phase.partners:
+            PartnerPlacements.create_from_rules(PartnerPlacements, part.id,
+                                                current_user_id)
 
 
 def update_rules_from_change_log(plan_id, current_user_id, part_id, change_log):
@@ -6404,6 +6396,7 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
     form_sources = df.groupby([part_col, phase_col])[cost_col].sum()
     form_sources = form_sources.reset_index()
     cur_phases = [x for x in cur_plan.phases.all()]
+    brand_new_ids = []
     for cur_phase in cur_phases:
         form_source = form_sources[form_sources[phase_col] == cur_phase.name]
         cols = [Partner.__table__.name, Partner.name.name]
@@ -6411,9 +6404,16 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
             form_source[col] = form_source[part_col]
         form_source[Partner.total_budget.name] = form_source[cost_col]
         form_source = form_source.to_dict(orient='records')
-        app_utl.set_db_values(cur_phase.id, current_user_id,
-                              form_sources=form_source,
-                              table=Partner, parent_model=PlanPhase)
+        change_log = app_utl.set_db_values(
+            cur_phase.id, current_user_id, form_sources=form_source,
+            table=Partner, parent_model=PlanPhase)
+        if 'add' in change_log and change_log['add']:
+            new_ids = [x['id'] for x in change_log['add']]
+            brand_new_ids.extend(new_ids)
+    if brand_new_ids:
+        for parent_id in brand_new_ids:
+            check_plan_gg_children(plan_id, current_user_id,
+                                   parent_id=parent_id)
     col = PartnerPlacements.partner_id.name
     if col not in df.columns:
         poss_cols = [Partner.__name__, cre.MediaPlan.partner_name,

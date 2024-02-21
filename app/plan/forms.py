@@ -76,13 +76,17 @@ class CreateSowForm(FlaskForm):
 
 
 class CreateIoForm(FlaskForm):
-    insertion_order = StringField('Insertion_order', validators=[DataRequired()])
+    insertion_order = StringField('Insertion_order',
+                                  validators=[DataRequired()])
     project_number = IntegerField('Project number', validators=[DataRequired()])
     document_date = DateField('Date', validators=[DataRequired()])
-    billing_contact = StringField('Billing contact', validators=[DataRequired()])
+    billing_contact = StringField('Billing contact',
+                                  validators=[DataRequired()])
     attn = StringField('Attn', validators=[DataRequired()])
-    media_representative = StringField('Media representative', validators=[DataRequired()])
-    publisher_contact = StringField('Publisher contact', validators=[DataRequired()])
+    media_representative = StringField('Media representative',
+                                       validators=[DataRequired()])
+    publisher_contact = StringField('Publisher contact',
+                                    validators=[DataRequired()])
     publisher_contact_email = StringField('Publisher contact email',
                                           validators=[DataRequired()])
     client = StringField('Client', validators=[DataRequired()])

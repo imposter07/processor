@@ -5,6 +5,8 @@ import datetime as dt
 from config import basedir
 import processor.reporting.utils as utl
 import processor.reporting.analyze as az
+import processor.reporting.vmcolumns as vmc
+import processor.reporting.models as prc_model
 import app.utils as app_utl
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
@@ -273,6 +275,25 @@ class TestTasks:
         assert len(new_acc) == len(form_sources)
         change_acc = db.session.get(Account, changed_id)
         assert change_acc.key == new_key
+
+    def test_update_base_plan(self, user, app_fixture):
+        ven_name = 'Test'
+        max_cou = 'A'
+        ven_col = prc_model.Vendor.vendorname.name
+        cou_col = prc_model.Country.countryname.name
+        data = {
+            cou_col: [max_cou, max_cou, 'B', 'B'],
+            ven_col: [ven_name] * 4,
+            vmc.impressions: [10, 10, 5, 5]
+        }
+        df = pd.DataFrame(data)
+        app_tasks.update_base_plan(ven_name, df, user.id)
+        plan_name = 'Base Plan'
+        cur_plan = Plan.query.filter_by(name=plan_name).first()
+        assert cur_plan
+        cur_place = cur_plan.get_placements()
+        assert cur_place
+        assert cur_place[0].country == max_cou
 
 
 class TestPlan:

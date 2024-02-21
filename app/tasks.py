@@ -225,6 +225,41 @@ def processor_failed_email(processor_id, current_user_id, exception_text):
 
 
 @error_handler
+def update_base_plan(vendor_name, df, current_user_id):
+    plan_name = 'Base Plan'
+    cur_plan = Plan.query.filter_by(name=plan_name).first()
+    if not cur_plan:
+        cur_plan = Plan(name=plan_name)
+        db.session.add(cur_plan)
+        db.session.commit()
+    cur_phase = PlanPhase.query.filter_by(
+        name=plan_name, plan_id=cur_plan.id).first()
+    if not cur_phase:
+        cur_phase = PlanPhase(name=plan_name, plan_id=cur_plan.id)
+        db.session.add(cur_phase)
+        db.session.commit()
+    p = Partner.query.filter_by(plan_phase_id=cur_phase.id,
+                                name=vendor_name).first()
+    if not p:
+        p = Partner(name=vendor_name, plan_phase_id=cur_phase.id)
+        db.session.add(p)
+        db.session.commit()
+    exclude_values = [0, 'None', None, '0', '0.0', 0.0]
+    max_sums = {}
+    df = PartnerPlacements.translate_plan_names(df)
+    cols = [x for x in df.columns if x not in [vmc.impressions]]
+    for col in cols:
+        mask = ~df[col].isin(exclude_values)
+        tdf = df[mask]
+        tdf = tdf.groupby(col)[vmc.impressions].sum().reset_index()
+        max_row = tdf.loc[tdf[vmc.impressions].idxmax()]
+        max_sums[col] = max_row[col]
+    app_utl.set_db_values(
+        p.id, current_user_id, form_sources=[max_sums],
+        table=PartnerPlacements, parent_model=Partner)
+
+
+@error_handler
 def update_total_db_analysis(processor_id, current_user_id, df, ven_col,
                              cur_path, col, batch_size=100):
     ven_list = df[0].groupby(ven_col)[vmc.impressions].sum()
@@ -237,6 +272,7 @@ def update_total_db_analysis(processor_id, current_user_id, df, ven_col,
             processor_id, current_user_id, df=tdf,
             dimensions=col, metrics=['kpi'],
             filter_dict=t_filter_dict, commit=False)
+        update_base_plan(vendor, tdf, current_user_id)
         if idx % batch_size == 0 or idx == len(ven_list):
             app.logger.info('Committing: #{}'.format(idx))
             db.session.commit()

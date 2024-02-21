@@ -3486,6 +3486,15 @@ class PartnerPlacements(db.Model):
             p.package_description: [cre.MediaPlan.package_description],
             p.media_channel: [cre.MediaPlan.creative_description],
             p.total_budget: [vmc.cost, dctc.PNC]}
+        cols = p.get_cols_for_db()
+        omit_cols = [p.budget, p.buy_rate, p.start_date, p.ad_rate,
+                     p.reporting_rate, PlanPhase.__table__, p.service_fee_rate,
+                     p.verification_rate, p.reporting_source, p.total_budget]
+        omit_cols = [x.name for x in omit_cols]
+        use_cols = [x for x in data_dict if x.name not in omit_cols]
+        for idx, col in enumerate(use_cols):
+            col_to_add = cols[idx]
+            data_dict[col].append(col_to_add)
         return data_dict
 
     @staticmethod
@@ -3547,26 +3556,14 @@ class PartnerPlacements(db.Model):
     @staticmethod
     def get_reporting_db_df(vendor_names=None):
         cols = PartnerPlacements.get_cols_for_db()
-        parameter = '|'.join(cols)
-        kwargs = {'filter_col': ''}
-        if vendor_names:
-            kwargs['filter_col'] = prc_model.Vendor.vendorname.name
-        else:
-            vendor_names = ['']
         total_db = pd.DataFrame()
-        for vendor_name in vendor_names:
-            if vendor_name:
-                kwargs['filter_val'] = vendor_name
-            tdf = ProcessorAnalysis.query.filter_by(
-                processor_id=23, key='database_cache', parameter=parameter,
-                **kwargs).order_by(ProcessorAnalysis.date).first()
-            if tdf:
-                tdf = pd.read_json(tdf.data)
-            else:
-                tdf = pd.DataFrame()
-                for col in cols:
-                    tdf[col] = ['None']
-            total_db = pd.concat([total_db, tdf], ignore_index=True, sort=False)
+        base_plan = Plan.query.filter_by(name='Base Plan').first()
+        if base_plan:
+            total_db = base_plan.get_placements_as_df()
+            total_db[vmc.impressions] = 100
+        else:
+            for col in cols:
+                total_db[col] = ['None']
         return total_db
 
     @staticmethod

@@ -452,11 +452,12 @@ class TestPlan:
         assert new_rule.place_col == budget_col
         assert new_rule.rule_info['val'] == self.test_name
 
-    def test_add_plan(self, sw, login, worker, check_for_plan=False):
+    def test_add_plan(self, sw, login, worker, check_for_plan=False,
+                      app_cols=False):
         url = plan_routes.plan_placements.__name__
         cur_plan = self.check_and_get_plan(sw, login, worker, url)
-        df = TestUploader().upload_plan(sw, worker,
-                                        check_for_plan=check_for_plan)
+        df = TestUploader().upload_plan(
+            sw, worker, check_for_plan=check_for_plan, app_cols=app_cols)
         cur_places = cur_plan.get_placements()
         worker.work(burst=True)
         assert len(cur_places) == len(df)
@@ -468,6 +469,9 @@ class TestPlan:
 
     def test_add_plan_local(self, sw, login, worker):
         self.test_add_plan(sw, login, worker, check_for_plan=True)
+
+    def test_add_plan_app_cols(self, sw, login, worker):
+        self.test_add_plan(sw, login, worker, app_cols=True)
 
     def test_topline_after_plan(self, sw, login, worker):
         url = plan_routes.topline.__name__
@@ -481,6 +485,7 @@ class TestPlan:
         cur_partners = cur_plan.get_partners()
         assert len(cur_partners) == 1
         assert int(cur_partners[0].total_budget) == int(budget)
+        assert int(sum(x.total_budget for x in cur_places)) == int(budget)
 
     def test_calc(self, sw, login, worker):
         url = plan_routes.calc.__name__
@@ -677,10 +682,13 @@ class TestUploader:
         assert cur_up.campaign.name == new_camp
 
     @staticmethod
-    def upload_plan(sw, worker, check_for_plan=False):
-        df = Plan.get_mock_plan(basedir, check_for_plan)
+    def upload_plan(sw, worker, check_for_plan=False, app_cols=False):
+        df = Plan.get_mock_plan(basedir, check_for_plan, app_cols)
         file_name = os.path.join(basedir, 'mediaplantmp.xlsx')
-        df.to_excel(file_name, sheet_name='Media Plan')
+        if app_cols:
+            df.to_csv(file_name)
+        else:
+            df.to_excel(file_name, sheet_name='Media Plan')
         fp = sw.browser.find_element_by_class_name('filepond--browser')
         fp.send_keys(file_name)
         elem_id = 'alertPlaceholder'

@@ -387,7 +387,7 @@ class Task(db.Model):
 
     def check_return_value(self, job, force_return):
         if force_return and job and not job.result:
-            for x in range(10):
+            for x in range(50):
                 job = self.get_rq_job()
                 if job.result:
                     break
@@ -2798,10 +2798,20 @@ class Plan(db.Model):
         return True
 
     @staticmethod
-    def get_mock_plan(basedir='', check_for_plan=False):
+    def get_mock_plan(basedir='', check_for_plan=False, app_cols=False):
         file_name = os.path.join(basedir, 'mediaplan.xlsx')
         if check_for_plan and os.path.exists(file_name):
             df = utl.import_read_csv(file_name)
+        elif app_cols:
+            cols = PartnerPlacements.get_plan_col_translation()
+            row = ['test{}'.format(x) for x in range(10)]
+            data = {col.name: row for col in cols}
+            df = pd.DataFrame(data)
+            df[PartnerPlacements.total_budget.name] = 100
+            date_cols = [PartnerPlacements.start_date.name,
+                         PartnerPlacements.end_date.name]
+            for col in date_cols:
+                df[col] = datetime.today().date()
         else:
             data = {
                 'Campaign Phase': ['Launch', 'Launch', 'Launch', 'Launch'],
@@ -3770,7 +3780,9 @@ class PartnerPlacements(db.Model):
         if col_name in [sd_name, ed_name]:
             if not val:
                 val = datetime.today()
-            elif isinstance(val, str):
+            elif isinstance(val, str) or isinstance(val, int):
+                if isinstance(val, int):
+                    val = str(val)
                 for bad_str in ['date', ' ', 'is', 'and']:
                     val = val.replace(bad_str, '')
                 if 'end' in val:
@@ -3781,6 +3793,8 @@ class PartnerPlacements(db.Model):
                         val = val[1]
                 val = val.strip()
                 val = utl.string_to_date(val)
+            if isinstance(val, str):
+                val = datetime.today()
             if to_str:
                 val = datetime.strftime(val, '%Y%m%d')
         return val
@@ -3815,12 +3829,30 @@ class PartnerPlacements(db.Model):
         return combos, rule_dict
 
     @staticmethod
+    def sync_partner_budget(data, parent_id):
+        cur_partner = db.session.get(Partner, parent_id)
+        partner_budget = float(cur_partner.total_budget)
+        total = sum(float(x[PartnerPlacements.total_budget.name]) for x in data)
+        if total != partner_budget:
+            ratio = partner_budget / total
+            for d in data:
+                new_budget = float(d[PartnerPlacements.total_budget.name])
+                new_budget *= ratio
+                d[PartnerPlacements.total_budget.name] = new_budget
+        return data
+
+    @staticmethod
     def apply_manual_rules(parent_id, data):
         current_app.logger.info('Apply rules to {}: {}'.format(parent_id, data))
         rules = PlanRule.query.filter_by(partner_id=parent_id).all()
         delete_names = []
-        data_with_id = {d['id']: d for d in data if 'id' in d}
-        data_without_id = [d for d in data if 'id' not in d]
+        data_with_id = {}
+        data_without_id = []
+        for d in data:
+            if 'id' in d:
+                data_with_id[d['id']] = d
+            else:
+                data_without_id.append(d)
         for rule in rules:
             if rule.type == 'update':
                 cur_id = rule.rule_info['id']
@@ -3840,6 +3872,7 @@ class PartnerPlacements(db.Model):
             data_without_id = [x for x in data_without_id if
                                x['name'] not in delete_names]
         data = list(data_with_id.values()) + data_without_id
+        data = PartnerPlacements.sync_partner_budget(data, parent_id)
         return data
 
     def create_from_rules(self, parent_id, current_user_id):
@@ -3901,7 +3934,10 @@ class PartnerPlacements(db.Model):
     def set_from_form(self, form, current_object):
         for col in self.__table__.columns:
             if col.name in form and col.name != PartnerPlacements.id.name:
-                setattr(self, col.name, form[col.name])
+                val = form[col.name]
+                if isinstance(col.type, db.Date) and isinstance(val, str):
+                    val = utl.string_to_date(val)
+                setattr(self, col.name, val)
         if current_object:
             self.partner_id = current_object.id
 

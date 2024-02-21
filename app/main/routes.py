@@ -990,23 +990,14 @@ def get_table_arguments():
 
 def get_table_return(task, table_name, proc_arg, job_name,
                      force_return=False):
-    if job_name in ['.get_processor_sources']:
-        job = task.wait_and_get_job(loops=20)
-        if job:
-            df = pd.DataFrame([{'Result': 'DATA WAS REFRESHED.'}])
-        else:
-            df = pd.DataFrame([{'Result': 'DATA IS REFRESHING.'}])
+    job = task.wait_and_get_job(force_return=True)
+    if job and job.result:
+        df = job.result[0]
     else:
-        job = task.wait_and_get_job(force_return=True)
-        if job and job.result:
-            df = job.result[0]
-        else:
-            df = pd.DataFrame([{'Result': 'AN UNEXPECTED ERROR OCCURRED.'}])
+        df = pd.DataFrame([{'Result': 'AN UNEXPECTED ERROR OCCURRED.'}])
     dl_table = table_name in ['SOW', 'ToplineDownload', 'downloadTable']
-    dl_table_1 = (
-            'parameter' in proc_arg and (
-            proc_arg['parameter'] == 'RawDataOutput' or
-            proc_arg['parameter'] == 'Download'))
+    dl_table_1 = ('parameter' in proc_arg and
+                  (proc_arg['parameter'] in ['RawDataOutput', 'Download']))
     dl_table_2 = 'billingInvoice' in table_name
     if dl_table or dl_table_1 or dl_table_2:
         z = zipfile.ZipFile(df)

@@ -469,27 +469,23 @@ def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
                                             attempt)
 
 
+@error_handler
 def get_processor_sources(processor_id, current_user_id):
-    try:
-        cur_processor, user_that_ran = app_utl.get_obj_user(
-            object_id=processor_id, current_user_id=current_user_id)
-        _set_task_progress(0)
-        os.chdir('processor')
-        default_param_ic = vm.ImportConfig(matrix=True)
-        processor_path = adjust_path(cur_processor.local_path)
-        os.chdir(processor_path)
-        matrix = vm.VendorMatrix()
-        data_sources = matrix.get_all_data_sources(
-            default_param=default_param_ic)
-        add_data_sources_from_processor(cur_processor, data_sources)
-        msg_text = "Processor {} sources refreshed.".format(cur_processor.name)
-        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
-        _set_task_progress(100)
-        db.session.commit()
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+    cur_processor, user_that_ran = app_utl.get_obj_user(
+        object_id=processor_id, current_user_id=current_user_id)
+    _set_task_progress(0)
+    os.chdir('processor')
+    default_param_ic = vm.ImportConfig(matrix=True)
+    processor_path = adjust_path(cur_processor.local_path)
+    os.chdir(processor_path)
+    matrix = vm.VendorMatrix()
+    data_sources = matrix.get_all_data_sources(
+        default_param=default_param_ic)
+    add_data_sources_from_processor(cur_processor, data_sources)
+    msg_text = "Processor {} sources refreshed.".format(cur_processor.name)
+    app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
+    df = pd.DataFrame([{'Result': msg_text}])
+    return df
 
 
 def set_processor_imports(processor_id, current_user_id, form_imports,
@@ -6374,6 +6370,7 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
         df = pd.read_json(new_data)
         df = pd.DataFrame(df[0][1])
     df = PartnerPlacements.translate_plan_names(df)
+    df = df.fillna('')
     mp = cre.MediaPlan
     cur_plan = db.session.get(Plan, plan_id)
     phase_col = [mp.placement_phase, mp.campaign_name, mp.old_placement_phase,
@@ -6384,7 +6381,9 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
     phase_col = [x for x in phase_col if x in df.columns][0]
     cost_col = [vmc.cost, PartnerPlacements.total_budget.name, dctc.PNC]
     cost_col = [x for x in cost_col if x in df.columns][0]
-    df = utl.data_to_type(df, float_col=[cost_col])
+    date_cols = [PartnerPlacements.start_date, PartnerPlacements.end_date]
+    date_cols = [x.name for x in date_cols if x.name in df.columns]
+    df = utl.data_to_type(df, float_col=[cost_col], date_col=date_cols)
     df[phase_col] = df[phase_col].str.replace('_', '-')
     form_sources = df.groupby(phase_col)[cost_col].sum().reset_index()
     form_sources[PlanPhase.name.name] = form_sources[phase_col]

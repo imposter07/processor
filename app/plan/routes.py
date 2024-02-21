@@ -1,17 +1,14 @@
-import os
-import json
 from app import db
 from flask_babel import _
 from app.plan import bp
 from datetime import datetime
 import datetime as dt
-import processor.reporting.analyze as az
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
     CreateSowForm, RfpForm, PartnerPlacementForm
-from app.models import Client, Product, Campaign, Plan, Post, Partner, \
-    PlanPhase, Sow, Processor, PartnerPlacements
+from app.models import Client, Product, Campaign, Plan, Post, \
+    PlanPhase, Sow, Processor
 import app.utils as app_utl
 
 

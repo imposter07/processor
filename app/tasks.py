@@ -4712,9 +4712,10 @@ def write_report_builder(processor_id, current_user_id, new_data=None):
             if 'data' in report_data[ind]:
                 if 'imgURI' in report_data[ind]['data']['cols']:
                     name = report_data[ind]['data']['data'][0]['name']
+                    key = os.path.join('screenshots', 'charts', name)
                     img_uri = report_data[ind]['data']['data'][0]['imgURI']
                     data = utl.base64_to_binary(img_uri)
-                    url = s3.s3_upload_file_get_presigned_url(data, name)
+                    url = s3.s3_upload_file_get_presigned_url(data, key)
                     report_data[ind]['url'] = url
                 else:
                     report_data[ind]['df'] = pd.DataFrame(

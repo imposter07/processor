@@ -130,6 +130,10 @@
         let border = (position[2] === "beforebegin") ?
             "border-top" : "border-bottom";
         event.currentTarget.classList.add(border);
+        let scrollThreshold = 100;
+        if (event.clientY < scrollThreshold) {
+            window.scrollBy(0, -10);
+        }
     }
 
     function onDragEnd(event) {
@@ -269,7 +273,9 @@
         }
     }
 
-    function getReportCharts(date) {
+    function getReportCharts() {
+        let dateId = "report_date";
+        let date = document.getElementById(dateId).value;
         let chartFuncs = getAllChartFunctions();
         date = convertDateToISO(date);
         chartFuncs.forEach(function (func) {
@@ -280,21 +286,33 @@
         });
     }
 
-    function buildReportCharts() {
+    function getDefaultCharts() {
+        return [{'key': 'dailyMetrics', 'selected': 'true'},
+            {'key': 'deliveryMetrics', 'selected': 'true'},
+            {'key': 'partnerBarMetrics', 'selected': 'true'},
+            {'key': 'partnerSummaryMetrics', 'selected': 'true'},
+            {'key': 'partnerTreeMetrics', 'selected': 'true'},
+            {'key': 'pacingMetrics', 'selected': 'true'},
+            {'key': 'countryBarMetrics', 'selected': 'true'},
+            {'key': 'countrySummaryMetrics', 'selected': 'true'},
+            {'key': 'targetingSummaryMetrics', 'selected': 'true'},
+            {'key': 'placementBarMetrics', 'selected': 'true'},
+            {'key': 'placementSummaryMetrics', 'selected': 'true'},
+            {'key': 'creativeSummaryMetrics', 'selected': 'true'}];
+    }
+
+    function buildReportCharts(reportCharts) {
         let data = {'key': 'Charts', 'message': 'Charts'};
         buildSection(data);
-        let reportCharts = ['dailyMetrics', 'deliveryMetrics',
-            'partnerBarMetrics', 'partnerSummaryMetrics', 'partnerTreeMetrics',
-            'pacingMetrics', 'countryBarMetrics', 'countrySummaryMetrics',
-            'targetingSummaryMetrics', 'placementBarMetrics',
-            'placementSummaryMetrics', 'creativeSummaryMetrics'];
+        reportCharts = (reportCharts.length > 0) ? reportCharts : getDefaultCharts();
         let header = document.getElementById('section' + data['key'].toLowerCase());
         reportCharts.forEach(function (chart) {
-            let id = `${chart.toLowerCase()}bullet`;
+            let id = `${chart.key.toLowerCase()}bullet`;
             let newBullet = document.createElement('div');
             newBullet.id = id;
             let newAnalysis = document.createElement('div');
             let checkbox = addCheckBox(newAnalysis);
+            checkbox.onclick = getReportCharts;
             addGrip(newAnalysis);
             addDragDrop(newBullet);
             newBullet.appendChild(newAnalysis);
@@ -303,19 +321,19 @@
             text.classList.add('pr-2');
             text.classList.add('align-middle');
             text.contentEditable = 'true';
-            let chartName = chart.charAt(0).toUpperCase() + chart.slice(1);
+            let chartName = chart.key.charAt(0).toUpperCase() + chart.key.slice(1);
             chartName = chartName.split(/(?=[A-Z])|\s+/).join(' ');
             text.innerHTML += chartName;
             text.id = (id + 'text').toLowerCase();
             newAnalysis.appendChild(text);
             let html =
-                `<div id="${chart}" class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
-                    <div id="${chart}"></div>
-                    <div id="${chart}Progress"></div>
+                `<div class="card container-fluid shadow-sm outer p-0 remove-items-shadow">
+                    <div id="${chart.key}"></div>
+                    <div id="${chart.key}Progress"></div>
                 </div>`;
             newBullet.insertAdjacentHTML('beforeend', html);
             header.appendChild(newBullet);
-            storeJsonAsDataAttr({'key': chart}, newAnalysis);
+            storeJsonAsDataAttr(chart, newAnalysis);
             if (newAnalysis.dataset.selected === 'false') {
                 checkbox.checked = false;
                 toggleCheckbox(newAnalysis, checkbox);
@@ -502,10 +520,16 @@
         let rowZero = document.getElementById("rowZero");
         rowZero.appendChild(reportBuilder);
         addSaveRow(reportBuilder);
-        analysis.forEach(item => {
+        let charts = [];
+        for (let i = 0; i < analysis.length; i++) {
+            const item = analysis[i];
+            if (item.hasOwnProperty('key') && item['key'] === 'Charts') {
+                charts = analysis.slice(i+1);
+                break;
+            }
             buildReportElem(item);
-        });
-        buildReportCharts(date.value);
+        }
+        buildReportCharts(charts);
         checkHideHeaders(reportBuilder);
         loadJS();
         addOnClickEvent(nameQuery, getReportBuilder, 'change');
@@ -537,16 +561,11 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-        let dateId = "report_date";
-        let date = document.getElementById(dateId)
-        if (date) {
-            date = date.value;
-            window.addEventListener('scroll', function () {
-                getReportCharts(date);
-            });
-            window.addEventListener('resize', function () {
-                getReportCharts(date);
-            });
-        }
+        window.addEventListener('scroll', function () {
+            getReportCharts();
+        });
+        window.addEventListener('resize', function () {
+            getReportCharts();
+        });
     });
 </script>

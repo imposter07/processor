@@ -13,7 +13,8 @@ function isElementInViewport(el) {
 
 function callFunctionIfInView(elementId, func, args) {
     const element = document.getElementById(elementId);
-    if (element && isElementInViewport(element) && !element.dataset.called) {
+    if (element && isElementInViewport(element) && !element.dataset.called &&
+        !element.classList.contains('d-none')) {
         func(...args);
         element.dataset.called = 'true';
     }

@@ -1668,7 +1668,7 @@
     }
 
     function convertToFlareFormat(data, cols) {
-        const flare = {name: "flare", children: []};
+        const flare = {name: cols[0], children: []};
 
         // Group the data
         const groupedData = data.reduce((acc, obj) => {
@@ -1708,12 +1708,14 @@
         data.sort((a, b) => b[cols[0]] - a[cols[0]]);
         let dataLength = (data.length < 5) ? 1 : data.length / 5;
         let am = autoMargin(elem, 250, 5, 5, .9, dataLength);
+        let units = getUnits(cols[2]);
+        var format = d3.format(units);
         let flare = convertToFlareFormat(data, cols);
         let chart = Treemap(flare, {
             value: d => d.size, // size of each node (file); null for internal nodes (folders)
             group: (d, n) => n.ancestors().slice(-2)[0].data.name, // e.g., "animate" in flare/animate/Easing; color
-            label: (d, n) => [...d.name.split(/(?=[A-Z][a-z])/g), n.value.toLocaleString("en")].join("\n"),
-            title: (d, n) => `${n.ancestors().reverse().map(d => d.data.name).join(".")}\n${n.value.toLocaleString("en")}`,
+            label: (d, n) => [...d.name.split(/(?=[A-Z][a-z])/g), format(n.value)].join("\n"),
+            title: (d, n) => `${n.ancestors().reverse().map(d => d.data.name).join("- ")}\n${format(n.value)}`,
             width: am.width,
             height: am.height,
             marginTop: am.margin.top,

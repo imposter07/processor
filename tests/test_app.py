@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
     Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
-    PartnerPlacements, PlanRule
+    PartnerPlacements, PlanRule, ProcessorReports
 import app.plan.routes as plan_routes
 import app.main.routes as main_routes
 from config import basedir
@@ -19,6 +19,7 @@ import processor.reporting.utils as utl
 import processor.reporting.calc as calc
 import processor.reporting.expcolumns as exc
 from processor.reporting.export import DB
+import processor.reporting.gsapi as gsapi
 
 base_url = 'http://127.0.0.1:5000/'
 
@@ -774,6 +775,15 @@ class TestReportingDBReadWrite:
         new_processor.launch_task(task, msg, user.id, run_args)
         worker.work(burst=True)
 
+    @pytest.fixture(scope="class")
+    def update_report_in_db(self, set_up, user, worker, export_test_data):
+        new_processor = set_up
+        task = '.update_report_in_db'
+        msg = 'Updating report for processor {}...'.format(self.test_proc_name)
+        new_processor.launch_task(task, msg, user.id)
+        worker.work(burst=True)
+
+
     def test_postgres_setup(self, reporting_db):
         """Check main postgresql fixture."""
         with reporting_db.connect() as connection:
@@ -993,3 +1003,51 @@ class TestReportingDBReadWrite:
         sw.xpath_from_id_and_click('{}Delete'.format(chart_id))
         new_chart = self.search_for_dash(sw)
         assert not new_chart
+
+    def test_report_builder(self, set_up, user, login, sw, worker,
+                            update_report_in_db):
+        report_url = '{}/processor/{}/edit/report_builder'.format(
+            base_url, urllib.parse.quote(self.test_proc_name))
+        sw.go_to_url(report_url, elem_id='reportBuilder')
+        worker.work(burst=True)
+        chart_bullet_id = 'dailymetricsbullet'
+        chart_bullet = sw.browser.find_element_by_id(chart_bullet_id)
+        sw.scroll_to_elem(chart_bullet)
+        sw.wait_for_elem_load('loadingBtndailyMetricsProgress', visible=True)
+        topline = sw.browser.find_element_by_id('headertopline_metrics')
+        assert topline
+        topline_checkbox = topline.find_element_by_xpath(
+            './/input[@type="checkbox"]')
+        topline_checkbox.click()
+        selected = topline.get_attribute('data-selected')
+        assert selected == 'false'
+        worker.work(burst=True)
+        daily_chart_id = 'dailyMetricsChartCol'
+        sw.wait_for_elem_load(daily_chart_id, visible=True)
+        daily_chart = sw.browser.find_element_by_id(daily_chart_id)
+        assert daily_chart
+
+    def test_save_report(self, set_up, user, login, sw, worker,
+                         update_report_in_db):
+        report_url = '{}/processor/{}/edit/report_builder'.format(
+            base_url, urllib.parse.quote(self.test_proc_name))
+        if not sw.browser.current_url == report_url:
+            sw.go_to_url(report_url, elem_id='reportBuilder')
+            worker.work(burst=True)
+        report_name = 'AutoTest'
+        report_date = datetime.utcnow().date()
+        dash_form_fill = [(report_name, 'name-selectized', 'clear')]
+        sw.send_keys_from_list(dash_form_fill)
+        sw.xpath_from_id_and_click('reportBuilderSaveButton')
+        worker.work(burst=True)
+        processor_reports = ProcessorReports.query.filter_by(
+            report_name=report_name, report_date=report_date).all()
+        assert processor_reports
+        title = '-'.join([self.test_proc_name, report_name, str(report_date)])
+        gs = gsapi.GsApi()
+        gs.input_config(gs.default_config)
+        gs.get_client()
+        r = gs.get_file_by_name(title)
+        doc_id = r.json()['files'][0]['id']
+        assert doc_id
+        gs.delete_file(doc_id)

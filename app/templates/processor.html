@@ -345,11 +345,6 @@
                 'None', true, 'None', false, kpi_metric_args);
         }
 
-        function getDates() {
-            const fp = document.querySelector('#datePicker')._flatpickr;
-            return [{eventdate: fp.selectedDates}]
-        }
-
         function getAllFilters() {
             let filterDict = getDates();
             let cols = ['productname', 'campaignname', 'vendorname', 'countryname',

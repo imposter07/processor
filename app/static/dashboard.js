@@ -279,12 +279,6 @@ function getAllChartFunctions() {
         getTargetingMetrics, getPlacementMetrics, getCreativeMetrics]
 }
 
-
-function getDates() {
-    const fp = document.querySelector('#datePicker')._flatpickr;
-    return [{eventdate: fp.selectedDates}]
-}
-
 function getAllFilters() {
     let filterDict = getDates();
     let cols = ['campaignname', 'vendorname', 'countryname',

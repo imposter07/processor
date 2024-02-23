@@ -4133,3 +4133,17 @@ class BrandtrackerDimensions(db.Model):
         self.brandtracker_id = current_brandtracker.id
         self.metric_column = form['data_column']
         self.weight = form['weight']
+
+
+class RequestLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    method = db.Column(db.String(10))
+    url = db.Column(db.Text)
+    duration = db.Column(db.Float)
+    status_code = db.Column(db.Integer)
+    form_data = db.Column(db.JSON)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
+    plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))

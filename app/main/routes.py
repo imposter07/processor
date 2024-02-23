@@ -33,7 +33,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project, \
     Notes, ProcessorReports, Tutorial, TutorialStage, Task, Plan, Walkthrough, \
-    Conversation, Chat, WalkthroughSlide, Rfp, Specs, Contacts
+    Conversation, Chat, WalkthroughSlide, Rfp, Specs, Contacts, RequestLog
 
 from app.translate import translate
 from app.main import bp
@@ -42,13 +42,52 @@ import processor.reporting.analyze as az
 import app.utils as app_utl
 
 
-@bp.before_app_request
+@bp.before_request
 def before_request():
     if current_user.is_authenticated:
         current_user.last_seen = datetime.utcnow()
         db.session.commit()
         g.search_form = SearchForm()
     g.locale = str(get_locale())
+    g.start = time.time()
+
+
+@bp.after_request
+def log_request(response):
+    if not hasattr(g, 'start'):
+        return response
+
+    duration = time.time() - g.start
+    method = request.method
+    url = request.url_rule.rule if request.url_rule else 'none'
+    status_code = response.status_code
+    form_data = request.form.to_dict()
+    log_to_database(method, url, duration, status_code, form_data)
+    msg = '{} {} {} {}s'.format(method, url, status_code, duration)
+    current_app.logger.info(msg)
+    if duration > 5:
+        current_app.logger.error('{} SLOW ROUTE'.format(msg))
+    return response
+
+
+def filter_sensitive_form_data(form_data):
+    sensitive_keys = ['password']
+    filtered_data = {
+        key: (form_data[key] if key not in sensitive_keys else '***masked***')
+        for key in form_data.keys()}
+    return filtered_data
+
+
+def log_to_database(method, url, duration, status_code, form_data):
+    form_data = filter_sensitive_form_data(form_data)
+    cu_id = None
+    if hasattr(current_user, 'id'):
+        cu_id = current_user.id
+    log_entry = RequestLog(
+        user_id=cu_id,method=method, url=url, duration=duration,
+        status_code=status_code, form_data=str(form_data))
+    db.session.add(log_entry)
+    db.session.commit()
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -810,6 +849,7 @@ def get_test_apis():
 
 @bp.route('/get_log', methods=['GET', 'POST'])
 @login_required
+@app_utl.error_handler
 def get_log():
     if request.form['object_type'] == 'Processor':
         item_model = Processor
@@ -3418,3 +3458,12 @@ def url_from_view_function():
     view_function = request.form['view_function']
     url = url_for(str(view_function), object_name=object_name)
     return jsonify({'url': url})
+
+
+@bp.route('/speed_test', methods=['GET', 'POST'])
+@login_required
+@app_utl.error_handler
+def speed_test():
+    time.sleep(1)
+    duration = time.time() - g.start
+    return jsonify({'data': duration})

@@ -11,7 +11,7 @@ import app.utils as app_utl
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
     Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, Client, \
-    Product, Processor, Account
+    Product, Processor, Account, RequestLog
 import app.tasks as app_tasks
 
 
@@ -25,6 +25,14 @@ def test_health_check(client):
     expected_output = {'data': 'success'}
     response = client.get('/health_check')
     assert response.json == expected_output
+
+
+def test_speed_test(client):
+    test_url = '/speed_test'
+    response = client.get(test_url)
+    assert response.json['data'] < 1.1
+    request_log = RequestLog.query.filter_by(url=test_url).first()
+    assert test_url in request_log.url
 
 
 class TestChat:

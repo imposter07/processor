@@ -14,7 +14,8 @@ from config import Config, basedir
 import processor.reporting.utils as utl
 import processor.reporting.expcolumns as exc
 from processor.reporting.export import ScriptBuilder, DB
-from app.models import User, Project, Processor, Uploader, Plan, RfpFile
+from app.models import User, Project, Processor, Uploader, Plan, RfpFile, \
+    RequestLog
 from rq import SimpleWorker
 from rq.timeouts import BaseDeathPenalty, JobTimeoutException
 
@@ -23,6 +24,7 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///{}'.format(
         os.path.join(basedir, 'app-test.db'))
     TESTING = True
+    BASE_PROCESSOR_PATH = os.path.join(basedir, 'processor')
     BASE_UPLOADER_PATH = os.path.join(basedir, 'uploader')
     EXP_DB = 'test_dbconfig.json'
 
@@ -30,7 +32,9 @@ class TestConfig(Config):
 def check_export_handler(db_file, config_path):
     file_name = os.path.join(config_path, 'export_handler.csv')
     df = pd.read_csv(os.path.join(config_path, 'export_handler.csv'))
-    config_vals = {exc.test_file: 'results.csv', exc.test_config: db_file}
+    config_vals = {exc.test_file: 'results.csv',
+                   exc.test_config: db_file,
+                   exc.config_file: db_file}
     for k, v in config_vals.items():
         if k not in df.columns:
             df[k] = v
@@ -138,7 +142,7 @@ def user(app_fixture):
     db.session.add(u)
     db.session.commit()
     yield u
-    for db_model in [RfpFile, Project, Processor, Uploader, Plan]:
+    for db_model in [RfpFile, Project, Processor, Uploader, Plan, RequestLog]:
         rows = db_model.query.filter_by(user_id=u.id).all()
         for row in rows:
             db.session.delete(row)

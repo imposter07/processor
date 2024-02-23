@@ -196,7 +196,7 @@ class TestProcessor:
         yield path
         os.chdir(cur_path)
 
-    def test_create_processor(self, sw, login):
+    def test_create_processor(self, sw, login, worker):
         test_name = 'test'
         create_url = '{}create_processor'.format(base_url)
         submit_id = 'loadContinue'
@@ -204,6 +204,7 @@ class TestProcessor:
         form = ['cur_client', 'cur_product', 'cur_campaign', 'description',
                 'name']
         submit_form(sw, form_names=form, submit_id=submit_id)
+        worker.work(burst=True)
         sw.wait_for_elem_load('refresh_imports')
         import_url = '{}processor/{}/edit/import'.format(
             base_url, urllib.parse.quote(test_name))

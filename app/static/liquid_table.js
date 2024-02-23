@@ -1829,12 +1829,6 @@ async function downloadLiquidTable(tableId, asArray = false, name = null,
     }
 }
 
-function getDates(selector= '#datePicker') {
-    const fp = document.querySelector(selector)._flatpickr;
-    let returnVal = (fp) ? fp.selectedDates : '';
-    return [{eventdate: returnVal}]
-}
-
 function filterLiquidTable() {
     let tableName = this.id.replace('FilterButton', '');
     let filterElemId = `${tableName}Filter`;

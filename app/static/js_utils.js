@@ -442,3 +442,13 @@ function getMultipleFilters(filterList, filterDict, appendElem='') {
     });
     return filterDict
 }
+
+function getDates(selector= '#datePicker') {
+    let returnVal = '';
+    let fp = document.querySelector(selector);
+    if (fp) {
+        fp = fp._flatpickr;
+        returnVal = (fp) ? fp.selectedDates : '';
+    }
+    return [{eventdate: returnVal}]
+}

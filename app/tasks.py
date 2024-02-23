@@ -99,6 +99,7 @@ def error_handler(route_function):
             _set_task_progress(100, total_time=total_time)
             return result
         except:
+            args = json.dumps([serialize_arg(arg) for arg in args])
             msg = 'Unhandled exception {}'.format(json.dumps(args))
             _set_task_progress(100)
             app.logger.error(msg, exc_info=sys.exc_info())
@@ -252,8 +253,9 @@ def update_base_plan(vendor_name, df, current_user_id):
         mask = ~df[col].isin(exclude_values)
         tdf = df[mask]
         tdf = tdf.groupby(col)[vmc.impressions].sum().reset_index()
-        max_row = tdf.loc[tdf[vmc.impressions].idxmax()]
-        max_sums[col] = max_row[col]
+        if not tdf.empty:
+            max_row = tdf.loc[tdf[vmc.impressions].idxmax()]
+            max_sums[col] = max_row[col]
     app_utl.set_db_values(
         p.id, current_user_id, form_sources=[max_sums],
         table=PartnerPlacements, parent_model=Partner)
@@ -4669,7 +4671,7 @@ def analysis_email_kpi(processor_id, current_user_id, text_body, header,
 def build_processor_analysis_email(processor_id, current_user_id, email=True):
     try:
         _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         analysis = cur_processor.processor_analysis.all()
         text_body = []
         arguments = [
@@ -4732,7 +4734,7 @@ def update_report_in_db(processor_id, current_user_id,
 def write_report_builder(processor_id, current_user_id, new_data=None):
     try:
         _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
+        cur_processor = db.session.get(Processor, processor_id)
         os.chdir(adjust_path(cur_processor.local_path))
         new_report = json.loads(new_data)
         report_name = new_report['name']
@@ -5780,7 +5782,7 @@ def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
 @error_handler
 # noinspection SqlResolve
 def get_screenshot_table(processor_id, current_user_id, filter_dict=None):
-    cur_processor = Processor.query.get(processor_id)
+    cur_processor = db.session.get(Processor, processor_id)
     os.chdir(adjust_path(cur_processor.local_path))
     db_class = exp.DB()
     db_class.input_config('dbconfig.json')
@@ -5809,26 +5811,16 @@ def get_screenshot_table(processor_id, current_user_id, filter_dict=None):
 
 
 def get_screenshot_image(processor_id, current_user_id, vk=None):
-    try:
-        _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
-        import processor.reporting.awss3 as awss3
-        os.chdir(adjust_path(cur_processor.local_path))
-        s3_class = awss3.S3()
-        s3_class.input_config('s3config.json')
-        key = [x for x in vk.split('|') if 'https://' in x]
-        key = key[0].split('.com/')[1]
-        client = s3_class.get_client()
-        obj = client.get_object(Bucket=s3_class.bucket, Key=key)
-        response = obj['Body'].read()
-        _set_task_progress(100)
-        return [response]
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_processor = db.session.get(Processor, processor_id)
+    os.chdir(adjust_path(cur_processor.local_path))
+    s3_class = awss3.S3()
+    s3_class.input_config('s3config.json')
+    key = [x for x in vk.split('|') if 'https://' in x]
+    key = key[0].split('.com/')[1]
+    client = s3_class.get_client()
+    obj = client.get_object(Bucket=s3_class.bucket, Key=key)
+    response = obj['Body'].read()
+    return [response]
 
 
 def get_notes_table(user_id, running_user):

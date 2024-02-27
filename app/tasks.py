@@ -50,31 +50,30 @@ if not app:
     app.app_context().push()
 
 
-def _set_task_progress(progress, total_time=0.0):
-    total_attempts = 10
-    for attempt in range(total_attempts):
-        try:
-            job = get_current_job()
-            if job:
-                job.meta['progress'] = progress
-                job.save_meta()
-                task = db.session.get(Task, job.get_id())
-                if task:
-                    cu = task.user
-                    if cu:
-                        cu.add_notification(
-                            'task_progress', {'task_id': job.get_id(),
-                                              'progress': progress})
-                    if progress >= 100:
-                        task.complete = True
-                        if total_time:
-                            task.total_time = total_time
-                    db.session.commit()
-        except:
-            if attempt > (total_attempts - 2):
-                app.logger.error('Unhandled exception', exc_info=sys.exc_info())
-            else:
-                db.session.rollback()
+def _set_task_progress(progress, total_time=0.0, route_function=None):
+    job = get_current_job()
+    if job:
+        job_id = job.get_id()
+        job.meta['progress'] = progress
+        job.save_meta()
+        task = db.session.get(Task, job_id)
+        if task:
+            cu = task.user
+            if cu:
+                msg = {'task_id': job_id, 'progress': progress}
+                cu.add_notification('task_progress', msg)
+                msg['task'] = task.name
+                msg['route'] = str(route_function)
+                app.logger.info(msg)
+            str_func = str(route_function)
+            is_original_route = route_function and task.name[1:] in str_func
+            is_original_route = is_original_route or not route_function
+            if progress >= 100 and is_original_route:
+                app.logger.info('{} Completed'.format(task.name))
+                task.complete = True
+                if total_time:
+                    task.total_time = total_time
+            db.session.commit()
 
 
 def serialize_arg(arg):
@@ -96,14 +95,15 @@ def error_handler(route_function):
             result = route_function(*args, **kwargs)
             end = time.time()
             total_time = end - start
-            _set_task_progress(100, total_time=total_time)
+            _set_task_progress(100, total_time=total_time,
+                               route_function=route_function)
             return result
         except:
             args = json.dumps([serialize_arg(arg) for arg in args])
             msg = 'Unhandled exception {}'.format(json.dumps(args))
-            _set_task_progress(100)
+            _set_task_progress(100, route_function=route_function)
             app.logger.error(msg, exc_info=sys.exc_info())
-            return [pd.DataFrame()]
+            return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
     return decorated_function
 
@@ -3452,41 +3452,32 @@ def clean_total_metric_df(df, col_name):
     return df
 
 
+@error_handler
 def get_processor_total_metrics_file(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_processor = Processor.query.get(processor_id)
-        os.chdir(adjust_path(cur_processor.local_path))
-        matrix = vm.VendorMatrix()
-        aly = az.Analyze(file_name='Raw Data Output.csv', matrix=matrix)
-        df, tdf, twdf = aly.generate_topline_and_weekly_metrics(group=dctc.PRN)
-        df = clean_total_metric_df(df, 'current_value')
-        tdf = clean_total_metric_df(tdf, 'new_value')
-        twdf = clean_total_metric_df(twdf, 'old_value')
-        df = df.join(tdf)
-        df = df.join(twdf)
-        df['change'] = (
-                (df['new_value'].str.replace(',', '').str.replace(
-                    '$', '').astype(float) -
-                 df['old_value'].str.replace(',', '').str.replace(
-                     '$', '').astype(float)) /
-                df['old_value'].str.replace(',', '').str.replace(
-                    '$', '').astype(float))
-        df['change'] = df['change'].round(4)
-        df = df.replace([np.inf, -np.inf], np.nan)
-        df = df.fillna(0)
-        df = df.rename_axis('name').reset_index()
-        df = df[df['name'].isin(['Net Cost Final', vmc.impressions,
-                                 vmc.clicks, 'CPC'])]
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id),
-            exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_processor = db.session.get(Processor, processor_id)
+    os.chdir(adjust_path(cur_processor.local_path))
+    matrix = vm.VendorMatrix()
+    aly = az.Analyze(file_name='Raw Data Output.csv', matrix=matrix)
+    df, tdf, twdf = aly.generate_topline_and_weekly_metrics(group=dctc.PRN)
+    df = clean_total_metric_df(df, 'current_value')
+    tdf = clean_total_metric_df(tdf, 'new_value')
+    twdf = clean_total_metric_df(twdf, 'old_value')
+    df = df.join(tdf)
+    df = df.join(twdf)
+    df['change'] = (
+            (df['new_value'].str.replace(',', '').str.replace(
+                '$', '').astype(float) -
+             df['old_value'].str.replace(',', '').str.replace(
+                 '$', '').astype(float)) /
+            df['old_value'].str.replace(',', '').str.replace(
+                '$', '').astype(float))
+    df['change'] = df['change'].round(4)
+    df = df.replace([np.inf, -np.inf], np.nan)
+    df = df.fillna(0)
+    df = df.rename_axis('name').reset_index()
+    df = df[df['name'].isin(['Net Cost Final', vmc.impressions,
+                             vmc.clicks, 'CPC'])]
+    return [df]
 
 
 def clean_topline_df_from_db(db_item, new_col_name):
@@ -3504,90 +3495,79 @@ def clean_topline_df_from_db(db_item, new_col_name):
     return df
 
 
+@error_handler
 def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
                                 metrics=None, filter_dict=None,
                                 return_func=None):
-    try:
-        _set_task_progress(0)
-        cur_processor = db.session.get(Processor, processor_id)
-        topline_analysis = cur_processor.processor_analysis.filter_by(
-            key=az.Analyze.topline_col).all()
-        kpis, kpi_cols = get_kpis_for_processor(processor_id, current_user_id)
-        if processor_id == 23:
-            df = pd.DataFrame(columns=['impressions', 'clicks', 'netcost'])
-        elif not topline_analysis:
-            _set_task_progress(100)
-            return [pd.DataFrame()]
+    cur_processor = db.session.get(Processor, processor_id)
+    topline_analysis = cur_processor.processor_analysis.filter_by(
+        key=az.Analyze.topline_col).all()
+    kpis, kpi_cols = get_kpis_for_processor(processor_id, current_user_id)
+    if processor_id == 23:
+        df = pd.DataFrame(columns=['impressions', 'clicks', 'netcost'])
+    elif not topline_analysis:
+        return [pd.DataFrame()]
+    else:
+        df = clean_topline_df_from_db(
+            [x for x in topline_analysis
+             if x.parameter == az.Analyze.topline_col][0], 'current_value')
+        tdf = clean_topline_df_from_db(
+            [x for x in topline_analysis
+             if x.parameter == az.Analyze.lw_topline_col][0], 'new_value')
+        twdf = clean_topline_df_from_db(
+            [x for x in topline_analysis
+             if x.parameter == az.Analyze.tw_topline_col][0], 'old_value')
+        try:
+            df = df.join(tdf)
+        except ValueError:
+            return [
+                pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+        df = df.join(twdf)
+    if filter_dict:
+        metrics = list(set(list(
+            kpi_cols) + ['impressions', 'clicks', 'netcost']))
+        tdf = get_data_tables_from_db(
+            processor_id, current_user_id, dimensions=[],
+            metrics=metrics, filter_dict=filter_dict)
+        tdf = tdf[0]
+        tdf = az.ValueCalc().calculate_all_metrics(kpis, tdf)
+        if df.empty:
+            if tdf.empty:
+                return [tdf]
+            df = tdf.T
+            df['current_value'] = df[0]
         else:
-            df = clean_topline_df_from_db(
-                [x for x in topline_analysis
-                 if x.parameter == az.Analyze.topline_col][0], 'current_value')
-            tdf = clean_topline_df_from_db(
-                [x for x in topline_analysis
-                 if x.parameter == az.Analyze.lw_topline_col][0], 'new_value')
-            twdf = clean_topline_df_from_db(
-                [x for x in topline_analysis
-                 if x.parameter == az.Analyze.tw_topline_col][0], 'old_value')
-            try:
-                df = df.join(tdf)
-            except ValueError:
-                _set_task_progress(100)
-                return [
-                    pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
-            df = df.join(twdf)
-        if filter_dict:
-            metrics = list(set(list(
-                kpi_cols) + ['impressions', 'clicks', 'netcost']))
-            tdf = get_data_tables_from_db(
-                processor_id, current_user_id, dimensions=[],
-                metrics=metrics, filter_dict=filter_dict)
-            tdf = tdf[0]
-            tdf = az.ValueCalc().calculate_all_metrics(kpis, tdf)
-            if df.empty:
-                if tdf.empty:
-                    return [tdf]
-                df = tdf.T
-                df['current_value'] = df[0]
-            else:
-                df = df.join(tdf.T)
-            df['change'] = (df[0].astype(float) /
-                            df['current_value'].astype(float))
-            df = df.drop(columns='current_value').rename(
-                columns={0: 'current_value'})
-            df = df[['current_value'] +
-                    [x for x in df.columns if x != 'current_value']]
-        else:
-            cols = ['new_value', 'old_value']
-            df = utl.data_to_type(df, float_col=['new_value', 'old_value'])
-            for col in cols:
-                if col not in df:
-                    df[col] = 0
-            df['change'] = ((df['new_value'].astype(float) -
-                             df['old_value'].astype(float)) /
-                            df['old_value'].astype(float))
-        df['change'] = df['change'].round(4)
-        df = df.replace([np.inf, -np.inf], np.nan)
-        df = df.fillna(0)
-        tdf = df.T.iloc[:-1]
-        tdf = utl.give_df_default_format(tdf)
-        df = tdf.T.join(df['change'])
-        df = df.rename_axis('name').reset_index()
-        df = df[df['name'].isin([cal.NCF, vmc.impressions,
-                                 vmc.clicks] + list(kpis))]
-        if filter_dict:
-            df['msg'] = 'Of Total'
-        else:
-            df['msg'] = 'Since Last Week'
-        df = df.iloc[::-1]
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id),
-            exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+            df = df.join(tdf.T)
+        df['change'] = (df[0].astype(float) /
+                        df['current_value'].astype(float))
+        df = df.drop(columns='current_value').rename(
+            columns={0: 'current_value'})
+        df = df[['current_value'] +
+                [x for x in df.columns if x != 'current_value']]
+    else:
+        cols = ['new_value', 'old_value']
+        df = utl.data_to_type(df, float_col=['new_value', 'old_value'])
+        for col in cols:
+            if col not in df:
+                df[col] = 0
+        df['change'] = ((df['new_value'].astype(float) -
+                         df['old_value'].astype(float)) /
+                        df['old_value'].astype(float))
+    df['change'] = df['change'].round(4)
+    df = df.replace([np.inf, -np.inf], np.nan)
+    df = df.fillna(0)
+    tdf = df.T.iloc[:-1]
+    tdf = utl.give_df_default_format(tdf)
+    df = tdf.T.join(df['change'])
+    df = df.rename_axis('name').reset_index()
+    df = df[df['name'].isin([cal.NCF, vmc.impressions,
+                             vmc.clicks] + list(kpis))]
+    if filter_dict:
+        df['msg'] = 'Of Total'
+    else:
+        df['msg'] = 'Since Last Week'
+    df = df.iloc[::-1]
+    return [df]
 
 
 def get_processor_daily_notes(processor_id, current_user_id, dimensions=None,
@@ -3631,329 +3611,258 @@ def get_processor_daily_notes(processor_id, current_user_id, dimensions=None,
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+@error_handler
 def get_processor_topline_metrics(processor_id, current_user_id, vk=None):
-    try:
-        _set_task_progress(0)
-        cur_processor = db.session.get(Processor, processor_id)
-        import processor.reporting.analyze as az
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.dictcolumns as dctc
-        import processor.reporting.utils as utl
-        os.chdir(adjust_path(cur_processor.local_path))
-        topline_analysis = cur_processor.processor_analysis.filter_by(
-            key=az.Analyze.topline_col).all()
-        filter_dict = vk
-        if not topline_analysis:
-            _set_task_progress(100)
-            df = pd.DataFrame([{'Result': 'No topline metrics yet'}])
-            lt = app_utl.LiquidTable(df=df, table_name='toplineMetrics')
-            return [lt.table_dict]
-        else:
-            df = pd.DataFrame([x for x in topline_analysis if
-                               x.parameter == az.Analyze.topline_col][0].data)
-        if filter_dict:
-            kpis, kpi_cols = get_kpis_for_processor(
-                processor_id, current_user_id)
-            metrics = az.Analyze.topline_metrics
-            filter_dict = json.loads(filter_dict)
-            base_metrics = [x[0] for x in metrics]
-            base_metrics = list(utl.db_df_translation(
-                base_metrics, adjust_path(cur_processor.local_path)).values())
-            base_metrics = list(set(list(kpi_cols) + base_metrics))
-            tdf = get_data_tables_from_db(
-                processor_id, current_user_id, dimensions=['campaignname'],
-                metrics=base_metrics, filter_dict=filter_dict)[0]
-            cols = utl.db_df_translation(
-                tdf.columns.to_list(), adjust_path(cur_processor.local_path),
-                reverse=True)
-            tdf = tdf.rename(columns=cols)
-            analyze_topline = az.Analyze(df=tdf)
-            df = analyze_topline.generate_topline_metrics()
-        lt = app_utl.LiquidTable(df=df, table_name='toplineMetrics',
-                                 col_filter=False, chart_btn=False,
-                                 search_bar=False)
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id),
-            exc_info=sys.exc_info())
-        df = pd.DataFrame([{'Result': 'Metrics unable to be loaded.'}])
+    cur_processor = db.session.get(Processor, processor_id)
+    os.chdir(adjust_path(cur_processor.local_path))
+    topline_analysis = cur_processor.processor_analysis.filter_by(
+        key=az.Analyze.topline_col).all()
+    filter_dict = vk
+    if not topline_analysis:
+        df = pd.DataFrame([{'Result': 'No topline metrics yet'}])
         lt = app_utl.LiquidTable(df=df, table_name='toplineMetrics')
         return [lt.table_dict]
+    else:
+        df = pd.DataFrame([x for x in topline_analysis if
+                           x.parameter == az.Analyze.topline_col][0].data)
+    if filter_dict:
+        kpis, kpi_cols = get_kpis_for_processor(
+            processor_id, current_user_id)
+        metrics = az.Analyze.topline_metrics
+        filter_dict = json.loads(filter_dict)
+        base_metrics = [x[0] for x in metrics]
+        base_metrics = list(utl.db_df_translation(
+            base_metrics, adjust_path(cur_processor.local_path)).values())
+        base_metrics = list(set(list(kpi_cols) + base_metrics))
+        tdf = get_data_tables_from_db(
+            processor_id, current_user_id, dimensions=['campaignname'],
+            metrics=base_metrics, filter_dict=filter_dict)[0]
+        cols = utl.db_df_translation(
+            tdf.columns.to_list(), adjust_path(cur_processor.local_path),
+            reverse=True)
+        tdf = tdf.rename(columns=cols)
+        analyze_topline = az.Analyze(df=tdf)
+        df = analyze_topline.generate_topline_metrics()
+    lt = app_utl.LiquidTable(df=df, table_name='toplineMetrics',
+                             col_filter=False, chart_btn=False,
+                             search_bar=False)
+    return [lt.table_dict]
 
 
-# noinspection SqlResolve
+@error_handler
 def get_data_tables_from_db(processor_id, current_user_id, parameter=None,
                             dimensions=None, metrics=None, filter_dict=None,
                             use_cache=True, table_name=None, return_func=None):
-    try:
-        _set_task_progress(0)
-        cur_processor = db.session.get(Processor, processor_id)
-        if ((not cur_processor.local_path) or
-                (not os.path.exists(adjust_path(cur_processor.local_path)))):
-            _set_task_progress(100)
+    cur_processor = db.session.get(Processor, processor_id)
+    if ((not cur_processor.local_path) or
+            (not os.path.exists(adjust_path(cur_processor.local_path)))):
+        return [pd.DataFrame({x: [] for x in dimensions + metrics})]
+    _set_task_progress(15)
+    if metrics == ['kpi']:
+        kpis, kpi_cols = get_kpis_for_processor(processor_id, current_user_id)
+        metrics = [x for x in ['impressions', 'clicks', 'netcost']
+                   if x not in kpi_cols] + kpi_cols
+    else:
+        kpis = None
+    os.chdir(adjust_path(cur_processor.local_path))
+    if not metrics:
+        metrics = ['impressions', 'clicks', 'netcost']
+    metrics = sorted(metrics)
+    old_analysis = update_analysis_in_db_reporting_cache(
+        processor_id, current_user_id, pd.DataFrame(),
+        dimensions, metrics, filter_dict, check=True)
+    if old_analysis and use_cache:
+        if old_analysis.date == datetime.today().date():
+            df = pd.read_json(old_analysis.data).sort_index()
+            df = df[~((df == 'None') | (df == 0)).all(axis=1)]
+            return [df]
+    dimensions_sql = ['event.{}'.format(x) if x == 'eventdate'
+                      else x for x in dimensions]
+    dimensions_sql = ','.join(dimensions_sql)
+    metric_sql = ','.join(['SUM({0}) AS {0}'.format(x) for x in metrics])
+    if dimensions_sql:
+        select_sql = '{0},{1}'.format(dimensions_sql, metric_sql)
+    else:
+        select_sql = metric_sql
+    if processor_id == 23:
+        where_sql = ""
+    else:
+        if not os.path.exists('config/upload_id_file.csv'):
             return [pd.DataFrame({x: [] for x in dimensions + metrics})]
-        _set_task_progress(15)
-        if metrics == ['kpi']:
-            kpis, kpi_cols = get_kpis_for_processor(
-                processor_id, current_user_id)
-            metrics = [x for x in ['impressions', 'clicks', 'netcost']
-                       if x not in kpi_cols] + kpi_cols
         else:
-            kpis = None
-        os.chdir(adjust_path(cur_processor.local_path))
-        if not metrics:
-            metrics = ['impressions', 'clicks', 'netcost']
-        metrics = sorted(metrics)
-        old_analysis = update_analysis_in_db_reporting_cache(
-            processor_id, current_user_id, pd.DataFrame(),
-            dimensions, metrics, filter_dict, check=True)
-        if old_analysis and use_cache:
-            if old_analysis.date == datetime.today().date():
-                df = pd.read_json(old_analysis.data).sort_index()
-                df = df[~((df == 'None') | (df == 0)).all(axis=1)]
-                _set_task_progress(100)
-                return [df]
-        dimensions_sql = ['event.{}'.format(x) if x == 'eventdate'
-                          else x for x in dimensions]
-        dimensions_sql = ','.join(dimensions_sql)
-        metric_sql = ','.join(['SUM({0}) AS {0}'.format(x) for x in metrics])
-        if dimensions_sql:
-            select_sql = '{0},{1}'.format(dimensions_sql, metric_sql)
-        else:
-            select_sql = metric_sql
-        if processor_id == 23:
-            where_sql = ""
-        else:
-            if not os.path.exists('config/upload_id_file.csv'):
-                _set_task_progress(100)
-                return [pd.DataFrame({x: [] for x in dimensions + metrics})]
-            else:
-                up_id = pd.read_csv('config/upload_id_file.csv')
-                up_id = up_id['uploadid'][0]
-                where_sql = "WHERE fullplacement.uploadid = '{}'".format(up_id)
-        where_args = []
-        if filter_dict:
-            for f in filter_dict:
-                for k, v in f.items():
-                    if v:
-                        if k == 'eventdate':
-                            date_format_str = '%Y-%m-%dT%H:%M:%S.%fZ'
-                            sd = datetime.strptime(
-                                v[0], date_format_str).strftime('%Y-%m-%d')
-                            ed = datetime.strptime(
-                                v[1], date_format_str).strftime('%Y-%m-%d')
-                            w = (" AND (event.{0} BETWEEN '{1}' AND '{2}' "
-                                 "OR event.{0} IS NULL)".format(k, sd, ed))
-                        else:
-                            w = " AND {} IN ({})".format(
-                                k, ', '.join(['%s'] * len(v)))
-                            where_args.extend(v)
-                        if where_sql == "":
-                            w = "{}{}".format("WHERE", w[4:])
-                        where_sql += w
-        _set_task_progress(30)
-        sb = exp.ScriptBuilder()
-        base_table = [x for x in sb.tables if x.name == 'event'][0]
-        append_tables = sb.get_active_event_tables(metrics)
-        from_script = sb.get_from_script_with_opts(base_table,
-                                                   event_tables=append_tables)
-        command = """SELECT {0}
-            {1}
-            {2}
-        """.format(select_sql, from_script, where_sql)
-        if dimensions_sql:
-            command += 'GROUP BY {}'.format(dimensions_sql)
-        db_class = exp.DB()
-        db_class.input_config(app.config['EXP_DB'])
-        db_class.connect()
-        _set_task_progress(50)
-        db_class.cursor.execute(command, where_args)
-        data = db_class.cursor.fetchall()
-        _set_task_progress(70)
-        columns = [i[0] for i in db_class.cursor.description]
-        df = pd.DataFrame(data=data, columns=columns)
-        _set_task_progress(90)
-        df = utl.data_to_type(df, float_col=metrics)
-        if 'eventdate' in df.columns:
-            df = utl.data_to_type(df, str_col=['eventdate'])
-            df = df[df['eventdate'] != 'None']
+            up_id = pd.read_csv('config/upload_id_file.csv')
+            up_id = up_id['uploadid'][0]
+            where_sql = "WHERE fullplacement.uploadid = '{}'".format(up_id)
+    where_args = []
+    if filter_dict:
+        for f in filter_dict:
+            for k, v in f.items():
+                if v:
+                    if k == 'eventdate':
+                        date_format_str = '%Y-%m-%dT%H:%M:%S.%fZ'
+                        sd = datetime.strptime(
+                            v[0], date_format_str).strftime('%Y-%m-%d')
+                        ed = datetime.strptime(
+                            v[1], date_format_str).strftime('%Y-%m-%d')
+                        w = (" AND (event.{0} BETWEEN '{1}' AND '{2}' "
+                             "OR event.{0} IS NULL)".format(k, sd, ed))
+                    else:
+                        w = " AND {} IN ({})".format(
+                            k, ', '.join(['%s'] * len(v)))
+                        where_args.extend(v)
+                    if where_sql == "":
+                        w = "{}{}".format("WHERE", w[4:])
+                    where_sql += w
+    _set_task_progress(30)
+    sb = exp.ScriptBuilder()
+    base_table = [x for x in sb.tables if x.name == 'event'][0]
+    append_tables = sb.get_active_event_tables(metrics)
+    from_script = sb.get_from_script_with_opts(base_table,
+                                               event_tables=append_tables)
+    command = """SELECT {0}
+        {1}
+        {2}
+    """.format(select_sql, from_script, where_sql)
+    if dimensions_sql:
+        command += 'GROUP BY {}'.format(dimensions_sql)
+    db_class = exp.DB()
+    db_class.input_config(app.config['EXP_DB'])
+    db_class.connect()
+    _set_task_progress(50)
+    db_class.cursor.execute(command, where_args)
+    data = db_class.cursor.fetchall()
+    _set_task_progress(70)
+    columns = [i[0] for i in db_class.cursor.description]
+    df = pd.DataFrame(data=data, columns=columns)
+    _set_task_progress(90)
+    df = utl.data_to_type(df, float_col=metrics)
+    if 'eventdate' in df.columns:
+        df = utl.data_to_type(df, str_col=['eventdate'])
+        df = df[df['eventdate'] != 'None']
+    df = df.fillna(0)
+    if kpis:
+        calculated_metrics = az.ValueCalc().metric_names
+        metric_names = [x for x in kpis if x in calculated_metrics]
+        df = az.ValueCalc().calculate_all_metrics(
+            metric_names=metric_names, df=df, db_translate=True)
+        df = df.replace([np.inf, -np.inf], np.nan)
         df = df.fillna(0)
-        if kpis:
-            calculated_metrics = az.ValueCalc().metric_names
-            metric_names = [x for x in kpis if x in calculated_metrics]
-            df = az.ValueCalc().calculate_all_metrics(
-                metric_names=metric_names, df=df, db_translate=True)
-            df = df.replace([np.inf, -np.inf], np.nan)
-            df = df.fillna(0)
-        cols = utl.db_df_translation(
-            metrics, adjust_path(cur_processor.local_path), reverse=True)
-        df = df.rename(columns=cols)
-        df = df[~((df == 'None') | (df == 0)).all(axis=1)]
-        update_analysis_in_db_reporting_cache(
-            processor_id, current_user_id, df, dimensions, metrics, filter_dict)
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {} Dimensions {}'.format(
-                processor_id, current_user_id, dimensions),
-            exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cols = utl.db_df_translation(
+        metrics, adjust_path(cur_processor.local_path), reverse=True)
+    df = df.rename(columns=cols)
+    df = df[~((df == 'None') | (df == 0)).all(axis=1)]
+    update_analysis_in_db_reporting_cache(
+        processor_id, current_user_id, df, dimensions, metrics, filter_dict)
+    return [df]
 
 
+@error_handler
 def get_liquid_table_from_db(processor_id, current_user_id, parameter=None,
                              dimensions=None, metrics=None, filter_dict=None,
                              use_cache=True, table_name=None, return_func=None,
                              chart_show=True):
-    try:
-        _set_task_progress(0)
-        include_args = ['parameter', 'dimensions', 'metrics', 'filter_dict',
-                        'use_cache']
-        args_dict = {key: value for key, value in locals().items() if
-                     key in include_args}
-        df = get_data_tables_from_db(processor_id, current_user_id, parameter,
-                                     dimensions, metrics, filter_dict,
-                                     use_cache, table_name, return_func)[0]
-        _set_task_progress(90)
-        lt = app_utl.LiquidTable(df=df, table_name=table_name,
-                                 chart_func=return_func, chart_show=chart_show,
-                                 metadata=args_dict, download_table=True)
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        lt = app_utl.LiquidTable(
-            df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
-            table_name=None)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {} Dimensions {}'.format(
-                processor_id, current_user_id, dimensions),
-            exc_info=sys.exc_info())
-        _set_task_progress(100)
-        return [lt.table_dict]
+    include_args = ['parameter', 'dimensions', 'metrics', 'filter_dict',
+                    'use_cache']
+    args_dict = {key: value for key, value in locals().items() if
+                 key in include_args}
+    df = get_data_tables_from_db(processor_id, current_user_id, parameter,
+                                 dimensions, metrics, filter_dict,
+                                 use_cache, table_name, return_func)[0]
+    _set_task_progress(90)
+    lt = app_utl.LiquidTable(df=df, table_name=table_name,
+                             chart_func=return_func, chart_show=chart_show,
+                             metadata=args_dict, download_table=True)
+    return [lt.table_dict]
 
 
+@error_handler
 def get_raw_file_delta_table(processor_id, current_user_id, vk=None,
                              dimensions=None, metrics=None, filter_dict=None,
                              return_func=None):
-    try:
-        _set_task_progress(0)
-        odf_data = get_raw_file_data_table(
-            processor_id, current_user_id, vk, dimensions, metrics,
-            filter_dict, temp=False)[0]['data']
-        odf = pd.DataFrame(data=odf_data)
-        ndf_data = get_raw_file_data_table(
-            processor_id, current_user_id, vk,
-            dimensions, metrics, filter_dict, temp=True)[0]['data']
-        ndf = pd.DataFrame(data=ndf_data)
-        if ([x for x in dimensions
-             if x not in ndf.columns or x not in odf.columns]):
-            df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
-        else:
-            df = ndf.set_index(dimensions).subtract(odf.set_index(dimensions),
-                                                    fill_value=0).reset_index()
-        lt = app_utl.LiquidTable(df=df, chart_func=return_func, table_name=None,
-                                 chart_show=True)
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        lt = app_utl.LiquidTable(
-            df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
-            table_name=None)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {} Parameter {}'
-            'Filter Dict {}'.format(
-                processor_id, current_user_id, vk, filter_dict),
-            exc_info=sys.exc_info())
-        _set_task_progress(100)
-        return [lt.table_dict]
+    odf_data = get_raw_file_data_table(
+        processor_id, current_user_id, vk, dimensions, metrics,
+        filter_dict, temp=False)[0]['data']
+    odf = pd.DataFrame(data=odf_data)
+    ndf_data = get_raw_file_data_table(
+        processor_id, current_user_id, vk,
+        dimensions, metrics, filter_dict, temp=True)[0]['data']
+    ndf = pd.DataFrame(data=ndf_data)
+    if ([x for x in dimensions
+         if x not in ndf.columns or x not in odf.columns]):
+        df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
+    else:
+        df = ndf.set_index(dimensions).subtract(odf.set_index(dimensions),
+                                                fill_value=0).reset_index()
+    lt = app_utl.LiquidTable(df=df, chart_func=return_func, table_name=None,
+                             chart_show=True)
+    return [lt.table_dict]
 
 
+@error_handler
 def get_raw_file_data_table(processor_id, current_user_id, vk=None,
                             dimensions=None, metrics=None, filter_dict=None,
                             temp=None, return_func=None):
-    try:
-        _set_task_progress(0)
-        cur_processor = db.session.get(Processor, processor_id)
-        if ((not cur_processor.local_path) or
-                (not os.path.exists(adjust_path(cur_processor.local_path)))):
-            lt = app_utl.LiquidTable(
-                df=pd.DataFrame({x: [] for x in dimensions + metrics}),
-                table_name=None)
-            _set_task_progress(100)
-            return [lt.table_dict]
-        _set_task_progress(15)
-        def_metrics = [vmc.impressions, vmc.clicks, vmc.cost]
-        if metrics == ['kpi']:
-            kpis, kpi_cols = get_kpis_for_processor(
-                processor_id, current_user_id)
-            metrics = [x for x in def_metrics if x not in kpi_cols] + kpi_cols
-        else:
-            kpis = None
-        if not metrics:
-            metrics = def_metrics
-        os.chdir(adjust_path(cur_processor.local_path))
-        matrix = vm.VendorMatrix()
-        if temp:
-            for col in [vmc.filename, vmc.filename_true]:
-                if vk not in matrix.vm[col]:
-                    continue
-                new_name = matrix.vm[col][vk]
-                file_type = os.path.splitext(new_name)[1]
-                new_name = new_name.replace(
-                    file_type, 'TMP{}'.format(file_type))
-                matrix.vm[col][vk] = new_name
-        _set_task_progress(60)
-        try:
-            df = matrix.vendor_get(vk)
-        except:
-            lt = app_utl.LiquidTable(
-                df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
-                table_name=None)
-            _set_task_progress(100)
-            return [lt.table_dict]
-        _set_task_progress(90)
-        df = utl.data_to_type(df, float_col=metrics)
-        metrics = [x for x in metrics if x in df.columns]
-        if [x for x in dimensions if x not in df.columns]:
-            lt = app_utl.LiquidTable(
-                df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
-                table_name=None)
-            _set_task_progress(100)
-            return [lt.table_dict]
-        df = df.groupby(dimensions)[metrics].sum()
-        df = df.reset_index()
-        if vmc.date in df.columns:
-            df = utl.data_to_type(df, str_col=[vmc.date])
-            df = df[df[vmc.date] != 'None']
-        df = df.fillna(0)
-        if kpis and vmc.cost in df.columns:
-            df['Net Cost Final'] = df[vmc.cost]
-            calculated_metrics = az.ValueCalc().metric_names
-            metric_names = [x for x in kpis if x in calculated_metrics]
-            df = az.ValueCalc().calculate_all_metrics(
-                metric_names=metric_names, df=df, db_translate=False)
-            df = df.replace([np.inf, -np.inf], np.nan)
-            df = df.fillna(0)
-        lt = app_utl.LiquidTable(df=df, chart_func=return_func, table_name=None,
-                                 chart_show=True)
-        _set_task_progress(100)
+    cur_processor = db.session.get(Processor, processor_id)
+    if ((not cur_processor.local_path) or
+            (not os.path.exists(adjust_path(cur_processor.local_path)))):
+        lt = app_utl.LiquidTable(
+            df=pd.DataFrame({x: [] for x in dimensions + metrics}),
+            table_name=None)
         return [lt.table_dict]
+    _set_task_progress(15)
+    def_metrics = [vmc.impressions, vmc.clicks, vmc.cost]
+    if metrics == ['kpi']:
+        kpis, kpi_cols = get_kpis_for_processor(
+            processor_id, current_user_id)
+        metrics = [x for x in def_metrics if x not in kpi_cols] + kpi_cols
+    else:
+        kpis = None
+    if not metrics:
+        metrics = def_metrics
+    os.chdir(adjust_path(cur_processor.local_path))
+    matrix = vm.VendorMatrix()
+    if temp:
+        for col in [vmc.filename, vmc.filename_true]:
+            if vk not in matrix.vm[col]:
+                continue
+            new_name = matrix.vm[col][vk]
+            file_type = os.path.splitext(new_name)[1]
+            new_name = new_name.replace(
+                file_type, 'TMP{}'.format(file_type))
+            matrix.vm[col][vk] = new_name
+    _set_task_progress(60)
+    try:
+        df = matrix.vendor_get(vk)
     except:
         lt = app_utl.LiquidTable(
             df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
             table_name=None)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {} Parameter {}'
-            'Filter Dict {}'.format(
-                processor_id, current_user_id, vk, filter_dict),
-            exc_info=sys.exc_info())
-        _set_task_progress(100)
         return [lt.table_dict]
+    _set_task_progress(90)
+    df = utl.data_to_type(df, float_col=metrics)
+    metrics = [x for x in metrics if x in df.columns]
+    if [x for x in dimensions if x not in df.columns]:
+        lt = app_utl.LiquidTable(
+            df=pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}]),
+            table_name=None)
+        return [lt.table_dict]
+    df = df.groupby(dimensions)[metrics].sum()
+    df = df.reset_index()
+    if vmc.date in df.columns:
+        df = utl.data_to_type(df, str_col=[vmc.date])
+        df = df[df[vmc.date] != 'None']
+    df = df.fillna(0)
+    if kpis and vmc.cost in df.columns:
+        df['Net Cost Final'] = df[vmc.cost]
+        calculated_metrics = az.ValueCalc().metric_names
+        metric_names = [x for x in kpis if x in calculated_metrics]
+        df = az.ValueCalc().calculate_all_metrics(
+            metric_names=metric_names, df=df, db_translate=False)
+        df = df.replace([np.inf, -np.inf], np.nan)
+        df = df.fillna(0)
+    lt = app_utl.LiquidTable(df=df, chart_func=return_func, table_name=None,
+                             chart_show=True)
+    return [lt.table_dict]
 
 
 def get_processor_pacing_metrics(processor_id, current_user_id, parameter=None,
@@ -4460,7 +4369,6 @@ def update_analysis_in_db_reporting_cache(processor_id, current_user_id, df,
         parameter=dimensions_str, parameter_2=metrics_str,
         filter_col=filter_col_str, filter_val=filter_val_str).first()
     if check:
-        _set_task_progress(100)
         return old_analysis
     if old_analysis:
         old_analysis.data = df.to_json()
@@ -4765,35 +4673,26 @@ def write_report_builder(processor_id, current_user_id, new_data=None):
                 processor_id, current_user_id), exc_info=sys.exc_info())
         return False
 
-
+@error_handler
 def get_kpis_for_processor(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_processor = db.session.get(Processor, processor_id)
-        vc = az.ValueCalc()
-        analysis = cur_processor.processor_analysis.filter_by(
-            key=az.Analyze.kpi_col).all()
-        kpis = list(set(x.parameter for x in analysis
-                        if x.parameter not in ['0', 'nan', 'CPA'] and
-                        'Conv' not in x.parameter))
-        if not kpis:
-            kpis = ['CPC', 'CPLPV', 'CPBC', 'CPV', 'VCR']
-        kpi_formula = [vc.calculations[x] for x in vc.calculations
-                       if vc.calculations[x][vc.metric_name] in kpis]
-        kpi_cols = [x[vc.formula][::2] for x in kpi_formula]
-        kpi_cols = list(set([x for x in kpi_cols for x in x if x]))
-        kpi_cols += [x for x in kpis if x in vmc.datacol]
-        kpis = [x for x in kpis if x not in vmc.datacol]
-        kpi_cols = list(utl.db_df_translation(
-            kpi_cols, adjust_path(cur_processor.local_path)).values())
-        _set_task_progress(100)
-        return kpis, kpi_cols
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id), exc_info=sys.exc_info())
-        return [], []
+    cur_processor = db.session.get(Processor, processor_id)
+    vc = az.ValueCalc()
+    analysis = cur_processor.processor_analysis.filter_by(
+        key=az.Analyze.kpi_col).all()
+    kpis = list(set(x.parameter for x in analysis
+                    if x.parameter not in ['0', 'nan', 'CPA'] and
+                    'Conv' not in x.parameter))
+    if not kpis:
+        kpis = ['CPC', 'CPLPV', 'CPBC', 'CPV', 'VCR']
+    kpi_formula = [vc.calculations[x] for x in vc.calculations
+                   if vc.calculations[x][vc.metric_name] in kpis]
+    kpi_cols = [x[vc.formula][::2] for x in kpi_formula]
+    kpi_cols = list(set([x for x in kpi_cols for x in x if x]))
+    kpi_cols += [x for x in kpis if x in vmc.datacol]
+    kpis = [x for x in kpis if x not in vmc.datacol]
+    kpi_cols = list(utl.db_df_translation(
+        kpi_cols, adjust_path(cur_processor.local_path)).values())
+    return kpis, kpi_cols
 
 
 def parse_date_from_project_number(cur_string, date_opened):

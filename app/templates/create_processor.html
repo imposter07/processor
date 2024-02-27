@@ -9,11 +9,11 @@
       Launch demo modal
     </button>
     <div class="modal hide fade" id="logModal" tabindex="-1" role="dialog"
-         aria-labelledby="exampleModalLabel" aria-hidden="true">
+         aria-labelledby="logModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-xl mw-100 w-90" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="exampleModalLabel">
+            <h5 class="modal-title" id="logModalLabel">
                 Logfile - {{object_name }}</h5>
             <button type="button" class="close" data-dismiss="modal"
                     aria-label="Close">
@@ -632,60 +632,62 @@
         }
 
         function getLogOnClick() {
-            loadingBtn(this, this.style, this.className);
-            animateBar();
-            getLog(this.id);
+            getTable(this.id, this.id);
         }
 
         function parseLog(data, kwargs) {
-            let clickElem = kwargs['clickElem'];
             let logFile = JSON.parse(data['data']);
-            let htmlLog = "<p align=\"left\" style='white-space: pre; " +
-                "font-family: Consolas;'>" +
-                logFile.join("</p><p align=\"left\" style='white-space: " +
-                    "pre; font-family: Consolas;'>")  + "</p>";
-            $('#logModal > div:nth-child(1) > div:nth-child(1) > div:nth-child(2)'
-            )[0].innerHTML = htmlLog;
-            $('#logModal .modal-body').attr('style', 'overflow-x:auto')
-            $('#logModal p:contains("ERROR]")').css('color', 'red')
-            $('#logModal p:contains("WARNING]")').css('color', 'orange')
-            if (clickElem) {
-                showModalTable('logModalButton');
-                addElemRemoveLoadingBtn(clickElem);
-            }
-        }
-
-        function getLog(clickElem) {
-            let requestData = {
-                object_type: "{{ title }}",
-                object_name: "{{ object_name }}"
-            }
-            let kwargs = {'clickElem': clickElem}
-            makeRequest('/get_log', 'POST', requestData, parseLog, 'json', kwargs);
-        }
-
-        var logRefresh = null;
-        $('#logModal').on({
-            'shown.bs.modal': function () {
-                logRefresh = setInterval(function () {
-                    getLog('');
-                }, 30000)
-            },
-            'hidden.bs.modal': function () {
-                clearInterval(logRefresh);
-            }
-        });
-
-        $(document).ready(function() {
-            $('.list-group-item-linkable').on('click', function () {
-                // same window/tab:
-                // let clickedHref = $(this).attr('href');
-                window.location.href = $(this).attr('href');
+            logFile = "<p align=\"left\" style='white-space: pre; font-family: Consolas;'>" +
+                logFile.join("</p><p align=\"left\" style='white-space: pre; font-family: Consolas;'>") +
+                "</p>";
+            document.querySelector('#logModal > div:nth-child(1) > div:nth-child(1) > div:nth-child(2)').innerHTML = logFile;
+            document.querySelector('#logModal .modal-body').style.overflowX = 'auto';
+            document.querySelectorAll('#logModal p').forEach(p => {
+                if (p.textContent.includes("ERROR]")) {
+                    p.style.color = 'red';
+                }
+                if (p.textContent.includes("WARNING]")) {
+                    p.style.color = 'orange';
+                }
             });
-        });
+            const modal = document.getElementById('logModal');
+            if (!(modal.classList.contains('show'))) {
+                showModalTable('logModalButton');
+            }
+        }
+
+        function addLogModalObserver() {
+            let logRefresh = null;
+            let modal = document.getElementById('logModal');
+            let observer = new MutationObserver(function (mutations) {
+                mutations.forEach(function (mutation) {
+                    if (mutation.attributeName === "style") {
+                        let displayStyle = modal.style.display;
+                        if (displayStyle === 'block') {
+                            logRefresh = setLogRefresh(logRefresh);
+                        } else {
+                            clearInterval(logRefresh);
+                        }
+                    }
+                });
+            });
+            observer.observe(modal, {attributes: true});
+        }
+
+        function setLogRefresh(logRefresh) {
+            logRefresh = setInterval(function () {
+                getTable('getLog', 'getLog');
+            }, 30000);
+            return logRefresh
+        }
+
+        function listGroupOnClick() {
+            window.location.href = this.getAttribute('href');
+        }
 
         function loadButtonOnClick() {
-            if ("{{ edit_name }}" === 'Import') {
+            let jv = document.getElementById('jinjaValues');
+            if (jv.dataset['edit_name'] === 'Import') {
                 let unnamedImports = emptyVendorKeyNameCheck();
                 if (unnamedImports) {
                     displayAlert('All API cards must be named before saving.', 'danger');
@@ -1408,6 +1410,8 @@
             addWalkthrough();
             addOnClickEvent('[id^="viewSelector"]', viewSelectorChangeEvent, 'change');
             addOnClickEvent('#data_source', changeImportFilter, 'change');
+            addOnClickEvent('.list-group-item-linkable', listGroupOnClick);
+            addLogModalObserver();
         }
 
         document.addEventListener("DOMContentLoaded", function() {

@@ -728,6 +728,16 @@ class TestUploader:
         rows = sw.count_rows_in_table(table_id)
         assert rows == 2
 
+    def test_get_log(self, sw, login, worker):
+        cur_up = self.check_create_uploader(sw, login, worker)
+        elem_id = 'getLog'
+        label_id = 'logModalLabel'
+        sw.wait_for_elem_load(elem_id)
+        sw.xpath_from_id_and_click(elem_id, load_elem_id=label_id)
+        worker.work(burst=True)
+        elem = sw.browser.find_element_by_id(label_id)
+        assert cur_up.name in elem.get_attribute('innerHTML')
+
 
 class TestReportingDBReadWrite:
     test_proc_name = "FFXIV Evergreen FY22 - March"

@@ -72,6 +72,8 @@ function parseTableResponse(tableName, pond, vendorKey, data, callbackFunc) {
             addCollapse(element, data['html_data']['data']['name']);
         } else if (tableName === 'check_processor_plan') {
             appendMessage(data, 'planCheckCardCol', 'rowZero', 'Plan Check');
+        } else if (tableName === 'getLog') {
+            parseLog(data);
         } else if (tableName === 'apply_processor_plan') {
             appendCardAsTable(data, "newPlanResultsCardCol", "#rowOne", 'NEW PLAN RESULTS', false);
         } else if (tableName === 'get_plan_property') {

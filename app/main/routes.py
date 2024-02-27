@@ -847,29 +847,6 @@ def get_test_apis():
     return jsonify({'test_apis': test_apis})
 
 
-@bp.route('/get_log', methods=['GET', 'POST'])
-@login_required
-@app_utl.error_handler
-def get_log():
-    if request.form['object_type'] == 'Processor':
-        item_model = Processor
-        task = '.get_logfile'
-    elif request.form['object_type'] == 'Uploader':
-        item_model = Uploader
-        task = '.get_logfile_uploader'
-    else:
-        return jsonify({'data': 'Could not recognize request.'})
-    item_name = request.form['object_name']
-    msg_text = 'Getting logfile for {}.'.format(item_name)
-    cur_item = item_model.query.filter_by(name=item_name).first_or_404()
-    task = cur_item.launch_task(task, _(msg_text),
-                                {'running_user': current_user.id})
-    db.session.commit()
-    job = task.wait_and_get_job(force_return=True)
-    log_list = job.result.split('\n')
-    return jsonify({'data': json.dumps(log_list)})
-
-
 @bp.route('/post_table', methods=['GET', 'POST'])
 @login_required
 def post_table():
@@ -1067,19 +1044,22 @@ def get_table_return(task, table_name, proc_arg, job_name,
     for base_name in ['Relation', 'Uploader']:
         if base_name in table_name:
             table_name = '{}{}'.format(base_name, proc_arg['parameter'])
-            if 'vk' in proc_arg and job_name not in [
-                '.check_processor_plan' '.apply_processor_plan']:
+            plan_jobs = ['.check_processor_plan' '.apply_processor_plan']
+            if 'vk' in proc_arg and job_name not in plan_jobs:
                 table_name = '{}vendorkey{}'.format(
                     table_name, request.form['vendorkey'].replace(' ', '___'))
     table_name = "modalTable{}".format(table_name)
-    if job_name in ['.get_raw_file_comparison', '.check_processor_plan']:
+    is_log_table = 'getLog' in table_name
+    is_liq_table = utl.LiquidTable.id_col in df and df[utl.LiquidTable.id_col]
+    no_parse_tables = ['.get_raw_file_comparison', '.check_processor_plan']
+    if job_name in no_parse_tables:
         data = {'data': {'data': df, 'name': table_name}}
     elif job_name == '.get_request_table':
         table_name = table_name.replace('modalTable', '')
         msg = job.result[1]
         table_data = df_to_html(df, table_name, job_name)
         data = {'html_data': table_data, 'msg': msg}
-    elif utl.LiquidTable.id_col in df and df[utl.LiquidTable.id_col]:
+    elif is_liq_table or is_log_table:
         data = {'data': df}
     elif 'return_func' in proc_arg and 'table_name' not in proc_arg:
         df = df.rename(columns=str)
@@ -1099,32 +1079,25 @@ def get_table_return(task, table_name, proc_arg, job_name,
 
 @bp.route('/get_table', methods=['GET', 'POST'])
 @login_required
+@app_utl.error_handler
 def get_table():
-    try:
-        table_name, cur_proc, proc_arg, job_name = get_table_arguments()
-        if not job_name:
-            data = {'data': 'fail', 'task': '', 'level': 'fail'}
-            return data
-        if job_name == '.get_request_table':
-            msg_text = 'Getting {} table for {}'.format(
-                table_name, proc_arg['fix_id'])
-        else:
-            msg_text = 'Getting {} table for {}'.format(table_name,
-                                                        cur_proc.name)
-        task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
-        db.session.commit()
-        if ('force_return' in request.form and
-                request.form['force_return'] == 'false'):
-            data = {'data': 'success', 'task': task.id, 'level': 'success'}
-        else:
-            data = get_table_return(task, table_name, proc_arg, job_name,
-                                    force_return=True)
-    except:
-        args = request.form.to_dict(flat=False)
-        msg = 'Unhandled exception {}'.format(json.dumps(args))
-        current_app.logger.error(msg, exc_info=sys.exc_info())
-        data = {'data': 'error', 'task': '', 'level': 'error',
-                'args': request.form.to_dict(flat=False)}
+    table_name, cur_proc, proc_arg, job_name = get_table_arguments()
+    if not job_name:
+        data = {'data': 'fail', 'task': '', 'level': 'fail'}
+        return data
+    msg_text = 'Getting {} table for'.format(table_name)
+    obj_name = cur_proc.name
+    if job_name == '.get_request_table':
+        obj_name = proc_arg['fix_id']
+    msg_text = '{} {}'.format(msg_text, obj_name)
+    task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
+    db.session.commit()
+    fr_key = 'force_return'
+    if fr_key in request.form and request.form[fr_key] == 'false':
+        data = {'data': 'success', 'task': task.id, 'level': 'success'}
+    else:
+        data = get_table_return(task, table_name, proc_arg, job_name,
+                                force_return=True)
     return data
 
 

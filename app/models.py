@@ -1050,7 +1050,8 @@ class Processor(db.Model):
                      'pacingAlerts': '.get_pacing_alerts',
                      'ProjectNumber': '.get_project_number',
                      'projectObjects': '.get_project_objects',
-                     'ProjectNumbers': '.get_project_numbers'}
+                     'ProjectNumbers': '.get_project_numbers',
+                     'getLog': '.get_logfile'}
         return arg_trans
 
     def get_import_form_dicts(self, reverse_sort_apis=False):

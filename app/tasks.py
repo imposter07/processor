@@ -1221,18 +1221,14 @@ def full_run_processor(processor_id, current_user_id, processor_args=None):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
-def get_logfile(processor_id, current_user_id):
-    try:
-        cur_processor = Processor.query.get(processor_id)
-        with open(os.path.join(adjust_path(cur_processor.local_path),
-                               'logfile.log'), 'r') as f:
-            log_file = f.read()
-        _set_task_progress(100)
-        return log_file
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+@error_handler
+def get_logfile(processor_id, current_user_id, object_type=Processor):
+    cur_obj = db.session.get(object_type, processor_id)
+    file_path = os.path.join(adjust_path(cur_obj.local_path), 'logfile.log')
+    with open(file_path, 'r') as f:
+        log_file = f.read()
+    log_file = json.dumps(log_file.split('\n'))
+    return log_file
 
 
 def get_rate_card(processor_id, current_user_id, vk):
@@ -1295,20 +1291,6 @@ def write_rate_card(processor_id, current_user_id, new_data, vk):
         app.logger.error(
             'Unhandled exception - Processor {} User {} VK {}'.format(
                 processor_id, current_user_id, vk), exc_info=sys.exc_info())
-
-
-def get_logfile_uploader(uploader_id, current_user_id):
-    try:
-        cur_uploader = Uploader.query.get(uploader_id)
-        with open(os.path.join(adjust_path(cur_uploader.local_path),
-                               'logfile.log'), 'r') as f:
-            log_file = f.read()
-        _set_task_progress(100)
-        return log_file
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
 
 
 def create_uploader(uploader_id, current_user_id, base_path):
@@ -1433,7 +1415,7 @@ def uploader_file_translation(uploader_file_name, object_level='Campaign',
     base_fb_path = os.path.join(base_config_path, uploader_type_path)
     file_translation = {
         'Creator': os.path.join(base_create_path, 'creator_config.xlsx'),
-        'uploader_creative_files': ''}
+        'uploader_creative_files': '', 'getLog': ''}
     base_create_path = os.path.join(base_create_path, uploader_type_path)
     for name in ['Campaign', 'Adset', 'Ad', 'uploader_current_name']:
         prefix = ''
@@ -1555,54 +1537,47 @@ def get_uploader_relation_values_from_position(rel_pos, df, vk, object_level,
     return df
 
 
+@error_handler
 def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
                       object_level='Campaign', uploader_type='Facebook'):
-    try:
-        uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
-            uploader_id=uploader_id, current_user_id=current_user_id)
-        _set_task_progress(0)
-        upo = UploaderObjects.query.filter_by(
-            uploader_id=uploader_to_run.id,
-            uploader_type=uploader_type,
-            object_level=object_level).first()
-        cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        file_path = adjust_path(uploader_to_run.local_path)
-        os.chdir(file_path)
-        file_name = uploader_file_translation(
-            uploader_file_name=parameter, object_level=object_level,
-            uploader_type=uploader_type)
-        if parameter in ['uploader_current_name']:
-            df = get_current_uploader_obj_names(
-                uploader_id, current_user_id, cur_path, file_path, file_name,
-                object_level=object_level, uploader_type=uploader_type)
-        elif parameter in ['uploader_creative_files']:
-            file_names = os.listdir("./creative/")
-            df = pd.DataFrame(file_names, columns=['creative_file_names'])
+    uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
+        uploader_id=uploader_id, current_user_id=current_user_id)
+    upo = UploaderObjects.query.filter_by(
+        uploader_id=uploader_to_run.id,
+        uploader_type=uploader_type,
+        object_level=object_level).first()
+    cur_path = adjust_path(os.path.abspath(os.getcwd()))
+    file_path = adjust_path(uploader_to_run.local_path)
+    os.chdir(file_path)
+    file_name = uploader_file_translation(
+        uploader_file_name=parameter, object_level=object_level,
+        uploader_type=uploader_type)
+    if parameter in ['uploader_current_name']:
+        df = get_current_uploader_obj_names(
+            uploader_id, current_user_id, cur_path, file_path, file_name,
+            object_level=object_level, uploader_type=uploader_type)
+    elif parameter in ['uploader_creative_files']:
+        file_names = os.listdir("./creative/")
+        df = pd.DataFrame(file_names, columns=['creative_file_names'])
+    elif parameter in ['getLog']:
+        df = get_logfile(uploader_id, current_user_id, Uploader)
+    else:
+        df = pd.read_excel(file_name)
+    if vk:
+        relation = UploaderRelations.query.filter_by(
+            uploader_objects_id=upo.id,
+            impacted_column_name=vk).first()
+        rel_pos = UploaderRelations.convert_string_to_list(
+            string_value=relation.position)
+        if rel_pos and rel_pos != ['']:
+            df = get_uploader_relation_values_from_position(
+                rel_pos=rel_pos, df=df, vk=vk, object_level=object_level,
+                uploader_type=uploader_type)
         else:
-            df = pd.read_excel(file_name)
-        if vk:
-            relation = UploaderRelations.query.filter_by(
-                uploader_objects_id=upo.id,
-                impacted_column_name=vk).first()
-            rel_pos = UploaderRelations.convert_string_to_list(
-                string_value=relation.position)
-            if rel_pos and rel_pos != ['']:
-                df = get_uploader_relation_values_from_position(
-                    rel_pos=rel_pos, df=df, vk=vk, object_level=object_level,
-                    uploader_type=uploader_type)
-            else:
-                df = pd.DataFrame([
-                    {'Result': 'RELATION DOES NOT HAVE A POSITION SET ONE '
-                               'AND REMOVE CONSTANT'}])
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Uploader {} User {} Parameter: {} VK: {}'
-            ''.format(uploader_id, current_user_id, parameter, vk),
-            exc_info=sys.exc_info())
-        return False
+            df = pd.DataFrame([
+                {'Result': 'RELATION DOES NOT HAVE A POSITION SET ONE '
+                           'AND REMOVE CONSTANT'}])
+    return [df]
 
 
 def set_uploader_config_files(uploader_id, current_user_id):

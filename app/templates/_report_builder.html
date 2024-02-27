@@ -275,15 +275,18 @@
 
     function getReportCharts() {
         let dateId = "report_date";
-        let date = document.getElementById(dateId).value;
-        let chartFuncs = getAllChartFunctions();
-        date = convertDateToISO(date);
-        chartFuncs.forEach(function (func) {
-            func([{
-                'eventdate': ['0001-01-01T00:00:00.000Z',
-                    date.toString()]
-            }], null, null, false, true)
-        });
+        let date = document.getElementById(dateId);
+        if (date) {
+            date = date.value;
+            let chartFuncs = getAllChartFunctions();
+            date = convertDateToISO(date);
+            chartFuncs.forEach(function (func) {
+                func([{
+                    'eventdate': ['0001-01-01T00:00:00.000Z',
+                        date.toString()]
+                }], null, null, false, true)
+            });
+        }
     }
 
     function getDefaultCharts() {

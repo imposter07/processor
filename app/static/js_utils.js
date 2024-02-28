@@ -452,3 +452,16 @@ function getDates(selector= '#datePicker') {
     }
     return [{eventdate: returnVal}]
 }
+
+
+function combineColumns(data, cols) {
+    let combinedCols = cols.join('_');
+    return data.map(function(item) {
+        let combinedValue = cols.map(function(column) {
+            return item[column];
+        }).join('_');
+        let newItem = Object.assign({}, item);
+        newItem[combinedCols] = combinedValue;
+        return newItem;
+    });
+}

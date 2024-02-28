@@ -228,6 +228,16 @@
         }
     }
 
+    function getTagType(format){
+        let tags = {
+            'HEADING_1': 'h2',
+            'HEADING_2': 'h4',
+            'HEADING_3': 'h5',
+            'HEADING_4': 'h6',
+        };
+        return tags.hasOwnProperty(format) ? tags[format] : 'span';
+    }
+
     function buildReportElem(data) {
         if (data['format'] === "HEADING_1") {
             buildSection(data);
@@ -243,10 +253,12 @@
             addGrip(newAnalysis);
             addDragDrop(newBullet);
             newBullet.appendChild(newAnalysis);
-            let text = document.createElement('span');
+            let tag_type = getTagType(data['format']);
+            let text = document.createElement(tag_type);
             text.classList.add('pl-2');
             text.classList.add('pr-2');
             text.classList.add('align-middle');
+            text.classList.add('d-inline');
             text.contentEditable = 'true';
             text.innerHTML += data['message'];
             text.id = (data['key'] + data['parameter'] + data['parameter_2']
@@ -561,14 +573,11 @@
             name: name
         };
         makeRequest(url, 'POST', requestData, buildReportElems, 'json', kwargs);
-    }
-
-    document.addEventListener("DOMContentLoaded", function () {
         window.addEventListener('scroll', function () {
             getReportCharts();
         });
         window.addEventListener('resize', function () {
             getReportCharts();
         });
-    });
+    }
 </script>

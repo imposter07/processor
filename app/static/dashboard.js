@@ -106,7 +106,7 @@ async function buildCustomCharts(tab) {
     dashboards.forEach(function (dash) {
         if (tab === dash['tab']) {
             let id = Math.floor(count / 2);
-            let row_id = `row_${id}`;
+            let row_id = `row_${id}_${elem.id}`;
             if (count % 2 === 0) {
                 let row_html = `<div class="row" id="${row_id}"></div>`;
                 elem.insertAdjacentHTML('beforeend', row_html);

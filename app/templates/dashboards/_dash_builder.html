@@ -62,7 +62,7 @@
 
 <script>
     function autoMargin(elem, maxHeight, lMargin, bMargin, dataLength = 1,
-                        dataLengthY = 1, equalSides = false, tMargin = 10) {
+                        dataLengthY = 1, equalSides = false, tMargin = 15) {
         const parent = d3.select(elem);
         const size = parent.node().getBoundingClientRect()
         if (equalSides) {
@@ -107,25 +107,36 @@
             defaultVal);
     }
 
-    function wrapText(text, width) {
+    function wrapText(text, width, x=0) {
         text.each(function () {
             var text = d3.select(this),
                 words = text.text().split(/[ _]+/).reverse(),
                 word,
                 line = [],
-                lineNumber = 0,
+                lineNumber = (x) ? 1 : 0,
                 lineHeight = 1.1, // ems
                 y = text.attr("y"),
                 dy = parseFloat(text.attr("dy")),
-                tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+                tspan = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "em");
+            let curLen = 0
             while (word = words.pop()) {
                 line.push(word);
                 tspan.text(line.join(" "));
+                curLen += word.length;
+                if (curLen > 13) {
+                    let joinedLine = line.join(" ");
+                    if (joinedLine.length > 11) {
+                        joinedLine = joinedLine.substring(0, 8) + '...';
+                    }
+                    tspan.text(joinedLine);
+                    break;
+                }
                 if (tspan.node().getComputedTextLength() > width) {
                     line.pop();
                     tspan.text(line.join(" "));
                     line = [word];
-                    tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+                    tspan = text.append("tspan").attr("x", x).attr("y", y).attr("dy", lineNumber * lineHeight + dy + "em").text(word);
+                    ++lineNumber
                 }
             }
         });
@@ -263,7 +274,11 @@
             .attr('class', 'yaxis')
             .call(yAxis)
             .call(yAxis.ticks(ticks, yUnit));
-
+        if (x1Col && yAxis.name === 'h') {
+            svg.selectAll('.yaxis')
+                .selectAll(".tick text")
+                .call(wrapText, yScale.bandwidth(), -9);
+        }
         let y1Props = {};
         if (y1Col) {
             y1Props = generateY1Axis(data, svg, xAxisType, yAxisType, width, height,
@@ -1076,7 +1091,7 @@
         data = sortData(data, yCol[0]);
         let dataLength = (data.length < 10) ? 1 : data.length / 10;
         let height = Math.max(data.length * 60, 580);
-        let am = autoMargin(elem, height, 70, 30, dataLength, 1, false, 30);
+        let am = autoMargin(elem, height, 75, 30, dataLength, 1, false, 30);
         let svg = am.svg;
         generateSelect(elem, yCol, "Select0");
         generateSelect(elem, yCol, "Select1", 1);
@@ -1708,14 +1723,14 @@
         data.sort((a, b) => b[cols[0]] - a[cols[0]]);
         let dataLength = (data.length < 5) ? 1 : data.length / 5;
         let am = autoMargin(elem, 250, 5, 5, .9, dataLength);
-        let units = getUnits(cols[2]);
-        var format = d3.format(units);
+        let format = d3.format(getUnits(cols[2]));
+        let tooltipFormat = d3.format(getUnits(cols[2], ',.4f'));
         let flare = convertToFlareFormat(data, cols);
         let chart = Treemap(flare, {
             value: d => d.size, // size of each node (file); null for internal nodes (folders)
             group: (d, n) => n.ancestors().slice(-2)[0].data.name, // e.g., "animate" in flare/animate/Easing; color
             label: (d, n) => [...d.name.split(/(?=[A-Z][a-z])/g), format(n.value)].join("\n"),
-            title: (d, n) => `${n.ancestors().reverse().map(d => d.data.name).join("- ")}\n${format(n.value)}`,
+            title: (d, n) => `${n.ancestors().reverse().map(d => d.data.name).join("- ")}\n${tooltipFormat(n.value)}`,
             width: am.width,
             height: am.height,
             marginTop: am.margin.top,
@@ -2084,11 +2099,13 @@
             addSelectize();
         }
         let selectizeElem = $(elemIdJquery)[0].selectize;
-        selectizeElem.load(function(callback) {
-            callback(newData);
-        });
-        if (Number.isInteger(defaultValInd)) {
-            selectizeElem.setValue(data[defaultValInd]['text'])
+        if (selectizeElem) {
+            selectizeElem.load(function (callback) {
+                callback(newData);
+            });
+            if (Number.isInteger(defaultValInd)) {
+                selectizeElem.setValue(data[defaultValInd]['text'])
+            }
         }
     }
 

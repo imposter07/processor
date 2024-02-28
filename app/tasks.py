@@ -4514,7 +4514,7 @@ def analysis_email_kpi(processor_id, current_user_id, text_body, header,
             cur_analysis = [x for x in analysis if x.parameter == kpi]
             text_body = add_text_body(text_body, 'Partner', tab=2,
                                       key=analysis_keys[0], param=kpi,
-                                      style='HEADING_2')
+                                      style='HEADING_3')
             par_analysis = [x for x in cur_analysis if x.split_col == dctc.VEN]
             for a in par_analysis:
                 text_body = add_analysis_to_text_body(text_body, a, 3, header,
@@ -4525,16 +4525,20 @@ def analysis_email_kpi(processor_id, current_user_id, text_body, header,
                                               key=a.key, param=a.parameter,
                                               param2=a.parameter_2,
                                               split=a.split_col,
-                                              style='HEADING_3')
+                                              style='HEADING_4')
                     ind_par_anlaysis = [x for x in cur_analysis
                                         if x.filter_val == p
                                         and x.parameter_2 == a.parameter_2]
                     for ind_par in ind_par_anlaysis:
                         text_body = add_analysis_to_text_body(
                             text_body, ind_par, 4, table=False, email=email)
-            analysis_email_basic(
-                processor_id, current_user_id, text_body, vmc.date,
-                cur_analysis, [vmc.date], tab=2, param='split_col', email=email)
+            text_body = add_text_body(text_body, vmc.date, tab=2,
+                                      key=analysis_keys[0], param=kpi,
+                                      style='HEADING_3')
+            date_analysis = [x for x in cur_analysis if x.split_col == vmc.date]
+            for d in date_analysis:
+                text_body = add_analysis_to_text_body(text_body, d, 3, header,
+                                                      email=email)
         return text_body
     except:
         _set_task_progress(100)

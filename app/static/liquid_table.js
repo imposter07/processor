@@ -1765,6 +1765,10 @@ function createLiquidTableChart(tableName, tableRows, chartFunc) {
         }
     });
     showChart(tableName, true);
+    if (xCols.length > 1 && chartFunc !== "generateTreeMap") {
+        tableRows = combineColumns(tableRows, xCols);
+        xCols = [xCols.join('_')];
+    }
     if (yCols.length) {
         if (chartFunc) {
             let generateChart = window[chartFunc];

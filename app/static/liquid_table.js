@@ -957,7 +957,7 @@ function addRow(rowData = null, tableName, customTableCols) {
     if (rowData) {
         addRowDetailsToForm(rowData, loopIndex, tableName);
     }
-    toggleMetrics(tableName);
+    toggleMetrics(tableName, loopIndex);
     return loopIndex;
 }
 
@@ -1108,14 +1108,16 @@ function toggleTopRowCard(tableName, currentIndex) {
     }
 }
 
-function toggleMetrics(tableName) {
+function toggleMetrics(tableName, loopIndex = null) {
     let selElem = document.getElementById(`selectColumns${tableName}`);
     if (!(selElem)) return;
     let selectize = selElem.selectize;
-    let availOptions = Object.keys(selectize.options)
+    let availOptions = Object.keys(selectize.options);
     let selected = selectize.getValue();
+    let tableElemId = (loopIndex) ? `tr${loopIndex}` : tableName;
+    let tableElem = document.getElementById(tableElemId);
     availOptions.forEach(o => {
-        let elems = document.querySelectorAll("[id*='" + o + "']");
+        let elems = tableElem.querySelectorAll("[id*='" + o + "']");
         let display = (selected.includes(o)) ? "" : "none";
         elems.forEach(e => {
             e.style.display = display;

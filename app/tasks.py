@@ -447,27 +447,21 @@ def set_initial_constant_file(cur_processor):
     return True
 
 
+@error_handler
 def create_processor(processor_id, current_user_id, base_path):
-    try:
-        new_processor, user_create = app_utl.get_obj_user(
-            object_id=processor_id, current_user_id=current_user_id)
-        old_path = adjust_path(base_path)
-        new_path = adjust_path(new_processor.local_path)
-        if not new_path:
-            return False
-        if not os.path.exists(new_path):
-            os.makedirs(new_path)
-        copy_tree_no_overwrite(old_path, new_path)
-        set_initial_constant_file(new_processor)
-        msg_text = "Processor {} was created.".format(new_processor.name)
-        app_utl.object_post_message(new_processor, user_create, msg_text)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+    new_processor, user_create = app_utl.get_obj_user(
+        object_id=processor_id, current_user_id=current_user_id)
+    old_path = adjust_path(base_path)
+    new_path = adjust_path(new_processor.local_path)
+    if not new_path:
         return False
+    if not os.path.exists(new_path):
+        os.makedirs(new_path)
+    copy_tree_no_overwrite(old_path, new_path)
+    set_initial_constant_file(new_processor)
+    msg_text = "Processor {} was created.".format(new_processor.name)
+    app_utl.object_post_message(new_processor, user_create, msg_text)
+    return True
 
 
 def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
@@ -511,7 +505,6 @@ def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
 def get_processor_sources(processor_id, current_user_id):
     cur_processor, user_that_ran = app_utl.get_obj_user(
         object_id=processor_id, current_user_id=current_user_id)
-    _set_task_progress(0)
     os.chdir('processor')
     default_param_ic = vm.ImportConfig(matrix=True)
     processor_path = adjust_path(cur_processor.local_path)
@@ -523,7 +516,7 @@ def get_processor_sources(processor_id, current_user_id):
     msg_text = "Processor {} sources refreshed.".format(cur_processor.name)
     app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
     df = pd.DataFrame([{'Result': msg_text}])
-    return df
+    return [df]
 
 
 def set_processor_imports(processor_id, current_user_id, form_imports,
@@ -1228,7 +1221,7 @@ def get_logfile(processor_id, current_user_id, object_type=Processor):
     with open(file_path, 'r') as f:
         log_file = f.read()
     log_file = json.dumps(log_file.split('\n'))
-    return log_file
+    return [log_file]
 
 
 def get_rate_card(processor_id, current_user_id, vk):

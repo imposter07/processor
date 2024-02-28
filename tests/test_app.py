@@ -88,6 +88,28 @@ def submit_form(sw, form_names=None, select_form_names=None,
     sw.xpath_from_id_and_click(submit_id, .1)
 
 
+def get_url(url_type='', obj_name=None, obj_type=main_routes.uploader):
+    if not obj_name:
+        obj_name = TestUploader.test_name
+    url = '{}{}'.format(base_url, obj_type.__name__)
+    name_url = urllib.parse.quote(obj_name)
+    url_routes = [
+        main_routes.edit_uploader_campaign, main_routes.edit_uploader,
+        main_routes.edit_processor, main_routes.edit_processor_import,
+        main_routes.edit_processor_finish]
+    url_dict = {}
+    for url_route in url_routes:
+        url_route = url_route.__name__
+        url_split = url_route.split('_')
+        url_str = '{}'.format(url_split[0])
+        if len(url_split) > 2:
+            url_str = '{}/{}'.format(url_str, url_split[2])
+        url_dict[url_route] = url_str
+    if url_type in url_dict:
+        url += '/{}/{}'.format(name_url, url_dict[url_type])
+    return url
+
+
 @pytest.mark.usefixtures("app_fixture")
 class TestUserModelCase:
 
@@ -177,6 +199,7 @@ class TestUserLogin:
 
 
 class TestProcessor:
+    test_name = 'test'
 
     @pytest.fixture(scope="class")
     def default_name(self):
@@ -196,8 +219,25 @@ class TestProcessor:
         yield path
         os.chdir(cur_path)
 
-    def test_create_processor(self, sw, login, worker):
-        test_name = 'test'
+    @staticmethod
+    def get_url(url_type=None, p_name=None):
+        url = get_url(url_type.__name__, obj_name=p_name,
+                      obj_type=main_routes.processor)
+        return url
+
+    def check_and_get_proc(self, sw, login, worker, set_up, url=None):
+        cur_proc = Plan.query.filter_by(name=self.test_name).first()
+        if not cur_proc:
+            self.test_create_processor(sw, login, worker, set_up)
+            cur_proc = Plan.query.filter_by(name=self.test_name).first()
+        if url:
+            elem_id = ''.join(x.capitalize() for x in url.__name__.split('_'))
+            url = self.get_url(url)
+            sw.go_to_url(url, elem_id='loadingBtn{}'.format(elem_id))
+            worker.work(burst=True)
+        return cur_proc
+
+    def test_create_processor(self, sw, login, worker, set_up):
         create_url = '{}create_processor'.format(base_url)
         submit_id = 'loadContinue'
         sw.go_to_url(create_url, elem_id=submit_id)
@@ -206,9 +246,10 @@ class TestProcessor:
         submit_form(sw, form_names=form, submit_id=submit_id)
         worker.work(burst=True)
         sw.wait_for_elem_load('refresh_imports')
-        import_url = '{}processor/{}/edit/import'.format(
-            base_url, urllib.parse.quote(test_name))
+        import_url = self.get_url(main_routes.edit_processor_import)
         assert sw.browser.current_url == import_url
+        cur_proc = Processor.query.filter_by(name=self.test_name).first()
+        assert cur_proc
 
     def test_processor_page(self, sw, set_up, worker):
         proc_link = '//*[@id="navLinkProcessor"]'
@@ -218,8 +259,8 @@ class TestProcessor:
 
     def add_import_card(self, worker, sw, default_name, name):
         with self.adjust_path(basedir):
-            proc_url = '{}/processor/{}/edit/import'.format(
-                base_url, urllib.parse.quote(default_name))
+            proc_url = self.get_url(main_routes.edit_processor_import,
+                                    p_name=default_name)
             sw.go_to_url(proc_url, elem_id='add_child', sleep=.5)
             sw.xpath_from_id_and_click('add_child')
             sw.wait_for_elem_load('apis-0-key-selectized')
@@ -234,8 +275,8 @@ class TestProcessor:
 
     def delete_import_card(self, worker, sw, default_name, name):
         with self.adjust_path(basedir):
-            proc_url = '{}/processor/{}/edit/import'.format(
-                base_url, urllib.parse.quote(default_name))
+            proc_url = self.get_url(main_routes.edit_processor_import,
+                                    p_name=default_name)
             sw.go_to_url(proc_url, elem_id='add_child', sleep=.5)
             import_card = sw.browser.find_element_by_xpath(
                 '//div[@class="card col-" and .//input[@value="{}"]]'.format(
@@ -295,6 +336,12 @@ class TestProcessor:
             raw_df = pd.read_csv(raw_path)
             assert not raw_df.empty
             assert (df.iloc[0][place_col] == raw_df.iloc[0][place_col])
+
+    def test_get_log(self, set_up, sw, worker, login, default_name):
+        proc_url = self.get_url(main_routes.edit_processor_import,
+                                p_name=default_name)
+        sw.go_to_url(proc_url)
+        TestUploader().test_get_log(sw, login, worker, cur_name=default_name)
 
 
 class TestPlan:
@@ -634,21 +681,7 @@ class TestUploader:
     test_name = 'test'
 
     def get_url(self, url_type='', up_name=None):
-        if not up_name:
-            up_name = self.test_name
-        url = '{}{}'.format(base_url, main_routes.uploader.__name__)
-        name_url = urllib.parse.quote(up_name)
-        c_route = main_routes.edit_uploader_campaign.__name__
-        e_route = main_routes.edit_uploader.__name__
-        url_dict = {}
-        for url_route in [c_route, e_route]:
-            url_split = url_route.split('_')
-            url_str = '{}'.format(url_split[0])
-            if len(url_split) > 2:
-                url_str = '{}/{}'.format(url_str, url_split[2])
-            url_dict[url_route] = url_str
-        if url_type in url_dict:
-            url += '/{}/{}'.format(name_url, url_dict[url_type])
+        url = get_url(url_type, obj_name=up_name, obj_type=main_routes.uploader)
         return url
 
     def test_create_uploader(self, sw, login, worker):
@@ -728,15 +761,17 @@ class TestUploader:
         rows = sw.count_rows_in_table(table_id)
         assert rows == 2
 
-    def test_get_log(self, sw, login, worker):
-        cur_up = self.check_create_uploader(sw, login, worker)
+    def test_get_log(self, sw, login, worker, cur_name=''):
+        if not cur_name:
+            cur_up = self.check_create_uploader(sw, login, worker)
+            cur_name = cur_up.name
         elem_id = 'getLog'
         label_id = 'logModalLabel'
         sw.wait_for_elem_load(elem_id)
         sw.xpath_from_id_and_click(elem_id, load_elem_id=label_id)
         worker.work(burst=True)
         elem = sw.browser.find_element_by_id(label_id)
-        assert cur_up.name in elem.get_attribute('innerHTML')
+        assert cur_name in elem.get_attribute('innerHTML')
 
 
 class TestReportingDBReadWrite:

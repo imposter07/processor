@@ -3605,13 +3605,17 @@ class PartnerPlacements(db.Model):
         if total_db.empty:
             return new_rule
         ven_col = prc_model.Vendor.vendorname.name
+        if ven_col not in total_db.columns:
+            ven_col = Partner.__table__.name
         filtered_df = total_db[total_db[ven_col] == parent.name]
         exclude_values = [0, 'None', None, '0', '0.0', 0.0]
-        if db_col in filtered_df.columns:
-            mask = ~filtered_df[db_col].isin(exclude_values)
+        cur_col = [x for x in [db_col, str_name] if x in filtered_df.columns]
+        if cur_col:
+            cur_col = cur_col[0]
+            mask = ~filtered_df[cur_col].isin(exclude_values)
             filtered_df = filtered_df[mask]
             if not filtered_df.empty:
-                grouped = filtered_df.groupby(db_col)[vmc.impressions].sum()
+                grouped = filtered_df.groupby(cur_col)[vmc.impressions].sum()
                 if not grouped.empty:
                     g_max = grouped.idxmax()
                     if '_' in g_max:

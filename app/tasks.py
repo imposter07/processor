@@ -4728,106 +4728,105 @@ def parse_date_from_project_number(cur_string, date_opened):
         return None
 
 
+@error_handler
 def get_project_numbers(processor_id, running_user=None, spec_args=None,
                         filter_dict=None):
-    try:
-        _set_task_progress(0)
-        if os.path.exists('processor'):
-            os.chdir('processor')
-        api = gsapi.GsApi()
-        api.input_config('gsapi.json')
-        api.sheet_id = '1kCTyf6klPrd1Dy7xonyk6TPMSe0gm0FQO2s7IpHP7VU'
-        df = api.get_data()
-        df = utl.first_last_adj(df, 3, 0)
-        df = df.rename_axis(None, axis=1).rename_axis(
-            'index', axis=0).reset_index(drop=True)
-        df = df.sort_index(ascending=False)
-        pn_max = db.session.get(ProjectNumberMax, 1)
-        ndf = df[(~df['Client'].isna())]
-        if pn_max:
-            ndf = ndf[(ndf.index >= pn_max.max_number)]
-        pn_col = """# (It's a formula)"""
-        for pn in ndf.to_dict(orient='records'):
-            c_project = Project.query.filter_by(
-                project_number=pn[pn_col]).first()
-            if not c_project:
-                cur_client = Client.query.filter_by(name=pn['Client']).first()
-                if not cur_client:
-                    cur_client = Client(name=pn['Client'])
-                    db.session.add(cur_client)
-                    db.session.commit()
-                if pn['Date Opened']:
-                    try:
-                        date_opened = datetime.strptime(
-                            pn['Date Opened'], '%m/%d/%y')
-                    except:
-                        date_opened = None
-                else:
-                    date_opened = None
-                if pn['FLIGHT DATES']:
-                    flight = pn['FLIGHT DATES'].split(
-                        '-' if '-' in pn['FLIGHT DATES'] else 'to')
-                    sd = parse_date_from_project_number(flight[0], date_opened)
-                    if len(flight) > 1:
-                        ed = parse_date_from_project_number(flight[1],
-                                                            date_opened)
-                    else:
-                        ed = sd
-                else:
-                    sd = ed = None
-                form_product = Product(
-                    name='None',
-                    client_id=cur_client.id).check_and_add()
-                name = pn['Project']
-                if not name:
-                    continue
-                for char in ['_', '|', ':', '.', "'", '&', '/']:
-                    name = name.replace(char, ' ')
-                form_campaign = Campaign(
-                    name=pn['Project'],
-                    product_id=form_product.id).check_and_add()
-                new_project = Project(
-                    project_number=pn[pn_col],
-                    initial_project_number=pn['initial PN'],
-                    client_id=cur_client.id, project_name=pn['Project'],
-                    media=True if pn['Media'] else False,
-                    creative=True if pn['Creative'] else False,
-                    date_opened=date_opened, flight_start_date=sd,
-                    flight_end_date=ed, exhibit=pn['Exhibit #'],
-                    sow_received=pn["SOW rec'd"],
-                    billing_dates=pn['Billings + date(s)'], notes=pn['NOTES'],
-                    campaign_id=form_campaign.id)
-                db.session.add(new_project)
+    if os.path.exists(Processor.__table__.name):
+        os.chdir(Processor.__table__.name)
+    api = gsapi.GsApi()
+    api.input_config('gsapi.json')
+    api.sheet_id = '1kCTyf6klPrd1Dy7xonyk6TPMSe0gm0FQO2s7IpHP7VU'
+    df = api.get_data()
+    df = utl.first_last_adj(df, 3, 0)
+    df = df.rename_axis(None, axis=1).rename_axis(
+        'index', axis=0).reset_index(drop=True)
+    df = df.sort_index(ascending=False)
+    pn_max = db.session.get(ProjectNumberMax, 1)
+    client_col = Client.__name__
+    ndf = df[(~df[client_col].isna())]
+    if pn_max:
+        ndf = ndf[(ndf.index >= pn_max.max_number)]
+    pn_col = """# (It's a formula)"""
+    date_col = 'Date Opened'
+    flight_col = 'FLIGHT DATES'
+    aly = az.Analyze(load_chat=True, chat_path=utl.config_path)
+    for pn in ndf.to_dict(orient='records'):
+        c_project = Project.query.filter_by(project_number=pn[pn_col]).first()
+        if not c_project:
+            cur_client = Client.query.filter_by(name=pn[client_col]).first()
+            if not cur_client:
+                cur_client = Client(name=pn[client_col])
+                db.session.add(cur_client)
                 db.session.commit()
-                description = ('Automatically generated from '
-                               'project number: {}').format(pn[pn_col])
-                new_processor = Processor.query.filter_by(name=name).first()
-                if not new_processor:
-                    cu = User.query.filter_by(username='ALI').first()
-                    if cu:
-                        user_id = cu.id
-                    else:
-                        user_id = running_user
-                    new_processor = Processor(
-                        name=name, description=description,
-                        user_id=user_id, created_at=datetime.utcnow(),
-                        start_date=sd, end_date=ed,
-                        campaign_id=form_campaign.id)
-                    db.session.add(new_processor)
-                    db.session.commit()
-                new_processor.projects.append(new_project)
-                db.session.commit()
-        if not ndf.empty:
-            pn_max.max_number = max(ndf.index)
+            date_opened = None
+            if pn[date_col]:
+                try:
+                    date_opened = datetime.strptime(pn[date_col], '%m/%d/%y')
+                except:
+                    pass
+            if pn[flight_col]:
+                flight = pn[flight_col].split(
+                    '-' if '-' in pn[flight_col] else 'to')
+                sd = parse_date_from_project_number(flight[0], date_opened)
+                if len(flight) > 1:
+                    ed = parse_date_from_project_number(flight[1], date_opened)
+                else:
+                    ed = sd
+            else:
+                sd = ed = None
+            name = pn['Project']
+            model_ids, words = aly.chat.find_db_model(Product, name)
+            product_name = 'None'
+            if model_ids:
+                for k in model_ids:
+                    cur_product = db.session.get(Product, k)
+                    if cur_product.client.name == cur_client.name:
+                        product_name = cur_product.name
+                        break
+            form_product = Product(name=product_name,
+                                   client_id=cur_client.id).check_and_add()
+            if not name:
+                continue
+            for char in ['_', '|', ':', '.', "'", '&', '/']:
+                name = name.replace(char, ' ')
+            form_campaign = Campaign(
+                name=pn['Project'],
+                product_id=form_product.id).check_and_add()
+            new_project = Project(
+                project_number=pn[pn_col],
+                initial_project_number=pn['initial PN'],
+                client_id=cur_client.id, project_name=pn['Project'],
+                media=True if pn['Media'] else False,
+                creative=True if pn['Creative'] else False,
+                date_opened=date_opened, flight_start_date=sd,
+                flight_end_date=ed, exhibit=pn['Exhibit #'],
+                sow_received=pn["SOW rec'd"],
+                billing_dates=pn['Billings + date(s)'], notes=pn['NOTES'],
+                campaign_id=form_campaign.id)
+            db.session.add(new_project)
             db.session.commit()
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, running_user), exc_info=sys.exc_info())
-        return pd.DataFrame()
+            description = ('Automatically generated from '
+                           'project number: {}').format(pn[pn_col])
+            new_processor = Processor.query.filter_by(name=name).first()
+            if not new_processor:
+                cu = User.query.filter_by(username='ALI').first()
+                if cu:
+                    user_id = cu.id
+                else:
+                    user_id = running_user
+                new_processor = Processor(
+                    name=name, description=description,
+                    user_id=user_id, created_at=datetime.utcnow(),
+                    start_date=sd, end_date=ed,
+                    campaign_id=form_campaign.id)
+                db.session.add(new_processor)
+                db.session.commit()
+            new_processor.projects.append(new_project)
+            db.session.commit()
+    if not ndf.empty:
+        pn_max.max_number = max(ndf.index)
+        db.session.commit()
+    return [df]
 
 
 def get_all_processors(user_id, running_user):
@@ -5200,61 +5199,63 @@ def get_request_table(processor_id, current_user_id, fix_id):
         return [pd.DataFrame([{'Result': msg}]), msg]
 
 
+@error_handler
 def get_sow(plan_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        from reportlab.pdfgen import canvas
-        from reportlab.lib.pagesizes import letter
-        from reportlab.lib.units import mm
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib import colors
-        from reportlab.platypus import Paragraph, Table, TableStyle
-        from reportlab.lib.units import inch
-        cur_plan = Plan.query.get(plan_id)
-        cur_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
-        if not cur_sow:
-            cur_sow = Sow()
-            cur_sow.create_from_plan(cur_plan)
-            db.session.add(cur_sow)
-            db.session.commit()
-        file_name = "SOW_{}.pdf".format(plan_id)
-        c = canvas.Canvas(file_name, pagesize=letter)
-        width, height = A4
-        c.setPageSize((width, height))
-        c.setFont('Helvetica-Bold', 10)
-        t_pos = 780
-        c.drawCentredString(290, t_pos, "STATEMENT OF WORK")
-        c.line(230, t_pos - 3, 350, t_pos - 3)
-        c.drawCentredString(
-            290, t_pos + 15, '{} - {} -  - MARKETING CAMPAIGN'.format(
-                cur_sow.client_name, cur_sow.campaign))
-        c.setFont('Helvetica-Bold', 8)
-        c.drawString(72, t_pos - 30, "Project Overview")
-        c.setFont('Helvetica-Bold', 7)
-        c.drawString(100, t_pos - 50, "Project: {}".format(
-            cur_sow.project_name))
-        cont = "Advertiser project contact: {}".format(cur_sow.project_contact)
-        c.drawString(100, t_pos - 60, cont)
-        c.drawString(100, t_pos - 70, "Date submitted: {}".format(
-            cur_sow.date_submitted.strftime("%m-%d-%Y")))
-        c.drawString(100, t_pos - 80, "Total Project Budget: " + "${}".format(
-            cur_sow.total_project_budget))
-        c.drawString(350, t_pos - 50,
-                     "Liquid project contact: " + cur_sow.liquid_contact)
-        c.drawString(350, t_pos - 60, "Liquid project #: {}".format(
-            cur_sow.liquid_project))
-        c.drawString(100, t_pos - 100, "Flight dates: {} - {}".format(
-            cur_sow.start_date.strftime("%m/%d/%Y"),
-            cur_sow.end_date.strftime("%m/%d/%Y")))
-        data = []
-        for cur_phase in cur_plan.phases:
-            cur_partners = cur_phase.partners.all()
-            new_data = [
-                {'Description': p.name, 'Total Net Dollars': p.total_budget,
-                 'Vendor': p.partner_type} for p in cur_partners]
-            data.extend(new_data)
-        df = pd.DataFrame(data)
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib import colors
+    from reportlab.platypus import Paragraph, Table, TableStyle
+    from reportlab.lib.units import inch
+    cur_plan = db.session.get(Plan, plan_id)
+    cur_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
+    if not cur_sow:
+        cur_sow = Sow()
+        cur_sow.create_from_plan(cur_plan)
+        db.session.add(cur_sow)
+        db.session.commit()
+    file_name = "SOW_{}.pdf".format(plan_id)
+    c = canvas.Canvas(file_name, pagesize=letter)
+    width, height = A4
+    c.setPageSize((width, height))
+    c.setFont('Helvetica-Bold', 10)
+    t_pos = 780
+    c.drawCentredString(290, t_pos, "STATEMENT OF WORK")
+    c.line(230, t_pos - 3, 350, t_pos - 3)
+    c.drawCentredString(
+        290, t_pos + 15, '{} - {} -  - MARKETING CAMPAIGN'.format(
+            cur_sow.client_name, cur_sow.campaign))
+    c.setFont('Helvetica-Bold', 8)
+    c.drawString(72, t_pos - 30, "Project Overview")
+    c.setFont('Helvetica-Bold', 7)
+    c.drawString(100, t_pos - 50, "Project: {}".format(
+        cur_sow.project_name))
+    cont = "Advertiser project contact: {}".format(cur_sow.project_contact)
+    c.drawString(100, t_pos - 60, cont)
+    c.drawString(100, t_pos - 70, "Date submitted: {}".format(
+        cur_sow.date_submitted.strftime("%m-%d-%Y")))
+    c.drawString(100, t_pos - 80, "Total Project Budget: " + "${}".format(
+        cur_sow.total_project_budget))
+    c.drawString(350, t_pos - 50,
+                 "Liquid project contact: " + cur_sow.liquid_contact)
+    c.drawString(350, t_pos - 60, "Liquid project #: {}".format(
+        cur_sow.liquid_project))
+    c.drawString(100, t_pos - 100, "Flight dates: {} - {}".format(
+        cur_sow.start_date.strftime("%m/%d/%Y"),
+        cur_sow.end_date.strftime("%m/%d/%Y")))
+    data = []
+    for cur_phase in cur_plan.phases:
+        cur_partners = cur_phase.partners.all()
+        new_data = [
+            {'Description': p.name, 'Total Net Dollars': p.total_budget,
+             'Vendor': p.partner_type} for p in cur_partners]
+        data.extend(new_data)
+    df = pd.DataFrame(data)
+    net_media = 0
+    sum_by_cat = pd.DataFrame()
+    data1 = [['', '']]
+    if not df.empty:
         df['Vendor'] = df['Vendor'].fillna('Digital')
         df = df.groupby(['Description', 'Vendor'])[
             'Total Net Dollars'].sum().reset_index()
@@ -5267,71 +5268,65 @@ def get_sow(plan_id, current_user_id):
         net_media = df['Total Net Dollars'].sum()
         sum_by_cat = df.groupby('Vendor')['Total Net Dollars'].sum()
         sum_by_cat.reset_index(name='Total Net Dollars')
-        digital = 0
-        program = 0
-        trad = 0
-        if 'Digital' in sum_by_cat:
-            digital = sum_by_cat['Digital'] * 0.075
-        if 'Programmatic' in sum_by_cat:
-            program = sum_by_cat['Programmatic'] * 0.125
-        if 'Traditional' in sum_by_cat:
-            trad = sum_by_cat['Traditional'] * 0.045
-        ag_fee = digital + trad
-        as_cost = cur_sow.ad_serving if cur_sow.ad_serving else 0
-        camp_ttl = net_media + ag_fee + float(as_cost) + program
-        styles = getSampleStyleSheet()
-        style_n = styles["BodyText"]
-        last_row = Paragraph(
-            ('<b>Total Due To Liquid: Billed upon campaign commencement. '
-             'Payment terms are net 30 days.</b>'),
-            style_n)
+    digital = 0
+    program = 0
+    trad = 0
+    if 'Digital' in sum_by_cat:
+        digital = sum_by_cat['Digital'] * 0.075
+    if 'Programmatic' in sum_by_cat:
+        program = sum_by_cat['Programmatic'] * 0.125
+    if 'Traditional' in sum_by_cat:
+        trad = sum_by_cat['Traditional'] * 0.045
+    ag_fee = digital + trad
+    as_cost = cur_sow.ad_serving if cur_sow.ad_serving else 0
+    camp_ttl = net_media + ag_fee + float(as_cost) + program
+    styles = getSampleStyleSheet()
+    style_n = styles["BodyText"]
+    last_row = Paragraph(
+        ('<b>Total Due To Liquid: Billed upon campaign commencement. '
+         'Payment terms are net 30 days.</b>'),
+        style_n)
 
-        data2 = [
-            ["", ""],
-            ["Net Media", '${:0,.2f}'.format(net_media)],
-            ["Agency Fees", '${:0,.2f}'.format(ag_fee)],
-            ["Adserving Fees", '${:0,.2f}'.format(as_cost)],
-            ["Programmatic Agency Fees", '${:0,.2f}'.format(program)],
-            ["", ""],
-            ["Campaign Total", '${:0,.2f}'.format(camp_ttl)],
-            [last_row, '${:0,.2f}'.format(camp_ttl)]
-        ]
+    data2 = [
+        ["", ""],
+        ["Net Media", '${:0,.2f}'.format(net_media)],
+        ["Agency Fees", '${:0,.2f}'.format(ag_fee)],
+        ["Adserving Fees", '${:0,.2f}'.format(as_cost)],
+        ["Programmatic Agency Fees", '${:0,.2f}'.format(program)],
+        ["", ""],
+        ["Campaign Total", '${:0,.2f}'.format(camp_ttl)],
+        [last_row, '${:0,.2f}'.format(camp_ttl)]
+    ]
 
-        all_data = data1 + data2
+    all_data = data1 + data2
 
-        grid = [('GRID', (0, 0), (-1, -1), 0.7, colors.black),
-                ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
-                ('BACKGROUND', (0, 0), (1, 0), colors.lightgrey),
-                ('FONTNAME', (-1, 0), (0, -1), 'Helvetica')]
-        table = Table(all_data, style=TableStyle(grid), colWidths=[250, 220])
-        table.setStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                        ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.black)])
+    grid = [('GRID', (0, 0), (-1, -1), 0.7, colors.black),
+            ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, 0), (1, 0), colors.lightgrey),
+            ('FONTNAME', (-1, 0), (0, -1), 'Helvetica')]
+    table = Table(all_data, style=TableStyle(grid), colWidths=[250, 220])
+    table.setStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.black)])
 
-        data_len = len(all_data)
-        table.setStyle(TableStyle([('FONTNAME', (0, data_len - 1),
-                                    (1, data_len - 1), 'Helvetica-Bold'),
-                                   ('BACKGROUND', (0, data_len - 1),
-                                    (-1, data_len - 1), colors.lightgrey),
-                                   ]))
-        aw = width
-        ah = height
-        w1, h1 = table.wrap(aw, ah)  # find required
-        if width <= aw and height <= ah:
-            table.drawOn(c, inch, height - h1 - inch * 2.5)
-        else:
-            raise ValueError
-        c.save()
-        pdf_file = get_file_in_memory(file_name, file_name='sow.pdf')
-        os.remove(file_name)
-        _set_task_progress(100)
-        return [pdf_file]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                plan_id, current_user_id), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    data_len = len(all_data)
+    table.setStyle(TableStyle([('FONTNAME', (0, data_len - 1),
+                                (1, data_len - 1), 'Helvetica-Bold'),
+                               ('BACKGROUND', (0, data_len - 1),
+                                (-1, data_len - 1), colors.lightgrey),
+                               ]))
+    aw = width
+    ah = height
+    w1, h1 = table.wrap(aw, ah)  # find required
+    if width <= aw and height <= ah:
+        table.drawOn(c, inch, height - h1 - inch * 2.5)
+    else:
+        raise ValueError
+    c.save()
+    pdf_file = get_file_in_memory(file_name, file_name='sow.pdf')
+    os.remove(file_name)
+    _set_task_progress(100)
+    return [pdf_file]
 
 
 def make_io_table(data, font_name='Helvetica-Bold', font_size=5, padding=10):
@@ -5712,6 +5707,7 @@ def get_screenshot_table(processor_id, current_user_id, filter_dict=None):
     return [lt.table_dict]
 
 
+@error_handler
 def get_screenshot_image(processor_id, current_user_id, vk=None):
     cur_processor = db.session.get(Processor, processor_id)
     os.chdir(adjust_path(cur_processor.local_path))

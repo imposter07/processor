@@ -992,7 +992,8 @@ def get_table_arguments():
             elif cur_fix.fix_type in ['raw_file_update', 'max_api_length',
                                       'placement_col', 'double_counting_all']:
                 table_name = 'Vendormatrix'
-            elif cur_fix.fix_type in ['missing_flat_costs']:
+            elif cur_fix.fix_type in ['missing_flat_costs',
+                                      'non_mp_placement_col']:
                 table_name = 'Translate'
         if job_name == '.get_request_table':
             proc_arg['fix_id'] = request.form['fix_id']

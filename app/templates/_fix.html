@@ -19,7 +19,7 @@
             {% if not fix.complete %}
                 {% if object_name %}
                 {% if fix.fix_type in ['max_api_length', 'unknown', 'raw_file_update', 'placement_col', 'double_counting_all',
-                       'missing_flat_costs'] %}
+                       'missing_flat_costs', 'non_mp_placement_col'] %}
                     <button class="btn btn-outline-success rounded-pill" id="quickFix{{ fix.id }}" style="float: right;">
                     Quick Fix</button>
                 {% endif %}

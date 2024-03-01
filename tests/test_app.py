@@ -81,32 +81,32 @@ def submit_form(sw, form_names=None, select_form_names=None,
     if not select_form_names:
         select_form_names = []
     select_str = '-selectized'
-    elem_form = [(test_name, '{}{}'.format(x, select_str))
-                 if 'cur' in x or 'Select' in x or x in select_form_names
-                 else (test_name, x) for x in form_names + select_form_names]
+    elem_form = []
+    for x in form_names + select_form_names:
+        form_name = x
+        form_val = test_name
+        if 'cur' in x or 'Select' in x or x in select_form_names:
+            form_name = '{}{}'.format(form_name, select_str)
+        if 'date' in form_name:
+            form_val = datetime.now().strftime('%m-%d-%Y')
+        elem_form.append((form_val, form_name))
     sw.send_keys_from_list(elem_form)
     sw.xpath_from_id_and_click(submit_id, .1)
 
 
-def get_url(url_type='', obj_name=None, obj_type=main_routes.uploader):
+def get_url(url_type, obj_name=None, obj_type=None):
+    url_type = url_type.__name__
     if not obj_name:
         obj_name = TestUploader.test_name
-    url = '{}{}'.format(base_url, obj_type.__name__)
+    obj_type_name = obj_type.__name__ if obj_type else url_type
+    url = '{}{}'.format(base_url, obj_type_name)
     name_url = urllib.parse.quote(obj_name)
-    url_routes = [
-        main_routes.edit_uploader_campaign, main_routes.edit_uploader,
-        main_routes.edit_processor, main_routes.edit_processor_import,
-        main_routes.edit_processor_finish]
-    url_dict = {}
-    for url_route in url_routes:
-        url_route = url_route.__name__
-        url_split = url_route.split('_')
-        url_str = '{}'.format(url_split[0])
-        if len(url_split) > 2:
-            url_str = '{}/{}'.format(url_str, url_split[2])
-        url_dict[url_route] = url_str
-    if url_type in url_dict:
-        url += '/{}/{}'.format(name_url, url_dict[url_type])
+    url_split = url_type.split('_')
+    url_type = '{}'.format(url_split[0])
+    if len(url_split) > 2:
+        url_type = '{}/{}'.format(url_type, url_split[2])
+    if obj_type:
+        url += '/{}/{}'.format(name_url, url_type)
     return url
 
 
@@ -200,6 +200,7 @@ class TestUserLogin:
 
 class TestProcessor:
     test_name = 'test'
+    request_test_name = 'test_request'
 
     @pytest.fixture(scope="class")
     def default_name(self):
@@ -220,9 +221,10 @@ class TestProcessor:
         os.chdir(cur_path)
 
     @staticmethod
-    def get_url(url_type=None, p_name=None):
-        url = get_url(url_type.__name__, obj_name=p_name,
-                      obj_type=main_routes.processor)
+    def get_url(url_type=None, p_name=None, obj_type=main_routes.processor):
+        if not p_name:
+            p_name = TestProcessor.test_name
+        url = get_url(url_type, obj_name=p_name, obj_type=obj_type)
         return url
 
     def check_and_get_proc(self, sw, login, worker, set_up, url=None):
@@ -256,6 +258,24 @@ class TestProcessor:
         sw.click_on_xpath(proc_link, 1)
         worker.work(burst=True)
         assert sw.browser.current_url == '{}processor'.format(base_url)
+
+    def test_request_processor(self, sw, set_up, worker):
+        self.test_processor_page(sw, set_up, worker)
+        request_id = 'requestProcessor'
+        load_btn_id = 'loadingBtn{}'.format(request_id)
+        sw.xpath_from_id_and_click(request_id, load_elem_id=load_btn_id)
+        worker.work(burst=True)
+        new_request_id = 'modalSubmitRequestProcessor'
+        sw.wait_for_elem_load(new_request_id, visible=True)
+        sw.xpath_from_id_and_click(new_request_id)
+        sw.wait_for_elem_load('description')
+        request_url = get_url(main_routes.request_processor)
+        assert sw.browser.current_url == request_url
+        form = ['name', 'description', 'plan_path', 'cur_client', 'cur_product',
+                'cur_campaign', 'start_date', 'end_date', '']
+        submit_form(sw, form_names=form, test_name=self.request_test_name)
+        p = Processor.query.filter_by(name=self.request_test_name).first()
+        assert p
 
     def add_import_card(self, worker, sw, default_name, name):
         with self.adjust_path(basedir):
@@ -680,12 +700,15 @@ class TestTutorial:
 class TestUploader:
     test_name = 'test'
 
-    def get_url(self, url_type='', up_name=None):
-        url = get_url(url_type, obj_name=up_name, obj_type=main_routes.uploader)
+    @staticmethod
+    def get_url(url_type=None, up_name=None, obj_type=main_routes.uploader):
+        if not up_name:
+            up_name = TestUploader.test_name
+        url = get_url(url_type, obj_name=up_name, obj_type=obj_type)
         return url
 
     def test_create_uploader(self, sw, login, worker):
-        c_url = '{}/{}'.format(base_url, main_routes.create_uploader.__name__)
+        c_url = self.get_url(main_routes.create_uploader, obj_type=None)
         form_names = ['cur_client', 'cur_product', 'cur_campaign',
                       'description', 'name']
         sw.go_to_url(c_url, elem_id=form_names[0])
@@ -693,7 +716,7 @@ class TestUploader:
         worker.work(burst=True)
         cur_up = Uploader.query.filter_by(name=self.test_name).first()
         assert cur_up.name == self.test_name
-        cam_url = self.get_url(main_routes.edit_uploader_campaign.__name__)
+        cam_url = self.get_url(main_routes.edit_uploader_campaign)
         assert sw.browser.current_url == cam_url
         up_main_file = os.path.join(cur_up.local_path, 'main.py')
         assert os.path.isfile(up_main_file)
@@ -703,7 +726,7 @@ class TestUploader:
         cur_up = Uploader.query.filter_by(name=self.test_name).first()
         if not cur_up:
             cur_up = self.test_create_uploader(sw, login, worker)
-        e_url = self.get_url(main_routes.edit_uploader.__name__)
+        e_url = self.get_url(main_routes.edit_uploader)
         sw.go_to_url(e_url, elem_id='loadContinue')
         return cur_up
 
@@ -747,7 +770,7 @@ class TestUploader:
         plan_path = os.path.join(cur_up.local_path, 'mediaplan.xlsx')
         if not os.path.isfile(plan_path):
             self.test_add_plan_uploader(sw, login, worker)
-        c_url = self.get_url(main_routes.edit_uploader_campaign.__name__)
+        c_url = self.get_url(main_routes.edit_uploader_campaign)
         sw.go_to_url(c_url, elem_id='loadContinue')
         worker.work(burst=True)
         edit_camp_id = 'editTableCampaign'

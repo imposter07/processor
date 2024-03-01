@@ -1559,7 +1559,7 @@ def request_processor():
             name=form.name.data, description=form.description.data,
             requesting_user_id=current_user.id, plan_path=form.plan_path.data,
             start_date=form.start_date.data, end_date=form.end_date.data,
-            first_report_=form.first_report.data,
+            first_report_=form.first_report_date.data,
             campaign_id=form_campaign.id, user_id=current_user.id)
         db.session.add(new_processor)
         db.session.commit()
@@ -1606,7 +1606,7 @@ def edit_request_processor(object_name):
         processor_to_edit.plan_path = form.plan_path.data
         processor_to_edit.start_date = form.start_date.data
         processor_to_edit.end_date = form.end_date.data
-        processor_to_edit.first_report_ = form.first_report.data
+        processor_to_edit.first_report_ = form.first_report_date.data
         processor_to_edit.campaign_id = form_campaign.id
         db.session.commit()
         creation_text = 'Processor request was edited.'
@@ -1628,7 +1628,7 @@ def edit_request_processor(object_name):
         form.plan_path.data = processor_to_edit.plan_path
         form.start_date.data = processor_to_edit.start_date
         form.end_date.data = processor_to_edit.end_date
-        form.first_report.data = processor_to_edit.first_report_
+        form.first_report_date.data = processor_to_edit.first_report_
         form_campaign = Campaign.query.filter_by(
             id=processor_to_edit.campaign_id).first_or_404()
         form_product = Product.query.filter_by(

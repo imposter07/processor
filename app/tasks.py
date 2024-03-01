@@ -780,93 +780,80 @@ def delete_dict(processor_id, current_user_id, vk):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+@error_handler
 def get_raw_data(processor_id, current_user_id, vk=None, parameter=None):
-    try:
-        cur_processor = Processor.query.get(processor_id)
-        _set_task_progress(20)
-        os.chdir(adjust_path(cur_processor.local_path))
-        _set_task_progress(40)
-        if vk:
-            matrix = vm.VendorMatrix()
-            data_source = matrix.get_data_source(vk)
-            tables = data_source.get_raw_df()
-        else:
-            file_name = os.path.join(adjust_path(cur_processor.local_path),
-                                     vmc.output_file)
-            tables = utl.import_read_csv(file_name)
-            tables = tables.fillna('None')
-        _set_task_progress(60)
-        if parameter:
-            tables = get_file_in_memory(tables)
-        tables = [tables]
-        _set_task_progress(100)
-        return tables
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {} VK {}'.format(
-                processor_id, current_user_id, vk), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_processor = db.session.get(Processor, processor_id)
+    _set_task_progress(20)
+    os.chdir(adjust_path(cur_processor.local_path))
+    _set_task_progress(40)
+    if vk:
+        matrix = vm.VendorMatrix()
+        data_source = matrix.get_data_source(vk)
+        tables = data_source.get_raw_df()
+    else:
+        file_name = os.path.join(adjust_path(cur_processor.local_path),
+                                 vmc.output_file)
+        tables = utl.import_read_csv(file_name)
+        tables = tables.fillna('None')
+    _set_task_progress(60)
+    if parameter:
+        tables = get_file_in_memory(tables)
+    tables = [tables]
+    return tables
 
 
+@error_handler
 def write_raw_data(processor_id, current_user_id, new_data, vk, mem_file=False,
                    new_name=False, file_type='.csv'):
-    try:
-        cur_processor, user_that_ran = app_utl.get_obj_user(
-            object_id=processor_id, current_user_id=current_user_id)
-        cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        os.chdir('processor')
-        default_param_ic = vm.ImportConfig(matrix=True)
-        os.chdir(adjust_path(cur_processor.local_path))
+    cur_processor, user_that_ran = app_utl.get_obj_user(
+        object_id=processor_id, current_user_id=current_user_id)
+    cur_path = adjust_path(os.path.abspath(os.getcwd()))
+    os.chdir('processor')
+    default_param_ic = vm.ImportConfig(matrix=True)
+    os.chdir(adjust_path(cur_processor.local_path))
+    matrix = vm.VendorMatrix()
+    if not vk:
+        new_ds = ProcessorDatasources()
+        new_ds.key = 'Rawfile'
+        new_ds.name = new_name
+        new_ds.processor_id = cur_processor.id
+        db.session.add(new_ds)
+        db.session.commit()
+        proc_dict = [new_ds.get_import_processor_dict()]
+        ic = vm.ImportConfig(matrix=True, default_param_ic=default_param_ic)
+        vk = ic.add_imports_to_vm(proc_dict)[0]
         matrix = vm.VendorMatrix()
-        if not vk:
-            new_ds = ProcessorDatasources()
-            new_ds.key = 'Rawfile'
-            new_ds.name = new_name
-            new_ds.processor_id = cur_processor.id
-            db.session.add(new_ds)
-            db.session.commit()
-            proc_dict = [new_ds.get_import_processor_dict()]
-            ic = vm.ImportConfig(matrix=True, default_param_ic=default_param_ic)
-            vk = ic.add_imports_to_vm(proc_dict)[0]
-            matrix = vm.VendorMatrix()
+    data_source = matrix.get_data_source(vk)
+    current_file_type = os.path.splitext(
+        data_source.p[vmc.filename_true])[1]
+    if file_type != current_file_type:
+        idx = matrix.vm_df[matrix.vm_df[vmc.vendorkey] == vk].index
+        new_value = data_source.p[vmc.filename].replace(
+            current_file_type, file_type)
+        matrix.vm_change(index=idx, col=vmc.filename, new_value=new_value)
+        matrix.write()
+        matrix = vm.VendorMatrix()
         data_source = matrix.get_data_source(vk)
-        current_file_type = os.path.splitext(
-            data_source.p[vmc.filename_true])[1]
-        if file_type != current_file_type:
-            idx = matrix.vm_df[matrix.vm_df[vmc.vendorkey] == vk].index
-            new_value = data_source.p[vmc.filename].replace(
-                current_file_type, file_type)
-            matrix.vm_change(index=idx, col=vmc.filename, new_value=new_value)
-            matrix.write()
-            matrix = vm.VendorMatrix()
-            data_source = matrix.get_data_source(vk)
-        utl.dir_check(utl.raw_path)
-        if mem_file:
-            tmp_suffix = ''
-            if not new_name:
-                tmp_suffix = 'TMP'
-            new_data.seek(0)
-            file_name = data_source.p[vmc.filename_true].replace(
-                file_type, '{}{}'.format(tmp_suffix, file_type))
-            with open(file_name, 'wb') as f:
-                shutil.copyfileobj(new_data, f, length=131072)
-        else:
-            df = pd.read_json(new_data)
-            df = df.drop('index', axis=1)
-            df = df.replace('NaN', '')
-            data_source.write(df)
-        msg_text = ('{} processor raw_data: {} was updated.'
-                    ''.format(cur_processor.name, vk))
-        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
-        os.chdir(cur_path)
-        get_processor_sources(processor_id, current_user_id)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {} VK {}'.format(
-                processor_id, current_user_id, vk), exc_info=sys.exc_info())
+    utl.dir_check(utl.raw_path)
+    if mem_file:
+        tmp_suffix = ''
+        if not new_name:
+            tmp_suffix = 'TMP'
+        new_data.seek(0)
+        file_name = data_source.p[vmc.filename_true].replace(
+            file_type, '{}{}'.format(tmp_suffix, file_type))
+        with open(file_name, 'wb') as f:
+            shutil.copyfileobj(new_data, f, length=131072)
+    else:
+        df = pd.read_json(new_data)
+        df = df.drop('index', axis=1)
+        df = df.replace('NaN', '')
+        data_source.write(df)
+    msg_text = ('{} processor raw_data: {} was updated.'
+                ''.format(cur_processor.name, vk))
+    app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
+    os.chdir(cur_path)
+    get_processor_sources(processor_id, current_user_id)
 
 
 def get_dictionary(processor_id, current_user_id, vk):

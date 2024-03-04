@@ -1710,6 +1710,7 @@ def edit_processor_account(object_name):
         edit_progress=50, edit_name='Accounts', buttons='ProcessorRequest',
         form_title='ACCOUNTS', form_description=form_description)
     cur_proc = kwargs['processor']
+    endpoint = 'main.edit_processor_account'
     accounts = GeneralAccountForm().set_accounts(Account, cur_proc)
     form = GeneralAccountForm(accounts=accounts)
     kwargs['form'] = form
@@ -1731,21 +1732,15 @@ def edit_processor_account(object_name):
             if act:
                 db.session.delete(act)
                 db.session.commit()
-            return redirect(url_for('main.edit_processor_account',
-                                    object_name=cur_proc.name))
+            return redirect(url_for(endpoint, object_name=cur_proc.name))
     if request.method == 'POST':
-        msg_text = 'Setting accounts for {}'.format(cur_proc.name)
-        task = cur_proc.launch_task(
-            '.set_processor_accounts', _(msg_text),
-            running_user=current_user.id, form_sources=form.accounts.data)
-        db.session.commit()
-        task.wait_and_get_job()
+        app_utl.set_db_values(object_id=cur_proc.id,
+                              current_user_id=current_user.id,
+                              form_sources=form.accounts.data, table=Account)
+        endpoint = 'main.edit_processor_account'
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_fees',
-                                    object_name=cur_proc.name))
-        else:
-            return redirect(url_for('main.edit_processor_account',
-                                    object_name=cur_proc.name))
+            endpoint = 'main.edit_processor_fees'
+        return redirect(url_for(endpoint, object_name=cur_proc.name))
     return render_template('create_processor.html', **kwargs)
 
 

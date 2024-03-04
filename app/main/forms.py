@@ -367,6 +367,7 @@ class ProcessorPlanForm(FlaskForm):
 
 
 class AccountForm(FlaskForm):
+    id = HiddenField('id')
     key = SelectField(
         'Account Type', choices=[(x, x) for x in vmc.api_keys])
     account_id = StringField('Account ID')

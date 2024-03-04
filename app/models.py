@@ -361,7 +361,8 @@ class Task(db.Model):
     complete = db.Column(db.Boolean, default=False)
     total_time = db.Column(db.Numeric)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'), index=True)
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'),
+                             index=True)
     uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
     plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
@@ -1275,7 +1276,8 @@ class ProcessorDatasources(db.Model):
 
 class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
+    processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'),
+                             index=True)
     key = db.Column(db.String(64))
     account_id = db.Column(db.Text)
     campaign_id = db.Column(db.Text)

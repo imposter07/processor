@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
     Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
-    PartnerPlacements, PlanRule, ProcessorReports
+    PartnerPlacements, PlanRule, ProcessorReports, Account
 import app.plan.routes as plan_routes
 import app.main.routes as main_routes
 from config import basedir
@@ -276,6 +276,35 @@ class TestProcessor:
         submit_form(sw, form_names=form, test_name=self.request_test_name)
         p = Processor.query.filter_by(name=self.request_test_name).first()
         assert p
+        return p
+
+    @staticmethod
+    def add_account_card(sw, set_up, idx, cur_proc):
+        account_types = ['Adwords', 'Facebook', 'DCM']
+        test_name = account_types[idx]
+        elem_id = 'add_child'
+        accounts_id = 'accounts-{}'.format(idx)
+        sw.xpath_from_id_and_click(elem_id, load_elem_id=accounts_id)
+        form_names = ['account_id', 'campaign_id']
+        select_form_names = ['{}-key'.format(accounts_id)]
+        form_names = ['{}-{}'.format(accounts_id, x) for x in form_names]
+        submit_form(sw, form_names=form_names,
+                    select_form_names=select_form_names,
+                    submit_id='loadRefresh', test_name=test_name)
+        cur_acc = Account.query.filter_by(processor_id=cur_proc.id).all()
+        assert len(cur_acc) == (idx + 1)
+        cur_acc = Account.query.filter_by(
+            processor_id=cur_proc.id, key=test_name).first()
+        assert cur_acc
+        assert cur_acc.account_id == test_name
+        assert cur_acc.campaign_id == test_name
+
+    def test_accounts(self, sw, set_up, worker):
+        p = Processor.query.filter_by(name=self.request_test_name).first()
+        if not p:
+            p = self.test_request_processor(sw, set_up, worker)
+        for idx in range(3):
+            self.add_account_card(sw, set_up, idx, p)
 
     def add_import_card(self, worker, sw, default_name, name):
         with self.adjust_path(basedir):

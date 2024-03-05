@@ -1923,6 +1923,7 @@ function getMetadata(elementId) {
 
 function editInlineOnBlur() {
     let formElem = this;
+    if (!(formElem)) {return}
     let formElemId = (formElem.id.includes('datePicker')) ? formElem.id.replace('datePicker', 'start_date') : formElem.id;
     let tmpFormElemId = `${formElem.id}TMP`;
     let tmpFormElem = document.getElementById(tmpFormElemId);
@@ -1933,6 +1934,7 @@ function editInlineOnBlur() {
 
 function editInlineOnClick() {
     let rowElem = this;
+    if (!(rowElem)) {return}
     let formElemId = rowElem.id.replace('row', '');
     formElemId = (formElemId.includes('start_date')) ? formElemId.replace('start_date', 'datePicker') : formElemId;
     let formElem = document.getElementById(formElemId);

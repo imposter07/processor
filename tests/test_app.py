@@ -98,11 +98,18 @@ def get_url(url_type, obj_name=None, obj_type=None):
     url_type = url_type.__name__
     if not obj_name:
         obj_name = TestUploader.test_name
+    split_idx = [0]
+    idx_one_route = [plan_routes.edit_sow]
+    idx_all_route = [plan_routes.plan_rules, plan_routes.plan_placements]
+    if url_type in [x.__name__ for x in idx_one_route]:
+        split_idx = [1]
+    elif url_type in [x.__name__ for x in idx_all_route]:
+        split_idx = [0, 1]
     obj_type_name = obj_type.__name__ if obj_type else url_type
     url = '{}{}'.format(base_url, obj_type_name)
     name_url = urllib.parse.quote(obj_name)
     url_split = url_type.split('_')
-    url_type = '{}'.format(url_split[0])
+    url_type = '_'.join(x for i, x in enumerate(url_split) if i in split_idx)
     if len(url_split) > 2:
         url_type = '{}/{}'.format(url_type, url_split[2])
     if obj_type:
@@ -396,50 +403,34 @@ class TestProcessor:
 class TestPlan:
     test_name = 'test'
 
-    def get_url(self, url_type='', plan_name=None):
+    def get_url(self, url_type=None, plan_name=None, obj_prefix=True):
+        obj_type = plan_routes.plan if obj_prefix else None
         if not plan_name:
             plan_name = self.test_name
-        url = '{}{}'.format(base_url, plan_routes.plan.__name__)
-        name_url = urllib.parse.quote(plan_name)
-        topline_route = plan_routes.topline.__name__
-        sow_route = plan_routes.edit_sow.__name__
-        calc_route = plan_routes.calc.__name__
-        rfp_route = plan_routes.rfp.__name__
-        rules_route = plan_routes.plan_rules.__name__
-        place_route = plan_routes.plan_placements.__name__
-        url_dict = {}
-        url_routes = [topline_route, sow_route, calc_route, rfp_route,
-                      rules_route, place_route]
-        for url_route in url_routes:
-            url_str = url_route
-            if url_route == sow_route:
-                url_str = url_str.split('_')[1]
-            url_dict[url_route] = url_str
-        if url_type in url_dict:
-            url += '/{}/{}'.format(name_url, url_dict[url_type])
+        url = get_url(url_type, obj_name=plan_name, obj_type=obj_type)
         return url
 
-    def check_and_get_plan(self, sw, login, worker, url=''):
+    def check_and_get_plan(self, sw, login, worker, url=None):
         cur_plan = Plan.query.filter_by(name=self.test_name).first()
         if not cur_plan:
             self.test_topline(sw, login, worker)
             cur_plan = Plan.query.filter_by(name=self.test_name).first()
         if url:
-            elem_id = ''.join(x.capitalize() for x in url.split('_'))
+            elem_id = ''.join(x.capitalize() for x in url.__name__.split('_'))
             url = self.get_url(url)
             sw.go_to_url(url, elem_id='loadingBtn{}'.format(elem_id))
             worker.work(burst=True)
         return cur_plan
 
     def test_create_plan(self, sw, login, worker):
-        create_url = self.get_url()
+        create_url = self.get_url(url_type=plan_routes.plan, obj_prefix=False)
         form_names = ['cur_client', 'cur_product', 'cur_campaign',
                       'description', 'name']
         sw.go_to_url(create_url, elem_id=form_names[0])
         submit_form(sw, form_names, test_name=self.test_name)
         p = Plan.query.filter_by(name=self.test_name).first()
         assert p.name == self.test_name
-        edit_url = self.get_url(plan_routes.topline.__name__)
+        edit_url = self.get_url(plan_routes.topline)
         assert sw.browser.current_url == edit_url
 
     @staticmethod
@@ -459,7 +450,7 @@ class TestPlan:
         worker.work(burst=True)
 
     def test_topline(self, sw, login, worker):
-        edit_url = self.get_url(plan_routes.topline.__name__)
+        edit_url = self.get_url(plan_routes.topline)
         if not sw.browser.current_url == edit_url:
             self.test_create_plan(sw, login, worker)
         assert sw.browser.current_url == edit_url
@@ -473,7 +464,7 @@ class TestPlan:
         submit_form(sw, form_names=[sel_id], submit_id=submit_id,
                     test_name=part_name)
         self.set_topline_cost(worker, sw, part_budget)
-        sow_url = self.get_url(plan_routes.edit_sow.__name__)
+        sow_url = self.get_url(plan_routes.edit_sow)
         p = Plan.query.filter_by(name=self.test_name).first()
         phase = p.get_current_children()
         assert len(phase) == 1
@@ -497,7 +488,7 @@ class TestPlan:
         assert phase[0].name == self.test_name
 
     def test_rules(self, sw, login, worker):
-        url = plan_routes.plan_rules.__name__
+        url = plan_routes.plan_rules
         self.check_and_get_plan(sw, login, worker, url)
         elem_id = 'rowplace_col0'
         sw.wait_for_elem_load(elem_id)
@@ -529,11 +520,11 @@ class TestPlan:
         assert data[second_name] == .5
 
     def test_rules_lookup(self, sw, login, worker):
-        url = plan_routes.plan_rules.__name__
+        url = plan_routes.plan_rules
         self.check_and_get_plan(sw, login, worker, url)
 
     def test_placements(self, sw, login, worker):
-        url = plan_routes.plan_placements.__name__
+        url = plan_routes.plan_placements
         cur_plan = self.check_and_get_plan(sw, login, worker, url)
         load_elem_id = 'budget0'
         elem_id = 'row{}'.format(load_elem_id)
@@ -552,7 +543,7 @@ class TestPlan:
 
     def test_add_plan(self, sw, login, worker, check_for_plan=False,
                       app_cols=False):
-        url = plan_routes.plan_placements.__name__
+        url = plan_routes.plan_placements
         cur_plan = self.check_and_get_plan(sw, login, worker, url)
         df = TestUploader().upload_plan(
             sw, worker, check_for_plan=check_for_plan, app_cols=app_cols)
@@ -572,7 +563,7 @@ class TestPlan:
         self.test_add_plan(sw, login, worker, app_cols=True)
 
     def test_topline_after_plan(self, sw, login, worker):
-        url = plan_routes.topline.__name__
+        url = plan_routes.topline
         df, cur_plan = self.test_add_plan(sw, login, worker)
         self.check_and_get_plan(sw, login, worker, url)
         budget = '1000'
@@ -586,7 +577,7 @@ class TestPlan:
         assert int(sum(x.total_budget for x in cur_places)) == int(budget)
 
     def test_calc(self, sw, login, worker):
-        url = plan_routes.calc.__name__
+        url = plan_routes.calc
         p = self.check_and_get_plan(sw, login, worker, url)
         elem_id = 'rowHeaders0'
         sw.wait_for_elem_load(elem_id)
@@ -631,13 +622,24 @@ class TestPlan:
             db.session.commit()
         p.launch_task('.get_rate_cards', '', 1)
         worker.work(burst=True)
-        edit_url = self.get_url(plan_routes.rfp.__name__, plan_name)
+        edit_url = self.get_url(plan_routes.rfp, plan_name)
         sw.go_to_url(edit_url, elem_id='form_continue')
         worker.work(burst=True)
         elem_id = 'rowrfp_file_id0'
         sw.wait_for_elem_load(elem_id)
         elem = sw.browser.find_element_by_id(elem_id)
         assert elem.get_attribute('innerHTML').strip() == '1'
+
+    def test_checklist(self, sw, login, worker):
+        url = plan_routes.checklist
+        self.check_and_get_plan(sw, login, worker, url)
+        elem_id = 'rowroute2'
+        a_xpath = '//*[@id="{}"]/a'.format(elem_id)
+        sw.wait_for_elem_load(a_xpath, selector=sw.select_xpath, visible=True)
+        sw.click_on_xpath(a_xpath)
+        sw.wait_for_elem_load(elem_id='loadingBtnTopline')
+        worker.work(burst=True)
+        assert sw.browser.current_url == self.get_url(plan_routes.topline)
 
 
 class TestProject:

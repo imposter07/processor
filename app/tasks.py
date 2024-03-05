@@ -6611,52 +6611,58 @@ def get_rfp(plan_id, current_user_id):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+@error_handler
 def get_specs(plan_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_plan = db.session.get(Plan, plan_id)
-        rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
-        data = []
-        for rfp_file in rfp_files:
-            place = [x.get_form_dict() for x in rfp_file.specs]
-            data.extend(place)
-        df = pd.DataFrame(data)
-        name = 'Specs'
-        lt = app_utl.LiquidTable(
-            df=df, title=name, table_name=name, download_table=True,
-            specify_form_cols=False, accordion=True)
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Plan {} User {}'.format(
-                plan_id, current_user_id), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_plan = db.session.get(Plan, plan_id)
+    rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
+    data = []
+    for rfp_file in rfp_files:
+        place = [x.get_form_dict() for x in rfp_file.specs]
+        data.extend(place)
+    df = pd.DataFrame(data)
+    name = 'Specs'
+    lt = app_utl.LiquidTable(
+        df=df, title=name, table_name=name, download_table=True,
+        specify_form_cols=False, accordion=True)
+    return [lt.table_dict]
 
 
+@error_handler
 def get_contacts(plan_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_plan = Plan.query.get(plan_id)
-        rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
-        data = []
-        for rfp_file in rfp_files:
-            place = [x.get_form_dict() for x in rfp_file.contacts]
-            data.extend(place)
-        df = pd.DataFrame(data)
-        name = 'Contacts'
-        lt = app_utl.LiquidTable(
-            df=df, title=name, table_name=name, download_table=True,
-            specify_form_cols=False, accordion=True)
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Plan {} User {}'.format(
-                plan_id, current_user_id), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_plan = db.session.get(Plan, plan_id)
+    rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
+    data = []
+    for rfp_file in rfp_files:
+        place = [x.get_form_dict() for x in rfp_file.contacts]
+        data.extend(place)
+    df = pd.DataFrame(data)
+    name = 'Contacts'
+    lt = app_utl.LiquidTable(
+        df=df, title=name, table_name=name, download_table=True,
+        specify_form_cols=False, accordion=True)
+    return [lt.table_dict]
+
+
+@error_handler
+def get_checklist(plan_id, current_user_id):
+    cur_plan = db.session.get(Plan, plan_id)
+    data = []
+    button_types = ['Plan', 'UploaderFacebook', 'ProcessorRequest']
+    for btn_type in button_types:
+        buttons = Processor.get_navigation_buttons(btn_type)
+        for button in buttons:
+            for k, v in button.items():
+                v['object'] = btn_type
+                v['name'] = k
+                v['complete'] = 0
+                data.append(v)
+    df = pd.DataFrame(data)
+    name = 'Checklist'
+    lt = app_utl.LiquidTable(
+        df=df, title=name, table_name=name, download_table=True,
+        form_cols=['complete'], highlight_row='complete', inline_edit=True,
+        link_cols={'route': ''})
+    return [lt.table_dict]
 
 
 def get_filter_dict_values():
@@ -6865,42 +6871,34 @@ def get_contact_numbers(processor_id, current_user_id):
         return pd.DataFrame()
 
 
+@error_handler
 def get_table_project(object_id, current_user_id, function_name=None, **kwargs):
-    try:
-        _set_task_progress(0)
-        task_name = function_name.replace('.', '')
-        p = db.session.get(Project, object_id)
-        lt = app_utl.LiquidTable()
-        return_val = {}
-        for proc in p.processor_associated.all():
-            resp = globals()[task_name](proc.id, current_user_id, **kwargs)
-            if resp:
-                resp = resp[0]
-                is_return_df = isinstance(return_val, pd.core.frame.DataFrame)
-                is_resp_df = isinstance(resp, pd.core.frame.DataFrame)
-                if 'liquid_table' in resp and resp['liquid_table']:
-                    lt.table_dict = lt.combine_table_dicts(
-                        lt.table_dict, resp)
-                    return_val = lt.table_dict
-                elif (not is_return_df) and (not return_val):
-                    return_val = resp
-                elif is_resp_df:
-                    return_val = pd.concat([return_val, resp],
-                                           ignore_index=True, sort=False)
-                elif isinstance(resp, list):
-                    return_val.extned(resp)
-        if 'download' in function_name:
-            if not isinstance(return_val, pd.core.frame.DataFrame):
-                return_val = pd.DataFrame(return_val)
-            return_val = get_file_in_memory(return_val)
-        _set_task_progress(100)
-        return [return_val]
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Obj {} User {}'.format(
-            object_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    task_name = function_name.replace('.', '')
+    p = db.session.get(Project, object_id)
+    lt = app_utl.LiquidTable()
+    return_val = {}
+    for proc in p.processor_associated.all():
+        resp = globals()[task_name](proc.id, current_user_id, **kwargs)
+        if resp:
+            resp = resp[0]
+            is_return_df = isinstance(return_val, pd.core.frame.DataFrame)
+            is_resp_df = isinstance(resp, pd.core.frame.DataFrame)
+            if 'liquid_table' in resp and resp['liquid_table']:
+                lt.table_dict = lt.combine_table_dicts(
+                    lt.table_dict, resp)
+                return_val = lt.table_dict
+            elif (not is_return_df) and (not return_val):
+                return_val = resp
+            elif is_resp_df:
+                return_val = pd.concat([return_val, resp],
+                                       ignore_index=True, sort=False)
+            elif isinstance(resp, list):
+                return_val.extned(resp)
+    if 'download' in function_name:
+        if not isinstance(return_val, pd.core.frame.DataFrame):
+            return_val = pd.DataFrame(return_val)
+        return_val = get_file_in_memory(return_val)
+    return [return_val]
 
 
 def get_rate_cards(processor_id, current_user_id):

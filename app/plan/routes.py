@@ -307,3 +307,22 @@ def calc(object_name):
         edit_name='Calc')
     kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/plan/<object_name>/checklist', methods=['GET', 'POST'])
+@login_required
+def checklist(object_name):
+    kwargs = Plan().get_current_plan(
+        object_name, 'edit_plan', edit_progress=100,
+        edit_name='Checklist')
+    kwargs['form'] = PlanToplineForm()
+    return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/plan/<object_name>/url_from_view_function', methods=['GET', 'POST'])
+@login_required
+@app_utl.error_handler
+def url_from_view_function(object_name):
+    view_function = request.form['object_name']
+    url = url_for(str(view_function), object_name=object_name)
+    return jsonify({'url': url})

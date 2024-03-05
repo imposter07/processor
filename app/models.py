@@ -952,7 +952,8 @@ class Processor(db.Model):
                 {'Adset': ['main.edit_uploader_adset_aw', 'bullseye']},
                 {'Ad': ['main.edit_uploader_ad_aw', 'rectangle-ad']}]
         elif buttons == 'Plan':
-            buttons = [{'Basic': ['plan.edit_plan', 'list-ol']},
+            buttons = [{'Checklist': ['plan.checklist', 'list-check']},
+                       {'Basic': ['plan.edit_plan', 'list-ol']},
                        {'Topline': ['plan.topline', 'calendar']},
                        {'SOW': ['plan.edit_sow', 'file-signature']},
                        {'PlanRules': ['plan.plan_rules', 'ruler']},
@@ -2664,7 +2665,8 @@ class Plan(db.Model):
             'RFP': '.get_rfp',
             'Specs': '.get_specs',
             'Contacts': '.get_contacts',
-            'Calc': '.get_plan_calc'
+            'Calc': '.get_plan_calc',
+            'Checklist': '.get_checklist'
         }
         return arg_trans
 
@@ -4068,6 +4070,13 @@ class PlanEffectiveness(db.Model):
         self.factor_name = form[PlanEffectiveness.factors_low].strip()
         self.plan_id = current_object.id
         self.selected_val = float(selected_val) if selected_val else 0
+
+
+class Checklist(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'), index=True)
+    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_by = db.Column(db.Integer, db.ForeignKey('user.id'), index=True)
 
 
 class Conversation(db.Model):

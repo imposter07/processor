@@ -41,11 +41,25 @@
     {% endif %}
     <div id="dash{{ dash.id }}Row" class="row">
         <div class="col-md-12 h-50">
-            <div class="card-header">
-                <h7 class="mb-3">{{ dash.name }}</h7>
+            <div class="card-header d-flex">
+                <h7 class="mb-3 pl-1 pr-1 flex-shrink-0">{{ dash.name }}</h7>
                 <select id="dash{{ dash.id }}MetricsChartPlaceholderSelect"
-                        class="form-control form-control-sm">
+                        class="form-control form-control-sm pl-1 pr-1 flex-grow-1">
                 </select>
+                {% if custom is defined %}
+                    <label id="dash{{ dash.id }}Include" style="font-size: 8px;" class="pl-2">
+                        <input {% if dash.include_in_report == true %} checked {% endif %}
+                                type="checkbox" class="checkbox" onclick="includeCustomInReport(this)">
+                        Include in Report Builder
+                    </label>
+                    <button id="dash{{ dash.id }}Delete"
+                            class="btn btn-danger btn-sm m-1"
+                            onclick="deleteCustomChart(this);"
+                            tabindex="0" aria-controls=${tableName}
+                            type="button">
+                        <i class="fas fa-minus" style="color:white"></i>
+                    </button>
+                {% endif %}
             </div>
             <div id="dash{{ dash.id }}MetricsProgress"></div>
             <div id="dash{{ dash.id }}Metrics"></div>
@@ -53,119 +67,8 @@
     </div>
     </div>
 </div>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
 <script>
-    function loadDash(data, kwargs) {
-        let dashId = kwargs['dashId'];
-        let btnId = kwargs['btnId'];
-        let chartName = dashId + 'Metrics';
-        let chartType = data['chart_type'];
-        let chartFunction = getChartFunctionName(chartType);
-        let defaultView = data['default_view'] === 'Chart';
-        let dash_metric_args = getDataTableArgsDict(
-            chartFunction, JSON.parse(data['dimensions']),
-            JSON.parse(data['metrics']), JSON.parse(data['chart_filters']),
-            true, undefined, undefined, defaultView);
-        getTable(chartName, btnId, 'None', 'None', 'None', true, 'None',
-            false, dash_metric_args);
-    }
-
-    function viewDash(dashId, btnId) {
-        let jv = document.getElementById('jinjaValues');
-        let data = {
-            object_name:  jv.dataset['object_name'],
-            object_type: jv.dataset['title'],
-            object_level: jv.dataset['edit_name'],
-            dashboard_id: dashId.replace('dash', '')
-        };
-        let kwargs = {'dashId': dashId, 'btnId': btnId};
-        makeRequest('/get_dashboard_properties', 'POST', data, loadDash,
-            'json', kwargs);
-    }
-
-    function handleSaveFail(data, kwargs) {
-        let btnId = kwargs['btnId'];
-        displayAlert('Could not save dashboard, please try again later',
-            'warning');
-        unanimateBar();
-        addElemRemoveLoadingBtn(btnId)
-    }
-
-    function handleSave(data, kwargs) {
-        let id = kwargs['dashId'];
-        let btnId = kwargs['btnId'];
-        let element = document.getElementById(id).firstElementChild;
-        let originalColor = element.style.backgroundColor;
-        element.style.backgroundColor = "#b3ecff";
-        let t = setTimeout(function () {
-            element.style.backgroundColor = originalColor;
-        }, (2 * 1000));
-        displayAlert(data['message'], data['level']);
-        addElemRemoveLoadingBtn(btnId)
-    }
-
-    function saveDash(dashId, btnId) {
-        let id = dashId.replace('dash', '');
-        let jv = document.getElementById('jinjaValues');
-        let form = document.getElementById('dash' + id + 'form').firstElementChild;
-        let formData = new FormData(form);
-        let data = {
-            object_name: jv.dataset['object_name'],
-            object_type: jv.dataset['title'],
-            object_level: jv.dataset['edit_name'],
-            dashboard_id: id,
-            object_form: JSON.stringify(convertFormDataToDict(formData))
-        };
-        let kwargs = {'dashId': dashId, 'btnId': btnId};
-        makeRequest('/save_dashboard', 'POST', data, handleSave,
-            'json', kwargs, handleSaveFail);
-    }
-
-    function handleDelete(data, kwargs){
-        let id = kwargs['dashId'];
-        let btnId = kwargs['btnId'];
-        let element = document.getElementById(id + 'card');
-        let originalColor = element.style.backgroundColor;
-        element.style.backgroundColor = "rgba(255,0,0,0.68)";
-        let t = setTimeout(function () {
-            element.style.backgroundColor = originalColor;
-        }, (2 * 1000));
-        addElemRemoveLoadingBtn(btnId);
-        element.innerHTML = '';
-        displayAlert(data['message'], data['level']);
-    }
-
-    function deleteDash(dashId, btnId) {
-        let jv = document.getElementById('jinjaValues');
-        let data = {
-            object_name: jv.dataset['object_name'],
-            object_type: jv.dataset['title'],
-            object_level: jv.dataset['edit_name'],
-            dashboard_id: dashId.replace('dash', '')
-        };
-        let kwargs = {'dashId': dashId, 'btnId': btnId};
-        makeRequest('/delete_dashboard', 'POST', data, handleDelete,
-            'json', kwargs);
-    }
-
-    function setButtonEvents() {
-        let curId = this.id;
-        let functionName = function (curId) {
-            if (curId.includes('View')) {
-                return ['View', viewDash]
-            } else if (curId.includes('Save')) {
-                return ['Save', saveDash]
-            } else if (curId.includes('Delete')) {
-                return ['Delete', deleteDash]
-            }
-        };
-        let currentFunction = functionName(curId);
-        let dashId = this.id.replace(currentFunction[0], '');
-        if (!curId.includes('View')) {
-            loadingBtn(this);
-        }
-        currentFunction[1](dashId, this.id)
-    }
-
     document.addEventListener("DOMContentLoaded", function() {
         addOnClickEvent('button[id^="dash"]', setButtonEvents);
     });

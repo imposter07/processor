@@ -700,6 +700,7 @@ class ProcessorDashboardForm(FlaskForm):
     tab = SelectField('Tab', choices=[
         (x, x) for x in ['Topline', 'Partner', 'Country', 'Targeting',
                          'Placement', 'Creative']])
+    include_in_report = BooleanField(_l('Include Chart/Table in Report'))
     add_child = SubmitField(label='Add Static Filter')
     form_continue = HiddenField('form_continue')
     static_filters = FieldList(FormField(StaticFilterForm, label=''))

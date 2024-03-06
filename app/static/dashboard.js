@@ -1,19 +1,19 @@
-function isElementInViewport(el) {
+function isElementInViewport(el, offset=30) {
     const rect = el.getBoundingClientRect();
     const windowHeight = window.innerHeight || document.documentElement.clientHeight;
     const windowWidth = window.innerWidth || document.documentElement.clientWidth;
 
     return (
-        rect.top >= 0 &&
-        rect.left >= 0 &&
-        rect.top <= windowHeight &&
-        rect.right <= windowWidth
+        rect.top >= -offset &&
+        rect.left >= -offset &&
+        rect.top <= (windowHeight + offset) &&
+        rect.right <= (windowWidth + offset)
     );
 }
 
-function callFunctionIfInView(elementId, func, args) {
+function callFunctionIfInView(elementId, func, args, offset=30) {
     const element = document.getElementById(elementId);
-    if (element && isElementInViewport(element) && !element.dataset.called &&
+    if (element && isElementInViewport(element, offset) && !element.dataset.called &&
         !element.classList.contains('d-none')) {
         func(...args);
         element.dataset.called = 'true';
@@ -64,6 +64,7 @@ function getAllCharts(filterDict, clickElem = null, oldHtml = null,
     callFunctionIfInView('deliveryMetrics', getTable,
         ['deliveryMetrics', 'deliveryMetricsProgress', 'None', 'None', 'None',
             true, 'None', false, delivery_metric_args]);
+    callFunctionIfInView('customChartsTopline', buildCustomCharts, ['Topline']);
     if (!report) {
         callFunctionIfInView('totalMetrics', getTable,
             ['totalMetrics', 'totalMetricsProgress', 'None', 'None', 'None',
@@ -91,40 +92,47 @@ function getAllCharts(filterDict, clickElem = null, oldHtml = null,
     }
 }
 
-async function getCustomCharts() {
+async function getCustomCharts(report=false) {
     let jv = document.getElementById('jinjaValues');
     let object_name = jv.dataset['object_name'].trim();
     let response = await fetch(
-        `/processor/${object_name}/dashboard/get`);
+        `/processor/${object_name}/dashboard/get?report=${report}`);
     return await response.json();
 }
 
-async function buildCustomCharts(tab) {
+function callCustomChart(dash) {
+    let dashId = dash['id'];
+    let chartName = `dash${dashId}Metrics`;
+    let chartType = dash['chart_type'];
+    let chartFunction = getChartFunctionName(chartType);
+    let defaultView = dash['default_view'] === 'Chart';
+    let dash_metric_args = getDataTableArgsDict(
+        chartFunction, JSON.parse(dash['dimensions']),
+        JSON.parse(dash['metrics']), JSON.parse(dash['chart_filters']),
+        true, undefined, undefined, defaultView);
+    callFunctionIfInView(chartName, getTable, [chartName,
+        chartName + 'Progress', 'None', 'None', 'None', true, 'None', false, dash_metric_args],
+        100);
+}
+
+async function buildCustomCharts(tab, build=true) {
     let elem = document.getElementById(`customCharts${tab}`);
     let count = 0;
     let dashboards = await getCustomCharts();
     dashboards.forEach(function (dash) {
-        if (tab === dash['tab']) {
-            let id = Math.floor(count / 2);
-            let row_id = `row_${id}_${elem.id}`;
-            if (count % 2 === 0) {
-                let row_html = `<div class="row" id="${row_id}"></div>`;
-                elem.insertAdjacentHTML('beforeend', row_html);
+        if (tab === dash['tab'] || tab === 'All') {
+            if (build) {
+                let id = Math.floor(count / 2);
+                let row_id = `row_${id}_${elem.id}`;
+                if (count % 2 === 0) {
+                    let row_html = `<div class="row" id="${row_id}"></div>`;
+                    elem.insertAdjacentHTML('beforeend', row_html);
+                }
+                let row = document.getElementById(row_id);
+                let html = `<div class="col-md-6"><br>${dash['html']}</div>`;
+                row.insertAdjacentHTML('beforeend', html);
             }
-            let row = document.getElementById(row_id);
-            let html = `<div class="col-md-6"><br>${dash['html']}</div>`;
-            row.insertAdjacentHTML('beforeend', html);
-            let dashId = dash['id'];
-            let chartName = `dash${dashId}Metrics`;
-            let chartType = dash['chart_type'];
-            let chartFunction = getChartFunctionName(chartType);
-            let defaultView = dash['default_view'] === 'Chart';
-            let dash_metric_args = getDataTableArgsDict(
-                chartFunction, JSON.parse(dash['dimensions']),
-                JSON.parse(dash['metrics']), JSON.parse(dash['chart_filters']),
-                true, undefined, undefined, defaultView);
-            getTable(chartName, chartName + 'Progress', 'None', 'None',
-                'None', true, 'None', false, dash_metric_args);
+            callCustomChart(dash);
             count++
         }
     });
@@ -147,7 +155,6 @@ function getSecondaryCharts(filterDict, clickElem = null) {
         getTable(chartId, `${chartId}Progress`, 'None', 'None',
             'None', true, 'None', false, secondary_metric_args);
     });
-    buildCustomCharts('Topline');
 }
 
 function getPartnerMetrics(filterDict = null, clickElem = null, oldHtml = null,
@@ -309,7 +316,143 @@ function getBillingTable() {
     getTable(billingTableId, billingTableId);
 }
 
-function saveDash() {
+function loadDash(data, kwargs) {
+    let dashId = kwargs['dashId'];
+    let btnId = kwargs['btnId'];
+    let chartName = dashId + 'Metrics';
+    let chartType = data['chart_type'];
+    let chartFunction = getChartFunctionName(chartType);
+    let defaultView = data['default_view'] === 'Chart';
+    let dash_metric_args = getDataTableArgsDict(
+        chartFunction, JSON.parse(data['dimensions']),
+        JSON.parse(data['metrics']), JSON.parse(data['chart_filters']),
+        true, undefined, undefined, defaultView);
+    getTable(chartName, btnId, 'None', 'None', 'None', true, 'None',
+        false, dash_metric_args);
+}
+
+function viewDash(dashId, btnId) {
+    let jv = document.getElementById('jinjaValues');
+    let data = {
+        object_name: jv.dataset['object_name'],
+        object_type: jv.dataset['title'],
+        object_level: jv.dataset['edit_name'],
+        dashboard_id: dashId.replace('dash', '')
+    };
+    let kwargs = {'dashId': dashId, 'btnId': btnId};
+    makeRequest('/get_dashboard_properties', 'POST', data, loadDash,
+        'json', kwargs);
+}
+
+function handleSaveFail(data, kwargs) {
+    let btnId = kwargs['btnId'];
+    displayAlert('Could not save dashboard, please try again later',
+        'warning');
+    unanimateBar();
+    addElemRemoveLoadingBtn(btnId)
+}
+
+function handleSave(data, kwargs) {
+    let id = kwargs['dashId'];
+    let btnId = kwargs['btnId'];
+    let element = document.getElementById(id).firstElementChild;
+    let originalColor = element.style.backgroundColor;
+    element.style.backgroundColor = "#b3ecff";
+    let t = setTimeout(function () {
+        element.style.backgroundColor = originalColor;
+    }, (2 * 1000));
+    displayAlert(data['message'], data['level']);
+    addElemRemoveLoadingBtn(btnId)
+}
+
+function saveDash(dashId, btnId) {
+    let id = dashId.replace('dash', '');
+    let jv = document.getElementById('jinjaValues');
+    let form = document.getElementById('dash' + id + 'form').firstElementChild;
+    let formData = new FormData(form);
+    let data = {
+        object_name: jv.dataset['object_name'],
+        object_type: jv.dataset['title'],
+        object_level: jv.dataset['edit_name'],
+        dashboard_id: id,
+        object_form: JSON.stringify(convertFormDataToDict(formData))
+    };
+    let kwargs = {'dashId': dashId, 'btnId': btnId};
+    makeRequest('/save_dashboard', 'POST', data, handleSave,
+        'json', kwargs, handleSaveFail);
+}
+
+function handleDelete(data, kwargs) {
+    let id = kwargs['dashId'];
+    let btnId = kwargs['btnId'];
+    let element = document.getElementById(id + 'card');
+    let originalColor = element.style.backgroundColor;
+    element.style.backgroundColor = "rgba(255,0,0,0.68)";
+    let t = setTimeout(function () {
+        element.style.backgroundColor = originalColor;
+    }, (2 * 1000));
+    addElemRemoveLoadingBtn(btnId);
+    element.innerHTML = '';
+    displayAlert(data['message'], data['level']);
+}
+
+function deleteDash(dashId, btnId) {
+    let jv = document.getElementById('jinjaValues');
+    let data = {
+        object_name: jv.dataset['object_name'],
+        object_type: jv.dataset['title'],
+        object_level: jv.dataset['edit_name'],
+        dashboard_id: dashId.replace('dash', '')
+    };
+    let kwargs = {'dashId': dashId, 'btnId': btnId};
+    makeRequest('/delete_dashboard', 'POST', data, handleDelete,
+        'json', kwargs);
+}
+
+function deleteCustomChart(deleteButtonElem) {
+    let dashId = deleteButtonElem.id.replace('Delete', '');
+    deleteDash(dashId, deleteButtonElem.id)
+}
+
+function handleInclude(data) {
+    displayAlert(data['message'], data['level']);
+}
+
+function includeCustomInReport(checkBoxElem) {
+    let dashId = checkBoxElem.parentNode.id.replace(/Include|dash/g, "");
+    let include = checkBoxElem.checked;
+    let jv = document.getElementById('jinjaValues');
+    let data = {
+        object_name: jv.dataset['object_name'],
+        object_type: jv.dataset['title'],
+        object_level: jv.dataset['edit_name'],
+        dashboard_id: dashId.replace('dash', ''),
+        include: include
+    };
+    makeRequest('/include_dashboard_in_report', 'POST', data,
+        handleInclude);
+}
+
+function setButtonEvents() {
+    let curId = this.id;
+    let functionName = function (curId) {
+        if (curId.includes('View')) {
+            return ['View', viewDash]
+        } else if (curId.includes('Save')) {
+            return ['Save', saveDash]
+        } else if (curId.includes('Delete')) {
+            return ['Delete', deleteDash]
+        }
+    };
+    let currentFunction = functionName(curId);
+    let dashId = this.id.replace(currentFunction[0], '');
+    if (!curId.includes('View')) {
+        loadingBtn(this);
+    }
+    currentFunction[1](dashId, this.id)
+}
+
+function createDash() {
     let jv = document.getElementById('jinjaValues');
     let object_name = jv.dataset['object_name'].trim();
     let url = `/processor/${object_name}/dashboard/create?render=false`;
@@ -331,5 +474,5 @@ async function addDashModal(tab) {
     let modalBody = modal.querySelector('[class="modal-body"]');
     modalBody.innerHTML = dash_form;
     addSelectize();
-    addOnClickEvent('[id^="saveDashButton"]', saveDash);
+    addOnClickEvent('[id^="saveDashButton"]', createDash);
 }

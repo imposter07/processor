@@ -733,8 +733,15 @@ class Processor(db.Model):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                      if not k.startswith("_") and k != 'id'])
 
-    def get_all_dashboards(self):
-        return self.dashboard.order_by(Dashboard.created_at.desc()).all()
+    def get_all_dashboards(self, report=False):
+        if report:
+            dashboards = self.dashboard.filter_by(
+                include_in_report=report).order_by(
+                Dashboard.created_at.desc()).all()
+        else:
+            dashboards = self.dashboard.order_by(
+                Dashboard.created_at.desc()).all()
+        return dashboards
 
     def get_url(self):
         return url_for('main.processor_page', object_name=self.name)
@@ -2064,6 +2071,7 @@ class Dashboard(db.Model):
     metrics = db.Column(db.Text)
     default_view = db.Column(db.Text)
     tab = db.Column(db.Text)
+    include_in_report = db.Column(db.Boolean)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     dashboard_filters = db.relationship('DashboardFilter',
                                         backref='dashboard', lazy='dynamic')

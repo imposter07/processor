@@ -2964,6 +2964,7 @@ def processor_dashboard_create(object_name):
             user_id=current_user.id, chart_type=form.chart_type.data,
             dimensions=form.dimensions.data, metrics=form.metrics.data,
             default_view=form.default_view.data, tab=form.tab.data,
+            include_in_report=form.include_in_report.data,
             created_at=datetime.utcnow())
         db.session.add(new_dash)
         db.session.commit()
@@ -2994,21 +2995,28 @@ def processor_dashboards_get(object_name):
         object_name, current_page='processor_dashboard_all', edit_progress=100,
         edit_name='View All', buttons='ProcessorDashboard')
     cur_proc = kwargs['processor']
-    dashboards = cur_proc.get_all_dashboards()
+    report = request.args.get('report')
+    report = False if report == 'false' else True
+    dashboards = cur_proc.get_all_dashboards(report)
     dash_data = []
     for dash in dashboards:
         dash_id = dash.id
+        dash_name = dash.name
         metrics = dash.get_metrics_json()
         dimensions = dash.get_dimensions_json()
         chart_type = dash.chart_type
         chart_filters = dash.get_filters_json()
         default_view = dash.default_view
+        include_in_report = dash.include_in_report
         tab = dash.tab
-        dash_html = render_template('dashboards/_dash_card.html', dash=dash)
+        dash_html = render_template('dashboards/_dash_card.html', dash=dash,
+                                    custom=True)
         dash_data.append(
-            {'id': dash_id, 'metrics': metrics, 'dimensions': dimensions,
-             'chart_type': chart_type, 'chart_filters': chart_filters,
-             'default_view': default_view, 'tab': tab, 'html': dash_html})
+            {'id': dash_id, 'name': dash_name, 'metrics': metrics,
+             'dimensions': dimensions, 'chart_type': chart_type,
+             'chart_filters': chart_filters, 'default_view': default_view,
+             'tab': tab, 'include_in_report': include_in_report,
+             'html': dash_html})
     return jsonify(dash_data)
 
 
@@ -3023,11 +3031,15 @@ def processor_dashboard_all(object_name):
     for dash in dashboards:
         static_filters = ProcessorDashboardForm().set_filters(
             DashboardFilter, dash)
-        dash_form = ProcessorDashboardForm(static_filters=static_filters)
+        dash_form = ProcessorDashboardForm(
+            static_filters=static_filters,
+            include_in_report=dash.include_in_report)
         dash_form.name.data = dash.name
         dash_form.chart_type.data = dash.chart_type
         dash_form.dimensions.data = dash.get_dimensions()[0]
         dash_form.metrics.data = dash.get_metrics()
+        dash_form.default_view = dash.default_view
+        dash_form.tab = dash.tab
         for k, v in dash_form._fields.items():
             if k not in ['csrf_token', 'form_continue']:
                 dash_form._fields[k].id = '{}__{}'.format(k, dash.id)
@@ -3119,6 +3131,21 @@ def delete_dashboard():
     db.session.delete(dash)
     db.session.commit()
     msg = 'The dashboard {} has been deleted.'.format(dash.name)
+    return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
+
+
+@bp.route('/include_dashboard_in_report', methods=['GET', 'POST'])
+@login_required
+def include_dashboard_in_report():
+    dash = Dashboard.query.get(int(request.form['dashboard_id']))
+    include = True if request.form['include'] == 'true' else False
+    dash.include_in_report = include
+    db.session.commit()
+    if include:
+        msg = 'The dashboard {} has been included in report.'.format(dash.name)
+    else:
+        msg = 'The dashboard {} has been excluded from report.'.format(
+            dash.name)
     return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
 
 

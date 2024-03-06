@@ -298,22 +298,36 @@
                         date.toString()]
                 }], null, null, false, true)
             });
+            buildCustomCharts('All', false)
         }
     }
 
+    async function buildCustomReportCharts() {
+        let customCharts = await getCustomCharts(true);
+        let charts = [];
+        customCharts.forEach(function (customChart) {
+            charts.push({
+                'key': `dash${customChart['id']}Metrics`,
+                'name': `${customChart['name']}`,
+                'selected': 'true'
+            })
+        });
+        buildReportCharts(charts)
+    }
+
     function getDefaultCharts() {
-        return [{'key': 'dailyMetrics', 'selected': 'true'},
-            {'key': 'deliveryMetrics', 'selected': 'true'},
-            {'key': 'partnerBarMetrics', 'selected': 'true'},
-            {'key': 'partnerSummaryMetrics', 'selected': 'true'},
-            {'key': 'partnerTreeMetrics', 'selected': 'true'},
-            {'key': 'pacingMetrics', 'selected': 'true'},
-            {'key': 'countryBarMetrics', 'selected': 'true'},
-            {'key': 'countrySummaryMetrics', 'selected': 'true'},
-            {'key': 'targetingSummaryMetrics', 'selected': 'true'},
-            {'key': 'placementBarMetrics', 'selected': 'true'},
-            {'key': 'placementSummaryMetrics', 'selected': 'true'},
-            {'key': 'creativeSummaryMetrics', 'selected': 'true'}];
+        return [{'key': 'dailyMetrics', 'name': 'dailyMetrics', 'selected': 'true'},
+            {'key': 'deliveryMetrics', 'name': 'deliveryMetrics', 'selected': 'true'},
+            {'key': 'partnerBarMetrics', 'name': 'partnerBarMetrics', 'selected': 'true'},
+            {'key': 'partnerSummaryMetrics','name': 'partnerSummaryMetrics', 'selected': 'true'},
+            {'key': 'partnerTreeMetrics', 'name': 'partnerTreeMetrics', 'selected': 'true'},
+            {'key': 'pacingMetrics', 'name': 'pacingMetrics', 'selected': 'true'},
+            {'key': 'countryBarMetrics', 'name': 'countryBarMetrics', 'selected': 'true'},
+            {'key': 'countrySummaryMetrics', 'name': 'countrySummaryMetrics', 'selected': 'true'},
+            {'key': 'targetingSummaryMetrics', 'name': 'targetingSummaryMetrics', 'selected': 'true'},
+            {'key': 'placementBarMetrics', 'name': 'placementBarMetrics', 'selected': 'true'},
+            {'key': 'placementSummaryMetrics', 'name': 'placementSummaryMetrics', 'selected': 'true'},
+            {'key': 'creativeSummaryMetrics', 'name': 'creativeSummaryMetrics', 'selected': 'true'}];
     }
 
     function buildReportCharts(reportCharts) {
@@ -336,7 +350,7 @@
             text.classList.add('pr-2');
             text.classList.add('align-middle');
             text.contentEditable = 'true';
-            let chartName = chart.key.charAt(0).toUpperCase() + chart.key.slice(1);
+            let chartName = chart.name.charAt(0).toUpperCase() + chart.name.slice(1);
             chartName = chartName.split(/(?=[A-Z])|\s+/).join(' ');
             text.innerHTML += chartName;
             text.id = (id + 'text').toLowerCase();
@@ -545,6 +559,7 @@
             buildReportElem(item);
         }
         buildReportCharts(charts);
+        buildCustomReportCharts();
         checkHideHeaders(reportBuilder);
         loadJS();
         addOnClickEvent(nameQuery, getReportBuilder, 'change');

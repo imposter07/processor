@@ -4678,6 +4678,7 @@ def write_report_builder(processor_id, current_user_id, new_data=None):
                 processor_id, current_user_id), exc_info=sys.exc_info())
         return False
 
+
 @error_handler
 def get_kpis_for_processor(processor_id, current_user_id):
     cur_processor = db.session.get(Processor, processor_id)
@@ -4713,6 +4714,34 @@ def parse_date_from_project_number(cur_string, date_opened):
         return sd
     except:
         return None
+
+
+def get_last_rate_card_for_client(cur_campaign):
+    cur_product_name = cur_campaign.product.name
+    cur_client_name = cur_campaign.product.client.name
+    rate_card_id_query = Processor.query \
+        .join(Processor.campaign) \
+        .join(Campaign.product) \
+        .join(Product.client) \
+        .filter(Client.name == cur_client_name,
+                Product.name == cur_product_name) \
+        .order_by(Processor.id.desc()) \
+        .limit(1) \
+        .with_entities(Processor.rate_card_id) \
+        .first()
+    rate_card_id = rate_card_id_query[0] if rate_card_id_query else None
+    if not rate_card_id:
+        rate_card_id_query = Processor.query \
+            .join(Processor.campaign) \
+            .join(Campaign.product) \
+            .join(Product.client) \
+            .filter(Client.name == cur_client_name) \
+            .order_by(Processor.id.desc()) \
+            .limit(1) \
+            .with_entities(Processor.rate_card_id) \
+            .first()
+        rate_card_id = rate_card_id_query[0] if rate_card_id_query else None
+    return rate_card_id
 
 
 @error_handler
@@ -4801,11 +4830,14 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
                     user_id = cu.id
                 else:
                     user_id = running_user
+                rate_card_id = get_last_rate_card_for_client(form_campaign)
                 new_processor = Processor(
                     name=name, description=description,
                     user_id=user_id, created_at=datetime.utcnow(),
                     start_date=sd, end_date=ed,
                     campaign_id=form_campaign.id)
+                if rate_card_id:
+                    new_processor.rate_card_id = rate_card_id
                 db.session.add(new_processor)
                 db.session.commit()
             new_processor.projects.append(new_project)
@@ -6643,18 +6675,102 @@ def get_contacts(plan_id, current_user_id):
     return [lt.table_dict]
 
 
+def check_missing_vals(obj_id, cur_obj=Plan):
+    msg = ''
+    cur_plan = db.session.get(cur_obj, obj_id)
+    miss_vals = [k for k, v in cur_plan.__dict__.items() if not v]
+    if miss_vals:
+        miss_vals = ', '.join(miss_vals)
+        msg = 'Fill in the following values: {}'.format(miss_vals)
+    return msg
+
+
+def check_topline(cur_plan, cur_partners):
+    msg = ''
+    total_cost = sum(x.total_budget for x in cur_partners)
+    if total_cost != cur_plan.total_budget:
+        msg = 'Cost from {} partners ({}) not equal total budget {}.'.format(
+            len(cur_partners), total_cost, cur_plan.total_budget)
+    return msg
+
+
+def get_partners_api_split(cur_partners):
+    api_partners = []
+    non_api_partners = []
+    api_vals = [x for y in vmc.api_partner_name_translation.values() for x in y]
+    for part in cur_partners:
+        if part.name in api_vals:
+            api_partners.append(part)
+        else:
+            non_api_partners.append(part)
+    return api_partners, non_api_partners
+
+
+def check_plan_rules(cur_partners, cur_obj=PlanRule,
+                     comp_col=PlanRule.rule_info, comp_val=1):
+    msg = ''
+    miss_partners = []
+    if cur_partners:
+        for cur_part in cur_partners:
+            miss_part = True
+            prs = cur_obj.query.filter_by(plan_id=cur_part.id).all()
+            if comp_col:
+                for pr in prs:
+                    if len(pr.__dict__[comp_col.name]) > comp_val:
+                        miss_part = False
+                        break
+            else:
+                if not prs:
+                    miss_part = False
+            if miss_part:
+                miss_partners.append(cur_part.name)
+    if miss_partners:
+        miss_partners = ', '.join(miss_partners)
+        msg = 'Add {} for partners {}'.format(cur_obj.__name__, miss_partners)
+    return msg
+
+
+def route_check(cur_plan, route_name, cur_partners, api_partners,
+                non_api_partners):
+    msg = ''
+    if route_name == 'plan.edit_plan':
+        msg = check_missing_vals(cur_plan.id)
+    elif route_name == 'plan.topline':
+        msg = check_topline(cur_plan, cur_partners)
+    elif route_name == 'plan.edit_sow':
+        cur_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
+        msg = check_missing_vals(cur_sow.id, Sow)
+    elif route_name == 'plan.plan_rules':
+        msg = check_plan_rules(api_partners)
+    elif route_name == 'plan.rfp':
+        msg = check_plan_rules(non_api_partners, Rfp, comp_col=None)
+    if not msg:
+        msg = 'COMPLETED'
+    return msg
+
+
 @error_handler
 def get_checklist(plan_id, current_user_id):
     cur_plan = db.session.get(Plan, plan_id)
+    cur_partners = cur_plan.get_partners()
+    api_partners, non_api_partners = get_partners_api_split(cur_partners)
     data = []
     button_types = ['Plan', 'UploaderFacebook', 'ProcessorRequest']
+    is_fb = vmc.api_fb_key in [x.name for x in api_partners]
+    if not is_fb:
+        button_types = [x for x in button_types if x != 'UploaderFacebook']
     for btn_type in button_types:
         buttons = Processor.get_navigation_buttons(btn_type)
         for button in buttons:
             for k, v in button.items():
                 v['object'] = btn_type
                 v['name'] = k
-                v['complete'] = 0
+                msg = route_check(cur_plan, v['route'], cur_partners,
+                                  api_partners, non_api_partners)
+                v['check'] = msg
+                is_complete = 1 if msg == 'COMPLETED' else 0
+                v['complete'] = is_complete
+                v.pop('icon')
                 data.append(v)
     df = pd.DataFrame(data)
     name = 'Checklist'

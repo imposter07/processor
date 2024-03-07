@@ -4083,8 +4083,13 @@ class PlanEffectiveness(db.Model):
 class Checklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'), index=True)
+    name = db.Column(db.Text)
     completed_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_by = db.Column(db.Integer, db.ForeignKey('user.id'), index=True)
+    complete_msg = db.Column(db.Text)
+    checked_at = db.Column(db.DateTime, default=datetime.utcnow)
+    checked_by = db.Column(db.Integer, db.ForeignKey('user.id'), index=True)
+    checked_msg = db.Column(db.Text)
 
 
 class Conversation(db.Model):

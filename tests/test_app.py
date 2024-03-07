@@ -998,9 +998,10 @@ class TestReportingDBReadWrite:
         worker.work(burst=True)
         sw.wait_for_elem_load("getAllCharts")
         sw.xpath_from_id_and_click('getAllCharts')
+        sw.browser.execute_script("window.scrollTo(0, 1080)")
         worker.work(burst=True)
         show_chart_id = "showChartBtndash1Metrics"
-        sw.wait_for_elem_load(show_chart_id)
+        sw.wait_for_elem_load(show_chart_id, visible=True)
         assert sw.browser.find_element_by_id("dash1Metrics")
         assert sw.browser.find_element_by_id(show_chart_id)
         metric_selectize_path = (

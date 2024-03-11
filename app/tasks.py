@@ -27,6 +27,8 @@ from app.models import User, Post, Task, Processor, \
     ProcessorReports, Partner, PlanRule, Brandtracker, \
     PartnerPlacements, Rfp, RfpFile, Specs, Contacts, PlanPhase, \
     PlanEffectiveness, InsertionOrder
+import app.plan.routes as plan_routes
+import app.main.routes as main_routes
 import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.export as exp
@@ -6678,6 +6680,8 @@ def get_contacts(plan_id, current_user_id):
 def check_missing_vals(obj_id, cur_obj=Plan):
     msg = ''
     cur_plan = db.session.get(cur_obj, obj_id)
+    if not cur_plan:
+        return msg
     miss_vals = [k for k, v in cur_plan.__dict__.items() if not v]
     if miss_vals:
         miss_vals = ', '.join(miss_vals)
@@ -6685,8 +6689,9 @@ def check_missing_vals(obj_id, cur_obj=Plan):
     return msg
 
 
-def check_topline(cur_plan, cur_partners):
+def check_topline(obj_id, cur_partners):
     msg = ''
+    cur_plan = db.session.get(Plan, obj_id)
     total_cost = sum(x.total_budget for x in cur_partners)
     if total_cost != cur_plan.total_budget:
         msg = 'Cost from {} partners ({}) not equal total budget {}.'.format(
@@ -6730,20 +6735,57 @@ def check_plan_rules(cur_partners, cur_obj=PlanRule,
     return msg
 
 
+def check_up_relations(obj_id, object_level='Campaign'):
+    msg = ''
+    upo = UploaderObjects.query.filter_by(
+        uploader_id=obj_id, object_level=object_level,
+        uploader_type='Facebook').first()
+    miss = Uploader().check_relations(upo, as_response=False)
+    if miss:
+        miss = [x.impacted_column_name for x in miss]
+        msg = 'Fill in the following: {}'.format(', '.join(miss))
+    return msg
+
+
 def route_check(cur_plan, route_name, cur_partners, api_partners,
                 non_api_partners):
     msg = ''
-    if route_name == 'plan.edit_plan':
-        msg = check_missing_vals(cur_plan.id)
-    elif route_name == 'plan.topline':
-        msg = check_topline(cur_plan, cur_partners)
-    elif route_name == 'plan.edit_sow':
-        cur_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
-        msg = check_missing_vals(cur_sow.id, Sow)
-    elif route_name == 'plan.plan_rules':
-        msg = check_plan_rules(api_partners)
-    elif route_name == 'plan.rfp':
-        msg = check_plan_rules(non_api_partners, Rfp, comp_col=None)
+    cur_up = Uploader.query.filter_by(name=cur_plan.name).first()
+    cur_proc = Processor.query.filter_by(name=cur_plan.name).first()
+    cur_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
+    route_dict = {
+        plan_routes.edit_plan: [check_missing_vals, [cur_plan.id]],
+        plan_routes.topline: [check_topline, [cur_plan, cur_partners]],
+        plan_routes.edit_sow: [check_missing_vals, [cur_sow, Sow]],
+        plan_routes.plan_rules: [check_plan_rules, [api_partners]],
+        plan_routes.rfp: [check_plan_rules, [non_api_partners, Rfp, None]],
+        main_routes.edit_uploader: [check_missing_vals, [cur_up, Uploader]],
+        main_routes.edit_request_processor:
+            [check_missing_vals, [cur_up, Uploader]],
+    }
+    up_routes = [
+        main_routes.edit_uploader_campaign, main_routes.edit_uploader_adset,
+        main_routes.edit_uploader_ad]
+    for x in up_routes:
+        obj_level = x.__name__.split('_')[-1].capitalize()
+        route_dict[x] = [check_up_relations, [cur_up, obj_level]]
+    new_route_dict = {}
+    for k, v in route_dict.items():
+        prefix = 'plan.'
+        kn = k.__name__
+        if Processor.__table__.name in kn or Uploader.__table__.name in kn:
+            prefix = 'main.'
+        new_route_dict['{}{}'.format(prefix, kn)] = v
+    if not cur_up and Uploader.__table__.name in route_name:
+        msg = 'No Uploader - create one from plan.'
+    elif not cur_proc and Processor.__table__.name in route_name:
+        msg = 'No Processor - create one from plan.'
+    elif route_name in new_route_dict:
+        cur_function = new_route_dict[route_name][0]
+        cur_args = new_route_dict[route_name][1]
+        cur_args = [x.id if hasattr(x, 'id') and isinstance(x.id, int) else x
+                    for x in cur_args]
+        msg = cur_function(*cur_args)
     if not msg:
         msg = 'COMPLETED'
     return msg
@@ -6834,157 +6876,132 @@ def get_project_number(current_user_id, running_user, filter_dict=None):
     return [lt.table_dict]
 
 
+@error_handler
 def get_plan_calc(plan_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        headers = "Headers"
-        values = ["-0.20", "-0.10", "0.00", "0.10", "0.20"]
-        brand_low = PlanEffectiveness.brand_low
-        brand_high = PlanEffectiveness.brand_low
-        msg_low = PlanEffectiveness.msg_low
-        msg_high = PlanEffectiveness.msg_high
-        media_low = PlanEffectiveness.media_low
-        media_high = PlanEffectiveness.media_high
-
-        d = {PlanEffectiveness.brand: (brand_low, brand_high),
-             PlanEffectiveness.msg: (msg_low, msg_high),
-             PlanEffectiveness.media: (media_low, media_high)
-             }
-        df = pd.DataFrame()
-        for k, v in d.items():
-            tdf = pd.DataFrame({PlanEffectiveness.factors_low: v[0],
-                                PlanEffectiveness.factors_high: v[1]})
-            tdf[headers] = k
-            df = pd.concat([df, tdf], ignore_index=True)
-        selected_dict = {}
-        for col in brand_low + msg_low + media_low:
-            pe = PlanEffectiveness.query.filter_by(plan_id=plan_id,
-                                                   factor_name=col).first()
-            pe = pe.selected_val if pe else 0
-            selected_dict[col] = pe
-        pick_col = 'cell_pick_col'
-        df[pick_col] = df[PlanEffectiveness.factors_low].map(selected_dict)
-        cell_pick_cols = []
-        for i, value in enumerate(values, 1):
-            col_name = f"Value{i}"
-            cell_pick_cols.append(col_name)
-            df[col_name] = value
-        first_cols = [headers, PlanEffectiveness.factors_low]
-        last_cols = [PlanEffectiveness.factors_high, pick_col]
-        col_order = first_cols + cell_pick_cols + last_cols
-        df = df[col_order]
-        name = 'Calc'
-        lt = app_utl.LiquidTable(df=df, table_name=name,
-                                 cell_pick_cols=cell_pick_cols, totals=True,
-                                 total_default_val=3)
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Plan {} User {}'.format(
-            plan_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        df = pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])
-        return [df]
+    headers = "Headers"
+    values = ["-0.20", "-0.10", "0.00", "0.10", "0.20"]
+    brand_low = PlanEffectiveness.brand_low
+    brand_high = PlanEffectiveness.brand_low
+    msg_low = PlanEffectiveness.msg_low
+    msg_high = PlanEffectiveness.msg_high
+    media_low = PlanEffectiveness.media_low
+    media_high = PlanEffectiveness.media_high
+    d = {PlanEffectiveness.brand: (brand_low, brand_high),
+         PlanEffectiveness.msg: (msg_low, msg_high),
+         PlanEffectiveness.media: (media_low, media_high)
+         }
+    df = pd.DataFrame()
+    for k, v in d.items():
+        tdf = pd.DataFrame({PlanEffectiveness.factors_low: v[0],
+                            PlanEffectiveness.factors_high: v[1]})
+        tdf[headers] = k
+        df = pd.concat([df, tdf], ignore_index=True)
+    selected_dict = {}
+    for col in brand_low + msg_low + media_low:
+        pe = PlanEffectiveness.query.filter_by(plan_id=plan_id,
+                                               factor_name=col).first()
+        pe = pe.selected_val if pe else 0
+        selected_dict[col] = pe
+    pick_col = 'cell_pick_col'
+    df[pick_col] = df[PlanEffectiveness.factors_low].map(selected_dict)
+    cell_pick_cols = []
+    for i, value in enumerate(values, 1):
+        col_name = f"Value{i}"
+        cell_pick_cols.append(col_name)
+        df[col_name] = value
+    first_cols = [headers, PlanEffectiveness.factors_low]
+    last_cols = [PlanEffectiveness.factors_high, pick_col]
+    col_order = first_cols + cell_pick_cols + last_cols
+    df = df[col_order]
+    name = 'Calc'
+    lt = app_utl.LiquidTable(df=df, table_name=name,
+                             cell_pick_cols=cell_pick_cols, totals=True,
+                             total_default_val=3)
+    return [lt.table_dict]
 
 
+@error_handler
 def get_project_objects(current_user_id, running_user, vk='', filter_dict=None):
-    try:
-        _set_task_progress(0)
-        project_num = ''.join(x.strip() for x in vk.split('|')[0])
-        p = Project.query.filter_by(project_number=project_num).first()
-        p_objs = p.processor_associated.all() + p.plan_associated.all()
-        data = [x.to_dict() for x in p_objs]
-        col_list = []
-        sd = None
-        ed = None
-        if data:
-            col_list = list(data[0].keys())
-            for d in data:
-                if not sd or sd > d[Processor.start_date.name]:
-                    sd = d[Processor.start_date.name]
-                if not ed or ed < d[Processor.end_date.name]:
-                    ed = d[Processor.end_date.name]
-            week_str = app_utl.LiquidTable.convert_sd_ed_to_weeks(sd, ed)
-            col_list += week_str
-        name = 'projectObjects'
-        lt = app_utl.LiquidTable(
-            col_list=col_list, data=data, title=name, table_name=name,
-            download_table=True, specify_form_cols=False, accordion=True,
-            row_on_click='projectObjects')
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - User {}'.format(current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    project_num = ''.join(x.strip() for x in vk.split('|')[0])
+    p = Project.query.filter_by(project_number=project_num).first()
+    p_objs = p.processor_associated.all() + p.plan_associated.all()
+    data = [x.to_dict() for x in p_objs]
+    col_list = []
+    sd = None
+    ed = None
+    if data:
+        col_list = list(data[0].keys())
+        for d in data:
+            if not sd or sd > d[Processor.start_date.name]:
+                sd = d[Processor.start_date.name]
+            if not ed or ed < d[Processor.end_date.name]:
+                ed = d[Processor.end_date.name]
+        week_str = app_utl.LiquidTable.convert_sd_ed_to_weeks(sd, ed)
+        col_list += week_str
+    name = 'projectObjects'
+    lt = app_utl.LiquidTable(
+        col_list=col_list, data=data, title=name, table_name=name,
+        download_table=True, specify_form_cols=False, accordion=True,
+        row_on_click='projectObjects')
+    return [lt.table_dict]
 
 
+@error_handler
 def get_contact_numbers(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        os.chdir('processor')
-        api = gsapi.GsApi()
-        api.input_config('gsapi.json')
-        sheet_id = '1IZSzjzAjiKDch9leOYL6cAmh6YeVOuXBeqTZuWD8IOI'
-        api.sheet_id = sheet_id
-        df = api.get_data()
-        df = utl.first_last_adj(df, 1, 0)
-        df_dict = df.to_dict(orient='records')
-        name = 'rfp_plan'
-        rfp_plan = Plan.query.filter_by(name=name).first()
-        if not rfp_plan:
-            rfp_plan = Plan(name=name)
-            db.session.add(rfp_plan)
+    os.chdir('processor')
+    api = gsapi.GsApi()
+    api.input_config('gsapi.json')
+    sheet_id = '1IZSzjzAjiKDch9leOYL6cAmh6YeVOuXBeqTZuWD8IOI'
+    api.sheet_id = sheet_id
+    df = api.get_data()
+    df = utl.first_last_adj(df, 1, 0)
+    df_dict = df.to_dict(orient='records')
+    name = 'rfp_plan'
+    rfp_plan = Plan.query.filter_by(name=name).first()
+    if not rfp_plan:
+        rfp_plan = Plan(name=name)
+        db.session.add(rfp_plan)
+        db.session.commit()
+    cur_phase = rfp_plan.get_current_children()
+    if not cur_phase:
+        cur_phase = PlanPhase(name=name, plan_id=rfp_plan.id)
+        db.session.add(cur_phase)
+        db.session.commit()
+    else:
+        cur_phase = cur_phase[0]
+    rfp_file = RfpFile.query.filter_by(
+        name=name, plan_id=rfp_plan.id).first()
+    if not rfp_file:
+        rfp_file = RfpFile(name=name, plan_id=rfp_plan.id,
+                           user_id=current_user_id)
+        db.session.add(rfp_file)
+        db.session.commit()
+    for contact in df_dict:
+        partner_name = contact[Partner.__table__.name.capitalize()]
+        partner_obj = Partner.query.filter_by(
+            name=partner_name, plan_phase_id=cur_phase.id).first()
+        if not partner_obj:
+            partner_obj = Partner(
+                name=partner_name, plan_phase_id=cur_phase.id)
+            db.session.add(partner_obj)
             db.session.commit()
-        cur_phase = rfp_plan.get_current_children()
-        if not cur_phase:
-            cur_phase = PlanPhase(name=name, plan_id=rfp_plan.id)
-            db.session.add(cur_phase)
+        c = Contacts.query.filter_by(
+            partner_name=partner_name, rfp_file_id=rfp_file.id,
+            partner_id=partner_obj.id,
+            sales_representative=contact['Contact Name']).first()
+        if not c:
+            c = Contacts(partner_name=partner_name, rfp_file_id=rfp_file.id,
+                         partner_id=partner_obj.id,
+                         sales_representative=contact['Contact Name'],
+                         date_submitted=dt.datetime.today())
+            db.session.add(c)
             db.session.commit()
-        else:
-            cur_phase = cur_phase[0]
-        rfp_file = RfpFile.query.filter_by(
-            name=name, plan_id=rfp_plan.id).first()
-        if not rfp_file:
-            rfp_file = RfpFile(name=name, plan_id=rfp_plan.id,
-                               user_id=current_user_id)
-            db.session.add(rfp_file)
-            db.session.commit()
-        for contact in df_dict:
-            partner_name = contact[Partner.__table__.name.capitalize()]
-            partner_obj = Partner.query.filter_by(
-                name=partner_name, plan_phase_id=cur_phase.id).first()
-            if not partner_obj:
-                partner_obj = Partner(
-                    name=partner_name, plan_phase_id=cur_phase.id)
-                db.session.add(partner_obj)
-                db.session.commit()
-            c = Contacts.query.filter_by(
-                partner_name=partner_name, rfp_file_id=rfp_file.id,
-                partner_id=partner_obj.id,
-                sales_representative=contact['Contact Name']).first()
-            if not c:
-                c = Contacts(partner_name=partner_name, rfp_file_id=rfp_file.id,
-                             partner_id=partner_obj.id,
-                             sales_representative=contact['Contact Name'],
-                             date_submitted=dt.datetime.today())
-                db.session.add(c)
-                db.session.commit()
-            c.contact_title = contact['Contact Title']
-            c.sales_representative = contact['Contact Name']
-            c.email_address1 = contact['Contact Email']
-            c.phone1 = contact['Contact Phone']
-            db.session.commit()
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id), exc_info=sys.exc_info())
-        return pd.DataFrame()
+        c.contact_title = contact['Contact Title']
+        c.sales_representative = contact['Contact Name']
+        c.email_address1 = contact['Contact Email']
+        c.phone1 = contact['Contact Phone']
+        db.session.commit()
+    return [df]
 
 
 @error_handler
@@ -7017,84 +7034,75 @@ def get_table_project(object_id, current_user_id, function_name=None, **kwargs):
     return [return_val]
 
 
+@error_handler
 def get_rate_cards(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        if os.path.exists('processor'):
-            os.chdir('processor')
-        api = gsapi.GsApi()
-        api.input_config('gsapi.json')
-        sheet_id = '10S4gHR_LBBTVeEpiLhSDJ0z4gCBAdqFRTywQdP-qS-k'
-        api.sheet_id = sheet_id
-        df = api.get_data()
-        df = utl.first_last_adj(df, 1, 0)
-        df = df.reset_index(drop=True)
-        pn_col = 'Placement Name/Description'
-        target_col = 'Targeting\n(ROS, targeted, etc.)'
-        size_col = 'Ad Size\n(dimensions, aspect\nratio, etc.)'
-        type_col = 'Ad Type\n(display, video, etc.)'
-        device_col = 'Device\n(desktop, mobile, \ncross-device, etc.)'
-        country_col = 'Country'
-        bm_col = ' Buy Model\n(CPM, flat, etc.)'
-        cpu_col = ' CPM / Cost Per Unit'
-        cost_col = 'Net Cost (if flat)'
-        partner_col = '{} Name'.format(Partner.__table__.name.capitalize())
-        df = utl.data_to_type(df, float_col=[cost_col, cpu_col])
-        df_dict = df.to_dict(orient='records')
-        name = 'Rate Card Database'
-        rfp_plan = Plan.query.filter_by(name=name).first()
-        if not rfp_plan:
-            rfp_plan = Plan(name=name)
-            db.session.add(rfp_plan)
+    if os.path.exists('processor'):
+        os.chdir('processor')
+    api = gsapi.GsApi()
+    api.input_config('gsapi.json')
+    sheet_id = '10S4gHR_LBBTVeEpiLhSDJ0z4gCBAdqFRTywQdP-qS-k'
+    api.sheet_id = sheet_id
+    df = api.get_data()
+    df = utl.first_last_adj(df, 1, 0)
+    df = df.reset_index(drop=True)
+    pn_col = 'Placement Name/Description'
+    target_col = 'Targeting\n(ROS, targeted, etc.)'
+    size_col = 'Ad Size\n(dimensions, aspect\nratio, etc.)'
+    type_col = 'Ad Type\n(display, video, etc.)'
+    device_col = 'Device\n(desktop, mobile, \ncross-device, etc.)'
+    country_col = 'Country'
+    bm_col = ' Buy Model\n(CPM, flat, etc.)'
+    cpu_col = ' CPM / Cost Per Unit'
+    cost_col = 'Net Cost (if flat)'
+    partner_col = '{} Name'.format(Partner.__table__.name.capitalize())
+    df = utl.data_to_type(df, float_col=[cost_col, cpu_col])
+    df_dict = df.to_dict(orient='records')
+    name = 'Rate Card Database'
+    rfp_plan = Plan.query.filter_by(name=name).first()
+    if not rfp_plan:
+        rfp_plan = Plan(name=name)
+        db.session.add(rfp_plan)
+        db.session.commit()
+    cur_phase = rfp_plan.get_current_children()
+    if not cur_phase:
+        cur_phase = PlanPhase(name=name, plan_id=rfp_plan.id)
+        db.session.add(cur_phase)
+        db.session.commit()
+    else:
+        cur_phase = cur_phase[0]
+    rfp_file = RfpFile.query.filter_by(
+        name=name, plan_id=rfp_plan.id).first()
+    if not rfp_file:
+        rfp_file = RfpFile(name=name, plan_id=rfp_plan.id,
+                           user_id=current_user_id)
+        db.session.add(rfp_file)
+        db.session.commit()
+    for rate_card in df_dict:
+        partner_name = rate_card[partner_col]
+        partner_obj = Partner.query.filter_by(
+            name=partner_name, plan_phase_id=cur_phase.id).first()
+        if not partner_obj:
+            partner_obj = Partner(name=partner_name, plan_phase_id=cur_phase.id)
+            db.session.add(partner_obj)
             db.session.commit()
-        cur_phase = rfp_plan.get_current_children()
-        if not cur_phase:
-            cur_phase = PlanPhase(name=name, plan_id=rfp_plan.id)
-            db.session.add(cur_phase)
+        kwargs = {
+            Rfp.partner_name.name: rate_card[partner_col],
+            Rfp.placement_name_description.name: rate_card[pn_col],
+            Rfp.targeting.name: rate_card[target_col],
+            Rfp.ad_size_wxh.name: rate_card[size_col],
+            Rfp.ad_type.name: rate_card[type_col],
+            Rfp.device.name: rate_card[device_col],
+            Rfp.country.name: rate_card[country_col],
+            Rfp.buy_model.name: rate_card[bm_col],
+            Rfp.cpm_cost_per_unit.name: rate_card[cpu_col],
+            Rfp.planned_net_cost.name: rate_card[cost_col],
+            Rfp.rfp_file_id.name: rfp_file.id,
+            Rfp.partner_id.name: partner_obj.id
+        }
+        place = Rfp.query.filter_by(**kwargs).first()
+        if not place:
+            place = Rfp(**kwargs)
+            db.session.add(place)
             db.session.commit()
-        else:
-            cur_phase = cur_phase[0]
-        rfp_file = RfpFile.query.filter_by(
-            name=name, plan_id=rfp_plan.id).first()
-        if not rfp_file:
-            rfp_file = RfpFile(name=name, plan_id=rfp_plan.id,
-                               user_id=current_user_id)
-            db.session.add(rfp_file)
-            db.session.commit()
-        for rate_card in df_dict:
-            partner_name = rate_card[partner_col]
-            partner_obj = Partner.query.filter_by(
-                name=partner_name, plan_phase_id=cur_phase.id).first()
-            if not partner_obj:
-                partner_obj = Partner(
-                    name=partner_name, plan_phase_id=cur_phase.id)
-                db.session.add(partner_obj)
-                db.session.commit()
-            kwargs = {
-                Rfp.partner_name.name: rate_card[partner_col],
-                Rfp.placement_name_description.name: rate_card[pn_col],
-                Rfp.targeting.name: rate_card[target_col],
-                Rfp.ad_size_wxh.name: rate_card[size_col],
-                Rfp.ad_type.name: rate_card[type_col],
-                Rfp.device.name: rate_card[device_col],
-                Rfp.country.name: rate_card[country_col],
-                Rfp.buy_model.name: rate_card[bm_col],
-                Rfp.cpm_cost_per_unit.name: rate_card[cpu_col],
-                Rfp.planned_net_cost.name: rate_card[cost_col],
-                Rfp.rfp_file_id.name: rfp_file.id,
-                Rfp.partner_id.name: partner_obj.id
-            }
-            place = Rfp.query.filter_by(**kwargs).first()
-            if not place:
-                place = Rfp(**kwargs)
-                db.session.add(place)
-                db.session.commit()
-            db.session.commit()
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id), exc_info=sys.exc_info())
-        return pd.DataFrame()
+        db.session.commit()
+    return [df]

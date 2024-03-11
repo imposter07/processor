@@ -317,9 +317,10 @@ class TestProcessor:
         with self.adjust_path(basedir):
             proc_url = self.get_url(main_routes.edit_processor_import,
                                     p_name=default_name)
-            sw.go_to_url(proc_url, elem_id='add_child', sleep=.5)
-            sw.xpath_from_id_and_click('add_child')
-            sw.wait_for_elem_load('apis-0-key-selectized')
+            add_child_id = 'add_child'
+            sw.go_to_url(proc_url, elem_id=add_child_id)
+            sw.xpath_from_id_and_click(add_child_id,
+                                       load_elem_id='apis-0-key-selectized')
             import_form = [(name, 'apis-0-name'),
                            ('Rawfile', "apis-0-key-selectized", 'clear'),
                            ('11-16-2023', 'apis-0-start_date')]
@@ -358,7 +359,7 @@ class TestProcessor:
                 vmc.vendorkey].to_list()
 
     def test_raw_file_upload(self, set_up, sw, worker, default_name, user):
-        test_name = 'test1'
+        test_name = 'Rawfile'
         test_raw = 'rawfile_{}.csv'.format(test_name)
         self.add_import_card(worker, sw, default_name, test_name)
         sw.browser.refresh()
@@ -630,14 +631,21 @@ class TestPlan:
         elem = sw.browser.find_element_by_id(elem_id)
         assert elem.get_attribute('innerHTML').strip() == '1'
 
+    @staticmethod
+    def click_on_new_window_link(sw, elem_id, load_elem_id):
+        a_xpath = '//*[@id="{}"]/a'.format(elem_id)
+        sw.wait_for_elem_load(a_xpath, selector=sw.select_xpath, visible=True)
+        sw.click_on_xpath(a_xpath)
+        window_handles = sw.browser.window_handles
+        sw.browser.close()
+        sw.browser.switch_to.window(window_handles[1])
+        sw.wait_for_elem_load(elem_id=load_elem_id)
+
     def test_checklist(self, sw, login, worker):
         url = plan_routes.checklist
         self.check_and_get_plan(sw, login, worker, url)
         elem_id = 'rowroute2'
-        a_xpath = '//*[@id="{}"]/a'.format(elem_id)
-        sw.wait_for_elem_load(a_xpath, selector=sw.select_xpath, visible=True)
-        sw.click_on_xpath(a_xpath)
-        sw.wait_for_elem_load(elem_id='loadingBtnTopline')
+        self.click_on_new_window_link(sw, elem_id, 'loadingBtnTopline')
         worker.work(burst=True)
         assert sw.browser.current_url == self.get_url(plan_routes.topline)
 
@@ -686,10 +694,7 @@ class TestProject:
         worker.work(burst=True)
         self.wait_for_jobs_finish()
         elem_id = 'rowproject_number0'
-        a_xpath = '//*[@id="{}"]/a'.format(elem_id)
-        sw.wait_for_elem_load(a_xpath, selector=sw.select_xpath, visible=True)
-        sw.click_on_xpath(a_xpath)
-        sw.wait_for_elem_load('project_number')
+        TestPlan.click_on_new_window_link(sw, elem_id, 'project_number')
         assert 'edit' in sw.browser.current_url
 
 
@@ -1137,10 +1142,14 @@ class TestReportingDBReadWrite:
             worker.work(burst=True)
         report_name = 'AutoTest'
         report_date = datetime.utcnow().date()
-        dash_form_fill = [(report_name, 'name-selectized', 'clear')]
-        sw.send_keys_from_list(dash_form_fill)
-        sw.xpath_from_id_and_click('reportBuilderSaveButton')
-        worker.work(burst=True)
+        submit_form(sw, select_form_names=['name'], test_name=report_name,
+                    submit_id='reportBuilderSaveButton')
+        sw.wait_for_elem_load('alertPlaceholder')
+        for x in range(10):
+            report_saved = worker.work(burst=True)
+            if report_saved:
+                break
+            time.sleep(.1)
         processor_reports = ProcessorReports.query.filter_by(
             report_name=report_name, report_date=report_date).all()
         assert processor_reports

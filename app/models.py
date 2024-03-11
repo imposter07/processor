@@ -1860,7 +1860,29 @@ class Uploader(db.Model):
         response += msg
         return response
 
-    def run_object(self, words):
+    def check_relations(self, upo, as_response=True, response=''):
+        unresolved_relations = []
+        for x in upo.uploader_relations:
+            page_id_cols = ['adset_page_id', 'ad_page_id']
+            is_page_id = x.impacted_column_name in page_id_cols
+            if is_page_id and x.relation_constant == '_':
+                response = 'Change {} {} {} {} to 12345'.format(
+                    self.name, Uploader.__table__.name,
+                    UploaderRelations.relation_constant.name,
+                    x.impacted_column_name)
+                response = self.wrap_example_prompt(response)
+                response = '{}{}'.format(x.impacted_column_name, response)
+                unresolved_relations.append(x)
+            elif (not x.relation_constant and x.unresolved_relations
+                  and x.unresolved_relations != '0'):
+                response += x.get_table_elem()
+                unresolved_relations.append(x)
+        if as_response:
+            return response
+        else:
+            return unresolved_relations
+
+    def run_object(self, words, with_run=True):
         response = ''
         uploader_types = ['facebook', 'dcm', 'adwords']
         cur_type = self.get_types_from_words(words, uploader_types)
@@ -1875,19 +1897,7 @@ class Uploader(db.Model):
             response = self.wrap_example_prompt(response)
             response = '{}{}'.format(Uploader.fb_account_id.name, response)
         else:
-            for x in upo.uploader_relations:
-                page_id_cols = ['adset_page_id', 'ad_page_id']
-                is_page_id = x.impacted_column_name in page_id_cols
-                if is_page_id and x.relation_constant == '_':
-                    response = 'Change {} {} {} {} to 12345'.format(
-                        self.name, Uploader.__table__.name,
-                        UploaderRelations.relation_constant.name,
-                        x.impacted_column_name)
-                    response = self.wrap_example_prompt(response)
-                    response = '{}{}'.format(x.impacted_column_name, response)
-                elif (not x.relation_constant and x.unresolved_relations
-                        and x.unresolved_relations != '0'):
-                    response += x.get_table_elem()
+            response = self.check_relations(upo, response=response)
         if response:
             pre = 'The following must be filled in prior to running:<br>'
             response = pre + response
@@ -1898,8 +1908,10 @@ class Uploader(db.Model):
                 response = self.get_create_prompt(next_level)
             else:
                 response = 'All objects uploaded/uploading!'
-            run_resp = self.run(cur_type.capitalize(), cur_level.capitalize())
-            response = '{} {}'.format(response, run_resp)
+            if with_run:
+                run_resp = self.run(cur_type.capitalize(),
+                                    cur_level.capitalize())
+                response = '{} {}'.format(response, run_resp)
         return response
 
     def run(self, uploader_type, object_level):

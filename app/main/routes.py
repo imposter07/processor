@@ -1000,7 +1000,7 @@ def get_table_arguments():
             table_name = table_name + '-' + request.form['fix_id']
     if vk != 'None':
         proc_arg['vk'] = request.form['vendorkey']
-        if not table_name in ['toplineMetrics']:
+        if table_name not in ['toplineMetrics']:
             table_name = '{}vendorkey{}'.format(
                 table_name, request.form['vendorkey'].replace(' ', '___'))
     return table_name, cur_proc, proc_arg, job_name

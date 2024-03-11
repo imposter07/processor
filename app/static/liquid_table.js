@@ -397,7 +397,7 @@ function buttonColOnClick(tableName, colName, loopIndex) {
 }
 
 function goToUrlFromLink(data, kwargs) {
-    window.location.href =  data['url'];
+    window.open(data['url']);
 }
 
 function getLink(objectName, viewFunction) {

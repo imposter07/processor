@@ -3036,7 +3036,7 @@ def processor_dashboard_all(object_name):
             include_in_report=dash.include_in_report)
         dash_form.name.data = dash.name
         dash_form.chart_type.data = dash.chart_type
-        dash_form.dimensions.data = dash.get_dimensions()[0]
+        dash_form.dimensions.data = dash.get_dimensions()
         dash_form.metrics.data = dash.get_metrics()
         dash_form.default_view = dash.default_view
         dash_form.tab = dash.tab
@@ -3073,7 +3073,7 @@ def processor_dashboard_view(object_name, dashboard_id):
             static_filter.filter_col.data = selected_choices[0]
         dash_form.name.data = dash.name
         dash_form.chart_type.data = dash.chart_type
-        dash_form.dimensions.data = dash.get_dimensions()[0]
+        dash_form.dimensions.data = dash.get_dimensions()
         dash_form.metrics.data = dash.get_metrics()
         dash.add_form(dash_form)
     for dash in dashboard:

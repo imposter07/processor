@@ -691,7 +691,7 @@ class ProcessorDashboardForm(FlaskForm):
     chart_type = SelectField(
         'Chart Type',
         choices=[(x, x) for x in ['Bar', 'Area', 'Line', 'Lollipop']])
-    dimensions = SelectField(
+    dimensions = SelectMultipleField(
         'Dimensions', choices=[(x, x) for x in exp.ScriptBuilder().dimensions])
     metrics = SelectMultipleField(
         'Metrics', choices=[(x, x) for x in exp.ScriptBuilder().metrics])

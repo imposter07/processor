@@ -312,22 +312,26 @@
                 'selected': 'true'
             })
         });
-        buildReportCharts(charts)
+        if (charts.length !== 0) {
+            buildReportCharts(charts)
+        }
     }
 
     function getDefaultCharts() {
-        return [{'key': 'dailyMetrics', 'name': 'dailyMetrics', 'selected': 'true'},
-            {'key': 'deliveryMetrics', 'name': 'deliveryMetrics', 'selected': 'true'},
-            {'key': 'partnerBarMetrics', 'name': 'partnerBarMetrics', 'selected': 'true'},
-            {'key': 'partnerSummaryMetrics','name': 'partnerSummaryMetrics', 'selected': 'true'},
-            {'key': 'partnerTreeMetrics', 'name': 'partnerTreeMetrics', 'selected': 'true'},
-            {'key': 'pacingMetrics', 'name': 'pacingMetrics', 'selected': 'true'},
-            {'key': 'countryBarMetrics', 'name': 'countryBarMetrics', 'selected': 'true'},
-            {'key': 'countrySummaryMetrics', 'name': 'countrySummaryMetrics', 'selected': 'true'},
-            {'key': 'targetingSummaryMetrics', 'name': 'targetingSummaryMetrics', 'selected': 'true'},
-            {'key': 'placementBarMetrics', 'name': 'placementBarMetrics', 'selected': 'true'},
-            {'key': 'placementSummaryMetrics', 'name': 'placementSummaryMetrics', 'selected': 'true'},
-            {'key': 'creativeSummaryMetrics', 'name': 'creativeSummaryMetrics', 'selected': 'true'}];
+        let charts = ['dailyMetrics', 'deliveryMetrics', 'partnerBarMetrics',
+            'partnerSummaryMetrics', 'partnerTreeMetrics', 'pacingMetrics',
+            'countryBarMetrics', 'countrySummaryMetrics',
+            'targetingSummaryMetrics', 'placementBarMetrics',
+            'placementSummaryMetrics', 'creativeSummaryMetrics'];
+        let chart_args = [];
+        charts.forEach(chart => {
+            chart_args.push({
+                'key': chart,
+                'name': chart,
+                'selected': 'true'
+            });
+        });
+        return chart_args
     }
 
     function buildReportCharts(reportCharts) {

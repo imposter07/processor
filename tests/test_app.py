@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
     Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
-    PartnerPlacements, PlanRule, ProcessorReports, Account
+    PartnerPlacements, PlanRule, ProcessorReports, Account, Dashboard
 import app.plan.routes as plan_routes
 import app.main.routes as main_routes
 from config import basedir
@@ -888,7 +888,6 @@ class TestReportingDBReadWrite:
         new_processor.launch_task(task, msg, user.id)
         worker.work(burst=True)
 
-
     def test_postgres_setup(self, reporting_db):
         """Check main postgresql fixture."""
         with reporting_db.connect() as connection:
@@ -989,7 +988,8 @@ class TestReportingDBReadWrite:
         sw.wait_for_elem_load(add_dash_id)
         sw.xpath_from_id_and_click(add_dash_id,
                                    load_elem_id='chart_type-selectized')
-        dash_form_fill = [('Test', 'name'),
+        dash_name = 'Test'
+        dash_form_fill = [(dash_name, 'name'),
                           ('Lollipop', 'chart_type-selectized', 'clear'),
                           ('environmentname', 'dimensions-selectized', 'clear'),
                           ('impressions', 'metrics-selectized'),
@@ -1001,13 +1001,18 @@ class TestReportingDBReadWrite:
         sw.xpath_from_id_and_click(save_id)
         sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
         worker.work(burst=True)
-        sw.wait_for_elem_load("getAllCharts")
-        sw.xpath_from_id_and_click('getAllCharts')
-        sw.browser.execute_script("window.scrollTo(0, 1080)")
+        dash = Dashboard.query.filter_by(name=dash_name).all()
+        assert dash
+        custom_charts ='customChartsTopline'
+        sw.wait_for_elem_load(custom_charts)
+        chart = sw.browser.find_element_by_id(custom_charts)
+        sw.scroll_to_elem(chart)
+        dash_1 = 'dash1Metrics'
+        sw.wait_for_elem_load(dash_1)
         worker.work(burst=True)
         show_chart_id = "showChartBtndash1Metrics"
-        sw.wait_for_elem_load(show_chart_id, visible=True)
-        assert sw.browser.find_element_by_id("dash1Metrics")
+        sw.wait_for_elem_load(show_chart_id)
+        assert sw.browser.find_element_by_id(dash_1)
         assert sw.browser.find_element_by_id(show_chart_id)
         metric_selectize_path = (
             "//*[@id=\"dash1MetricsChartPlaceholderSelect\"]/option")
@@ -1015,6 +1020,9 @@ class TestReportingDBReadWrite:
         metric_selectize = sw.browser.find_element_by_xpath(
             metric_selectize_path)
         assert metric_selectize.get_attribute('value') == 'Impressions'
+        sw.xpath_from_id_and_click('dash1Delete')
+        dash = Dashboard.query.filter_by(name=dash_name).all()
+        assert not dash
 
     def test_partner_charts(self, set_up, user, login, sw, worker,
                             export_test_data):
@@ -1056,33 +1064,38 @@ class TestReportingDBReadWrite:
         sw.wait_for_elem_load(show_chart)
         assert sw.browser.find_element_by_id(show_chart)
 
-    @pytest.fixture(scope="class")
-    def request_dashboard(self, sw, worker):
+    def request_dashboard(self, sw, worker, name, chart='Area',
+                          metrics='clicks', default_view='Table',
+                          include_in_report=False):
         req_dash_url = '/dashboard/create'
         ffxiv_proc_url = '{}/processor/{}/{}'.format(
             base_url, urllib.parse.quote(self.test_proc_name), req_dash_url)
         sw.go_to_url(ffxiv_proc_url)
-        dash_form_fill = [(self.dash, 'name'),
-                          ('Area', 'chart_type-selectized', 'clear'),
-                          ('clicks', 'metrics-selectized'),
-                          ('Table', 'default_view-selectized', 'clear')]
+        dash_form_fill = [(name, 'name'),
+                          (chart, 'chart_type-selectized', 'clear'),
+                          (metrics, 'metrics-selectized'),
+                          (default_view, 'default_view-selectized', 'clear')]
+        if include_in_report:
+            dash_form_fill.append(('check', 'include_in_report'))
         sw.send_keys_from_list(dash_form_fill)
         sw.xpath_from_id_and_click('loadContinue')
         sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
         worker.work(burst=True)
 
-    def search_for_dash(self, sw):
+    def search_for_dash(self, sw, name):
         all_dash_url = '/dashboard/all'
         ffxiv_proc_url = '{}/processor/{}/{}'.format(
             base_url, urllib.parse.quote(self.test_proc_name), all_dash_url)
         sw.go_to_url(ffxiv_proc_url, sleep=.5)
         sw.wait_for_elem_load("[data-name='{}']", selector=sw.select_css)
         return sw.browser.find_elements_by_css_selector(
-            "[data-name='{}']".format(self.dash))
+            "[data-name='{}']".format(name))
 
     def test_request_dashboard(self, set_up, user, login, sw, worker,
-                               export_test_data, request_dashboard):
-        new_charts = self.search_for_dash(sw)
+                               export_test_data):
+        dash_name = 'requestTest'
+        self.request_dashboard(sw, worker, dash_name)
+        new_charts = self.search_for_dash(sw, dash_name)
         assert new_charts
         new_chart = new_charts[0]
         chart_id = new_chart.get_attribute("id").replace('card', '')
@@ -1102,36 +1115,60 @@ class TestReportingDBReadWrite:
             metric_selectize_path)
         assert metric_selectize.get_attribute('value') == 'Clicks'
 
-    def test_delete_dashboard(self, set_up, user, login, sw, worker,
-                              request_dashboard):
-        new_chart = self.search_for_dash(sw)[0]
+    def test_delete_dashboard(self, set_up, user, login, sw, worker):
+        dash_name = 'deleteTest'
+        self.request_dashboard(sw, worker, 'deleteTest')
+        new_chart = self.search_for_dash(sw, dash_name)[0]
         chart_id = new_chart.get_attribute("id").replace('card', '')
         sw.xpath_from_id_and_click('{}Delete'.format(chart_id))
-        new_chart = self.search_for_dash(sw)
+        new_chart = self.search_for_dash(sw, dash_name)
         assert not new_chart
 
     def test_report_builder(self, set_up, user, login, sw, worker,
                             update_report_in_db):
+        custom_dash_name ='report_build_test'
+        self.request_dashboard(sw, worker, custom_dash_name,
+                               include_in_report=True)
         report_url = '{}/processor/{}/edit/report_builder'.format(
             base_url, urllib.parse.quote(self.test_proc_name))
         sw.go_to_url(report_url, elem_id='reportBuilder')
+        sw.wait_for_elem_load('reportBuilder')
         worker.work(burst=True)
+        topline = sw.browser.find_element_by_id('headertopline_metrics')
+        assert topline
+        sw.click_on_xpath(
+            '//*[@id="headertopline_metrics"]//input[@type="checkbox"]')
+        selected = topline.get_attribute('data-selected')
+        assert selected == 'false'
+        header1_id = 'headerdelivery,delivery_completion'
+        header2_id = 'headerkpi_col'
+        header1 = sw.browser.find_element_by_xpath(
+            '//*[@id="{}"]//i'.format(header1_id))
+        header2 = sw.browser.find_element_by_xpath(
+            '//*[@id="{}"]//i'.format(header2_id))
+        sw.drag_and_drop(header1, header2)
+        assert sw.get_element_order(header2_id, header1_id)
         chart_bullet_id = 'dailymetricsbullet'
         chart_bullet = sw.browser.find_element_by_id(chart_bullet_id)
         sw.scroll_to_elem(chart_bullet)
-        sw.wait_for_elem_load('loadingBtndailyMetricsProgress', visible=True)
-        topline = sw.browser.find_element_by_id('headertopline_metrics')
-        assert topline
-        topline_checkbox = topline.find_element_by_xpath(
-            './/input[@type="checkbox"]')
-        topline_checkbox.click()
-        selected = topline.get_attribute('data-selected')
-        assert selected == 'false'
+        sw.wait_for_elem_load('loadingBtn{}Progress'.format(
+            chart_bullet_id), visible=True)
         worker.work(burst=True)
         daily_chart_id = 'dailyMetricsChartCol'
         sw.wait_for_elem_load(daily_chart_id, visible=True)
         daily_chart = sw.browser.find_element_by_id(daily_chart_id)
         assert daily_chart
+        custom_dash = Dashboard.query.filter_by(name=custom_dash_name).first()
+        custom_dash_id = 'dash{}Metrics'.format(custom_dash.id)
+        end_of_page = sw.browser.find_element_by_id('rowOne')
+        sw.scroll_to_elem(end_of_page)
+        sw.wait_for_elem_load('loadingBtn{}Progress'.format(
+            custom_dash_id), visible=True)
+        worker.work(burst=True)
+        custom_chart_id = '{}ChartCol'.format(custom_dash_id)
+        sw.wait_for_elem_load(custom_chart_id)
+        custom_chart = sw.browser.find_element_by_id(custom_chart_id)
+        assert custom_chart
 
     def test_save_report(self, set_up, user, login, sw, worker,
                          update_report_in_db):

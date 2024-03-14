@@ -85,9 +85,20 @@ def serialize_arg(arg):
         return json.dumps({'Non-serializable argument': 'TypeError'})
 
 
+def uploader_run_error(args):
+    uploader_id = args[0]
+    current_user_id = args[1]
+    cur_up = db.session.get(Uploader, uploader_id)
+    cur_user = db.session.get(User, current_user_id)
+    obj = Uploader.__name__
+    msg_text = ("{} run failed.".format(cur_up.name))
+    app_utl.object_post_message(cur_up, cur_user, msg_text, object_name=obj)
+
+
 def error_handler(route_function):
     @wraps(route_function)
     def decorated_function(*args, **kwargs):
+        cur_path = adjust_path(os.path.abspath(os.getcwd()))
         try:
             start = time.time()
             _set_task_progress(50)
@@ -99,12 +110,16 @@ def error_handler(route_function):
             total_time = end - start
             _set_task_progress(100, total_time=total_time,
                                route_function=route_function)
+            os.chdir(cur_path)
             return result
         except:
             args = json.dumps([serialize_arg(arg) for arg in args])
             msg = 'Unhandled exception {}'.format(json.dumps(args))
             _set_task_progress(100, route_function=route_function)
             app.logger.error(msg, exc_info=sys.exc_info())
+            os.chdir(cur_path)
+            if 'run_uploader' in str(route_function):
+                uploader_run_error(args)
             return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
     return decorated_function
@@ -1275,35 +1290,29 @@ def write_rate_card(processor_id, current_user_id, new_data, vk):
                 processor_id, current_user_id, vk), exc_info=sys.exc_info())
 
 
+@error_handler
 def create_uploader(uploader_id, current_user_id, base_path):
-    try:
-        new_uploader = db.session.get(Uploader, uploader_id)
-        user_create = db.session.get(User, current_user_id)
-        cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        old_path = adjust_path(base_path)
-        new_path = adjust_path(new_uploader.local_path)
-        if not os.path.exists(new_path):
-            os.makedirs(new_path)
-        copy_tree_no_overwrite(old_path, new_path)
-        msg_text = "Uploader was created."
-        app_utl.object_post_message(new_uploader, user_create, msg_text,
-                                    object_name='Uploader')
-        set_uploader_config_files(uploader_id, current_user_id)
-        os.chdir(cur_path)
-        save_task = '.{}'.format(save_media_plan.__name__)
-        for x in range(10):
-            if new_uploader.get_task_in_progress(save_task):
-                time.sleep(1)
-            else:
-                uploader_add_plan_costs(uploader_id, current_user_id)
-                break
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
-        return False
+    new_uploader = db.session.get(Uploader, uploader_id)
+    user_create = db.session.get(User, current_user_id)
+    cur_path = adjust_path(os.path.abspath(os.getcwd()))
+    old_path = adjust_path(base_path)
+    new_path = adjust_path(new_uploader.local_path)
+    if not os.path.exists(new_path):
+        os.makedirs(new_path)
+    copy_tree_no_overwrite(old_path, new_path)
+    msg_text = "Uploader was created."
+    app_utl.object_post_message(new_uploader, user_create, msg_text,
+                                object_name='Uploader')
+    set_uploader_config_files(uploader_id, current_user_id)
+    os.chdir(cur_path)
+    save_task = '.{}'.format(save_media_plan.__name__)
+    for x in range(10):
+        if new_uploader.get_task_in_progress(save_task):
+            time.sleep(1)
+        else:
+            uploader_add_plan_costs(uploader_id, current_user_id)
+            break
+    return True
 
 
 def get_uploader_and_user_from_id(uploader_id, current_user_id):
@@ -1312,74 +1321,57 @@ def get_uploader_and_user_from_id(uploader_id, current_user_id):
     return uploader_to_run, user_that_ran
 
 
+@error_handler
 def parse_uploader_error_dict(uploader_id, current_user_id, error_dict):
-    try:
-        if not error_dict:
-            return True
-        uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
-            uploader_id=uploader_id, current_user_id=current_user_id)
-        for key in error_dict:
-            if key == 'fb/campaign_upload.xlsx':
-                upo = UploaderObjects.query.filter_by(
-                    uploader_id=uploader_to_run.id,
-                    uploader_type='Facebook',
-                    object_level='Campaign').first()
-            elif key == 'fb/adset_upload.xlsx':
-                upo = UploaderObjects.query.filter_by(
-                    uploader_id=uploader_to_run.id,
-                    uploader_type='Facebook',
-                    object_level='Adset').first()
-            elif key == 'fb/ad_upload.xlsx':
-                upo = UploaderObjects.query.filter_by(
-                    uploader_id=uploader_to_run.id,
-                    uploader_type='Facebook',
-                    object_level='Ad').first()
-            else:
-                continue
-            for rel_col_name in error_dict[key]:
-                relation = UploaderRelations.query.filter_by(
-                    uploader_objects_id=upo.id,
-                    impacted_column_name=rel_col_name).first()
-
-                relation.unresolved_relations = error_dict[key][rel_col_name]
-                db.session.commit()
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
-        return False
-
-
-def run_uploader(uploader_id, current_user_id, run_args):
-    try:
-        uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
-            uploader_id=uploader_id, current_user_id=current_user_id)
-        post_body = ('Running {} for uploader: {}...'.format(
-            run_args, uploader_to_run.name))
-        app_utl.object_post_message(uploader_to_run, user_that_ran, post_body,
-                                    object_name='Uploader')
-        _set_task_progress(0)
-        file_path = adjust_path(uploader_to_run.local_path)
-        from uploader.main import main
-        os.chdir(file_path)
-        error_dict = main(run_args)
-        parse_uploader_error_dict(uploader_id, current_user_id, error_dict)
-        msg_text = ("{} finished running.".format(uploader_to_run.name))
-        app_utl.object_post_message(proc=uploader_to_run, usr=user_that_ran,
-                                    text=msg_text, run_complete=True,
-                                    object_name='Uploader')
-        _set_task_progress(100)
+    if not error_dict:
         return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
-        uploader_to_run = Uploader.query.get(uploader_id)
-        user_that_ran = User.query.get(current_user_id)
-        msg_text = ("{} run failed.".format(uploader_to_run.name))
-        app_utl.object_post_message(uploader_to_run, user_that_ran, msg_text,
-                                    object_name='Uploader')
-        return False
+    uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
+        uploader_id=uploader_id, current_user_id=current_user_id)
+    for key in error_dict:
+        if key == 'fb/campaign_upload.xlsx':
+            upo = UploaderObjects.query.filter_by(
+                uploader_id=uploader_to_run.id,
+                uploader_type='Facebook',
+                object_level='Campaign').first()
+        elif key == 'fb/adset_upload.xlsx':
+            upo = UploaderObjects.query.filter_by(
+                uploader_id=uploader_to_run.id,
+                uploader_type='Facebook',
+                object_level='Adset').first()
+        elif key == 'fb/ad_upload.xlsx':
+            upo = UploaderObjects.query.filter_by(
+                uploader_id=uploader_to_run.id,
+                uploader_type='Facebook',
+                object_level='Ad').first()
+        else:
+            continue
+        for rel_col_name in error_dict[key]:
+            relation = UploaderRelations.query.filter_by(
+                uploader_objects_id=upo.id,
+                impacted_column_name=rel_col_name).first()
+
+            relation.unresolved_relations = error_dict[key][rel_col_name]
+            db.session.commit()
+
+
+@error_handler
+def run_uploader(uploader_id, current_user_id, run_args):
+    uploader_to_run, user_that_ran = get_uploader_and_user_from_id(
+        uploader_id=uploader_id, current_user_id=current_user_id)
+    post_body = ('Running {} for uploader: {}...'.format(
+        run_args, uploader_to_run.name))
+    app_utl.object_post_message(uploader_to_run, user_that_ran, post_body,
+                                object_name='Uploader')
+    file_path = adjust_path(uploader_to_run.local_path)
+    from uploader.main import main
+    os.chdir(file_path)
+    error_dict = main(run_args)
+    parse_uploader_error_dict(uploader_id, current_user_id, error_dict)
+    msg_text = ("{} finished running.".format(uploader_to_run.name))
+    app_utl.object_post_message(proc=uploader_to_run, usr=user_that_ran,
+                                text=msg_text, run_complete=True,
+                                object_name='Uploader')
+    return True
 
 
 def uploader_file_translation(uploader_file_name, object_level='Campaign',
@@ -1562,156 +1554,135 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
     return [df]
 
 
+@error_handler
 def set_uploader_config_files(uploader_id, current_user_id):
-    try:
-        import uploader.upload.fbapi as fbapi
-        import uploader.upload.awapi as awapi
-        import uploader.upload.dcapi as dcapi
-        new_uploader = db.session.get(Uploader, uploader_id)
-        config_dicts = [
-            {'id_val': new_uploader.fb_account_id,
-             'config_file_path': fbapi.config_path,
-             'file_name': 'fbconfig.json', 'file_type': json,
-             'file_key': 'act_id', 'id_prefix': 'act_'},
-            {'id_val': new_uploader.aw_account_id,
-             'config_file_path': awapi.config_path,
-             'file_name': 'awconfig.yaml', 'file_type': yaml,
-             'file_key': 'client_customer_id', 'id_prefix': None,
-             'nested_key': 'adwords'},
-            {'id_val': new_uploader.dcm_account_id,
-             'config_file_path': dcapi.config_path,
-             'file_name': 'dcapi.json', 'file_type': json,
-             'file_key': 'act_id', 'id_prefix': None}, ]
-        for config_dict in config_dicts:
-            if config_dict['id_val']:
-                set_uploader_config_file(uploader_id, current_user_id,
-                                         **config_dict)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
-        return False
+    import uploader.upload.fbapi as fbapi
+    import uploader.upload.awapi as awapi
+    import uploader.upload.dcapi as dcapi
+    new_uploader = db.session.get(Uploader, uploader_id)
+    config_dicts = [
+        {'id_val': new_uploader.fb_account_id,
+         'config_file_path': fbapi.config_path,
+         'file_name': 'fbconfig.json', 'file_type': json,
+         'file_key': 'act_id', 'id_prefix': 'act_'},
+        {'id_val': new_uploader.aw_account_id,
+         'config_file_path': awapi.config_path,
+         'file_name': 'awconfig.yaml', 'file_type': yaml,
+         'file_key': 'client_customer_id', 'id_prefix': None,
+         'nested_key': 'adwords'},
+        {'id_val': new_uploader.dcm_account_id,
+         'config_file_path': dcapi.config_path,
+         'file_name': 'dcapi.json', 'file_type': json,
+         'file_key': 'act_id', 'id_prefix': None}, ]
+    for config_dict in config_dicts:
+        if config_dict['id_val']:
+            set_uploader_config_file(uploader_id, current_user_id,
+                                     **config_dict)
+    return True
 
 
+@error_handler
 def set_uploader_config_file(uploader_id, current_user_id, id_val=None,
                              config_file_path=None, file_name=None,
                              file_type=None, file_key=None,
                              id_prefix=None, nested_key=None):
-    try:
-        cur_up, user_that_ran = get_uploader_and_user_from_id(
-            uploader_id=uploader_id, current_user_id=current_user_id)
-        _set_task_progress(0)
-        file_path = adjust_path(cur_up.local_path)
-        os.chdir(file_path)
-        with open(os.path.join(config_file_path, file_name), 'r') as f:
-            config_file = file_type.load(f)
-        if id_prefix:
-            new_account_id_value = id_prefix + id_val
-        else:
-            new_account_id_value = id_val
-        if nested_key:
-            config_file[nested_key][file_key] = new_account_id_value
-        else:
-            config_file[file_key] = new_account_id_value
-        with open(os.path.join(config_file_path, file_name), 'w') as f:
-            file_type.dump(config_file, f)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
-        return False
+    cur_up, user_that_ran = get_uploader_and_user_from_id(
+        uploader_id=uploader_id, current_user_id=current_user_id)
+    _set_task_progress(0)
+    file_path = adjust_path(cur_up.local_path)
+    os.chdir(file_path)
+    with open(os.path.join(config_file_path, file_name), 'r') as f:
+        config_file = file_type.load(f)
+    if id_prefix:
+        new_account_id_value = id_prefix + id_val
+    else:
+        new_account_id_value = id_val
+    if nested_key:
+        config_file[nested_key][file_key] = new_account_id_value
+    else:
+        config_file[file_key] = new_account_id_value
+    with open(os.path.join(config_file_path, file_name), 'w') as f:
+        file_type.dump(config_file, f)
+    return True
 
 
+@error_handler
 def write_uploader_file(uploader_id, current_user_id, new_data, parameter=None,
                         vk=None, mem_file=False, object_level='Campaign',
                         uploader_type='Facebook'):
-    try:
-        cur_up, user_that_ran = get_uploader_and_user_from_id(
-            uploader_id=uploader_id, current_user_id=current_user_id)
-        _set_task_progress(0)
-        cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        os.chdir(adjust_path(cur_up.local_path))
-        file_name = uploader_file_translation(
-            uploader_file_name=parameter, object_level=object_level,
-            uploader_type=uploader_type)
-        if mem_file:
-            new_data.seek(0)
-            with open(file_name, 'wb') as f:
-                shutil.copyfileobj(new_data, f, length=131072)
-        else:
-            df = pd.read_json(new_data)
-            if 'index' in df.columns:
-                df = df.drop('index', axis=1)
-            df = df.replace('NaN', '')
-            if vk:
-                odf = pd.read_excel(file_name)
-                odf = odf.loc[odf['impacted_column_name'] != vk]
-                df = pd.concat([df, odf], ignore_index=True, sort=False)
-            u_utl.write_df(df, file_name)
-        msg_text = ('{} uploader {} was updated.'
-                    ''.format(file_name, cur_up.name))
-        app_utl.object_post_message(cur_up, user_that_ran, msg_text,
-                                    object_name='Uploader')
-        os.chdir(cur_path)
-        uploader_create_objects(
-            uploader_id, current_user_id, object_level, uploader_type)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
+    cur_up, user_that_ran = get_uploader_and_user_from_id(
+        uploader_id=uploader_id, current_user_id=current_user_id)
+    _set_task_progress(0)
+    cur_path = adjust_path(os.path.abspath(os.getcwd()))
+    os.chdir(adjust_path(cur_up.local_path))
+    file_name = uploader_file_translation(
+        uploader_file_name=parameter, object_level=object_level,
+        uploader_type=uploader_type)
+    if mem_file:
+        new_data.seek(0)
+        with open(file_name, 'wb') as f:
+            shutil.copyfileobj(new_data, f, length=131072)
+    else:
+        df = pd.read_json(new_data)
+        if 'index' in df.columns:
+            df = df.drop('index', axis=1)
+        df = df.replace('NaN', '')
+        if vk:
+            odf = pd.read_excel(file_name)
+            odf = odf.loc[odf['impacted_column_name'] != vk]
+            df = pd.concat([df, odf], ignore_index=True, sort=False)
+        u_utl.write_df(df, file_name)
+    msg_text = ('{} uploader {} was updated.'
+                ''.format(file_name, cur_up.name))
+    app_utl.object_post_message(cur_up, user_that_ran, msg_text,
+                                object_name='Uploader')
+    os.chdir(cur_path)
+    uploader_create_objects(
+        uploader_id, current_user_id, object_level, uploader_type)
 
 
+@error_handler
 def set_object_relation_file(uploader_id, current_user_id,
                              object_level='Campaign', uploader_type='Facebook'):
-    try:
-        cur_up, user_that_ran = get_uploader_and_user_from_id(
-            uploader_id=uploader_id, current_user_id=current_user_id)
-        up_cam = UploaderObjects.query.filter_by(
-            uploader_id=cur_up.id, object_level=object_level,
-            uploader_type=uploader_type).first()
-        up_rel = UploaderRelations.query.filter_by(
-            uploader_objects_id=up_cam.id).all()
-        os.chdir(adjust_path(cur_up.local_path))
-        file_name = uploader_file_translation(
-            'uploader_full_relation', object_level=object_level,
-            uploader_type=uploader_type)
-        df = pd.read_excel(file_name)
-        for rel in up_rel:
-            if rel.relation_constant:
+    cur_up, user_that_ran = get_uploader_and_user_from_id(
+        uploader_id=uploader_id, current_user_id=current_user_id)
+    up_cam = UploaderObjects.query.filter_by(
+        uploader_id=cur_up.id, object_level=object_level,
+        uploader_type=uploader_type).first()
+    up_rel = UploaderRelations.query.filter_by(
+        uploader_objects_id=up_cam.id).all()
+    os.chdir(adjust_path(cur_up.local_path))
+    file_name = uploader_file_translation(
+        'uploader_full_relation', object_level=object_level,
+        uploader_type=uploader_type)
+    df = pd.read_excel(file_name)
+    for rel in up_rel:
+        if rel.relation_constant:
+            df = df.loc[df['impacted_column_name'] !=
+                        rel.impacted_column_name]
+            ndf = pd.DataFrame(
+                {'impacted_column_name': [rel.impacted_column_name],
+                 'impacted_column_new_value': [rel.relation_constant],
+                 'position': ['Constant']})
+            df = pd.concat([df, ndf], ignore_index=True, sort=False)
+        else:
+            ndf = df[df['impacted_column_name'] == rel.impacted_column_name]
+            ndf = ndf.reset_index(drop=True)
+            pos_list = rel.convert_string_to_list(rel.position)
+            if not pos_list:
+                pos = ''
+            else:
+                pos = '|'.join(pos_list)
+            if (len(ndf['position']) > 0 and pos != ndf['position'][0] and
+                    pos):
+                ndf['position'] = pos
+                col_name = ndf['column_name'][0].split('|')[0]
+                cols = '|'.join([col_name for _ in pos_list])
+                ndf['column_name'] = cols
                 df = df.loc[df['impacted_column_name'] !=
                             rel.impacted_column_name]
-                ndf = pd.DataFrame(
-                    {'impacted_column_name': [rel.impacted_column_name],
-                     'impacted_column_new_value': [rel.relation_constant],
-                     'position': ['Constant']})
                 df = pd.concat([df, ndf], ignore_index=True, sort=False)
-            else:
-                ndf = df[df['impacted_column_name'] == rel.impacted_column_name]
-                ndf = ndf.reset_index(drop=True)
-                pos_list = rel.convert_string_to_list(rel.position)
-                if not pos_list:
-                    pos = ''
-                else:
-                    pos = '|'.join(pos_list)
-                if (len(ndf['position']) > 0 and pos != ndf['position'][0] and
-                        pos):
-                    ndf['position'] = pos
-                    col_name = ndf['column_name'][0].split('|')[0]
-                    cols = '|'.join([col_name for _ in pos_list])
-                    ndf['column_name'] = cols
-                    df = df.loc[df['impacted_column_name'] !=
-                                rel.impacted_column_name]
-                    df = pd.concat([df, ndf], ignore_index=True, sort=False)
-        u_utl.write_df(df, file_name)
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
+    u_utl.write_df(df, file_name)
 
 
 def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
@@ -1858,115 +1829,93 @@ def get_uploader_create_dict(object_level='Campaign', create_type='Media Plan',
     return new_dict
 
 
+@error_handler
 def uploader_create_objects(uploader_id, current_user_id,
                             object_level='Campaign', uploader_type='Facebook'):
-    try:
-        cur_up, user_that_ran = get_uploader_and_user_from_id(
-            uploader_id=uploader_id, current_user_id=current_user_id)
-        up_obj = UploaderObjects.query.filter_by(
-            uploader_id=cur_up.id, object_level=object_level,
-            uploader_type=uploader_type).first()
-        _set_task_progress(0)
-        cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        creator_col = UploaderObjects.string_to_list(up_obj.media_plan_columns)
-        creator_column = '|'.join(creator_col)
-        file_filter = 'Partner Name::{}'.format(up_obj.partner_filter)
-        new_dict = get_uploader_create_dict(
-            object_level=object_level, create_type=up_obj.name_create_type,
-            creator_column=creator_column, file_filter=file_filter,
-            duplication_type=up_obj.duplication_type,
-            uploader_type=uploader_type)
-        df = pd.DataFrame(new_dict)
-        os.chdir(adjust_path(cur_up.local_path))
-        file_name = uploader_file_translation('Creator')
-        u_utl.write_df(df, file_name)
-        os.chdir(cur_path)
-        set_object_relation_file(uploader_id, current_user_id,
-                                 object_level=object_level,
-                                 uploader_type=uploader_type)
-        os.chdir(cur_path)
-        run_uploader(uploader_id, current_user_id, run_args='--create')
-        msg_text = ('{} uploader {} creation file was updated.'
-                    ''.format(cur_up.name, object_level))
-        app_utl.object_post_message(cur_up, user_that_ran, msg_text,
-                                    object_name='Uploader')
-        os.chdir(cur_path)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Uploader {} User {} Object Level {}'.format(
-                uploader_id, current_user_id, object_level),
-            exc_info=sys.exc_info())
+    cur_up, user_that_ran = get_uploader_and_user_from_id(
+        uploader_id=uploader_id, current_user_id=current_user_id)
+    up_obj = UploaderObjects.query.filter_by(
+        uploader_id=cur_up.id, object_level=object_level,
+        uploader_type=uploader_type).first()
+    _set_task_progress(0)
+    cur_path = adjust_path(os.path.abspath(os.getcwd()))
+    creator_col = UploaderObjects.string_to_list(up_obj.media_plan_columns)
+    creator_column = '|'.join(creator_col)
+    file_filter = 'Partner Name::{}'.format(up_obj.partner_filter)
+    new_dict = get_uploader_create_dict(
+        object_level=object_level, create_type=up_obj.name_create_type,
+        creator_column=creator_column, file_filter=file_filter,
+        duplication_type=up_obj.duplication_type,
+        uploader_type=uploader_type)
+    df = pd.DataFrame(new_dict)
+    os.chdir(adjust_path(cur_up.local_path))
+    file_name = uploader_file_translation('Creator')
+    u_utl.write_df(df, file_name)
+    os.chdir(cur_path)
+    set_object_relation_file(uploader_id, current_user_id,
+                             object_level=object_level,
+                             uploader_type=uploader_type)
+    os.chdir(cur_path)
+    run_uploader(uploader_id, current_user_id, run_args='--create')
+    msg_text = ('{} uploader {} creation file was updated.'
+                ''.format(cur_up.name, object_level))
+    app_utl.object_post_message(cur_up, user_that_ran, msg_text,
+                                object_name='Uploader')
+    os.chdir(cur_path)
 
 
+@error_handler
 def uploader_create_and_upload_objects(uploader_id, current_user_id,
                                        object_level='Campaign',
                                        uploader_type='Facebook'):
-    try:
-        cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        set_uploader_config_files(uploader_id, current_user_id)
-        os.chdir(cur_path)
-        uploader_create_objects(uploader_id, current_user_id,
-                                object_level=object_level,
-                                uploader_type=uploader_type)
-        if uploader_type == 'Facebook':
-            uploader_type_arg = 'fb'
-        elif uploader_type == 'Adwords':
-            uploader_type_arg = 'aw'
-        elif uploader_type == 'DCM':
-            uploader_type_arg = 'dcm'
-        else:
-            uploader_type_arg = 'fb'
-        if object_level == 'Campaign':
-            run_args = '--api {} --upload c'.format(uploader_type_arg)
-        elif object_level == 'Adset':
-            run_args = '--api {} --upload as'.format(uploader_type_arg)
-        elif object_level == 'Ad':
-            run_args = '--api {} --upload ad'.format(uploader_type_arg)
-        else:
-            run_args = ''
-        run_uploader(uploader_id, current_user_id, run_args=run_args)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
+    cur_path = adjust_path(os.path.abspath(os.getcwd()))
+    set_uploader_config_files(uploader_id, current_user_id)
+    os.chdir(cur_path)
+    uploader_create_objects(uploader_id, current_user_id,
+                            object_level=object_level,
+                            uploader_type=uploader_type)
+    if uploader_type == 'Facebook':
+        uploader_type_arg = 'fb'
+    elif uploader_type == 'Adwords':
+        uploader_type_arg = 'aw'
+    elif uploader_type == 'DCM':
+        uploader_type_arg = 'dcm'
+    else:
+        uploader_type_arg = 'fb'
+    if object_level == 'Campaign':
+        run_args = '--api {} --upload c'.format(uploader_type_arg)
+    elif object_level == 'Adset':
+        run_args = '--api {} --upload as'.format(uploader_type_arg)
+    elif object_level == 'Ad':
+        run_args = '--api {} --upload ad'.format(uploader_type_arg)
+    else:
+        run_args = ''
+    run_uploader(uploader_id, current_user_id, run_args=run_args)
 
 
+@error_handler
 def uploader_save_creative(uploader_id, current_user_id, file, file_name):
-    try:
-        cur_up, user_that_ran = get_uploader_and_user_from_id(
-            uploader_id=uploader_id, current_user_id=current_user_id)
-        _set_task_progress(0)
-        file_path = adjust_path(cur_up.local_path)
-        os.chdir(file_path)
-        file.seek(0)
-        utl.dir_check('creative')
-        with open(os.path.join('creative', file_name), 'wb') as f:
-            shutil.copyfileobj(file, f, length=131072)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
+    cur_up, user_that_ran = get_uploader_and_user_from_id(
+        uploader_id=uploader_id, current_user_id=current_user_id)
+    file_path = adjust_path(cur_up.local_path)
+    os.chdir(file_path)
+    file.seek(0)
+    utl.dir_check('creative')
+    with open(os.path.join('creative', file_name), 'wb') as f:
+        shutil.copyfileobj(file, f, length=131072)
+    return True
 
 
+@error_handler
 def get_uploader_creative(uploader_id, current_user_id):
-    try:
-        cur_up, user_that_ran = get_uploader_and_user_from_id(
-            uploader_id=uploader_id, current_user_id=current_user_id)
-        _set_task_progress(0)
-        file_path = adjust_path(cur_up.local_path)
-        os.chdir(file_path)
-        file_names = os.listdir(".")
-        df = pd.DataFrame(file_names, columns=['creative_file_names'])
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
+    cur_up, user_that_ran = get_uploader_and_user_from_id(
+        uploader_id=uploader_id, current_user_id=current_user_id)
+    _set_task_progress(0)
+    file_path = adjust_path(cur_up.local_path)
+    os.chdir(file_path)
+    file_names = os.listdir(".")
+    df = pd.DataFrame(file_names, columns=['creative_file_names'])
+    return [df]
 
 
 @error_handler
@@ -2952,106 +2901,92 @@ def uploader_full_placement_creation(upo, mp_df, budget_col):
     return ndf
 
 
+@error_handler
 def uploader_add_plan_costs(uploader_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        u = db.session.get(Uploader, uploader_id)
-        cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        os.chdir(adjust_path(u.local_path))
-        uploader_type = 'Facebook'
-        object_levels = ['Campaign', 'Adset', 'Ad']
-        file_name = 'mediaplan.xlsx'
-        if not os.path.exists(file_name):
-            return False
-        mp_df = utl.import_read_csv(file_name)
-        budget_cols = [PartnerPlacements.total_budget.name, 'Planned Net Cost',
-                       'Net Cost']
-        budget_col = [x for x in budget_cols if x in mp_df.columns]
-        if not budget_col:
-            return True
-        else:
-            budget_col = budget_col[0]
-        for idx, object_level in enumerate(object_levels):
-            os.chdir(adjust_path(u.local_path))
-            upo = UploaderObjects.query.filter_by(
-                uploader_id=u.id, object_level=object_level,
-                uploader_type=uploader_type).first()
-            file_name = uploader_file_translation(
-                'uploader_full_relation', object_level=object_level,
-                uploader_type=uploader_type)
-            df = utl.import_read_csv(file_name)
-            spend_col = get_spend_column(object_level, uploader_type)
-            if spend_col:
-                rel = upo.uploader_relations.filter_by(
-                    impacted_column_name=spend_col).first()
-                ndf = uploader_full_placement_creation(upo, mp_df, budget_col)
-                p_col = get_primary_column(object_level, uploader_type)
-                ndf['column_name'] = p_col
-                ndf['position'] = ''
-                ndf['impacted_column_name'] = rel.impacted_column_name
-                new_cols = {
-                    vmc.fullplacename: 'column_value',
-                    budget_col: 'impacted_column_new_value'}
-                ndf = ndf.rename(columns=new_cols)
-                rel.relation_constant = ''
-                db.session.commit()
-                df = df.loc[df['impacted_column_name'] !=
-                            rel.impacted_column_name]
-                df = pd.concat([df, ndf], ignore_index=True, sort=False)
-                u_utl.write_df(df, file_name)
-            prev_levels = object_levels[:idx]
-            for prev_level in prev_levels:
-                prev_primary = get_primary_column(prev_level)
-                ndf = get_uploader_file(
-                    uploader_id, current_user_id, object_level=object_level,
-                    parameter='edit_relation', uploader_type=uploader_type,
-                    vk=prev_primary)
-                if not ndf or 'Result' in ndf[0].columns:
-                    continue
-                df = df.loc[df['impacted_column_name'] != prev_primary]
-                df = pd.concat([df, ndf[0]], ignore_index=True, sort=False)
-                u_utl.write_df(df, file_name)
-            os.chdir(cur_path)
-            uploader_create_objects(
-                uploader_id, current_user_id, object_level, uploader_type)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Uploader {} User {}'.format(
-            uploader_id, current_user_id), exc_info=sys.exc_info())
+    u = db.session.get(Uploader, uploader_id)
+    cur_path = adjust_path(os.path.abspath(os.getcwd()))
+    os.chdir(adjust_path(u.local_path))
+    uploader_type = 'Facebook'
+    object_levels = ['Campaign', 'Adset', 'Ad']
+    file_name = 'mediaplan.xlsx'
+    if not os.path.exists(file_name):
         return False
+    mp_df = utl.import_read_csv(file_name)
+    budget_cols = [PartnerPlacements.total_budget.name, 'Planned Net Cost',
+                   'Net Cost']
+    budget_col = [x for x in budget_cols if x in mp_df.columns]
+    if not budget_col:
+        return True
+    else:
+        budget_col = budget_col[0]
+    for idx, object_level in enumerate(object_levels):
+        os.chdir(adjust_path(u.local_path))
+        upo = UploaderObjects.query.filter_by(
+            uploader_id=u.id, object_level=object_level,
+            uploader_type=uploader_type).first()
+        file_name = uploader_file_translation(
+            'uploader_full_relation', object_level=object_level,
+            uploader_type=uploader_type)
+        df = utl.import_read_csv(file_name)
+        spend_col = get_spend_column(object_level, uploader_type)
+        if spend_col:
+            rel = upo.uploader_relations.filter_by(
+                impacted_column_name=spend_col).first()
+            ndf = uploader_full_placement_creation(upo, mp_df, budget_col)
+            p_col = get_primary_column(object_level, uploader_type)
+            ndf['column_name'] = p_col
+            ndf['position'] = ''
+            ndf['impacted_column_name'] = rel.impacted_column_name
+            new_cols = {
+                vmc.fullplacename: 'column_value',
+                budget_col: 'impacted_column_new_value'}
+            ndf = ndf.rename(columns=new_cols)
+            rel.relation_constant = ''
+            db.session.commit()
+            df = df.loc[df['impacted_column_name'] != rel.impacted_column_name]
+            df = pd.concat([df, ndf], ignore_index=True, sort=False)
+            u_utl.write_df(df, file_name)
+        prev_levels = object_levels[:idx]
+        for prev_level in prev_levels:
+            prev_primary = get_primary_column(prev_level)
+            ndf = get_uploader_file(
+                uploader_id, current_user_id, object_level=object_level,
+                parameter='edit_relation', uploader_type=uploader_type,
+                vk=prev_primary)
+            if not ndf or 'Result' in ndf[0].columns:
+                continue
+            df = df.loc[df['impacted_column_name'] != prev_primary]
+            df = pd.concat([df, ndf[0]], ignore_index=True, sort=False)
+            u_utl.write_df(df, file_name)
+        os.chdir(cur_path)
+        uploader_create_objects(
+            uploader_id, current_user_id, object_level, uploader_type)
+    return True
 
 
+@error_handler
 def save_media_plan(processor_id, current_user_id, media_plan,
                     object_type=Processor):
-    try:
-        cur_obj = db.session.get(object_type, processor_id)
-        cur_user = db.session.get(User, current_user_id)
-        base_path = app_utl.create_local_path(cur_obj)
-        if not os.path.exists(base_path):
-            os.makedirs(base_path)
-        object_name = object_type.__name__
-        if object_type == Processor:
-            file_name = os.path.join(base_path, 'mediaplan.csv')
-            media_plan.to_csv(file_name)
-        else:
-            file_name = os.path.join(base_path, 'mediaplan.xlsx')
-            u_utl.write_df(df=media_plan, file_name=file_name,
-                           sheet_name='Media Plan')
-            create_task = '.{}'.format(create_uploader.__name__)
-            if not cur_obj.get_task_in_progress(create_task):
-                uploader_add_plan_costs(processor_id, current_user_id)
-        msg_text = ('{} media plan was updated'.format(cur_obj.name))
-        app_utl.object_post_message(cur_obj, cur_user, msg_text,
-                                    object_name=object_name)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+    cur_obj = db.session.get(object_type, processor_id)
+    cur_user = db.session.get(User, current_user_id)
+    base_path = app_utl.create_local_path(cur_obj)
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
+    object_name = object_type.__name__
+    if object_type == Processor:
+        file_name = os.path.join(base_path, 'mediaplan.csv')
+        media_plan.to_csv(file_name)
+    else:
+        file_name = os.path.join(base_path, 'mediaplan.xlsx')
+        u_utl.write_df(df=media_plan, file_name=file_name,
+                       sheet_name='Media Plan')
+        create_task = '.{}'.format(create_uploader.__name__)
+        if not cur_obj.get_task_in_progress(create_task):
+            uploader_add_plan_costs(processor_id, current_user_id)
+    msg_text = ('{} media plan was updated'.format(cur_obj.name))
+    app_utl.object_post_message(cur_obj, cur_user, msg_text,
+                                object_name=object_name)
+    return True
 
 
 def save_spend_cap_file(processor_id, current_user_id, new_data,
@@ -4872,59 +4807,51 @@ def get_all_processors(user_id, running_user):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+@error_handler
 def update_tutorial(user_id, running_user, tutorial_name, new_data,
                     new_data_is_df=False):
-    try:
-        _set_task_progress(0)
-        cur_tutorial = Tutorial.query.filter_by(name=tutorial_name).first()
-        if not cur_tutorial:
-            cur_tutorial = Tutorial(name=tutorial_name)
-            db.session.add(cur_tutorial)
+    cur_tutorial = Tutorial.query.filter_by(name=tutorial_name).first()
+    if not cur_tutorial:
+        cur_tutorial = Tutorial(name=tutorial_name)
+        db.session.add(cur_tutorial)
+        db.session.commit()
+    if new_data_is_df:
+        df = new_data
+    else:
+        new_data.seek(0)
+        df = pd.read_excel(new_data)
+    df = df.fillna('')
+    tut_dict = df.to_dict(orient='index')
+    for tut_stage_id in tut_dict:
+        tut_stage = tut_dict[tut_stage_id]
+        tut_level = int(tut_stage['tutorial_level'])
+        db_stage = TutorialStage.query.filter_by(
+            tutorial_id=cur_tutorial.id, tutorial_level=tut_level).first()
+        if not db_stage:
+            new_stage = TutorialStage(
+                tutorial_id=cur_tutorial.id,
+                tutorial_level=tut_level,
+                header=tut_stage['header'],
+                sub_header=tut_stage['sub_header'],
+                message=tut_stage['message'], alert=tut_stage['alert'],
+                alert_level=tut_stage['alert_level'],
+                image=tut_stage['image'], question=tut_stage['question'],
+                question_answers=tut_stage['question_answers'],
+                correct_answer=tut_stage['correct_answer'])
+            db.session.add(new_stage)
             db.session.commit()
-        if new_data_is_df:
-            df = new_data
         else:
-            new_data.seek(0)
-            df = pd.read_excel(new_data)
-        df = df.fillna('')
-        tut_dict = df.to_dict(orient='index')
-        for tut_stage_id in tut_dict:
-            tut_stage = tut_dict[tut_stage_id]
-            tut_level = int(tut_stage['tutorial_level'])
-            db_stage = TutorialStage.query.filter_by(
-                tutorial_id=cur_tutorial.id, tutorial_level=tut_level).first()
-            if not db_stage:
-                new_stage = TutorialStage(
-                    tutorial_id=cur_tutorial.id,
-                    tutorial_level=tut_level,
-                    header=tut_stage['header'],
-                    sub_header=tut_stage['sub_header'],
-                    message=tut_stage['message'], alert=tut_stage['alert'],
-                    alert_level=tut_stage['alert_level'],
-                    image=tut_stage['image'], question=tut_stage['question'],
-                    question_answers=tut_stage['question_answers'],
-                    correct_answer=tut_stage['correct_answer'])
-                db.session.add(new_stage)
-                db.session.commit()
-            else:
-                db_stage.header = tut_stage['header']
-                db_stage.sub_header = tut_stage['sub_header']
-                db_stage.message = tut_stage['message']
-                db_stage.alert = tut_stage['alert']
-                db_stage.alert_level = tut_stage['alert_level']
-                db_stage.image = tut_stage['image']
-                db_stage.question = tut_stage['question']
-                db_stage.question_answers = tut_stage['question_answers']
-                db_stage.correct_answer = tut_stage['correct_answer']
-                db.session.commit()
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - User {} running_user - {}'.format(
-                user_id, running_user), exc_info=sys.exc_info())
-        return False
+            db_stage.header = tut_stage['header']
+            db_stage.sub_header = tut_stage['sub_header']
+            db_stage.message = tut_stage['message']
+            db_stage.alert = tut_stage['alert']
+            db_stage.alert_level = tut_stage['alert_level']
+            db_stage.image = tut_stage['image']
+            db_stage.question = tut_stage['question']
+            db_stage.question_answers = tut_stage['question_answers']
+            db_stage.correct_answer = tut_stage['correct_answer']
+            db.session.commit()
+    return True
 
 
 def update_walkthrough(user_id, running_user, new_data):
@@ -6063,135 +5990,119 @@ def get_google_doc_for_tutorial(processor_id, current_user_id, sheet_id=None,
     return [df]
 
 
+@error_handler
 def get_post_mortems(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        os.chdir('processor')
-        api = gsapi.GsApi()
-        api.input_config('gsapi_googledoc.json')
-        api.get_client()
-        r = api.client.get(api.drive_url)
-        drive = [x for x in r.json()['drives'] if x['name'] == 'Liquid']
-        drive_id = drive[0]['id']
-        folder_name = 'Post Mortems'
-        q = """
-            mimeType = 'application/vnd.google-apps.folder' and
-            name contains '{}'""".format(folder_name)
-        params = {
-            'q': q, 'driveId': drive_id, 'includeItemsFromAllDrives': True,
-            'corpora': 'drive', 'supportsAllDrives': True}
-        r = api.client.get(api.files_url, params=params)
-        folder_id = [x for x in r.json()['files']
-                     if x['name'] == folder_name][0]['id']
-        params = {
-            'q': """'{}' in parents""".format(folder_id),
-            'driveId': drive_id, 'includeItemsFromAllDrives': True,
-            'corpora': 'drive', 'supportsAllDrives': True}
-        r = api.client.get(api.files_url, params=params)
-        presentations = r.json()['files']
-        for presentation in presentations:
-            presentation_id = presentation['id']
-            app.logger.info('Getting presentation: {}'.format(presentation_id))
-            url = '{}/{}'.format(api.slides_url, presentation_id)
-            r = api.client.get(url)
-            if 'slides' not in r.json():
-                continue
-            slides = r.json()['slides']
-            for slide in slides:
-                elems = slide['pageElements']
-                slide_text = ''
-                slide_header = ''
-                for elem in elems:
-                    if 'shape' in elem and 'text' in elem['shape']:
-                        text_elements = elem['shape']['text']['textElements']
-                        for te in text_elements:
-                            if 'textRun' in te:
-                                text = te['textRun']['content']
-                                if slide_header:
-                                    slide_text += text
-                                else:
-                                    slide_header = text
-                    if 'table' in elem:
-                        table_rows = elem['table']['tableRows']
-                        for table_row in table_rows:
-                            if 'tableCells' not in table_row:
-                                continue
-                            for cell in table_row['tableCells']:
-                                if 'text' in cell:
-                                    text_elements = cell['text']['textElements']
-                                    for te in text_elements:
-                                        if 'textRun' in te:
-                                            text = te['textRun']['content']
-                                            slide_text += text
-                if slide_text:
-                    slide_id = slide['slideProperties']['notesPage']['objectId']
-                    slide_id = slide_id.replace(':notes', '')
-                    base_url = 'https://docs.google.com/presentation/d/'
-                    url = '{}{}/edit#slide=id.{}'.format(
-                        base_url, presentation_id, slide_id)
-                    n = Notes.query.filter_by(link=url).first()
-                    if not n:
-                        n = Notes(note_type=folder_name, link=url, user_id=4,
-                                  note_text=slide_text, header=slide_header)
-                        db.session.add(n)
+    os.chdir('processor')
+    api = gsapi.GsApi()
+    api.input_config('gsapi_googledoc.json')
+    api.get_client()
+    r = api.client.get(api.drive_url)
+    drive = [x for x in r.json()['drives'] if x['name'] == 'Liquid']
+    drive_id = drive[0]['id']
+    folder_name = 'Post Mortems'
+    q = """
+        mimeType = 'application/vnd.google-apps.folder' and
+        name contains '{}'""".format(folder_name)
+    params = {
+        'q': q, 'driveId': drive_id, 'includeItemsFromAllDrives': True,
+        'corpora': 'drive', 'supportsAllDrives': True}
+    r = api.client.get(api.files_url, params=params)
+    folder_id = [x for x in r.json()['files']
+                 if x['name'] == folder_name][0]['id']
+    params = {
+        'q': """'{}' in parents""".format(folder_id),
+        'driveId': drive_id, 'includeItemsFromAllDrives': True,
+        'corpora': 'drive', 'supportsAllDrives': True}
+    r = api.client.get(api.files_url, params=params)
+    presentations = r.json()['files']
+    for presentation in presentations:
+        presentation_id = presentation['id']
+        app.logger.info('Getting presentation: {}'.format(presentation_id))
+        url = '{}/{}'.format(api.slides_url, presentation_id)
+        r = api.client.get(url)
+        if 'slides' not in r.json():
+            continue
+        slides = r.json()['slides']
+        for slide in slides:
+            elems = slide['pageElements']
+            slide_text = ''
+            slide_header = ''
+            for elem in elems:
+                if 'shape' in elem and 'text' in elem['shape']:
+                    text_elements = elem['shape']['text']['textElements']
+                    for te in text_elements:
+                        if 'textRun' in te:
+                            text = te['textRun']['content']
+                            if slide_header:
+                                slide_text += text
+                            else:
+                                slide_header = text
+                if 'table' in elem:
+                    table_rows = elem['table']['tableRows']
+                    for table_row in table_rows:
+                        if 'tableCells' not in table_row:
+                            continue
+                        for cell in table_row['tableCells']:
+                            if 'text' in cell:
+                                text_elements = cell['text']['textElements']
+                                for te in text_elements:
+                                    if 'textRun' in te:
+                                        text = te['textRun']['content']
+                                        slide_text += text
+            if slide_text:
+                slide_id = slide['slideProperties']['notesPage']['objectId']
+                slide_id = slide_id.replace(':notes', '')
+                base_url = 'https://docs.google.com/presentation/d/'
+                url = '{}{}/edit#slide=id.{}'.format(
+                    base_url, presentation_id, slide_id)
+                n = Notes.query.filter_by(link=url).first()
+                if not n:
+                    n = Notes(note_type=folder_name, link=url, user_id=4,
+                              note_text=slide_text, header=slide_header)
+                    db.session.add(n)
+                    db.session.commit()
+                else:
+                    if n.note_text != slide_text:
+                        n.note_text = slide_text
                         db.session.commit()
-                    else:
-                        if n.note_text != slide_text:
-                            n.note_text = slide_text
-                            db.session.commit()
-                        if n.header != slide_header:
-                            n.header = slide_header
-                            db.session.commit()
-        _set_task_progress(100)
-        return []
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id), exc_info=sys.exc_info())
-        return pd.DataFrame()
+                    if n.header != slide_header:
+                        n.header = slide_header
+                        db.session.commit()
+    return []
 
 
+@error_handler
 def get_billing_table(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_proc = Processor.query.get(processor_id)
-        dimensions = ['campaignname', 'vendorname']
-        df = get_data_tables_from_db(
-            processor_id, current_user_id, dimensions=dimensions,
-            metrics=['netcost', 'plannednetcost'], use_cache=True)[0]
-        invoice_cost = 'invoicecost'
-        file_name = os.path.join(cur_proc.local_path, 'invoices.csv')
-        file_name = adjust_path(file_name)
-        if os.path.exists(file_name):
-            idf = pd.read_csv('invoices.csv')
-            cols = dimensions + [invoice_cost]
-            if [x for x in cols if x not in df.columns]:
-                df[invoice_cost] = 0
-            else:
-                idf = idf[cols]
-                idf[invoice_cost] = idf[invoice_cost].str.split('\n').str[0]
-                idf = utl.data_to_type(idf, float_col=[invoice_cost])
-                df = df.merge(idf, how='left', on=dimensions)
-        else:
+    cur_proc = Processor.query.get(processor_id)
+    dimensions = ['campaignname', 'vendorname']
+    df = get_data_tables_from_db(
+        processor_id, current_user_id, dimensions=dimensions,
+        metrics=['netcost', 'plannednetcost'], use_cache=True)[0]
+    invoice_cost = 'invoicecost'
+    file_name = os.path.join(cur_proc.local_path, 'invoices.csv')
+    file_name = adjust_path(file_name)
+    if os.path.exists(file_name):
+        idf = pd.read_csv('invoices.csv')
+        cols = dimensions + [invoice_cost]
+        if [x for x in cols if x not in df.columns]:
             df[invoice_cost] = 0
-        for col in [dctc.PNC, cal.NCF, invoice_cost]:
-            if col not in df.columns:
-                df[col] = 0
-        df['plan - netcost'] = df[dctc.PNC] - df[cal.NCF]
-        df['invoice - plancost'] = df[invoice_cost] - df[dctc.PNC]
-        lt = app_utl.LiquidTable(
-            df=df, table_name='billingTable', button_col=[invoice_cost],
-            highlight_row=invoice_cost, row_on_click='billingInvoice')
-        lt = lt.table_dict
-        _set_task_progress(100)
-        return [lt]
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+        else:
+            idf = idf[cols]
+            idf[invoice_cost] = idf[invoice_cost].str.split('\n').str[0]
+            idf = utl.data_to_type(idf, float_col=[invoice_cost])
+            df = df.merge(idf, how='left', on=dimensions)
+    else:
+        df[invoice_cost] = 0
+    for col in [dctc.PNC, cal.NCF, invoice_cost]:
+        if col not in df.columns:
+            df[col] = 0
+    df['plan - netcost'] = df[dctc.PNC] - df[cal.NCF]
+    df['invoice - plancost'] = df[invoice_cost] - df[dctc.PNC]
+    lt = app_utl.LiquidTable(
+        df=df, table_name='billingTable', button_col=[invoice_cost],
+        highlight_row=invoice_cost, row_on_click='billingInvoice')
+    lt = lt.table_dict
+    return [lt]
 
 
 def get_billing_invoice(processor_id, current_user_id, vk=None):
@@ -6791,8 +6702,29 @@ def route_check(cur_plan, route_name, cur_partners, api_partners,
     return msg
 
 
+def check_objs(cur_plan, has_facebook=False, cur_user=None):
+    cur_up = Uploader.query.filter_by(name=cur_plan.name).first()
+    msg = '{}'.format(cur_plan.name)
+    ali_chat = az.AliChat()
+    ali_chat.db = db
+    ali_chat.current_user = cur_user
+    if not cur_up and has_facebook:
+        cur_up = ali_chat.create_db_model_from_other(Plan, msg, Uploader)
+    cur_proc = Processor.query.filter_by(name=cur_plan.name).first()
+    if not cur_proc:
+        cur_proc = ali_chat.create_db_model_from_other(Plan, msg, Processor)
+    cur_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
+    if not cur_sow:
+        current_sow = Sow()
+        current_sow.create_from_plan(cur_plan)
+        db.session.add(current_sow)
+        db.session.commit()
+    return cur_up, cur_proc, cur_sow
+
+
 @error_handler
 def get_checklist(plan_id, current_user_id):
+    cur_user = db.session.get(User, current_user_id)
     cur_plan = db.session.get(Plan, plan_id)
     cur_partners = cur_plan.get_partners()
     api_partners, non_api_partners = get_partners_api_split(cur_partners)
@@ -6801,6 +6733,7 @@ def get_checklist(plan_id, current_user_id):
     is_fb = vmc.api_fb_key in [x.name for x in api_partners]
     if not is_fb:
         button_types = [x for x in button_types if x != 'UploaderFacebook']
+    check_objs(cur_plan, has_facebook=is_fb, cur_user=cur_user)
     for btn_type in button_types:
         buttons = Processor.get_navigation_buttons(btn_type)
         for button in buttons:

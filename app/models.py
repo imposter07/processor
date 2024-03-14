@@ -1087,6 +1087,22 @@ class Processor(db.Model):
         r = Uploader.wrap_example_prompt(r)
         return r
 
+    @staticmethod
+    def get_create_args_from_other(other_obj):
+        args = Uploader.get_create_args_from_other(other_obj)
+        return args
+
+    def create_object(self, media_plan_data, is_df=False, current_user_id=None):
+        import app.utils as app_utl
+        if current_user_id:
+            cu = db.session.get(User, current_user_id)
+        else:
+            cu = current_user
+        app_utl.check_and_add_media_plan(
+            media_plan_data, self, object_type=Uploader,
+            current_user=cu, is_df=is_df)
+        return True
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -1563,7 +1579,7 @@ class Uploader(db.Model):
 
     def check_base_uploader_object(self, uploader_id, object_level='Campaign',
                                    uploader_type='Facebook'):
-        new_uploader = Uploader.query.get(uploader_id)
+        new_uploader = db.session.get(Uploader, uploader_id)
         upo = UploaderObjects.query.filter_by(
             uploader_id=new_uploader.id, object_level=object_level,
             uploader_type=uploader_type).first()
@@ -1616,7 +1632,7 @@ class Uploader(db.Model):
         import uploader.upload.fbapi as up_fbapi
         import uploader.upload.awapi as up_awapi
         import uploader.upload.dcapi as up_dcapi
-        new_uploader = Uploader.query.get(uploader_id)
+        new_uploader = db.session.get(Uploader, uploader_id)
         upo = UploaderObjects.query.filter_by(
             uploader_id=new_uploader.id, object_level=object_level,
             uploader_type=uploader_type).first()
@@ -1793,7 +1809,8 @@ class Uploader(db.Model):
                                                      uploader_type)
         return True
 
-    def get_create_args_from_other(self, other_obj):
+    @staticmethod
+    def get_create_args_from_other(other_obj):
         args = None
         if other_obj.__table__.name == Plan.__table__.name:
             args = other_obj.get_placements_as_df()
@@ -1806,25 +1823,27 @@ class Uploader(db.Model):
             args = args.rename(columns=col_dict)
         return [args, True]
 
-    def create_object(self, media_plan_data, is_df=False):
+    def create_object(self, media_plan_data, is_df=False, current_user_id=None):
+        if current_user_id:
+            cu = db.session.get(User, current_user_id)
+        else:
+            cu = current_user
         import app.utils as app_utl
         self.create_base_uploader_objects(self.id)
         new_path = app_utl.create_local_path(self)
         self.local_path = new_path
         db.session.commit()
         post_body = 'Create Uploader {}...'.format(self.name)
-        self.launch_task('.create_uploader', _(post_body),
-                         current_user.id,
-                         current_app.config['BASE_UPLOADER_PATH'])
+        self.launch_task('.create_uploader', post_body,
+                         cu.id, current_app.config['BASE_UPLOADER_PATH'])
         creation_text = ('Uploader {} was requested for creation.'
                          ''.format(self.name))
-        post = Post(body=creation_text, author=current_user,
-                    uploader_id=self.id)
+        post = Post(body=creation_text, author=cu, uploader_id=self.id)
         db.session.add(post)
         db.session.commit()
         app_utl.check_and_add_media_plan(
             media_plan_data, self, object_type=Uploader,
-            current_user=current_user, is_df=is_df)
+            current_user=cu, is_df=is_df)
         if is_df or media_plan_data:
             self.media_plan = True
             db.session.commit()
@@ -2713,10 +2732,11 @@ class Plan(db.Model):
             data.extend(places)
         return data
 
-    def get_create_args_from_other(self, other_obj):
+    @staticmethod
+    def get_create_args_from_other(other_obj):
         return []
 
-    def create_object(self):
+    def create_object(self, args):
         return True
 
     def to_dict(self):

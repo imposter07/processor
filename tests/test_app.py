@@ -402,7 +402,7 @@ class TestProcessor:
 
 
 class TestPlan:
-    test_name = 'test'
+    test_name = 'testPlan'
 
     def get_url(self, url_type=None, plan_name=None, obj_prefix=True):
         obj_type = plan_routes.plan if obj_prefix else None
@@ -481,7 +481,7 @@ class TestPlan:
         sw.wait_for_elem_load(phase_id)
         sw.xpath_from_id_and_click(phase_id, load_elem_id='total_budget-1')
         phase_id = 'phaseSelect-1'
-        submit_form(sw, [phase_id])
+        submit_form(sw, [phase_id], test_name=self.test_name)
         worker.work(burst=True)
         sw.wait_for_elem_load('project_name')
         p = Plan.query.filter_by(name=self.test_name).first()
@@ -500,7 +500,8 @@ class TestPlan:
         elem_id = 'rule_info01SliderKey-selectized'
         second_name = '{}1'.format(self.test_name)
         add_row_id = 'rule_info0AddRow'
-        submit_form(sw, [elem_id], submit_id=add_row_id)
+        submit_form(sw, [elem_id], submit_id=add_row_id,
+                    test_name=self.test_name)
         new_elem_id = elem_id.replace('01', '02')
         try:
             sw.browser.find_element_by_id(new_elem_id)
@@ -531,7 +532,7 @@ class TestPlan:
         elem_id = 'row{}'.format(load_elem_id)
         sw.wait_for_elem_load(elem_id)
         sw.xpath_from_id_and_click(elem_id, load_elem_id=load_elem_id)
-        submit_form(sw, [load_elem_id])
+        submit_form(sw, [load_elem_id], test_name=self.test_name)
         worker.work(burst=True)
         cur_place = cur_plan.get_placements()
         cur_place = cur_place[0]
@@ -862,6 +863,7 @@ class TestReportingDBReadWrite:
 
     @pytest.fixture(scope="class")
     def load_empty_model_table(self, reporting_db, app_fixture):
+        os.chdir(os.path.join(basedir, Processor.__name__))
         data = {'modeltype': {0: 'None'},
                 'modelname': {0: 'None'}, 'modelcoefa': {0: 0},
                 'modelcoefb': {0: 0}, 'modelcoefc': {0: 0},

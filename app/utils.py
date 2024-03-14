@@ -319,8 +319,7 @@ def check_and_add_media_plan(media_plan_data, processor_to_edit,
         msg_text = ('Attempting to save media plan for processor: {}'
                     ''.format(processor_to_edit.name))
         processor_to_edit.launch_task(
-            '.save_media_plan', _(msg_text),
-            running_user=current_user.id,
+            '.save_media_plan', msg_text, running_user=current_user.id,
             media_plan=df, object_type=object_type)
         db.session.commit()
         plan_saved = True

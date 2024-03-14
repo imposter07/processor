@@ -474,6 +474,8 @@ class TestPlan:
         part = part[0]
         assert part.name == part_name
         assert int(part.total_budget) == int(part_budget)
+        assert int(part.estimated_cpc) == 1
+        assert int(part.estimated_cpm) == 1000
         assert sw.browser.current_url == sow_url
         sw.go_to_url(edit_url, elem_id='loadingBtnTopline')
         worker.work(burst=True)

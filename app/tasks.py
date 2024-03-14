@@ -5446,6 +5446,13 @@ def write_topline(plan_id, current_user_id, new_data=None):
         cur_plan.id, current_user_id, form_sources=phase_list,
         table=PlanPhase, parent_model=Plan)
     brand_new_ids = []
+    date_col = 'dates'
+    est_cols = [Partner.estimated_cpm, Partner.estimated_cpc]
+    cols = [Partner.partner_type, Partner.__table__, Partner.total_budget,
+            Partner.cplpv, Partner.cpbc, Partner.cpv, Partner.cpcv]
+    cols += est_cols
+    est_str = est_cols[0].name.split('_')[0]
+    cols = [x.name for x in cols] + [date_col]
     for phase_idx in data:
         phase_name = [
             x for x in data[phase_idx]['Phase'] if
@@ -5455,19 +5462,22 @@ def write_topline(plan_id, current_user_id, new_data=None):
         partner_data = data[phase_idx]['partner']
         part_num_list = [int(x['name'].replace('total_budget', ''))
                          for x in partner_data if 'total_budget' in x['name']]
-        for x in part_num_list:
+        for part_num in part_num_list:
             tl_dict = {}
-            for col in ['partner_typeSelect', 'partnerSelect',
-                        'total_budget', 'cpm', 'cpc', 'cplpv', 'cpbc', 'cpv',
-                        'cpcv', 'dates']:
-                col_name = '{}{}'.format(col, x)
+            for col in cols:
+                if col in [Partner.partner_type.name, Partner.__table__.name]:
+                    col = '{}Select'.format(col)
+                col_name = col
+                if est_str in col:
+                    col_name = col_name.replace('{}_'.format(est_str), '')
+                col_name = '{}{}'.format(col_name, part_num)
                 new_data = [x['value'] for x in partner_data
                             if x['name'] == col_name]
                 if new_data:
                     new_data = new_data[0]
                 else:
                     continue
-                if col == 'dates':
+                if col == date_col:
                     tl_dict = app_utl.get_sd_ed_in_dict(tl_dict, new_data)
                 else:
                     tl_dict[col] = new_data
@@ -6259,8 +6269,9 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
         form_source = form_sources[form_sources[phase_col] == cur_phase.name]
         cols = [Partner.__table__.name, Partner.name.name]
         for col in cols:
-            form_source[col] = form_source[part_col]
-        form_source[Partner.total_budget.name] = form_source[cost_col]
+            form_source.loc[:, col] = form_source.loc[:, part_col]
+        budget_col = Partner.total_budget.name
+        form_source.loc[:, budget_col] = form_source.loc[:, cost_col]
         form_source = form_source.to_dict(orient='records')
         change_log = app_utl.set_db_values(
             cur_phase.id, current_user_id, form_sources=form_source,

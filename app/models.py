@@ -3745,6 +3745,9 @@ class PartnerPlacements(db.Model):
                 total_rule += v
             if total_rule != 1:
                 for k in rule_info:
+                    if total_rule == 0:
+                        rule_info[k] = 1 - rule_info[k]
+                        total_rule = rule_info[k]
                     rule_info[k] = rule_info[k] * (1 / total_rule)
             if old_rule:
                 old_rule.rule_info = rule_info

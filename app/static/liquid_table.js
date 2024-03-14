@@ -1104,7 +1104,7 @@ function toggleTopRowCard(tableName, currentIndex) {
     }
     else {
         turnOffAllCards(tableName);
-        setTopRowMetrics(null, tableName);
+        setTopRowMetrics(currentIndex, tableName);
     }
 }
 

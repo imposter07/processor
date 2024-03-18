@@ -8,9 +8,9 @@ import pandas as pd
 import datetime as dt
 from app.models import Task, Processor, User, Campaign, Project, Client, \
     Product, Dashboard, Plan, RfpFile, Partner, Post, Uploader, Message, \
-    PlanPhase
-from flask import current_app, render_template, jsonify, request
-from flask_babel import _
+    PlanPhase, RateCard
+from flask import current_app, render_template, jsonify, request, redirect, \
+    url_for
 import uploader.upload.creator as cre
 from xlrd.biffh import XLRDError
 from functools import wraps
@@ -422,6 +422,8 @@ def set_db_values(object_id, current_user_id, form_sources, table,
         key = table.partner_id.name
     elif parent_model == PlanPhase:
         key = table.plan_phase_id.name
+    elif parent_model == RateCard:
+        key = table.rate_card_id.name
     else:
         key = table.processor_id.name
     filter_dict = {key: object_id}
@@ -478,6 +480,52 @@ def set_db_values(object_id, current_user_id, form_sources, table,
     update_msg = 'Updated {}: {}'.format(table.__name__, change_log)
     current_app.logger.info(update_msg)
     return change_log
+
+
+def obj_fees_route(object_name, current_user, object_type=Processor):
+    from app.main.forms import FeeForm
+    form_description = """
+        Set the adserving, reporting and agency fees used by the processor.
+        Adserving rates by type can be edited and saved using 'View Rate Card'.
+        Old rate cards can be selected and used from the dropdown.
+        Note Digital and Traditional Agency Fees should be provided as decimal.
+        """
+    kwargs = object_type().get_current_processor(
+        object_name, current_page='edit_processor_fees', edit_progress=75,
+        edit_name='Fees', buttons='ProcessorRequest',
+        form_title='FEES', form_description=form_description)
+    cur_proc = kwargs[object_type.__table__.name]
+    form = FeeForm()
+    if request.method == 'POST':
+        form.validate()
+        cur_proc.digital_agency_fees = form.digital_agency_fees.data
+        cur_proc.trad_agency_fees = form.trad_agency_fees.data
+        cur_proc.rate_card_id = form.rate_card.data.id
+        cur_proc.dcm_service_fees = int(
+            form.dcm_service_fees.data.replace('%', '')) / 100
+        db.session.commit()
+        creation_text = '{} fees were edited.'.format(object_type.__name__)
+        object_post_message(cur_proc, current_user, text=creation_text,
+                            object_name=object_type.__name__)
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('main.edit_processor_conversions',
+                                    object_name=cur_proc.name))
+        else:
+            return redirect(url_for('main.edit_processor_fees',
+                                    object_name=cur_proc.name))
+    elif request.method == 'GET':
+        form.digital_agency_fees.data = cur_proc.digital_agency_fees
+        form.trad_agency_fees.data = cur_proc.trad_agency_fees
+        form_rate_card = RateCard.query.filter_by(
+            id=cur_proc.rate_card_id).first()
+        form.rate_card.data = form_rate_card
+        if cur_proc.dcm_service_fees:
+            dcm_fee = '{}%'.format(round(cur_proc.dcm_service_fees * 100))
+        else:
+            dcm_fee = '0%'
+        form.dcm_service_fees.data = dcm_fee
+    kwargs['form'] = form
+    return render_template('create_processor.html', **kwargs)
 
 
 class LiquidTable(object):

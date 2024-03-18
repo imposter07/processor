@@ -812,30 +812,34 @@
             animateBar();
         }
 
-        $(document).ready(function () {
+        function reloadPageOnModalCloseListener() {
+            let jv = document.getElementById('jinjaValues');
+            let editName = jv.dataset['edit_name'];
             $('#modalTable').on('hidden.bs.modal', function () {
-                if (['Import', 'Campaign', 'Adset', 'Ad'].includes(
-                    "{{ edit_name }}")) {
-                    let sourceElem = $('table[id^="modalTable"]')[0].id;
-                    if ((sourceElem === "modalTableimports") ||
-                        (sourceElem === "modalTabledata_sources")) {
+                if (['Import', 'Campaign', 'Adset', 'Ad'].includes(editName)) {
+                    let sourceElem = document.querySelector('table[id^="modalTable"]').id;
+                    let pageShouldReload = ['imports', 'data_sources'].some(
+                        keyword => sourceElem.toLowerCase().includes(keyword));
+                    if (pageShouldReload) {
                         reloadPage();
                     } else {
-                        if (!$("[class*='DTED DTED_Lightbox_Wrapper']")[0]) {
-                            window.location.reload(true)
+                        if (!document.querySelector("[class*='DTED DTED_Lightbox_Wrapper']")) {
+                            window.location.reload(true);
                         }
                     }
                 }
-            })
-        });
+            });
+        }
 
-        $(document).ready(function() {
-            $('#modalTable').on('shown.bs.modal', function () {
-                $($.fn.dataTable.tables(true)).DataTable()
-                    .columns.adjust()
-                    .fixedColumns().relayout();
-            })
-        });
+        function reformatDataTableOnShown() {
+            document.getElementById('modalTable').addEventListener('shown.bs.modal', function () {
+                Array.from($.fn.dataTable.tables(true)).forEach(function (table) {
+                    $(table).DataTable()
+                        .columns.adjust()
+                        .fixedColumns().relayout();
+                });
+            });
+        }
 
         function changeImportFilter(event) {
             let selectedText = event.target.selectize.getValue();
@@ -1412,6 +1416,8 @@
             addOnClickEvent('#data_source', changeImportFilter, 'change');
             addOnClickEvent('.list-group-item-linkable', listGroupOnClick);
             addLogModalObserver();
+            reloadPageOnModalCloseListener();
+            reformatDataTableOnShown();
         }
 
         document.addEventListener("DOMContentLoaded", function() {

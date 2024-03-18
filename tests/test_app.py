@@ -313,6 +313,29 @@ class TestProcessor:
         for idx in range(3):
             self.add_account_card(sw, set_up, idx, p)
 
+    def test_rate_card(self, sw, set_up, worker):
+        p = Processor.query.filter_by(name=self.request_test_name).first()
+        if not p:
+            p = self.test_request_processor(sw, set_up, worker)
+        url = self.get_url(main_routes.edit_processor_fees, p_name=p.name)
+        dig_fees = 'digital_agency_fees'
+        sw.go_to_url(url, elem_id=dig_fees)
+        elem_id = 'refresh_rate_card'
+        load_elem_id = 'loadingBtn{}'.format(elem_id)
+        sw.xpath_from_id_and_click(elem_id, load_elem_id=load_elem_id)
+        worker.work(burst=True)
+        elem_id = 'modalTablerate_cardvendorkey_info'
+        sw.wait_for_elem_load(elem_id)
+        save_btn = 'modalTableSaveButton'
+        sw.xpath_from_id_and_click(save_btn, load_elem_id=dig_fees)
+        worker.work(burst=True)
+        sw.go_to_url(url, elem_id=dig_fees)
+        form_names = [dig_fees, 'trad_agency_fees']
+        fee_val = '.1'
+        submit_form(sw, form_names=form_names, test_name='.1')
+        assert float(p.digital_agency_fees) == float(fee_val)
+        assert float(p.trad_agency_fees) == float(fee_val)
+
     def add_import_card(self, worker, sw, default_name, name):
         with self.adjust_path(basedir):
             proc_url = self.get_url(main_routes.edit_processor_import,

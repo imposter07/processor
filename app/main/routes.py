@@ -1747,51 +1747,9 @@ def edit_processor_account(object_name):
 @bp.route('/processor/<object_name>/edit/fees', methods=['GET', 'POST'])
 @login_required
 def edit_processor_fees(object_name):
-    form_description = """
-    Configure the adserving, reporting and agency fees used by the processor.
-    Adserving rates by type can be edited and saved using 'View Rate Card'.
-    Old rate cards can be selected and used from the dropdown.
-    Note Digital and Traditional Agency Fees should be provided as decimal.
-    """
-    kwargs = Processor().get_current_processor(
-        object_name, current_page='edit_processor_fees', edit_progress=75,
-        edit_name='Fees', buttons='ProcessorRequest',
-        form_title='FEES', form_description=form_description)
-    cur_proc = kwargs['processor']
-    form = FeeForm()
-    if request.method == 'POST':
-        form.validate()
-        cur_proc.digital_agency_fees = form.digital_agency_fees.data
-        cur_proc.trad_agency_fees = form.trad_agency_fees.data
-        cur_proc.rate_card_id = form.rate_card.data.id
-        cur_proc.dcm_service_fees = int(
-            form.dcm_service_fees.data.replace('%', '')) / 100
-        db.session.commit()
-        creation_text = 'Processor fees were edited.'
-        flash(_(creation_text))
-        post = Post(body=creation_text, author=current_user,
-                    processor_id=cur_proc.id)
-        db.session.add(post)
-        db.session.commit()
-        if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_conversions',
-                                    object_name=cur_proc.name))
-        else:
-            return redirect(url_for('main.edit_processor_fees',
-                                    object_name=cur_proc.name))
-    elif request.method == 'GET':
-        form.digital_agency_fees.data = cur_proc.digital_agency_fees
-        form.trad_agency_fees.data = cur_proc.trad_agency_fees
-        form_rate_card = RateCard.query.filter_by(
-            id=cur_proc.rate_card_id).first()
-        form.rate_card.data = form_rate_card
-        if cur_proc.dcm_service_fees:
-            dcm_fee = '{}%'.format(round(cur_proc.dcm_service_fees * 100))
-        else:
-            dcm_fee = '0%'
-        form.dcm_service_fees.data = dcm_fee
-    kwargs['form'] = form
-    return render_template('create_processor.html', **kwargs)
+    resp = app_utl.obj_fees_route(object_name, current_user,
+                                  object_type=Processor)
+    return resp
 
 
 @bp.route('/processor/<object_name>/edit/conversions',

@@ -1228,66 +1228,45 @@ def get_logfile(processor_id, current_user_id, object_type=Processor):
     return [log_file]
 
 
+@error_handler
 def get_rate_card(processor_id, current_user_id, vk):
-    try:
-        _set_task_progress(0)
-        if vk == '__None':
-            rate_card = None
-        else:
-            rate_card = RateCard.query.filter_by(id=vk).first()
-        rate_list = []
-        if not rate_card:
-            rate_list.append({x: 'None'
-                              for x in Rates.__table__.columns.keys()
-                              if 'id' not in x})
-        else:
-            for row in rate_card.rates:
-                rate_list.append(dict((col, getattr(row, col))
-                                      for col in row.__table__.columns.keys()
-                                      if 'id' not in col))
-        df = pd.DataFrame(rate_list)
-        df = df[[Rates.type_name.name, Rates.adserving_fee.name,
-                 Rates.reporting_fee.name]]
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+    if vk == '__None' or vk == '':
+        rate_card = None
+    else:
+        rate_card = RateCard.query.filter_by(id=vk).first()
+    rate_list = []
+    if not rate_card:
+        rate_list.append({x: 'None'
+                          for x in Rates.__table__.columns.keys()
+                          if 'id' not in x})
+    else:
+        for row in rate_card.rates:
+            rate_list.append(dict((col, getattr(row, col))
+                                  for col in row.__table__.columns.keys()
+                                  if 'id' not in col))
+    df = pd.DataFrame(rate_list)
+    df = df[[Rates.type_name.name, Rates.adserving_fee.name,
+             Rates.reporting_fee.name]]
+    return [df]
 
 
+@error_handler
 def write_rate_card(processor_id, current_user_id, new_data, vk):
-    try:
-        cur_processor, user_that_ran = app_utl.get_obj_user(
-            object_id=processor_id, current_user_id=current_user_id)
-        rate_card_name = '{}|{}'.format(cur_processor.name,
-                                        user_that_ran.username)
+    cur_proc, cur_user = app_utl.get_obj_user(
+        object_id=processor_id, current_user_id=current_user_id)
+    rate_card_name = '{}|{}'.format(cur_proc.name, cur_user.username)
+    rate_card = RateCard.query.filter_by(name=rate_card_name).first()
+    if not rate_card:
+        rate_card = RateCard(name=rate_card_name, owner_id=current_user_id)
+        db.session.add(rate_card)
+        db.session.commit()
         rate_card = RateCard.query.filter_by(name=rate_card_name).first()
-        if not rate_card:
-            rate_card = RateCard(name=rate_card_name, owner_id=current_user_id)
-            db.session.add(rate_card)
-            db.session.commit()
-            rate_card = RateCard.query.filter_by(name=rate_card_name).first()
-        for x in rate_card.rates:
-            db.session.delete(x)
+    data = json.loads(new_data)
+    app_utl.set_db_values(rate_card.id, current_user_id, data,
+                          table=Rates, parent_model=RateCard)
+    if cur_proc.rate_card_id != rate_card.id:
+        cur_proc.rate_card_id = rate_card.id
         db.session.commit()
-        data = json.loads(new_data)
-        for x in data:
-            rate = Rates(adserving_fee=float(x[Rates.adserving_fee.name]),
-                         reporting_fee=float(x[Rates.reporting_fee.name]),
-                         type_name=x[Rates.type_name.name],
-                         rate_card_id=rate_card.id)
-            db.session.add(rate)
-        db.session.commit()
-        msg_text = ('{} processor rate card was updated.'
-                    ''.format(cur_processor.name))
-        app_utl.object_post_message(cur_processor, user_that_ran, msg_text)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {} VK {}'.format(
-                processor_id, current_user_id, vk), exc_info=sys.exc_info())
 
 
 @error_handler

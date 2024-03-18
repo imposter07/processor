@@ -574,6 +574,16 @@ class Rates(db.Model):
     reporting_fee = db.Column(db.Numeric)
     rate_card_id = db.Column(db.Integer, db.ForeignKey('rate_card.id'))
 
+    def set_from_form(self, form, current_rate_card):
+        for col in [Rates.adserving_fee, Rates.reporting_fee]:
+            col = col.name
+            val = form[col]
+            if val == 'None':
+                val = 0
+            setattr(self, col, float(val))
+        self.type_name = form[Rates.type_name.name]
+        self.rate_card_id = current_rate_card.id
+
 
 class Conversion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2561,6 +2571,9 @@ class Plan(db.Model):
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
     total_budget = db.Column(db.Numeric)
+    digital_agency_fees = db.Column(db.Numeric)
+    trad_agency_fees = db.Column(db.Numeric)
+    dcm_service_fees = db.Column(db.Numeric)
     tasks = db.relationship('Task', backref='plan', lazy='dynamic')
     posts = db.relationship('Post', backref='plan', lazy='dynamic')
     rate_card_id = db.Column(db.Integer, db.ForeignKey('rate_card.id'))
@@ -3103,8 +3116,8 @@ class Partner(db.Model):
         df = df.fillna(0)
         df = df[[ven_col, vty_col, 'cpm', 'cpc',
                  clp_col.lower(), cpb_col.lower(), cpv_col.lower(), 'cpcv']]
-        partner_name = 'partner'
-        partner_type_name = 'partner_type'
+        partner_name = Partner.__table__.name
+        partner_type_name = Partner.partner_type.name
         df = df.rename(columns={
             ven_col: partner_name, vty_col: partner_type_name})
         omit_list = ['Full']

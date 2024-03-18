@@ -329,7 +329,7 @@ function sendDataTableResponse(data, kwargs) {
     let formContinue = kwargs['formContinue'];
     let oldPage = kwargs['oldPage'];
     let saveBtnElemId = kwargs['saveBtnElemId'];
-    if (jinjaValues['edit_name'] === 'Import') {
+    if (['Import', 'Fees'].includes(jinjaValues['edit_name'])) {
         reloadPage();
     } else {
         $('#' + tableName).modal('hide');

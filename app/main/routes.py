@@ -42,7 +42,7 @@ import processor.reporting.analyze as az
 import app.utils as app_utl
 
 
-@bp.before_request
+@bp.before_app_request
 def before_request():
     if current_user.is_authenticated:
         current_user.last_seen = datetime.utcnow()
@@ -52,7 +52,7 @@ def before_request():
     g.start = time.time()
 
 
-@bp.after_request
+@bp.after_app_request
 def log_request(response):
     if not hasattr(g, 'start'):
         return response

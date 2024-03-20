@@ -927,7 +927,7 @@ class Processor(db.Model):
         if buttons == 'ProcessorRequest':
             buttons = [{'Basic': ['main.edit_request_processor']},
                        {'Plan': ['main.edit_processor_plan']},
-                       {'Accounts': ['main.edit_processor_account']},
+                       {'Accounts': ['main.edit_processor_accounts']},
                        {'Fees': ['main.edit_processor_fees']},
                        {'Conversions': ['main.edit_processor_conversions']},
                        {'Finish': ['main.edit_processor_finish']}]
@@ -3495,6 +3495,12 @@ class PartnerPlacements(db.Model):
     package_description = db.Column(db.Text)
     media_channel = db.Column(db.Text)
     total_budget = db.Column(db.Numeric)
+    cpm = db.Column(db.Numeric)
+    cpc = db.Column(db.Numeric)
+    cplpv = db.Column(db.Numeric)
+    cpbc = db.Column(db.Numeric)
+    cpv = db.Column(db.Numeric)
+    cpcv = db.Column(db.Numeric)
     partner_id = db.Column(db.Integer, db.ForeignKey('partner.id'))
     unique_name = True
 
@@ -3999,6 +4005,8 @@ class PartnerPlacements(db.Model):
                 val = form[col.name]
                 if isinstance(col.type, db.Date) and isinstance(val, str):
                     val = utl.string_to_date(val)
+                elif isinstance(col.type, db.Numeric) and val == '':
+                    val = 0
                 setattr(self, col.name, val)
         if current_object:
             self.partner_id = current_object.id

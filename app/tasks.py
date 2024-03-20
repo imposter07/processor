@@ -1251,9 +1251,12 @@ def get_rate_card(processor_id, current_user_id, vk):
 
 
 @error_handler
-def write_rate_card(processor_id, current_user_id, new_data, vk):
+def write_rate_card(processor_id, current_user_id, new_data, vk,
+                    object_type=Processor.__name__):
+    object_type = Plan if object_type == Plan.__name__ else Processor
     cur_proc, cur_user = app_utl.get_obj_user(
-        object_id=processor_id, current_user_id=current_user_id)
+        object_id=processor_id, current_user_id=current_user_id,
+        db_model=object_type)
     rate_card_name = '{}|{}'.format(cur_proc.name, cur_user.username)
     rate_card = RateCard.query.filter_by(name=rate_card_name).first()
     if not rate_card:
@@ -4635,7 +4638,7 @@ def parse_date_from_project_number(cur_string, date_opened):
 def get_last_rate_card_for_client(cur_campaign):
     cur_product_name = cur_campaign.product.name
     cur_client_name = cur_campaign.product.client.name
-    rate_card_id_query = Processor.query \
+    rate_query = Processor.query \
         .join(Processor.campaign) \
         .join(Campaign.product) \
         .join(Product.client) \
@@ -4643,21 +4646,20 @@ def get_last_rate_card_for_client(cur_campaign):
                 Product.name == cur_product_name) \
         .order_by(Processor.id.desc()) \
         .limit(1) \
-        .with_entities(Processor.rate_card_id) \
+        .with_entities(Processor.rate_card_id, Processor.id) \
         .first()
-    rate_card_id = rate_card_id_query[0] if rate_card_id_query else None
-    if not rate_card_id:
-        rate_card_id_query = Processor.query \
+    if not rate_query:
+        rate_query = Processor.query \
             .join(Processor.campaign) \
             .join(Campaign.product) \
             .join(Product.client) \
             .filter(Client.name == cur_client_name) \
             .order_by(Processor.id.desc()) \
             .limit(1) \
-            .with_entities(Processor.rate_card_id) \
+            .with_entities(Processor.rate_card_id, Processor.id) \
             .first()
-        rate_card_id = rate_card_id_query[0] if rate_card_id_query else None
-    return rate_card_id
+    rate_id, proc_id = rate_query if rate_query else (None, None)
+    return rate_id, proc_id
 
 
 @error_handler
@@ -4746,14 +4748,22 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
                     user_id = cu.id
                 else:
                     user_id = running_user
-                rate_card_id = get_last_rate_card_for_client(form_campaign)
+                rate_card_id, old_proc_id = get_last_rate_card_for_client(
+                    form_campaign)
                 new_processor = Processor(
                     name=name, description=description,
                     user_id=user_id, created_at=datetime.utcnow(),
                     start_date=sd, end_date=ed,
                     campaign_id=form_campaign.id)
                 if rate_card_id:
-                    new_processor.rate_card_id = rate_card_id
+                    old_proc = db.session.get(old_proc_id)
+                    sync_cols = [Processor.digital_agency_fees,
+                                 Processor.trad_agency_fees,
+                                 Processor.rate_card_id,
+                                 Processor.dcm_service_fees]
+                    for col in sync_cols:
+                        col = col.name
+                        setattr(new_processor, col, old_proc.__dict__[col])
                 db.session.add(new_processor)
                 db.session.commit()
             new_processor.projects.append(new_project)
@@ -4921,30 +4931,23 @@ def get_raw_file_comparison(processor_id, current_user_id, vk):
                            'New': 'An error occurred with one or both files.'}}]
 
 
+@error_handler
 def write_raw_file_from_tmp(processor_id, current_user_id, vk, new_data):
-    try:
-        cur_processor = db.session.get(Processor, processor_id)
-        os.chdir(adjust_path(cur_processor.local_path))
-        matrix = vm.VendorMatrix()
-        data_source = matrix.get_data_source(vk=vk)
-        file_name = data_source.p[vmc.filename_true]
-        file_type = os.path.splitext(file_name)[1]
-        tmp_file_name = data_source.p[vmc.filename_true].replace(
-            file_type, 'TMP{}'.format(file_type))
-        if os.path.exists(tmp_file_name):
-            copy_file(tmp_file_name, file_name, max_attempts=10)
-        df = pd.read_json(new_data)
-        new_first_line = df.iloc[0][1]
-        check_first_row = az.CheckFirstRow(az.Analyze(matrix=matrix))
-        check_first_row.adjust_first_row_in_vm(vk, new_first_line, write=True)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {} VK {}'.format(
-                processor_id, current_user_id, vk), exc_info=sys.exc_info())
-        return False
+    cur_processor = db.session.get(Processor, processor_id)
+    os.chdir(adjust_path(cur_processor.local_path))
+    matrix = vm.VendorMatrix()
+    data_source = matrix.get_data_source(vk=vk)
+    file_name = data_source.p[vmc.filename_true]
+    file_type = os.path.splitext(file_name)[1]
+    tmp_file_name = data_source.p[vmc.filename_true].replace(
+        file_type, 'TMP{}'.format(file_type))
+    if os.path.exists(tmp_file_name):
+        copy_file(tmp_file_name, file_name, max_attempts=10)
+    df = pd.read_json(new_data)
+    new_first_line = df.iloc[0][1]
+    check_first_row = az.CheckFirstRow(az.Analyze(matrix=matrix))
+    check_first_row.adjust_first_row_in_vm(vk, new_first_line, write=True)
+    return True
 
 
 def test_api_connection(processor_id, current_user_id, vk):
@@ -5576,13 +5579,17 @@ def get_plan_placements(plan_id, current_user_id):
     df = cur_plan.get_placements_as_df()
     name = 'PlanPlacements'
     form_cols, metric_cols, def_metric_cols = Partner.get_metric_cols()
-    form_cols += [x for x in df.columns.to_list() if x not in metric_cols]
+    form_cols += [x for x in df.columns.to_list()]
+    for col in metric_cols:
+        if col not in df.columns:
+            df[col] = 0
+    hidden_cols = [PartnerPlacements.id.name, PartnerPlacements.partner_id.name]
     lt = app_utl.LiquidTable(
         df=df, title=name, table_name=name, download_table=True,
         specify_form_cols=True, accordion=False, inline_edit=True,
         form_cols=form_cols, metric_cols=metric_cols,
         def_metric_cols=def_metric_cols, columns_toggle=True,
-        hidden_cols=[PartnerPlacements.id.name])
+        hidden_cols=hidden_cols)
     return [lt.table_dict]
 
 
@@ -6218,6 +6225,7 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
         df = pd.read_json(new_data)
         df = pd.DataFrame(df[0][1])
     df = PartnerPlacements.translate_plan_names(df)
+    form_cols, metric_cols, def_metric_cols = Partner.get_metric_cols()
     df = df.fillna('')
     mp = cre.MediaPlan
     cur_plan = db.session.get(Plan, plan_id)
@@ -6276,7 +6284,9 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
     for part_id in unique_ids:
         tdf = df[df[col] == part_id]
         col_dict = {x: x.replace(' ', '_').lower() for x in df.columns}
-        tdf = tdf.rename(columns=col_dict).to_dict(orient='records')
+        tdf = tdf.rename(columns=col_dict)
+        tdf = utl.data_to_type(tdf, float_col=metric_cols).fillna(0)
+        tdf = tdf.to_dict(orient='records')
         part_id = int(part_id)
         cur_part = db.session.get(Partner, part_id)
         for x in tdf:

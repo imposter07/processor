@@ -902,6 +902,8 @@ def post_table():
     job_name = arg_trans[table_name]
     if job_name == '.write_dictionary':
         proc_arg['object_level'] = request.form['object_level']
+    elif job_name == '.write_rate_card':
+        proc_arg['object_type'] = request.form['object_type']
     task = cur_proc.launch_task(job_name, _(msg_text), **proc_arg)
     db.session.commit()
     if table_name in ['Vendormatrix', 'Uploader']:
@@ -1570,7 +1572,7 @@ def request_processor():
         db.session.add(post)
         db.session.commit()
         if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_account',
+            return redirect(url_for('main.edit_processor_accounts',
                                     object_name=new_processor.name))
         else:
             return redirect(url_for('main.processor'))
@@ -1678,7 +1680,7 @@ def edit_processor_plan(object_name):
     form = kwargs['form']
     if request.method == 'POST':
         if form.form_continue.data == 'continue':
-            next_page = 'main.edit_processor_account'
+            next_page = 'main.edit_processor_accounts'
         else:
             next_page = 'main.edit_processor_plan'
         return redirect(url_for(next_page, object_name=object_name))
@@ -1695,7 +1697,7 @@ def edit_processor_plan_normal(object_name):
 
 @bp.route('/processor/<object_name>/edit/accounts', methods=['GET', 'POST'])
 @login_required
-def edit_processor_account(object_name):
+def edit_processor_accounts(object_name):
     form_description = """
     The accounts to create an API for so the processor can automatically pull 
     data.
@@ -1706,11 +1708,11 @@ def edit_processor_account(object_name):
     Then select 'How do I add a new API to the processor?'
     """
     kwargs = Processor().get_current_processor(
-        object_name, current_page='edit_processor_account',
+        object_name, current_page='edit_processor_accounts',
         edit_progress=50, edit_name='Accounts', buttons='ProcessorRequest',
         form_title='ACCOUNTS', form_description=form_description)
     cur_proc = kwargs['processor']
-    endpoint = 'main.edit_processor_account'
+    endpoint = 'main.edit_processor_accounts'
     accounts = GeneralAccountForm().set_accounts(Account, cur_proc)
     form = GeneralAccountForm(accounts=accounts)
     kwargs['form'] = form
@@ -1737,7 +1739,7 @@ def edit_processor_account(object_name):
         app_utl.set_db_values(object_id=cur_proc.id,
                               current_user_id=current_user.id,
                               form_sources=form.accounts.data, table=Account)
-        endpoint = 'main.edit_processor_account'
+        endpoint = 'main.edit_processor_accounts'
         if form.form_continue.data == 'continue':
             endpoint = 'main.edit_processor_fees'
         return redirect(url_for(endpoint, object_name=cur_proc.name))

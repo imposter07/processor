@@ -7,6 +7,7 @@ from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
     CreateSowForm, RfpForm, PartnerPlacementForm
+from app.main.forms import FeeForm
 from app.models import Client, Product, Campaign, Plan, Post, \
     PlanPhase, Sow, Processor
 import app.utils as app_utl
@@ -317,6 +318,19 @@ def checklist(object_name):
         edit_name='Checklist')
     kwargs['form'] = PlanToplineForm()
     return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/plan/<object_name>/fees', methods=['GET', 'POST'])
+@login_required
+def fees(object_name):
+    kwargs = Plan().get_current_plan(
+        object_name, 'edit_plan', edit_progress=100,
+        edit_name='Fees')
+    kwargs['form'] = FeeForm()
+    response = app_utl.obj_fees_route(
+        object_name, current_user, object_type=Plan, kwargs=kwargs,
+        template='plan/plan.html')
+    return response
 
 
 @bp.route('/plan/<object_name>/url_from_view_function', methods=['GET', 'POST'])

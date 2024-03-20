@@ -7,11 +7,12 @@ import processor.reporting.utils as utl
 import processor.reporting.analyze as az
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.models as prc_model
+import app.main.routes as main_routes
 import app.utils as app_utl
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
     Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, Client, \
-    Product, Processor, Account, RequestLog
+    Product, Processor, Account, RequestLog, RateCard
 import app.tasks as app_tasks
 
 
@@ -235,6 +236,18 @@ class TestUtils:
         objs = objs.all()
         assert len(objs) == len(p)
 
+    def test_get_next_route_from_buttons(self, user, app_fixture):
+        prefix = os.path.dirname(main_routes.__file__).split('\\')[-1]
+        cur_route = main_routes.edit_processor_accounts.__name__
+        cur_route = '{}.{}'.format(prefix, cur_route)
+        next_route = main_routes.edit_processor_fees.__name__
+        next_route = '{}.{}'.format(prefix, next_route)
+        edit_name = cur_route.split('_')[-1].capitalize()
+        buttons = Processor().get_navigation_buttons('ProcessorRequest')
+        cr, nr = app_utl.get_next_route_from_buttons(buttons, edit_name)
+        assert cr == cur_route
+        assert nr == next_route
+
 
 class TestTasks:
 
@@ -302,6 +315,17 @@ class TestTasks:
         cur_place = cur_plan.get_placements()
         assert cur_place
         assert cur_place[0].country == max_cou
+
+    def test_get_last_rate_card_for_client(self, user, app_fixture):
+        old_proc = self.create_test_processor()
+        rate_card = RateCard(name='test')
+        db.session.add(rate_card)
+        db.session.commit()
+        old_proc.rate_card_id = rate_card.id
+        db.session.commit()
+        c_id, p_id = app_tasks.get_last_rate_card_for_client(old_proc.campaign)
+        assert c_id == rate_card.id
+        assert p_id == old_proc.id
 
 
 class TestPlan:

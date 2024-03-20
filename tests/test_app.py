@@ -313,7 +313,7 @@ class TestProcessor:
         for idx in range(3):
             self.add_account_card(sw, set_up, idx, p)
 
-    def test_rate_card(self, sw, set_up, worker):
+    def test_fees(self, sw, set_up, worker):
         p = Processor.query.filter_by(name=self.request_test_name).first()
         if not p:
             p = self.test_request_processor(sw, set_up, worker)
@@ -674,6 +674,11 @@ class TestPlan:
         self.click_on_new_window_link(sw, elem_id, 'loadingBtnTopline')
         worker.work(burst=True)
         assert sw.browser.current_url == self.get_url(plan_routes.topline)
+
+    def test_fees(self, sw, login, worker):
+        url = plan_routes.fees
+        self.check_and_get_plan(sw, login, worker, url)
+        assert sw.browser.current_url == self.get_url(url)
 
 
 class TestProject:
@@ -1209,7 +1214,7 @@ class TestReportingDBReadWrite:
         submit_form(sw, select_form_names=['name'], test_name=report_name,
                     submit_id='reportBuilderSaveButton')
         sw.wait_for_elem_load('alertPlaceholder')
-        for x in range(10):
+        for x in range(50):
             report_saved = worker.work(burst=True)
             if report_saved:
                 break

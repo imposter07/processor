@@ -482,7 +482,8 @@ def set_db_values(object_id, current_user_id, form_sources, table,
     return change_log
 
 
-def obj_fees_route(object_name, current_user, object_type=Processor):
+def obj_fees_route(object_name, current_user, object_type=Processor,
+                   kwargs=None, template='create_processor.html'):
     from app.main.forms import FeeForm
     form_description = """
         Set the adserving, reporting and agency fees used by the processor.
@@ -490,11 +491,12 @@ def obj_fees_route(object_name, current_user, object_type=Processor):
         Old rate cards can be selected and used from the dropdown.
         Note Digital and Traditional Agency Fees should be provided as decimal.
         """
-    kwargs = object_type().get_current_processor(
-        object_name, current_page='edit_processor_fees', edit_progress=75,
-        edit_name='Fees', buttons='ProcessorRequest',
-        form_title='FEES', form_description=form_description)
-    cur_proc = kwargs[object_type.__table__.name]
+    if not kwargs:
+        kwargs = object_type().get_current_processor(
+            object_name, current_page='edit_processor_fees', edit_progress=75,
+            edit_name='Fees', buttons='ProcessorRequest',
+            form_title='FEES', form_description=form_description)
+    cur_proc = object_type.query.filter_by(name=object_name).first()
     form = FeeForm()
     if request.method == 'POST':
         form.validate()
@@ -507,12 +509,8 @@ def obj_fees_route(object_name, current_user, object_type=Processor):
         creation_text = '{} fees were edited.'.format(object_type.__name__)
         object_post_message(cur_proc, current_user, text=creation_text,
                             object_name=object_type.__name__)
-        if form.form_continue.data == 'continue':
-            return redirect(url_for('main.edit_processor_conversions',
-                                    object_name=cur_proc.name))
-        else:
-            return redirect(url_for('main.edit_processor_fees',
-                                    object_name=cur_proc.name))
+        return form_continue_redirect(kwargs['buttons'], kwargs['edit_name'],
+                                      form, cur_proc)
     elif request.method == 'GET':
         form.digital_agency_fees.data = cur_proc.digital_agency_fees
         form.trad_agency_fees.data = cur_proc.trad_agency_fees
@@ -525,7 +523,30 @@ def obj_fees_route(object_name, current_user, object_type=Processor):
             dcm_fee = '0%'
         form.dcm_service_fees.data = dcm_fee
     kwargs['form'] = form
-    return render_template('create_processor.html', **kwargs)
+    return render_template(template, **kwargs)
+
+
+def get_next_route_from_buttons(buttons, edit_name):
+    cur_route = None
+    next_route = None
+    for x in buttons:
+        cur_name = next(iter(x))
+        if cur_route:
+            next_route = x[cur_name]['route']
+            break
+        if edit_name == cur_name:
+            cur_route = x[cur_name]['route']
+    if not next_route:
+        next_route = cur_route
+    return cur_route, next_route
+
+
+def form_continue_redirect(buttons, edit_name, form, cur_obj):
+    cr, nr = get_next_route_from_buttons(buttons, edit_name)
+    endpoint = cr
+    if form.form_continue.data == 'continue':
+        endpoint = nr
+    return redirect(url_for(endpoint, object_name=cur_obj.name))
 
 
 class LiquidTable(object):

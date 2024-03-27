@@ -3402,6 +3402,7 @@ def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
     topline_analysis = cur_processor.processor_analysis.filter_by(
         key=az.Analyze.topline_col).all()
     kpis, kpi_cols = get_kpis_for_processor(processor_id, current_user_id)
+    cv_col = 'current_value'
     if processor_id == 23:
         df = pd.DataFrame(columns=['impressions', 'clicks', 'netcost'])
     elif not topline_analysis:
@@ -3409,7 +3410,7 @@ def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
     else:
         df = clean_topline_df_from_db(
             [x for x in topline_analysis
-             if x.parameter == az.Analyze.topline_col][0], 'current_value')
+             if x.parameter == az.Analyze.topline_col][0], cv_col)
         tdf = clean_topline_df_from_db(
             [x for x in topline_analysis
              if x.parameter == az.Analyze.lw_topline_col][0], 'new_value')
@@ -3422,6 +3423,7 @@ def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
             return [
                 pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
         df = df.join(twdf)
+    cv_col = 'current_value'
     if filter_dict:
         metrics = list(set(list(
             kpi_cols) + ['impressions', 'clicks', 'netcost']))
@@ -3434,15 +3436,12 @@ def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
             if tdf.empty:
                 return [tdf]
             df = tdf.T
-            df['current_value'] = df[0]
+            df[cv_col] = df[0]
         else:
             df = df.join(tdf.T)
-        df['change'] = (df[0].astype(float) /
-                        df['current_value'].astype(float))
-        df = df.drop(columns='current_value').rename(
-            columns={0: 'current_value'})
-        df = df[['current_value'] +
-                [x for x in df.columns if x != 'current_value']]
+        df['change'] = (df[0].astype(float) / df[cv_col].astype(float))
+        df = df.drop(columns=cv_col).rename(columns={0: cv_col})
+        df = df[[cv_col] + [x for x in df.columns if x != cv_col]]
     else:
         cols = ['new_value', 'old_value']
         df = utl.data_to_type(df, float_col=['new_value', 'old_value'])
@@ -3469,45 +3468,31 @@ def get_processor_total_metrics(processor_id, current_user_id, dimensions=None,
     return [df]
 
 
+@error_handler
 def get_processor_daily_notes(processor_id, current_user_id, dimensions=None,
                               metrics=None, filter_dict=None, return_func=None):
-    try:
-        _set_task_progress(0)
-        cur_processor = db.session.get(Processor, processor_id)
-        import processor.reporting.analyze as az
-        import processor.reporting.vmcolumns as vmc
-        import processor.reporting.dictcolumns as dctc
-        import processor.reporting.utils as utl
-        kpi_analysis = cur_processor.processor_analysis.filter_by(
-            key=az.Analyze.kpi_col).all()
-        _set_task_progress(80)
-        kpis = set(x.parameter for x in kpi_analysis
-                   if x.parameter not in ['0', 'nan'])
-        param_2s = ['Trend', 'Smallest', 'Largest']
-        data = {}
-        for kpi in kpis:
-            cur_analysis = {
-                x.parameter_2: x.message for x in kpi_analysis
-                if (x.parameter == kpi and
-                    ((x.parameter_2 in param_2s and x.split_col == dctc.VEN) or
-                     (x.parameter_2 == param_2s[0] and x.split_col == vmc.date))
-                    )}
-            data[kpi] = cur_analysis
-        if not data or filter_dict:
-            _set_task_progress(100)
-            return [pd.DataFrame()]
-        df = pd.DataFrame(data=data)
-        df = df.fillna('')
-        df = df.iloc[::-1]
-        _set_task_progress(100)
-        return [df]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Processor {} User {}'.format(
-                processor_id, current_user_id),
-            exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_processor = db.session.get(Processor, processor_id)
+    kpi_analysis = cur_processor.processor_analysis.filter_by(
+        key=az.Analyze.kpi_col).all()
+    _set_task_progress(80)
+    kpis = set(x.parameter for x in kpi_analysis
+               if x.parameter not in ['0', 'nan'])
+    param_2s = ['Trend', 'Smallest', 'Largest']
+    data = {}
+    for kpi in kpis:
+        cur_analysis = {
+            x.parameter_2: x.message for x in kpi_analysis
+            if (x.parameter == kpi and
+                ((x.parameter_2 in param_2s and x.split_col == dctc.VEN) or
+                 (x.parameter_2 == param_2s[0] and x.split_col == vmc.date))
+                )}
+        data[kpi] = cur_analysis
+    if not data or filter_dict:
+        return [pd.DataFrame()]
+    df = pd.DataFrame(data=data)
+    df = df.fillna('')
+    df = df.iloc[::-1]
+    return [df]
 
 
 @error_handler
@@ -6300,21 +6285,12 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
                                      change_log)
 
 
+@error_handler
 def write_plan_calc(plan_id, current_user_id, new_data=None):
-    try:
-        _set_task_progress(0)
-        df = pd.read_json(new_data)
-        df = pd.DataFrame(df[0][1])
-        df = df.to_dict(orient='records')
-        app_utl.set_db_values(plan_id, current_user_id, df, PlanEffectiveness,
-                              Plan)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Plan {} User {}'.format(
-            plan_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    df = pd.read_json(new_data)
+    df = pd.DataFrame(df[0][1])
+    df = df.to_dict(orient='records')
+    app_utl.set_db_values(plan_id, current_user_id, df, PlanEffectiveness, Plan)
 
 
 def download_table(object_id, current_user_id, function_name=None, **kwargs):
@@ -6334,227 +6310,193 @@ def download_table(object_id, current_user_id, function_name=None, **kwargs):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+@error_handler
 def add_contacts_from_file(plan_id, current_user_id, new_data, cur_rfp,
                            part_translation):
-    try:
-        _set_task_progress(0)
-        df = pd.read_excel(new_data, None)
-        sheet_name = [x for x in df.keys() if 'contact' in x.lower()]
-        if not sheet_name:
-            _set_task_progress(100)
-            return False
-        df = df[sheet_name[0]]
-        new_list = []
-        cur_contact = ''
-        contact_types = ['Sales Representative', 'AM/Traffic Contact']
-        phone_email = ['Phone', 'Email Address']
-        for col in df['Unnamed: 1']:
-            if col in contact_types:
-                cur_contact = col
-            if col in phone_email:
-                col += ' ({})'.format(cur_contact)
-            new_list.append(col)
-        df['Unnamed: 1'] = new_list
-        df = df[['Unnamed: 1', 'Unnamed: 3']].T.reset_index(drop=True)
-        df = utl.first_last_adj(df, 1, 0).reset_index(drop=True)
-        cols = Contacts.column_translation()
-        partner_col = cols[Contacts.partner_name.name]
-        mask = ~df[partner_col].isin(part_translation.keys())
-        not_in_dict = df[partner_col].loc[mask].unique()
-        for partner_name in not_in_dict:
-            cur_part = Partner(name=partner_name)
-            db.session.add(cur_part)
-            db.session.commit()
-            part_translation[partner_name] = cur_part.id
-        df[Contacts.partner_id.name] = df[partner_col].replace(part_translation)
-        df[Contacts.rfp_file_id.name] = cur_rfp.id
-        cols = {v: k for k, v in cols.items()}
-        df = df.rename(columns=cols)
-        df = df.fillna('None')
-        df = df.to_dict(orient='records')
-        app_utl.set_db_values(cur_rfp.id, current_user_id, df, Contacts,
-                              RfpFile)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Plan {} User {}'.format(
-            plan_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
+    df = pd.read_excel(new_data, None)
+    sheet_name = [x for x in df.keys() if 'contact' in x.lower()]
+    if not sheet_name:
+        return False
+    df = df[sheet_name[0]]
+    new_list = []
+    cur_contact = ''
+    contact_types = ['Sales Representative', 'AM/Traffic Contact']
+    phone_email = ['Phone', 'Email Address']
+    for col in df['Unnamed: 1']:
+        if col in contact_types:
+            cur_contact = col
+        if col in phone_email:
+            col += ' ({})'.format(cur_contact)
+        new_list.append(col)
+    df['Unnamed: 1'] = new_list
+    df = df[['Unnamed: 1', 'Unnamed: 3']].T.reset_index(drop=True)
+    df = utl.first_last_adj(df, 1, 0).reset_index(drop=True)
+    cols = Contacts.column_translation()
+    partner_col = cols[Contacts.partner_name.name]
+    mask = ~df[partner_col].isin(part_translation.keys())
+    not_in_dict = df[partner_col].loc[mask].unique()
+    for partner_name in not_in_dict:
+        cur_part = Partner(name=partner_name)
+        db.session.add(cur_part)
+        db.session.commit()
+        part_translation[partner_name] = cur_part.id
+    df[Contacts.partner_id.name] = df[partner_col].replace(part_translation)
+    df[Contacts.rfp_file_id.name] = cur_rfp.id
+    cols = {v: k for k, v in cols.items()}
+    df = df.rename(columns=cols)
+    df = df.fillna('None')
+    df = df.to_dict(orient='records')
+    app_utl.set_db_values(cur_rfp.id, current_user_id, df, Contacts,
+                          RfpFile)
+    return True
 
 
+@error_handler
 def add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
                         part_translation):
-    try:
-        _set_task_progress(0)
-        df = pd.read_excel(new_data, None)
-        sheet_name = [x for x in df.keys() if 'spec' in x.lower()]
+    df = pd.read_excel(new_data, None)
+    sheet_name = [x for x in df.keys() if 'spec' in x.lower()]
+    if not sheet_name:
+        return False
+    df = df[sheet_name[0]]
+    df = utl.first_last_adj(df, 1, 0).reset_index(drop=True)
+    df = df[~df.isna().all(axis=1)]
+    df = df.fillna(method='ffill').fillna('None')
+    cols = Specs.column_translation()
+    partner_col = cols[Specs.partner.name]
+    df[Specs.partner_id.name] = df[partner_col].replace(part_translation)
+    df[Specs.rfp_file_id.name] = cur_rfp.id
+    cols = {v: k for k, v in cols.items()}
+    df = df.rename(columns=cols)
+    df = df.to_dict(orient='records')
+    app_utl.set_db_values(cur_rfp.id, current_user_id, df, Specs, RfpFile)
+    return True
+
+
+@error_handler
+def set_placements_from_rfp(plan_id, current_user_id, cur_rfp):
+    df = [PartnerPlacements.set_from_another(x) for x in cur_rfp.placements]
+    df = pd.DataFrame(df)
+    partner_col = PartnerPlacements.partner_id.name
+    partner_list = df[partner_col].unique()
+    for partner_id in partner_list:
+        cur_partner = db.session.get(Partner, int(partner_id))
+        tdf = df[df[partner_col] == partner_id]
+        tdf = tdf.to_dict(orient='records')
+        change_log = app_utl.set_db_values(
+            cur_partner.id, current_user_id, tdf,
+            PartnerPlacements, Partner)
+        update_rules_from_change_log(plan_id, current_user_id,
+                                     partner_id, change_log)
+        return True
+
+
+@error_handler
+def add_rfp_from_file(plan_id, current_user_id, new_data):
+
+    cur_plan = db.session.get(Plan, plan_id)
+    df = pd.read_excel(new_data, None)
+    sheet_name = [x for x in df.keys() if 'plan' in x.lower()]
+    if not sheet_name:
+        sheet_name = [x for x in df.keys() if '$' in x.lower()]
         if not sheet_name:
             _set_task_progress(100)
             return False
-        df = df[sheet_name[0]]
-        df = utl.first_last_adj(df, 1, 0).reset_index(drop=True)
-        df = df[~df.isna().all(axis=1)]
-        df = df.fillna(method='ffill').fillna('None')
-        cols = Specs.column_translation()
-        partner_col = cols[Specs.partner.name]
-        df[Specs.partner_id.name] = df[partner_col].replace(part_translation)
-        df[Specs.rfp_file_id.name] = cur_rfp.id
-        cols = {v: k for k, v in cols.items()}
-        df = df.rename(columns=cols)
-        df = df.to_dict(orient='records')
-        app_utl.set_db_values(cur_rfp.id, current_user_id, df, Specs, RfpFile)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Plan {} User {}'.format(
-            plan_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-
-
-def set_placements_from_rfp(plan_id, current_user_id, cur_rfp):
-    try:
-        _set_task_progress(0)
-        df = [PartnerPlacements.set_from_another(x) for x in cur_rfp.placements]
-        df = pd.DataFrame(df)
-        partner_col = PartnerPlacements.partner_id.name
-        partner_list = df[partner_col].unique()
-        for partner_id in partner_list:
-            cur_partner = db.session.get(Partner, int(partner_id))
-            tdf = df[df[partner_col] == partner_id]
-            tdf = tdf.to_dict(orient='records')
-            app_utl.set_db_values(cur_partner.id, current_user_id, tdf,
-                                  PartnerPlacements, Partner)
-        _set_task_progress(100)
-        return True
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Plan {} User {}'.format(
-            plan_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-
-
-def add_rfp_from_file(plan_id, current_user_id, new_data):
-    try:
-        _set_task_progress(0)
-        cur_plan = db.session.get(Plan, plan_id)
-        df = pd.read_excel(new_data, None)
-        sheet_name = [x for x in df.keys() if 'plan' in x.lower()]
-        if not sheet_name:
-            sheet_name = [x for x in df.keys() if '$' in x.lower()]
-            if not sheet_name:
-                _set_task_progress(100)
-                return False
-        df = df[sheet_name[0]]
-        df = utl.first_last_adj(df, 2, 0).reset_index(drop=True)
-        cols = Rfp.column_translation()
-        partner_col = cols[Rfp.partner_name.name]
-        df = df[df[partner_col] != 'Example Media '].reset_index(drop=True)
-        mask = df.drop(partner_col, axis=1).isna().all(axis=1)
-        df = df[~mask].reset_index(drop=True)
-        no_fill_cols = [Rfp.planned_impressions, Rfp.planned_units,
-                        Rfp.cpm_cost_per_unit, Rfp.planned_net_cost,
-                        Rfp.planned_sov]
-        no_fill_cols = [cols[x.name] for x in no_fill_cols]
-        fill_cols = [x for x in df.columns if x not in no_fill_cols]
-        for col in fill_cols:
-            df[col] = df[col].fillna(method='ffill').fillna('None')
-        name = RfpFile.create_name(df)
-        cur_rfp = RfpFile.query.filter_by(
-            name=name, plan_id=cur_plan.id).first()
-        if not cur_rfp:
-            cur_rfp = RfpFile(
-                name=name, plan_id=cur_plan.id, user_id=current_user_id)
-            db.session.add(cur_rfp)
-            db.session.commit()
-        float_col = [Rfp.planned_net_cost, Rfp.cpm_cost_per_unit,
-                     Rfp.planned_impressions, Rfp.planned_sov,
-                     Rfp.planned_units]
-        float_col = [cols[x.name] for x in float_col]
-        date_col = [cols[Rfp.start_date.name], cols[Rfp.end_date.name]]
-        df = utl.data_to_type(df, float_col=float_col, date_col=date_col)
-        for col in date_col:
-            df[col] = df[col].fillna(method='ffill')
-            if col == cols[Rfp.start_date.name]:
-                fill_na_val = cur_plan.start_date
+    df = df[sheet_name[0]]
+    df = utl.first_last_adj(df, 2, 0).reset_index(drop=True)
+    cols = Rfp.column_translation()
+    partner_col = cols[Rfp.partner_name.name]
+    df = df[df[partner_col] != 'Example Media '].reset_index(drop=True)
+    mask = df.drop(partner_col, axis=1).isna().all(axis=1)
+    df = df[~mask].reset_index(drop=True)
+    no_fill_cols = [Rfp.planned_impressions, Rfp.planned_units,
+                    Rfp.cpm_cost_per_unit, Rfp.planned_net_cost,
+                    Rfp.planned_sov]
+    no_fill_cols = [cols[x.name] for x in no_fill_cols]
+    fill_cols = [x for x in df.columns if x not in no_fill_cols]
+    for col in fill_cols:
+        df[col] = df[col].fillna(method='ffill').fillna('None')
+    name = RfpFile.create_name(df)
+    cur_rfp = RfpFile.query.filter_by(
+        name=name, plan_id=cur_plan.id).first()
+    if not cur_rfp:
+        cur_rfp = RfpFile(
+            name=name, plan_id=cur_plan.id, user_id=current_user_id)
+        db.session.add(cur_rfp)
+        db.session.commit()
+    float_col = [Rfp.planned_net_cost, Rfp.cpm_cost_per_unit,
+                 Rfp.planned_impressions, Rfp.planned_sov,
+                 Rfp.planned_units]
+    float_col = [cols[x.name] for x in float_col]
+    date_col = [cols[Rfp.start_date.name], cols[Rfp.end_date.name]]
+    df = utl.data_to_type(df, float_col=float_col, date_col=date_col)
+    for col in date_col:
+        df[col] = df[col].fillna(method='ffill')
+        if col == cols[Rfp.start_date.name]:
+            fill_na_val = cur_plan.start_date
+        else:
+            fill_na_val = cur_plan.end_date
+        df[col] = df[col].fillna(fill_na_val)
+    for col in float_col:
+        if col not in df.columns:
+            df[col] = 0
+        df[col] = df[col].fillna(0)
+    part_translation = {}
+    for partner_name in name.split('|'):
+        cur_part = None
+        for cur_phase in cur_plan.phases.all():
+            cur_part = Partner.query.filter_by(
+                plan_phase_id=cur_phase.id, name=partner_name).first()
+            if cur_part:
+                break
+        if not cur_part:
+            tdf = df[df[partner_col] == partner_name]
+            total_budget = tdf[cols[Rfp.planned_net_cost.name]].sum()
+            total_imps = tdf[cols[Rfp.planned_impressions.name]].sum()
+            if total_imps == 0:
+                cpm = 0
             else:
-                fill_na_val = cur_plan.end_date
-            df[col] = df[col].fillna(fill_na_val)
-        for col in float_col:
-            if col not in df.columns:
-                df[col] = 0
-            df[col] = df[col].fillna(0)
-        part_translation = {}
-        for partner_name in name.split('|'):
-            cur_part = None
-            for cur_phase in cur_plan.phases.all():
-                cur_part = Partner.query.filter_by(
-                    plan_phase_id=cur_phase.id, name=partner_name).first()
-                if cur_part:
-                    break
-            if not cur_part:
-                tdf = df[df[partner_col] == partner_name]
-                total_budget = tdf[cols[Rfp.planned_net_cost.name]].sum()
-                total_imps = tdf[cols[Rfp.planned_impressions.name]].sum()
-                if total_imps == 0:
-                    cpm = 0
-                else:
-                    cpm = (total_budget / (total_imps / 1000))
-                sd = tdf[cols[Rfp.start_date.name]].dropna().min()
-                ed = tdf[cols[Rfp.end_date.name]].dropna().max()
-                if pd.isnull(sd):
-                    sd = cur_phase.start_date
-                if pd.isnull(ed):
-                    ed = cur_phase.end_date
-                cur_part = Partner(
-                    name=partner_name, plan_phase_id=cur_phase.id,
-                    total_budget=total_budget, start_date=sd, end_date=ed,
-                    estimated_cpm=cpm)
-                db.session.add(cur_part)
-                db.session.commit()
-            part_translation[partner_name] = cur_part.id
-        df[Rfp.partner_id.name] = df[partner_col].replace(part_translation)
-        df[Rfp.rfp_file_id.name] = cur_rfp.id
-        cols = {v: k for k, v in cols.items()}
-        df = df.rename(columns=cols)
-        df = df.to_dict(orient='records')
-        app_utl.set_db_values(cur_rfp.id, current_user_id, df, Rfp, RfpFile)
-        add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
-                            part_translation)
-        add_contacts_from_file(plan_id, current_user_id, new_data, cur_rfp,
-                               part_translation)
-        set_placements_from_rfp(plan_id, current_user_id, cur_rfp)
-        _set_task_progress(100)
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - Plan {} User {}'.format(
-            plan_id, current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
+                cpm = (total_budget / (total_imps / 1000))
+            sd = tdf[cols[Rfp.start_date.name]].dropna().min()
+            ed = tdf[cols[Rfp.end_date.name]].dropna().max()
+            if pd.isnull(sd):
+                sd = cur_phase.start_date
+            if pd.isnull(ed):
+                ed = cur_phase.end_date
+            cur_part = Partner(
+                name=partner_name, plan_phase_id=cur_phase.id,
+                total_budget=total_budget, start_date=sd, end_date=ed,
+                estimated_cpm=cpm)
+            db.session.add(cur_part)
+            db.session.commit()
+        part_translation[partner_name] = cur_part.id
+    df[Rfp.partner_id.name] = df[partner_col].replace(part_translation)
+    df[Rfp.rfp_file_id.name] = cur_rfp.id
+    cols = {v: k for k, v in cols.items()}
+    df = df.rename(columns=cols)
+    df = df.to_dict(orient='records')
+    app_utl.set_db_values(cur_rfp.id, current_user_id, df, Rfp, RfpFile)
+    add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
+                        part_translation)
+    add_contacts_from_file(plan_id, current_user_id, new_data, cur_rfp,
+                           part_translation)
+    set_placements_from_rfp(plan_id, current_user_id, cur_rfp)
 
 
+@error_handler
 def get_rfp(plan_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_plan = db.session.get(Plan, plan_id)
-        rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
-        data = []
-        for rfp_file in rfp_files:
-            place = [x.get_form_dict() for x in rfp_file.placements]
-            data.extend(place)
-        df = pd.DataFrame(data)
-        name = 'RFP'
-        lt = app_utl.LiquidTable(
-            df=df, title=name, table_name=name, download_table=True,
-            specify_form_cols=False, accordion=True)
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Plan {} User {}'.format(
-                plan_id, current_user_id), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_plan = db.session.get(Plan, plan_id)
+    rfp_files = RfpFile.query.filter_by(plan_id=cur_plan.id).all()
+    data = []
+    for rfp_file in rfp_files:
+        place = [x.get_form_dict() for x in rfp_file.placements]
+        data.extend(place)
+    df = pd.DataFrame(data)
+    name = 'RFP'
+    lt = app_utl.LiquidTable(
+        df=df, title=name, table_name=name, download_table=True,
+        specify_form_cols=False, accordion=True)
+    return [lt.table_dict]
 
 
 @error_handler

@@ -18,7 +18,7 @@ from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, APIForm, ProcessorCleanForm, \
     ProcessorExportForm, UploaderForm, EditUploaderForm, ProcessorRequestForm, \
-    GeneralAccountForm, EditProcessorRequestForm, FeeForm, \
+    GeneralAccountForm, EditProcessorRequestForm, \
     GeneralConversionForm, ProcessorRequestFinishForm, \
     ProcessorContinueForm, ProcessorFixForm, ProcessorRequestCommentForm, \
     ProcessorDuplicateForm, EditUploaderMediaPlanForm, \
@@ -2449,8 +2449,7 @@ def uploader_page(object_name):
     return render_template('create_processor.html', **kwargs)
 
 
-@bp.route('/uploader/<object_name>/edit/upload_file',
-          methods=['GET', 'POST'])
+@bp.route('/uploader/<object_name>/edit/upload_file', methods=['GET', 'POST'])
 @login_required
 @app_utl.error_handler
 def edit_uploader_upload_file(object_name):

@@ -3,6 +3,7 @@ import pytest
 import pandas as pd
 import datetime as dt
 from config import basedir
+import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.analyze as az
 import processor.reporting.vmcolumns as vmc
@@ -12,7 +13,7 @@ import app.utils as app_utl
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
     Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, Client, \
-    Product, Processor, Account, RequestLog, RateCard
+    Product, Processor, Account, RequestLog, RateCard, Rates
 import app.tasks as app_tasks
 
 
@@ -402,3 +403,29 @@ class TestPlan:
     def test_write_plan_placements_local(self, user, app_fixture):
         self.test_write_plan_placements(
             user, app_fixture, check_for_plan=True)
+
+    def test_fees(self, user, app_fixture):
+        cur_plan, df = self.test_write_plan_placements(user, app_fixture)
+        r = RateCard(owner_id=user.id, name='test')
+        db.session.add(r)
+        db.session.commit()
+        click_rate = Rates(type_name=vmc.clicks, adserving_fee=.5,
+                           rate_card_id=r.id)
+        db.session.add(click_rate)
+        db.session.commit()
+        cur_plan.digital_agency_fees = .07
+        cur_plan.rate_card_id = r.id
+        db.session.commit()
+        df = cur_plan.get_placements_as_df()
+        assert vmc.impressions in df.columns
+        agency_fees = df[PartnerPlacements.total_budget.name].sum()
+        agency_fees *= cur_plan.digital_agency_fees
+        assert sum(df[cal.AGENCY_FEES]) == agency_fees
+        serv_col = PartnerPlacements.serving.name
+        rate_col = PartnerPlacements.ad_rate.name
+        ad_rate = df[df[serv_col] == vmc.clicks].reset_index()[rate_col][0]
+        assert ad_rate == click_rate.adserving_fee
+        db.session.delete(cur_plan)
+        db.session.commit()
+        db.session.delete(r)
+        db.session.commit()

@@ -20,6 +20,7 @@ import processor.reporting.utils as utl
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.dictcolumns as dctc
 import processor.reporting.models as prc_model
+import processor.reporting.calc as cal
 import uploader.upload.creator as cre
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login
@@ -2882,6 +2883,8 @@ class Plan(db.Model):
                 'Creative': ['Creative 1', 'Creative 2', 'Creative 1',
                              'Creative 2'],
                 'Copy': ['Copy 1', 'Copy 2', 'Copy 1', 'Copy 2'],
+                'Serving': [
+                    vmc.clicks, vmc.clicks, vmc.clicks, vmc.impressions],
                 'Net Cost': [12000, 11000, 13000, 10000]
             }
             df = pd.DataFrame(data)
@@ -3950,8 +3953,33 @@ class PartnerPlacements(db.Model):
                 temp_dict[col.name] = cur_partner.__dict__[col_name]
         return temp_dict
 
+    @staticmethod
+    def get_rate_card(parent):
+        cur_phase = db.session.get(PlanPhase, parent.plan_phase_id)
+        cur_plan = db.session.get(Plan, cur_phase.plan_id)
+        rate_card = db.session.get(RateCard, cur_plan.rate_card_id)
+        rates = {}
+        if rate_card:
+            rates = rate_card.rates.all()
+            rates = {x.type_name: (x.adserving_fee, x.reporting_fee)
+                     for x in rates}
+        return rates
+
+    def add_rates_from_card(self, temp_dict, rates=None, parent=None):
+        if PartnerPlacements.serving.name in temp_dict:
+            if not rates and parent:
+                rates = self.get_rate_card(parent)
+            serve_type = temp_dict[PartnerPlacements.serving.name]
+            if serve_type in rates:
+                ad_rate = rates[serve_type][0]
+                temp_dict[PartnerPlacements.ad_rate.name] = ad_rate
+                rep_rate = rates[serve_type][1]
+                temp_dict[PartnerPlacements.reporting_rate.name] = rep_rate
+        return temp_dict
+
     def create_from_rules(self, parent_id, current_user_id):
         parent = db.session.get(Partner, parent_id)
+        rates = self.get_rate_card(parent)
         parent_budget = float(parent.total_budget)
         combos, rule_dict = self.get_combos_from_rules(parent_id)
         data = []
@@ -3973,6 +4001,8 @@ class PartnerPlacements(db.Model):
                 if col.name in temp_dict and temp_dict[col.name]:
                     temp_dict[col.name] = PartnerPlacements.fix_date_from_words(
                         col, temp_dict[col.name])
+            temp_dict = PartnerPlacements().add_rates_from_card(
+                temp_dict, rates=rates)
             placement_name = PartnerPlacements().create_placement_name(
                 temp_dict, parent)
             temp_dict[PartnerPlacements.name.name] = placement_name
@@ -3987,6 +4017,36 @@ class PartnerPlacements(db.Model):
                       table=PartnerPlacements, parent_model=Partner)
         return data
 
+    @staticmethod
+    def calculate_metrics(fd, cur_phase):
+        form_cols, metric_cols, def_metric_cols = Partner.get_metric_cols()
+        cost = fd[PartnerPlacements.total_budget.name]
+        if not cost:
+            cost = 0
+        for idx, col in enumerate(metric_cols):
+            if col not in fd.keys():
+                cost_per = fd[metric_cols[idx - 1]]
+                val = 0
+                if cost_per:
+                    val = float(cost) / float(cost_per)
+                if col == vmc.impressions:
+                    val *= 1000
+                fd[col] = val
+        if cur_phase:
+            cur_plan = db.session.get(Plan, cur_phase.plan_id)
+            for col in [(Plan.digital_agency_fees, cal.AGENCY_FEES)]:
+                rate_col = col[0].name
+                cost_col = col[1]
+                val = cur_plan.__dict__[rate_col]
+                if not val:
+                    val = 0
+                fd[rate_col] = val
+                fd[cost_col] = cost * val
+        fd[cal.TOTAL_COST] = cost
+        for col in [cal.AGENCY_FEES]:
+            fd[cal.TOTAL_COST] += fd[col]
+        return fd
+
     def get_form_dict(self):
         fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
                    if not k.startswith("_")])
@@ -3996,6 +4056,8 @@ class PartnerPlacements(db.Model):
             cur_partner = db.session.get(Partner, self.partner_id)
             if cur_partner:
                 cur_phase = db.session.get(PlanPhase, cur_partner.plan_phase_id)
+                fd = self.calculate_metrics(fd, cur_phase)
+                fd = self.add_rates_from_card(fd, parent=cur_partner)
                 cur_phase = cur_phase.name
             fd = self.get_values_from_partner(fd, cur_partner)
             cur_partner = cur_partner.name

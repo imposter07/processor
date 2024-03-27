@@ -1273,6 +1273,14 @@ function syncSingleTableWithForm(loopIndex, formName, tableName, topRowToggle = 
         otherElem.innerHTML = currentValue;
     }
     populateTotalCards(tableName);
+    if (curColElem.dataset['type'].includes('metrics')) {
+        let formNames = getMetricsForTotalCards(tableName);
+        formNames.forEach(fn => {
+            if (fn[0] === formName) {
+                updateMetricCell(fn, loopIndex, null);
+            }
+        });
+    }
 }
 
 function syncTableWithForm(loopIndex, formNames, tableName) {
@@ -1329,6 +1337,35 @@ function getMetricsForTotalCards(tableName) {
     return formNames
 }
 
+function getRowCost(rowNum) {
+    let totalElem = document.getElementById(`rowtotal_budget${rowNum}`);
+    return (totalElem) ? parseFloat(totalElem.innerHTML.replace('$', '')) : 0;
+}
+
+function updateMetricCell(formName, rowNum, rowCost) {
+    let costPerName = formName[0];
+    let summableName = formName[1];
+    let targetColName = formName[formName[2]];
+    let elemId = `row${targetColName}${rowNum}`;
+    let elem = document.getElementById(elemId);
+    let rowValue = parseFloat(elem.innerHTML.replace('$', ''));
+    if (costPerName !== '') {
+        if (!(rowCost)) {
+            rowCost = getRowCost(rowNum);
+        }
+        rowValue = rowCost / rowValue;
+        if (summableName === 'Impressions') {
+            rowValue = rowValue * 1000;
+        }
+        let rowId = `row${summableName}${rowNum}`;
+        let row = document.getElementById(rowId);
+        if (row) {
+            row.innerHTML = formatNumber(rowValue);
+        }
+    }
+    return rowValue
+}
+
 function populateTotalCards(tableName) {
     let totalCardsElem = document.getElementById(`${tableName}TotalCards`);
     if (!totalCardsElem) return;
@@ -1347,29 +1384,15 @@ function populateTotalCards(tableName) {
     if (table) {
         let cols = getTableHeadElems(tableName);
         let rowName = cols[0].id.replace('col', '');
-        let currentRows = document.querySelectorAll(`[id^='row${rowName}']`);
+        let currentRows = table.querySelectorAll(`[id^='row${rowName}']`);
         currentRows.forEach(currentRow => {
             let rowNum = currentRow.id.replace(`row${rowName}`, '');
             if (!isNaN(rowNum[0])) {
-                let totalElem = document.getElementById('rowtotal_budget' + rowNum);
-                let rowCost = (totalElem) ? parseFloat(totalElem.innerHTML.replace('$', '')) : 0;
+                let rowCost = getRowCost(rowNum);
                 formNames.forEach(formName => {
-                    let costPerName = formName[0];
+                    let rowValue = updateMetricCell(formName, rowNum, rowCost);
                     let summableName = formName[1];
-                    let targetColName = formName[formName[2]];
-                    let rowValue = parseFloat(document.getElementById('row' + targetColName + rowNum).innerHTML.replace('$', ''));
                     let idx = data.findIndex(x => x.name === summableName);
-                    if (costPerName !== '') {
-                        rowValue = rowCost / rowValue;
-                        if (summableName === 'Impressions') {
-                            rowValue = rowValue * 1000;
-                        }
-                        let rowId = `row${summableName}${rowNum}`;
-                        let row = document.getElementById(rowId);
-                        if (row) {
-                            row.innerHTML = formatNumber(rowValue);
-                        }
-                    }
                     rowValue = isNaN(rowValue) ? 0 : rowValue;
                     data[idx]['numeric_value'] += rowValue;
                 });

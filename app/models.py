@@ -3795,15 +3795,9 @@ class PartnerPlacements(db.Model):
         return new_rules, words
 
     def check_gg_children(self, parent_id, words, total_db, msg_text,
-                          message=''):
+                          message='', running_user_id=None):
         if current_user:
             running_user_id = current_user.id
-        else:
-            for x in range(1, 5):
-                running_user = db.session.get(User, x)
-                if running_user:
-                    running_user_id = running_user.id
-                    break
         parent = db.session.get(Partner, parent_id)
         g_parent = db.session.get(PlanPhase, parent.plan_phase_id)
         gg_parent = db.session.get(Plan, g_parent.plan_id)
@@ -3943,6 +3937,19 @@ class PartnerPlacements(db.Model):
         data = PartnerPlacements.sync_partner_budget(data, parent_id)
         return data
 
+    @staticmethod
+    def get_values_from_partner(temp_dict, cur_partner):
+        p = PartnerPlacements
+        cols = [p.cpm, p.cpc, p.cplpv, p.cpbc, p.cpv, p.cpcv]
+        for col in cols:
+            if col.name not in temp_dict or not temp_dict[col.name]:
+                col_name = col.name
+                if col_name in [p.cpm.name, p.cpc.name]:
+                    pre = Partner.estimated_cpm.name.split('_')[0]
+                    col_name = '{}_{}'.format(pre, col_name)
+                temp_dict[col.name] = cur_partner.__dict__[col_name]
+        return temp_dict
+
     def create_from_rules(self, parent_id, current_user_id):
         parent = db.session.get(Partner, parent_id)
         parent_budget = float(parent.total_budget)
@@ -3961,6 +3968,7 @@ class PartnerPlacements(db.Model):
             temp_dict[PartnerPlacements.start_date.name] = parent.start_date
             temp_dict[PartnerPlacements.end_date.name] = parent.end_date
             temp_dict[PartnerPlacements.partner_id.name] = parent.id
+            temp_dict = self.get_values_from_partner(temp_dict, parent)
             for col in self.__table__.columns:
                 if col.name in temp_dict and temp_dict[col.name]:
                     temp_dict[col.name] = PartnerPlacements.fix_date_from_words(
@@ -3984,16 +3992,12 @@ class PartnerPlacements(db.Model):
                    if not k.startswith("_")])
         cur_partner = ''
         cur_phase = ''
-        p = Partner
-        cols = [p.estimated_cpm, p.estimated_cpc, p.cplpv, p.cpbc, p.cpv,
-                p.cpcv]
         if self.partner_id:
             cur_partner = db.session.get(Partner, self.partner_id)
             if cur_partner:
                 cur_phase = db.session.get(PlanPhase, cur_partner.plan_phase_id)
                 cur_phase = cur_phase.name
-            for col in cols:
-                fd[col.name] = cur_partner.__dict__[col.name]
+            fd = self.get_values_from_partner(fd, cur_partner)
             cur_partner = cur_partner.name
         fd[Partner.__table__.name] = cur_partner
         fd[PlanPhase.__table__.name] = cur_phase

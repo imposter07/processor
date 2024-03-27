@@ -5606,7 +5606,8 @@ def plan_check_placements(plan_id, current_user_id, words, new_g_children,
     for new_g_child_id in new_g_children:
         response += PartnerPlacements().check_gg_children(
             new_g_child_id, words=words, total_db=total_db,
-            msg_text='Checking plan placements', message=message)
+            msg_text='Checking plan placements', message=message,
+            running_user_id=current_user_id)
     return response
 
 

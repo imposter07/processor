@@ -553,9 +553,16 @@ class TestPlan:
     def test_placements(self, sw, login, worker):
         url = plan_routes.plan_placements
         cur_plan = self.check_and_get_plan(sw, login, worker, url)
+        cur_place = cur_plan.get_placements()
+        cur_place = cur_place[0]
+        clicks = cur_place.total_budget / cur_place.cpc
         load_elem_id = 'budget0'
         elem_id = 'row{}'.format(load_elem_id)
         sw.wait_for_elem_load(elem_id)
+        click_cell_id = 'rowClicks0'
+        elem = sw.browser.find_element_by_id(click_cell_id)
+        elem_clicks = elem.get_attribute('innerHTML').replace(',', '')
+        assert int(elem_clicks) == int(clicks)
         sw.xpath_from_id_and_click(elem_id, load_elem_id=load_elem_id)
         submit_form(sw, [load_elem_id], test_name=self.test_name)
         worker.work(burst=True)

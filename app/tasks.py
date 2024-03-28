@@ -6201,6 +6201,58 @@ def update_rules_from_change_log(plan_id, current_user_id, part_id, change_log):
             parent_model=Plan, additional_filter=additional_filter)
 
 
+def set_partner_from_placements(cur_plan, df, phase_col, cost_col,
+                                plan_id, current_user_id, metric_cols):
+    mp = cre.MediaPlan
+    part_col = [mp.partner_name, Partner.__table__.name]
+    part_col = [x for x in part_col if x in df.columns][0]
+    sum_cols = [cost_col] + metric_cols
+    sum_cols = [x for x in sum_cols if x in df.columns]
+    form_sources = df.groupby([part_col, phase_col])[sum_cols].sum()
+    form_sources = form_sources.reset_index()
+    cur_phases = [x for x in cur_plan.phases.all()]
+    brand_new_ids = []
+    for cur_phase in cur_phases:
+        form_source = form_sources[form_sources[phase_col] == cur_phase.name]
+        cols = [Partner.__table__.name, Partner.name.name]
+        for col in cols:
+            form_source.loc[:, col] = form_source.loc[:, part_col]
+        budget_col = Partner.total_budget.name
+        form_source.loc[:, budget_col] = form_source.loc[:, cost_col]
+        part_df = [x.get_form_dict() for x in cur_phase.get_current_children()]
+        part_df = pd.DataFrame(part_df)
+        for idx, col in enumerate(metric_cols):
+            if col not in form_source.columns:
+                sum_col = metric_cols[idx + 1]
+                if sum_col not in df.columns:
+                    sum_cols = [Partner.__table__.name, col]
+                    if part_df.empty:
+                        for c in [sum_col, col]:
+                            form_source[c] = 0
+                    else:
+                        sum_col_df = part_df[sum_cols]
+                        form_source = pd.merge(
+                            form_source, sum_col_df,
+                            on=Partner.__table__.name, how='left')
+                        form_source[sum_col] = form_source[col]
+                else:
+                    form_source[col] = (
+                                form_source[cost_col] / form_source[sum_col])
+                    if col == vmc.impressions:
+                        form_source[col] = form_source[col] / 1000
+        form_source = form_source.to_dict(orient='records')
+        change_log = app_utl.set_db_values(
+            cur_phase.id, current_user_id, form_sources=form_source,
+            table=Partner, parent_model=PlanPhase)
+        if 'add' in change_log and change_log['add']:
+            new_ids = [x['id'] for x in change_log['add']]
+            brand_new_ids.extend(new_ids)
+    if brand_new_ids:
+        for parent_id in brand_new_ids:
+            check_plan_gg_children(plan_id, current_user_id,
+                                   parent_id=parent_id)
+
+
 @error_handler
 def write_plan_placements(plan_id, current_user_id, new_data=None,
                           file_type=None):
@@ -6232,30 +6284,8 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
     form_sources = form_sources.to_dict(orient='records')
     app_utl.set_db_values(plan_id, current_user_id, form_sources=form_sources,
                           table=PlanPhase, parent_model=Plan)
-    part_col = [mp.partner_name, Partner.__table__.name]
-    part_col = [x for x in part_col if x in df.columns][0]
-    form_sources = df.groupby([part_col, phase_col])[cost_col].sum()
-    form_sources = form_sources.reset_index()
-    cur_phases = [x for x in cur_plan.phases.all()]
-    brand_new_ids = []
-    for cur_phase in cur_phases:
-        form_source = form_sources[form_sources[phase_col] == cur_phase.name]
-        cols = [Partner.__table__.name, Partner.name.name]
-        for col in cols:
-            form_source.loc[:, col] = form_source.loc[:, part_col]
-        budget_col = Partner.total_budget.name
-        form_source.loc[:, budget_col] = form_source.loc[:, cost_col]
-        form_source = form_source.to_dict(orient='records')
-        change_log = app_utl.set_db_values(
-            cur_phase.id, current_user_id, form_sources=form_source,
-            table=Partner, parent_model=PlanPhase)
-        if 'add' in change_log and change_log['add']:
-            new_ids = [x['id'] for x in change_log['add']]
-            brand_new_ids.extend(new_ids)
-    if brand_new_ids:
-        for parent_id in brand_new_ids:
-            check_plan_gg_children(plan_id, current_user_id,
-                                   parent_id=parent_id)
+    set_partner_from_placements(cur_plan, df, phase_col, cost_col, plan_id,
+                                current_user_id, metric_cols)
     col = PartnerPlacements.partner_id.name
     if col not in df.columns:
         poss_cols = [Partner.__name__, cre.MediaPlan.partner_name,

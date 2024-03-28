@@ -189,7 +189,6 @@ def edit_sow(object_name):
         current_sow.start_date = form.start_date.data
         current_sow.end_date = form.end_date.data
         current_sow.client_name = form.client_name.data
-        current_sow.campaign = form.campaign.data
         current_sow.address = form.address.data
         current_sow.phone = form.phone.data
         current_sow.fax = form.fax.data

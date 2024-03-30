@@ -6201,6 +6201,33 @@ def update_rules_from_change_log(plan_id, current_user_id, part_id, change_log):
             parent_model=Plan, additional_filter=additional_filter)
 
 
+def set_metrics_from_dict(form_source, cur_phase, cost_col, metric_cols):
+    part_df = [x.get_form_dict() for x in cur_phase.get_current_children()]
+    if not part_df:
+        part_df, partner_type_list = Partner.get_name_list()
+    part_df = pd.DataFrame(part_df)
+    est_cols = [Partner.estimated_cpc, Partner.estimated_cpm]
+    est_cols = [x.name.split('_')[-1] for x in est_cols]
+    prefix = est_cols[0].split('_')[0]
+    for idx, col in enumerate(metric_cols):
+        if col not in form_source.columns:
+            sum_col = metric_cols[idx + 1]
+            if sum_col not in form_source.columns:
+                sum_cols = [Partner.__table__.name, col]
+                sum_col_df = part_df[sum_cols]
+                form_source = pd.merge(form_source, sum_col_df,
+                                       on=Partner.__table__.name, how='left')
+                form_source[sum_col] = form_source[col]
+            else:
+                form_source[col] = form_source[cost_col] / form_source[sum_col]
+                if col == vmc.impressions:
+                    form_source[col] = form_source[col] / 1000
+        if col in est_cols:
+            col_name = '{}_{}'.format(prefix, col)
+            form_source[col_name] = form_source[col]
+    return form_source
+
+
 def set_partner_from_placements(cur_plan, df, phase_col, cost_col,
                                 plan_id, current_user_id, metric_cols):
     mp = cre.MediaPlan
@@ -6219,28 +6246,10 @@ def set_partner_from_placements(cur_plan, df, phase_col, cost_col,
             form_source.loc[:, col] = form_source.loc[:, part_col]
         budget_col = Partner.total_budget.name
         form_source.loc[:, budget_col] = form_source.loc[:, cost_col]
-        part_df = [x.get_form_dict() for x in cur_phase.get_current_children()]
-        part_df = pd.DataFrame(part_df)
-        for idx, col in enumerate(metric_cols):
-            if col not in form_source.columns:
-                sum_col = metric_cols[idx + 1]
-                if sum_col not in df.columns:
-                    sum_cols = [Partner.__table__.name, col]
-                    if part_df.empty:
-                        for c in [sum_col, col]:
-                            form_source[c] = 0
-                    else:
-                        sum_col_df = part_df[sum_cols]
-                        form_source = pd.merge(
-                            form_source, sum_col_df,
-                            on=Partner.__table__.name, how='left')
-                        form_source[sum_col] = form_source[col]
-                else:
-                    form_source[col] = (
-                                form_source[cost_col] / form_source[sum_col])
-                    if col == vmc.impressions:
-                        form_source[col] = form_source[col] / 1000
+        form_source = set_metrics_from_dict(form_source, cur_phase, cost_col,
+                                            metric_cols)
         form_source = form_source.to_dict(orient='records')
+        current_app.logger.info(form_source)
         change_log = app_utl.set_db_values(
             cur_phase.id, current_user_id, form_sources=form_source,
             table=Partner, parent_model=PlanPhase)
@@ -6307,7 +6316,8 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
         cur_part = db.session.get(Partner, part_id)
         for x in tdf:
             name = PartnerPlacements().create_placement_name(x, cur_part)
-            x['name'] = name
+            x[Partner.name.name] = name
+            x[Partner.__table__.name] = name
         change_log = app_utl.set_db_values(
             part_id, current_user_id, form_sources=tdf,
             table=PartnerPlacements, parent_model=Partner)

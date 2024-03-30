@@ -3149,8 +3149,8 @@ class Partner(db.Model):
                      p.cpv.name, p.cpcv.name]
         def_metric_cols = [cpm, vmc.impressions, cpc, vmc.clicks]
         metric_cols = def_metric_cols + [
-            p.cplpv.name, vmc.landingpage, p.cpbc.name, vmc.btnclick, vmc.views,
-            p.cpv.name, vmc.views100, p.cpcv.name]
+            p.cplpv.name, vmc.landingpage, p.cpbc.name, vmc.btnclick,
+            p.cpv.name, vmc.views, p.cpcv.name, vmc.views100]
         return form_cols, metric_cols, def_metric_cols
 
 
@@ -3868,13 +3868,13 @@ class PartnerPlacements(db.Model):
         col_order = self.get_col_order()
         placement_name = []
         for col in col_order:
-            if col in place_dict:
-                val = place_dict[col]
-                val = self.fix_date_from_words(col, val, to_str=True)
-            elif col == Partner.__table__.name:
+            if col == Partner.__table__.name:
                 val = parent.name
             elif col == PlanPhase.__table__.name:
                 val = parent.plan.name
+            elif col in place_dict:
+                val = place_dict[col]
+                val = self.fix_date_from_words(col, val, to_str=True)
             else:
                 val = ''
             placement_name.append(str(val))

@@ -8,6 +8,7 @@ import processor.reporting.utils as utl
 import processor.reporting.analyze as az
 import processor.reporting.vmcolumns as vmc
 import processor.reporting.models as prc_model
+import uploader.upload.creator as cre
 import app.main.routes as main_routes
 import app.utils as app_utl
 from app import db
@@ -383,6 +384,7 @@ class TestPlan:
                                    check_for_plan=False):
         cur_plan = TestTasks.create_test_processor(Plan)
         df = Plan.get_mock_plan(basedir, check_for_plan)
+        part_name = df[cre.MediaPlan.partner_name][0]
         file_type = '.csv'
         file_name = 'mediaplantmp{}'.format(file_type)
         df.to_csv(file_name)
@@ -397,6 +399,7 @@ class TestPlan:
         assert float(pdf[cost_col].sum()) == float(df[cost_col].sum())
         col_order = PartnerPlacements.get_col_order()
         assert len(col_order) == len(cur_places[0].name.split('_'))
+        assert cur_places[0].name.split('_')[1] == part_name
         os.remove(file_name)
         return cur_plan, df
 

@@ -972,6 +972,7 @@ class Processor(db.Model):
         elif buttons == 'Plan':
             buttons = [{'Checklist': ['plan.checklist', 'list-check']},
                        {'Basic': ['plan.edit_plan', 'list-ol']},
+                       {'Fees': ['plan.fees', 'comment-dollar']},
                        {'Topline': ['plan.topline', 'calendar']},
                        {'SOW': ['plan.edit_sow', 'file-signature']},
                        {'PlanRules': ['plan.plan_rules', 'ruler']},
@@ -3086,6 +3087,8 @@ class Partner(db.Model):
         vew_col = prc_model.Event.videoviews.name
         vhu_col = prc_model.Event.videoviews100.name
         bc_col = prc_model.Event.buttonclick.name
+        cpm_col = 'CPM'
+        cpc_col = 'CPC'
         clp_col = 'CPLPV'
         cpb_col = 'CPBC'
         cpv_col = 'CPV'
@@ -3100,7 +3103,7 @@ class Partner(db.Model):
                 vty_col: ['Social']
             }
             event_cols = [imp_col, net_col, cli_col, lp_col, vew_col, vhu_col,
-                          bc_col, clp_col, cpb_col, cpv_col]
+                          bc_col, clp_col, cpb_col, cpv_col, cpm_col, cpc_col]
             for col in event_cols:
                 def_dict[col] = [1]
             df = pd.DataFrame(def_dict)
@@ -4032,19 +4035,35 @@ class PartnerPlacements(db.Model):
                 if col == vmc.impressions:
                     val *= 1000
                 fd[col] = val
+        plan_cols = [(Plan.digital_agency_fees, cal.AGENCY_FEES)]
+        place_cols = [(PartnerPlacements.ad_rate, vmc.AD_COST),
+                      (PartnerPlacements.reporting_rate, vmc.REP_COST)]
         if cur_phase:
             cur_plan = db.session.get(Plan, cur_phase.plan_id)
-            for col in [(Plan.digital_agency_fees, cal.AGENCY_FEES)]:
+            for col in plan_cols + place_cols:
                 rate_col = col[0].name
                 cost_col = col[1]
-                val = cur_plan.__dict__[rate_col]
+                cur_dict = cur_plan.__dict__ if col in plan_cols else fd
+                val = cur_dict[rate_col]
                 if not val:
                     val = 0
                 fd[rate_col] = val
-                fd[cost_col] = cost * val
-        fd[cal.TOTAL_COST] = cost
-        for col in [cal.AGENCY_FEES]:
-            fd[cal.TOTAL_COST] += fd[col]
+                mult_col = cost
+                if col in place_cols:
+                    is_click = fd[PartnerPlacements.serving.name]
+                    is_click = is_click and vmc.clicks[:-1] in is_click
+                    if is_click:
+                        mult_col = fd[vmc.clicks]
+                    else:
+                        mult_col = fd[vmc.impressions] / 1000
+                try:
+                    new_val = float(mult_col) * float(val)
+                except ValueError as e:
+                    new_val = 0
+                fd[cost_col] = new_val
+        fd[cal.TOTAL_COST] = float(cost)
+        for col in plan_cols + place_cols:
+            fd[cal.TOTAL_COST] += float(fd[col[1]])
         return fd
 
     def get_form_dict(self):
@@ -4054,12 +4073,12 @@ class PartnerPlacements(db.Model):
         cur_phase = ''
         if self.partner_id:
             cur_partner = db.session.get(Partner, self.partner_id)
+            fd = self.get_values_from_partner(fd, cur_partner)
             if cur_partner:
                 cur_phase = db.session.get(PlanPhase, cur_partner.plan_phase_id)
-                fd = self.calculate_metrics(fd, cur_phase)
                 fd = self.add_rates_from_card(fd, parent=cur_partner)
+                fd = self.calculate_metrics(fd, cur_phase)
                 cur_phase = cur_phase.name
-            fd = self.get_values_from_partner(fd, cur_partner)
             cur_partner = cur_partner.name
         fd[Partner.__table__.name] = cur_partner
         fd[PlanPhase.__table__.name] = cur_phase

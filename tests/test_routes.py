@@ -400,6 +400,12 @@ class TestPlan:
         col_order = PartnerPlacements.get_col_order()
         assert len(col_order) == len(cur_places[0].name.split('_'))
         assert cur_places[0].name.split('_')[1] == part_name
+        partner_list, partner_type_list = Partner.get_name_list()
+        cur_part = db.session.get(Partner, cur_places[0].partner_id)
+        cpm = [x for x in partner_list if x[Partner.__table__.name] == cur_part]
+        if cpm:
+            cpm = cpm[PartnerPlacements.cpm.name]
+            assert int(cur_places[0].cpm) == cpm
         os.remove(file_name)
         return cur_plan, df
 
@@ -423,11 +429,12 @@ class TestPlan:
         assert vmc.impressions in df.columns
         agency_fees = df[PartnerPlacements.total_budget.name].sum()
         agency_fees *= cur_plan.digital_agency_fees
-        assert sum(df[cal.AGENCY_FEES]) == agency_fees
+        assert int(sum(df[cal.AGENCY_FEES])) == int(agency_fees)
         serv_col = PartnerPlacements.serving.name
         rate_col = PartnerPlacements.ad_rate.name
         ad_rate = df[df[serv_col] == vmc.clicks].reset_index()[rate_col][0]
         assert ad_rate == click_rate.adserving_fee
+        assert sum(df[vmc.AD_COST]) > 0
         db.session.delete(cur_plan)
         db.session.commit()
         db.session.delete(r)

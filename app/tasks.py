@@ -1266,7 +1266,8 @@ def write_rate_card(processor_id, current_user_id, new_data, vk,
         rate_card = RateCard.query.filter_by(name=rate_card_name).first()
     data = json.loads(new_data)
     app_utl.set_db_values(rate_card.id, current_user_id, data,
-                          table=Rates, parent_model=RateCard)
+                          table=Rates, parent_model=RateCard,
+                          post_model=cur_proc)
     if cur_proc.rate_card_id != rate_card.id:
         cur_proc.rate_card_id = rate_card.id
         db.session.commit()
@@ -6207,8 +6208,8 @@ def set_metrics_from_dict(form_source, cur_phase, cost_col, metric_cols):
         part_df, partner_type_list = Partner.get_name_list()
     part_df = pd.DataFrame(part_df)
     est_cols = [Partner.estimated_cpc, Partner.estimated_cpm]
+    prefix = est_cols[0].name.split('_')[0]
     est_cols = [x.name.split('_')[-1] for x in est_cols]
-    prefix = est_cols[0].split('_')[0]
     for idx, col in enumerate(metric_cols):
         if col not in form_source.columns:
             sum_col = metric_cols[idx + 1]
@@ -6249,7 +6250,6 @@ def set_partner_from_placements(cur_plan, df, phase_col, cost_col,
         form_source = set_metrics_from_dict(form_source, cur_phase, cost_col,
                                             metric_cols)
         form_source = form_source.to_dict(orient='records')
-        current_app.logger.info(form_source)
         change_log = app_utl.set_db_values(
             cur_phase.id, current_user_id, form_sources=form_source,
             table=Partner, parent_model=PlanPhase)
@@ -6308,16 +6308,18 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
     unique_ids = df[col].unique()
     for part_id in unique_ids:
         tdf = df[df[col] == part_id]
+        part_id = int(part_id)
+        cur_part = db.session.get(Partner, part_id)
+        cur_phase = db.session.get(PlanPhase, cur_part.plan_phase_id)
         col_dict = {x: x.replace(' ', '_').lower() for x in df.columns}
+        tdf[Partner.__table__.name] = cur_part.name
+        tdf = set_metrics_from_dict(tdf, cur_phase, cost_col, metric_cols)
         tdf = tdf.rename(columns=col_dict)
         tdf = utl.data_to_type(tdf, float_col=metric_cols).fillna(0)
         tdf = tdf.to_dict(orient='records')
-        part_id = int(part_id)
-        cur_part = db.session.get(Partner, part_id)
         for x in tdf:
             name = PartnerPlacements().create_placement_name(x, cur_part)
             x[Partner.name.name] = name
-            x[Partner.__table__.name] = name
         change_log = app_utl.set_db_values(
             part_id, current_user_id, form_sources=tdf,
             table=PartnerPlacements, parent_model=Partner)

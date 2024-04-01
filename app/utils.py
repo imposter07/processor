@@ -383,7 +383,8 @@ def object_post_message(proc, usr, text, run_complete=False,
     usr.add_notification('unread_message_count', usr.new_messages())
     if object_name == Uploader.__name__:
         post = Post(body=text, author=usr, uploader_id=proc.id)
-    elif object_name == Plan.__name__:
+    elif (object_name == Plan.__name__ or
+          proc.__table__.name == Plan.__table__.name):
         post = Post(body=text, author=usr, plan_id=proc.id)
     else:
         post = Post(body=text, author=usr, processor_id=proc.id)
@@ -408,9 +409,10 @@ def get_obj_user(object_id, current_user_id, db_model=Processor):
 
 
 def set_db_values(object_id, current_user_id, form_sources, table,
-                  parent_model=Processor, additional_filter=None):
+                  parent_model=Processor, additional_filter=None,
+                  post_model=None):
     update_msg = 'Attempt {}: {}'.format(table.__name__, form_sources)
-    current_app.logger.info(update_msg)
+    current_app.logger.info(update_msg[:1000])
     cur_processor, user_that_ran = get_obj_user(
         object_id=object_id, current_user_id=current_user_id,
         db_model=parent_model)
@@ -475,10 +477,13 @@ def set_db_values(object_id, current_user_id, form_sources, table,
             plan_id = cur_processor.plan_id
         cur_processor = db.session.get(Plan, plan_id)
         parent_model = Plan
+    if post_model:
+        cur_processor = post_model
+        parent_model = type(cur_processor)
     object_post_message(cur_processor, user_that_ran, msg_text,
                         object_name=parent_model.__name__)
     update_msg = 'Updated {}: {}'.format(table.__name__, change_log)
-    current_app.logger.info(update_msg)
+    current_app.logger.info(update_msg[:1000])
     return change_log
 
 

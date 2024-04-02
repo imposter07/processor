@@ -137,6 +137,13 @@ class TestChat:
             name = cu.username
         p = Plan.query.filter_by(name=name).first()
         assert p.name == name
+        cur_part = p.get_partners()[0]
+        partner_list, partner_type_list = Partner.get_name_list()
+        cpm = [x for x in partner_list
+               if x[Partner.__table__.name] == cur_part.name]
+        if cpm:
+            cpm = cpm[0][PartnerPlacements.cpm.name]
+            assert int(cur_part.estimated_cpm) == cpm
 
     def test_plan_edit(self, client, conversation, worker):
         worker.work(burst=True)

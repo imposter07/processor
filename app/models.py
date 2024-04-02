@@ -3063,7 +3063,9 @@ class Partner(db.Model):
         self.name = form[Partner.__table__.name]
         omit_cols = [Partner.name.name]
         cols = [x for x in self.__table__.columns if x.name not in omit_cols]
+        est_val = Partner.estimated_cpc.name.split('_')[0]
         for col in cols:
+            search_name = col.name
             missing_val = 'None'
             if isinstance(col.type, db.Numeric):
                 missing_val = 0
@@ -3071,7 +3073,9 @@ class Partner(db.Model):
                 missing_val = datetime.today().date()
                 if col.name == Partner.end_date.name:
                     missing_val += timedelta(days=7)
-            new_val = utl.check_dict_for_key(form, col.name, missing_val)
+            if est_val in search_name and search_name not in form:
+                search_name = search_name.replace('{}_'.format(est_val), '')
+            new_val = utl.check_dict_for_key(form, search_name, missing_val)
             is_key_col = col.primary_key or col.foreign_keys
             if (is_key_col and new_val != missing_val) or not is_key_col:
                 setattr(self, col.name, new_val)

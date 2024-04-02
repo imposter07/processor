@@ -15,7 +15,7 @@ import processor.reporting.utils as utl
 import processor.reporting.expcolumns as exc
 from processor.reporting.export import ScriptBuilder, DB
 from app.models import User, Project, Processor, Uploader, Plan, RfpFile, \
-    RequestLog, RateCard
+    RequestLog, RateCard, Sow, PlanEffectiveness
 from rq import SimpleWorker
 from rq.timeouts import BaseDeathPenalty, JobTimeoutException
 
@@ -142,10 +142,11 @@ def user(app_fixture):
     db.session.add(u)
     db.session.commit()
     yield u
-    for db_model in [RfpFile, Project, Processor, Uploader, Plan, RequestLog,
-                     RateCard]:
-        key = RateCard.owner_id if db_model == RateCard else Processor.user_id
-        rows = db_model.query.filter_by(**{key.name: u.id}).all()
+    RequestLog.query.filter_by(user_id=u.id).delete()
+    db_models = [RfpFile, Project, Processor, Uploader, Sow, PlanEffectiveness,
+                 Plan, RequestLog, RateCard]
+    for db_model in db_models:
+        rows = db_model.query.all()
         for row in rows:
             db.session.delete(row)
             db.session.commit()

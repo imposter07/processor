@@ -2074,6 +2074,12 @@
         }
     }
 
+    function staticFilterToSelectOptions(tableData, selectDiv, tableName){
+        let xCol = tableData['data']['metadata']['dimensions'][0];
+        document.getElementById(tableName).parentElement.style.display = "";
+        addSelectOptions(tableData['data']['data'], xCol, `#${tableName}`)
+    }
+
 
     function addSelectOptions(data, xCol, selectDiv=false, baseElemId='',
                               defaultValInd=0) {
@@ -2109,6 +2115,57 @@
         }
     }
 
+    function getStaticFilterOptions(selectElement) {
+        let selectedText = selectElement.options[selectElement.selectedIndex].text;
+        let filterNum = selectElement.id.replace('filter_col', '');
+        let elemId = filterNum + 'filter_val';
+        const elem = document.getElementById(elemId);
+        elem.innerHTML = '';
+        elem.parentNode.style.display = 'none';
+        const newDiv = document.createElement('div');
+        newDiv.innerHTML = `<div id="${elemId}ProgressBar"></div>`;
+        elem.parentNode.parentNode.appendChild(newDiv);
+        let static_filter_args = getDataTableArgsDict(
+            '', [selectedText], ['impressions'], [], true);
+        getTable(elemId, `${elemId}ProgressBar`,
+            'None', 'None', 'None', true, 'None', false, static_filter_args,
+            staticFilterToSelectOptions);
+    }
+
+    function staticFilterChange() {
+        $('select[id$="filter_col"]').selectize({
+            onChange: function () {
+                const selectElement = this.$input[0];
+                getStaticFilterOptions(selectElement);
+            }
+        });
+        let static_filters = document.querySelectorAll('select[id$="filter_col"]');
+        static_filters.forEach(function (selectElement) {
+            getStaticFilterOptions(selectElement);
+        });
+    }
+
+    function addStaticFilterOnClick() {
+        let form = document.getElementById('base_form_id');
+        let formData = new FormData(form);
+        makeRequest('/add_static_filter',
+            'POST', formData, addDeleteStaticFilterResponse);
+    }
+
+    function addDeleteStaticFilterResponse(data) {
+        document.getElementById('base_form_id').innerHTML = data['form'];
+        loadJS();
+        staticFilterChange();
+    }
+
+    function deleteStaticFilterOnClick(event) {
+        let form = document.getElementById('base_form_id');
+        let formData = new FormData(form);
+        let delete_id = event.currentTarget.id;
+        let url = '/delete_static_filter?delete_id='.concat(delete_id);
+        makeRequest(url, 'POST', formData, addDeleteStaticFilterResponse);
+    }
+
     $(document).ready(function () {
         $('#chart_type').on('change', function (e) {
             let selectedText = this.options[e.target.selectedIndex].text;
@@ -2121,38 +2178,6 @@
                 let selectize = document.getElementById(`dimensions`).selectize;
                 selectize.enable();
             }
-        });
-        $('select[id$="filter_col"]').on('change', function (e) {
-            let selectedText = this.options[e.target.selectedIndex].text;
-            let filterNum = this.id.replace(
-                'static_filters-', '').replace('-filter_col', '')
-            let elemId = '#static_filters-' + filterNum + '-filter_val'
-            $(elemId).empty();
-            $(elemId).parent().hide()
-            $(elemId).parent().parent().append(
-                '<div><div id="loadingBtn"></div></div>')
-            let loadingBtnElem = document.getElementById('loadingBtn');
-            loadingBtn(loadingBtnElem, '');
-            $.ajax({
-                type: "POST",
-                url: "/get_metrics",
-                data: {
-                    object_name: "{{ object_name }}",
-                    object_type: "{{ title }}",
-                    object_level: "{{ edit_name }}",
-                    elem: elemId,
-                    x_col: selectedText,
-                    y_col: ['impressions'].join('|'),
-                },
-            }).done(function (data, status) {
-                $(elemId).parent().show()
-                $('#loadingBtn').remove()
-                addSelectOptions(data, selectedText, elemId)
-            }).fail(function (jqXHR, textStatus) {
-                console.log("Request failed: " + textStatus);
-            }).always(function () {
-
-            });
         });
     });
 </script>

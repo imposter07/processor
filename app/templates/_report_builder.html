@@ -130,17 +130,23 @@
         let border = (position[2] === "beforebegin") ?
             "border-top" : "border-bottom";
         event.currentTarget.classList.add(border);
-        let scrollThreshold = 100;
-        if (event.clientY < scrollThreshold) {
-            window.scrollBy(0, -10);
+    }
+
+    function onDrag(event) {
+        let scrollThreshold = 30;
+        let headerHeight = document.getElementById('navbar').offsetHeight;
+        if (event.clientY < (scrollThreshold + headerHeight)) {
+            window.scrollBy(0, -15);
         }
     }
 
     function onDragEnd(event) {
+        window.addEventListener('scroll', getReportCharts);
         event.currentTarget.classList.remove('bg-light');
     }
 
     function onDragStart(event) {
+        window.removeEventListener('scroll', getReportCharts);
         event.currentTarget.childNodes.forEach(child => {
             if (!child.draggable === true) {
                 child.ondragstart = "preventDrag(event)"
@@ -166,6 +172,9 @@
         elem.addEventListener('dragend', function (e) {
             onDragEnd(e)
         }, false);
+        elem.addEventListener('drag', function(e) {
+            onDrag(e)
+        });
         elem.addEventListener('dragover', function (e) {
             onDragOver(e)
         }, false);

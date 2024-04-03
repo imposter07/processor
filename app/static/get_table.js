@@ -85,6 +85,8 @@ function parseTableResponse(tableName, pond, vendorKey, data, callbackFunc) {
             let newTableName = data['data']['name'];
             createChangeDictOrder(data['data']['cols'], data['data']['data'],
                 newTableName, data['dict_cols'], data['relational_cols']);
+        }  else if (callbackFunc) {
+            callbackFunc(data, true, tableName)
         } else if (existsInJson(data['data'], 'liquid_table')) {
             let newTableName = data['data']['name'] ? data['data']['name'] : tableName;
             const modalName = 'modal-body-table';
@@ -96,8 +98,6 @@ function parseTableResponse(tableName, pond, vendorKey, data, callbackFunc) {
             createLiquidTable(data, {'tableName': newTableName});
         } else if (tableName === 'Pacing Table') {
             generatePacingTable(tableName, data['data']['data'], data['plan_cols'])
-        } else if (callbackFunc) {
-            callbackFunc(data, true, tableName)
         }
         else {
             showModalTable('modalTableButton');

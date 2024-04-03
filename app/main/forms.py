@@ -701,7 +701,8 @@ class ProcessorDashboardForm(FlaskForm):
         (x, x) for x in ['Topline', 'Partner', 'Country', 'Targeting',
                          'Placement', 'Creative']])
     include_in_report = BooleanField(_l('Include Chart/Table in Report'))
-    add_child = SubmitField(label='Add Static Filter')
+    add_child = SubmitField(label='Add Static Filter',
+                            render_kw={'type': 'button'})
     form_continue = HiddenField('form_continue')
     static_filters = FieldList(FormField(StaticFilterForm, label=''))
 
@@ -711,6 +712,9 @@ class ProcessorDashboardForm(FlaskForm):
             dashboard_id=cur_upo.id).all()
         for rel in up_rel:
             form_dict = rel.get_form_dict()
+            if 'filter_val' in form_dict:
+                form_dict['filter_val'] = (
+                    rel.convert_string_to_list(form_dict['filter_val']))
             relation_dict.append(form_dict)
         self.static_filters = relation_dict
         return relation_dict

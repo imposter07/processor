@@ -33,7 +33,7 @@
     {% if current_user %}data-username="{{ current_user.username }}"{% endif %}>
 </div>
 {% block navbar %}
-<nav class="navbar navbar-expand-lg bg-secondary fixed-top shadow outer"
+<nav id="navbar" class="navbar navbar-expand-lg bg-secondary fixed-top shadow outer"
      style="padding-top:1px;">
     <a class="navbar-brand" href="{{ url_for('main.index') }}">
         <img alt="Brand" class="img-responsive" style="height: 30px;"

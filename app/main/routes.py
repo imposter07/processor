@@ -27,7 +27,7 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     PlacementForm, ProcessorDeleteForm, ProcessorDuplicateAnotherForm, \
     ProcessorNoteForm, ProcessorAutoAnalysisForm, ProcessorReportBuilderForm, \
     WalkthroughUploadForm, ProcessorPlanForm, UploadTestForm, ScreenshotForm, \
-    BrandTrackerImportForm, EditProjectForm
+    BrandTrackerImportForm, EditProjectForm, StaticFilterForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
     Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
@@ -3086,7 +3086,11 @@ def save_dashboard():
 @bp.route('/delete_dashboard', methods=['GET', 'POST'])
 @login_required
 def delete_dashboard():
-    dash = Dashboard.query.get(int(request.form['dashboard_id']))
+    dash_id = int(request.form['dashboard_id'])
+    dash = Dashboard.query.get(dash_id)
+    filters = DashboardFilter.query.filter_by(dashboard_id=dash_id).all()
+    for f in filters:
+        db.session.delete(f)
     db.session.delete(dash)
     db.session.commit()
     msg = 'The dashboard {} has been deleted.'.format(dash.name)
@@ -3106,6 +3110,32 @@ def include_dashboard_in_report():
         msg = 'The dashboard {} has been excluded from report.'.format(
             dash.name)
     return jsonify({'data': 'success', 'message': msg, 'level': 'success'})
+
+
+@bp.route('/add_static_filter', methods=['GET', 'POST'])
+@login_required
+def add_static_filter():
+    form_class = ProcessorDashboardForm
+    orig_form = form_class(request.form)
+    kwargs = orig_form.data
+    new_filter = StaticFilterForm(formdata=None)
+    kwargs['static_filters'].insert(0, new_filter.data)
+    form = form_class(formdata=None, **kwargs)
+    import_form = render_template('_form.html', form=form)
+    return jsonify({'form': import_form})
+
+
+@bp.route('/delete_static_filter', methods=['GET', 'POST'])
+@login_required
+def delete_static_filter():
+    delete_id = int(request.args.get('delete_id').split('-')[1])
+    form_class = StaticFilterForm
+    orig_form = form_class(request.form)
+    kwargs = orig_form.data
+    del kwargs['static_filters'][delete_id]
+    form = form_class(formdata=None, **kwargs)
+    import_form = render_template('_form.html', form=form)
+    return jsonify({'form': import_form})
 
 
 @bp.route('/delete_processor/<object_name>', methods=['GET', 'POST'])

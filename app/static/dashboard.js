@@ -475,4 +475,6 @@ async function addDashModal(tab) {
     modalBody.innerHTML = dash_form;
     addSelectize();
     addOnClickEvent('[id^="saveDashButton"]', createDash);
+    addOnClickEvent('input[id*="add_child"][value="Add Static Filter"]',
+        addStaticFilterOnClick);
 }

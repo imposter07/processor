@@ -1404,6 +1404,8 @@
             addOnClickEvent('input[id="brandtracker_toggle"]',
                             brandTrackerToggle,
                             'change');
+            addOnClickEvent('input[id*="add_child"][value="Add Static Filter"]',
+                addStaticFilterOnClick);
             addFilePond();
             addFilePondMeta();
             addSelectize();

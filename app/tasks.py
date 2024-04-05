@@ -6406,6 +6406,11 @@ def add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
     df = df.fillna(method='ffill').fillna('None')
     cols = Specs.column_translation()
     partner_col = cols[Specs.partner.name]
+    for part_name in df[partner_col].unique():
+        if part_name not in part_translation:
+            for k, v in part_translation.items():
+                if part_name.lower() in k.lower():
+                    part_translation[part_name] = v
     df[Specs.partner_id.name] = df[partner_col].replace(part_translation)
     df[Specs.rfp_file_id.name] = cur_rfp.id
     cols = {v: k for k, v in cols.items()}
@@ -6428,8 +6433,8 @@ def set_placements_from_rfp(plan_id, current_user_id, cur_rfp):
         change_log = app_utl.set_db_values(
             cur_partner.id, current_user_id, tdf,
             PartnerPlacements, Partner)
-        update_rules_from_change_log(plan_id, current_user_id,
-                                     partner_id, change_log)
+        update_rules_from_change_log(int(plan_id), current_user_id,
+                                     int(partner_id), change_log)
         return True
 
 

@@ -310,8 +310,27 @@ class TestProcessor:
         p = Processor.query.filter_by(name=self.request_test_name).first()
         if not p:
             p = self.test_request_processor(sw, set_up, worker)
+        url = self.get_url(main_routes.edit_processor_accounts, p_name=p.name)
+        sw.go_to_url(url, elem_id='add_child')
         for idx in range(3):
             self.add_account_card(sw, set_up, idx, p)
+
+    def test_processor_plan(self, sw, login, worker, set_up):
+        p = Processor.query.filter_by(name=self.request_test_name).first()
+        if not p:
+            p = self.test_request_processor(sw, set_up, worker)
+        url = self.get_url(main_routes.edit_processor_plan, p_name=p.name)
+        load_btn_elem_id = 'loadingBtnrowOne'
+        sw.go_to_url(url, elem_id=load_btn_elem_id)
+        worker.work(burst=True)
+        TestUploader.upload_plan(sw, worker)
+        sw.wait_for_elem_load(elem_id=load_btn_elem_id)
+        for x in range(10):
+            time.sleep(.1)
+            t = worker.work(burst=True)
+            if t:
+                break
+        sw.wait_for_elem_load(elem_id='newPlanResultsCardCol')
 
     @staticmethod
     def edit_fees(sw, worker, p, url):
@@ -340,6 +359,25 @@ class TestProcessor:
         dig_fees = 'digital_agency_fees'
         sw.go_to_url(url, elem_id=dig_fees)
         self.edit_fees(sw, worker, p, url)
+
+    @staticmethod
+    def click_to_plan(sw, cur_proc):
+        c_url = '{}{}'.format(base_url, main_routes.clients.__name__)
+        elem_id = 'headingUser1'
+        sw.go_to_url(c_url, elem_id=elem_id)
+        proc_elem_id = 'headingProcessor{}'.format(cur_proc.id)
+        sw.xpath_from_id_and_click(elem_id, load_elem_id=proc_elem_id)
+        plan_elem_id = 'createPlan{}'.format(cur_proc.id)
+        sw.xpath_from_id_and_click(proc_elem_id, load_elem_id=plan_elem_id)
+        sw.xpath_from_id_and_click(plan_elem_id, load_elem_id='client_requests')
+
+    def test_create_plan_from_processor(self, sw, set_up, worker, login):
+        p = Processor.query.filter_by(name=self.request_test_name).first()
+        if not p:
+            p = self.test_request_processor(sw, set_up, worker)
+        self.click_to_plan(sw, p)
+        TestPlan().test_topline(sw, login, worker, plan_name=p.name)
+        self.click_to_plan(sw, p)
 
     def add_import_card(self, worker, sw, default_name, name):
         with self.adjust_path(basedir):
@@ -451,15 +489,17 @@ class TestPlan:
             worker.work(burst=True)
         return cur_plan
 
-    def test_create_plan(self, sw, login, worker):
+    def test_create_plan(self, sw, login, worker, plan_name=None):
+        if not plan_name:
+            plan_name = self.test_name
         create_url = self.get_url(url_type=plan_routes.plan, obj_prefix=False)
         form_names = ['cur_client', 'cur_product', 'cur_campaign',
                       'description', 'name']
         sw.go_to_url(create_url, elem_id=form_names[0])
-        submit_form(sw, form_names, test_name=self.test_name)
-        p = Plan.query.filter_by(name=self.test_name).first()
-        assert p.name == self.test_name
-        edit_url = self.get_url(plan_routes.topline)
+        submit_form(sw, form_names, test_name=plan_name)
+        p = Plan.query.filter_by(name=plan_name).first()
+        assert p.name == plan_name
+        edit_url = self.get_url(plan_routes.topline, plan_name=plan_name)
         assert sw.browser.current_url == edit_url
 
     @staticmethod
@@ -478,10 +518,12 @@ class TestPlan:
                     submit_id=submit_id)
         worker.work(burst=True)
 
-    def test_topline(self, sw, login, worker):
-        edit_url = self.get_url(plan_routes.topline)
+    def test_topline(self, sw, login, worker, plan_name=None):
+        if not plan_name:
+            plan_name = self.test_name
+        edit_url = self.get_url(plan_routes.topline, plan_name=plan_name)
         if not sw.browser.current_url == edit_url:
-            self.test_create_plan(sw, login, worker)
+            self.test_create_plan(sw, login, worker, plan_name=plan_name)
         assert sw.browser.current_url == edit_url
         sel_id = 'partnerSelectAdd'
         submit_id = 'addRowsTopline'
@@ -493,8 +535,8 @@ class TestPlan:
         submit_form(sw, form_names=[sel_id], submit_id=submit_id,
                     test_name=part_name)
         self.set_topline_cost(worker, sw, part_budget)
-        sow_url = self.get_url(plan_routes.edit_sow)
-        p = Plan.query.filter_by(name=self.test_name).first()
+        sow_url = self.get_url(plan_routes.edit_sow, plan_name=plan_name)
+        p = Plan.query.filter_by(name=plan_name).first()
         phase = p.get_current_children()
         assert len(phase) == 1
         part = phase[0].get_current_children()
@@ -511,16 +553,16 @@ class TestPlan:
         sw.wait_for_elem_load(phase_id)
         sw.xpath_from_id_and_click(phase_id, load_elem_id='total_budget-1')
         phase_id = 'phaseSelect-1'
-        submit_form(sw, [phase_id], test_name=self.test_name)
+        submit_form(sw, [phase_id], test_name=plan_name)
         worker.work(burst=True)
         sw.wait_for_elem_load('project_name')
-        p = Plan.query.filter_by(name=self.test_name).first()
+        p = Plan.query.filter_by(name=plan_name).first()
         phase = p.get_current_children()
-        assert phase[0].name == self.test_name
+        assert phase[0].name == plan_name
 
     def test_rules(self, sw, login, worker):
         url = plan_routes.plan_rules
-        self.check_and_get_plan(sw, login, worker, url)
+        p = self.check_and_get_plan(sw, login, worker, url)
         elem_id = 'rowplace_col0'
         sw.wait_for_elem_load(elem_id)
         elem = sw.browser.find_element_by_id(elem_id)
@@ -545,7 +587,8 @@ class TestPlan:
         elem.clear()
         submit_form(sw, [elem_id], test_name='50')
         worker.work(burst=True)
-        env_rule = PlanRule.query.filter_by(place_col=col_name).all()
+        env_rule = PlanRule.query.filter_by(place_col=col_name,
+                                            plan_id=p.id).all()
         assert len(env_rule) == 1
         data = json.loads(env_rule[0].rule_info)
         assert data[self.test_name] == .5
@@ -833,7 +876,7 @@ class TestUploader:
         elem_id = 'alertPlaceholder'
         for x in range(100):
             elem = sw.browser.find_element_by_id(elem_id)
-            if 'File was saved.' in elem.get_attribute('innerHTML'):
+            if 'saved.' in elem.get_attribute('innerHTML'):
                 break
             time.sleep(.1)
         worker.work(burst=True)

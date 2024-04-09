@@ -2051,43 +2051,38 @@ def set_processor_fees(processor_id, current_user_id):
         return False
 
 
+@error_handler
 def set_processor_plan_net(processor_id, current_user_id, default_vm=None):
-    try:
-        cur_processor = Processor.query.get(processor_id)
-        from uploader.upload.creator import MediaPlan
-        base_path = app_utl.create_local_path(cur_processor)
-        os.chdir(adjust_path(base_path))
-        if not os.path.exists('mediaplan.csv'):
-            return False, 'Plan does not exist.'
-        df = pd.read_csv('mediaplan.csv')
-        if MediaPlan.placement_phase in df.columns:
-            cam_name = MediaPlan.placement_phase
-        else:
-            cam_name = MediaPlan.campaign_phase
-        plan_cols = [cam_name, MediaPlan.partner_name]
-        miss_cols = [x for x in plan_cols + [dctc.PNC] if x not in df.columns]
-        if miss_cols:
-            return False, '{} not a column name in plan.'.format(miss_cols)
-        df = df.groupby(plan_cols)[dctc.PNC].sum().reset_index()
-        df = df.rename(columns={cam_name: dctc.CAM,
-                                MediaPlan.partner_name: dctc.VEN})
-        df[dctc.FPN] = df[dctc.CAM] + '_' + df[dctc.VEN]
-        if default_vm:
-            matrix = default_vm
-        else:
-            matrix = vm.VendorMatrix()
-        param = matrix.vendor_set('DCM')
-        uncapped_partners = param['RULE_1_QUERY'].split('::')[1].split(',')
-        df[dctc.UNC] = df[dctc.VEN].isin(uncapped_partners).replace(False, '')
-        data_source = matrix.get_data_source(vm.plan_key)
-        dic = dct.Dict(data_source.p[vmc.filenamedict])
-        dic.write(df)
-        return True, ''
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False, 'Unknown.'
+    cur_processor = db.session.get(Processor, processor_id)
+    base_path = app_utl.create_local_path(cur_processor)
+    utl.dir_check(adjust_path(base_path))
+    os.chdir(adjust_path(base_path))
+    if not os.path.exists('mediaplan.csv'):
+        return False, 'Plan does not exist.'
+    df = pd.read_csv('mediaplan.csv')
+    if cre.MediaPlan.placement_phase in df.columns:
+        cam_name = cre.MediaPlan.placement_phase
+    else:
+        cam_name = cre.MediaPlan.campaign_phase
+    plan_cols = [cam_name, cre.MediaPlan.partner_name]
+    miss_cols = [x for x in plan_cols + [dctc.PNC] if x not in df.columns]
+    if miss_cols:
+        return False, '{} not a column name in plan.'.format(miss_cols)
+    df = df.groupby(plan_cols)[dctc.PNC].sum().reset_index()
+    df = df.rename(columns={cam_name: dctc.CAM,
+                            cre.MediaPlan.partner_name: dctc.VEN})
+    df[dctc.FPN] = df[dctc.CAM] + '_' + df[dctc.VEN]
+    if default_vm:
+        matrix = default_vm
+    else:
+        matrix = vm.VendorMatrix()
+    param = matrix.vendor_set('DCM')
+    uncapped_partners = param['RULE_1_QUERY'].split('::')[1].split(',')
+    df[dctc.UNC] = df[dctc.VEN].isin(uncapped_partners).replace(False, '')
+    data_source = matrix.get_data_source(vm.plan_key)
+    dic = dct.Dict(data_source.p[vmc.filenamedict])
+    dic.write(df)
+    return True, ''
 
 
 def send_processor_build_email(
@@ -2615,164 +2610,140 @@ def get_plan_property(processor_id, current_user_id, vk):
         return False
 
 
+@error_handler
 def check_processor_plan(processor_id, current_user_id, object_type=Processor):
-    try:
-        cur_obj = object_type.query.get(processor_id)
-        base_path = app_utl.create_local_path(cur_obj)
-        mp_path = os.path.join(base_path, 'mediaplan.csv')
-        if os.path.exists(mp_path):
-            t = os.path.getmtime(mp_path)
-            last_update = dt.datetime.fromtimestamp(t)
-            update_time = last_update.strftime('%Y-%m-%d')
-            msg = 'Media Plan found, was last updated {}'.format(update_time)
-            msg_level = 'success'
-        else:
-            msg = 'Media Plan not found.'
-            msg_level = 'danger'
-        resp = {'msg': msg, 'level': msg_level}
-        _set_task_progress(100)
-        return [resp]
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+    cur_obj = object_type.query.get(processor_id)
+    base_path = app_utl.create_local_path(cur_obj)
+    mp_path = os.path.join(base_path, 'mediaplan.csv')
+    if os.path.exists(mp_path):
+        t = os.path.getmtime(mp_path)
+        last_update = dt.datetime.fromtimestamp(t)
+        update_time = last_update.strftime('%Y-%m-%d')
+        msg = 'Media Plan found, was last updated {}'.format(update_time)
+        msg_level = 'success'
+    else:
+        msg = 'Media Plan not found.'
+        msg_level = 'danger'
+    resp = {'msg': msg, 'level': msg_level}
+    return [resp]
 
 
+@error_handler
 def set_plan_as_datasource(processor_id, current_user_id, base_matrix):
-    try:
-        _set_task_progress(0)
-        cur_obj = Processor.query.get(processor_id)
-        base_path = app_utl.create_local_path(cur_obj)
-        mp_path = os.path.join(base_path, 'mediaplan.csv')
-        if os.path.exists(mp_path):
-            raw_path = os.path.join(base_path, 'raw_data')
-            utl.dir_check(raw_path)
-            copy_file(mp_path, os.path.join(raw_path, 'mediaplan.csv'))
-            vm_path = os.path.join(base_path, 'config', 'Vendormatrix.csv')
-            if os.path.exists(vm_path):
-                os.chdir(adjust_path(base_path))
-                matrix = vm.VendorMatrix()
-                vm_df = matrix.vm_df
-                if vmc.api_mp_key not in vm_df[vmc.vendorkey].values:
-                    mp_df = base_matrix.vm_df[
-                        base_matrix.vm_df[vmc.vendorkey] == vmc.api_mp_key]
-                    mp_df = mp_df.reset_index(drop=True)
-                    mp_df[vmc.firstrow] = 0
-                    vm_df = pd.concat([vm_df, mp_df]).reset_index(drop=True)
-                    matrix.vm_df = vm_df
-                    matrix.write()
-            else:
-                utl.dir_check(os.path.join(base_path, 'config'))
-                os.chdir(adjust_path(base_path))
-                base_matrix.write()
-        _set_task_progress(100)
-        return True, ''
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False, 'Unknown error'
+    cur_obj = Processor.query.get(processor_id)
+    base_path = app_utl.create_local_path(cur_obj)
+    mp_path = os.path.join(base_path, 'mediaplan.csv')
+    if os.path.exists(mp_path):
+        raw_path = os.path.join(base_path, 'raw_data')
+        utl.dir_check(raw_path)
+        copy_file(mp_path, os.path.join(raw_path, 'mediaplan.csv'))
+        vm_path = os.path.join(base_path, 'config', 'Vendormatrix.csv')
+        if os.path.exists(vm_path):
+            os.chdir(adjust_path(base_path))
+            matrix = vm.VendorMatrix()
+            vm_df = matrix.vm_df
+            if vmc.api_mp_key not in vm_df[vmc.vendorkey].values:
+                mp_df = base_matrix.vm_df[
+                    base_matrix.vm_df[vmc.vendorkey] == vmc.api_mp_key]
+                mp_df = mp_df.reset_index(drop=True)
+                mp_df[vmc.firstrow] = 0
+                vm_df = pd.concat([vm_df, mp_df]).reset_index(drop=True)
+                matrix.vm_df = vm_df
+                matrix.write()
+        else:
+            utl.dir_check(adjust_path(os.path.join(base_path, 'config')))
+            os.chdir(adjust_path(base_path))
+            base_matrix.write()
+    return True, ''
 
 
+@error_handler
 def add_account_types(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_proc = Processor.query.get(processor_id)
-        from uploader.upload.creator import MediaPlan
-        if cur_proc.local_path:
-            cur_act_model = ProcessorDatasources
-        else:
-            cur_act_model = Account
-        acts = cur_act_model.query.filter_by(processor_id=processor_id).all()
-        acts = [x.key for x in acts if x.key]
-        base_path = adjust_path(app_utl.create_local_path(cur_proc))
-        mp_path = os.path.join(base_path, 'mediaplan.csv')
-        if not os.path.exists(mp_path):
-            return False, 'Plan does not exist.'
-        df = pd.read_csv(mp_path)
-        if MediaPlan.partner_name not in df.columns:
-            msg = '{} not a column name in plan.'.format(MediaPlan.partner_name)
-            return False, msg
-        partner_list = df[MediaPlan.partner_name].unique()
-        api_dict = {}
-        for key, value in vmc.api_partner_name_translation.items():
-            for v in value:
-                api_dict[v] = key
-        for partner in partner_list:
-            if partner in api_dict.keys():
-                api_key = api_dict[partner]
-                if api_key not in acts:
-                    acts.append(api_key)
-                    new_act = cur_act_model()
-                    new_act.key = api_key
-                    new_act.processor_id = processor_id
-                    if cur_proc.local_path:
-                        new_act.name = 'API_{}_FromPlan'.format(api_key)
-                    db.session.add(new_act)
-                    db.session.commit()
-        _set_task_progress(100)
-        return True, ''
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False, 'Unknown Error'
+    cur_proc = Processor.query.get(processor_id)
+    from uploader.upload.creator import MediaPlan
+    if cur_proc.local_path:
+        cur_act_model = ProcessorDatasources
+    else:
+        cur_act_model = Account
+    acts = cur_act_model.query.filter_by(processor_id=processor_id).all()
+    acts = [x.key for x in acts if x.key]
+    base_path = adjust_path(app_utl.create_local_path(cur_proc))
+    mp_path = os.path.join(base_path, 'mediaplan.csv')
+    if not os.path.exists(mp_path):
+        return False, 'Plan does not exist.'
+    df = pd.read_csv(mp_path)
+    if MediaPlan.partner_name not in df.columns:
+        msg = '{} not a column name in plan.'.format(MediaPlan.partner_name)
+        return False, msg
+    partner_list = df[MediaPlan.partner_name].unique()
+    api_dict = {}
+    for key, value in vmc.api_partner_name_translation.items():
+        for v in value:
+            api_dict[v] = key
+    for partner in partner_list:
+        if partner in api_dict.keys():
+            api_key = api_dict[partner]
+            if api_key not in acts:
+                acts.append(api_key)
+                new_act = cur_act_model()
+                new_act.key = api_key
+                new_act.processor_id = processor_id
+                if cur_proc.local_path:
+                    new_act.name = 'API_{}_FromPlan'.format(api_key)
+                db.session.add(new_act)
+                db.session.commit()
+    return True, ''
 
 
+@error_handler
 def add_plan_fees_to_processor(processor_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_proc = Processor.query.get(processor_id)
-        cur_user = User.query.get(current_user_id)
-        base_path = adjust_path(app_utl.create_local_path(cur_proc))
-        mp_path = os.path.join(base_path, 'mediaplan.csv')
-        if not os.path.exists(mp_path):
-            return False, 'Media plan does not exist.'
-        df = pd.read_csv(mp_path)
-        serving_cols = ['Ad Serving Type', 'Ad Serving Rate', 'Reporting Fee']
-        for col in serving_cols:
-            if col not in df.columns:
-                df[col] = 0
-        sdf = df.groupby(serving_cols).size().reset_index()[serving_cols]
-        sdf = sdf.rename(
-            columns={'Ad Serving Type': Rates.type_name.name,
-                     'Ad Serving Rate': Rates.adserving_fee.name,
-                     'Reporting Fee': Rates.reporting_fee.name})
-        afee_cols = ['Agency Fee Rate']
-        adf = df.groupby(afee_cols).size().reset_index()[afee_cols]
-        if cur_proc.local_path:
-            df = get_constant_dict(processor_id, current_user_id)[0]
-            df = df[df[dctc.DICT_COL_NAME] != dctc.AGF]
-            adf = pd.DataFrame(
-                {dctc.DICT_COL_NAME: [dctc.AGF],
-                 dctc.DICT_COL_VALUE: [adf[afee_cols].values[0][0]],
-                 dctc.DICT_COL_DICTNAME: [None]})
-            df = pd.concat([df, adf], ignore_index=True).reset_index(drop=True)
-            write_constant_dict(processor_id, current_user_id, df.to_json())
-            df = get_relational_config(processor_id, current_user_id,
-                                       parameter='Serving')[0]
-            sdf = convert_rate_card_to_relation(sdf)
-            df = df[~df[dctc.SRV].isin(sdf[dctc.SRV].to_list())]
-            df = pd.concat([df, sdf], ignore_index=True).reset_index(drop=True)
-            write_relational_config(processor_id, current_user_id, df.to_json(),
-                                    parameter='Serving')
-        else:
-            cur_proc.digital_agency_fees = adf[afee_cols].values[0][0]
-            write_rate_card(processor_id, current_user_id,
-                            sdf.to_json(orient='records'), 'None')
-            rate_card_name = '{}|{}'.format(cur_proc.name,
-                                            cur_user.username)
-            rate_card = RateCard.query.filter_by(name=rate_card_name).first()
-            cur_proc.rate_card_id = rate_card.id
-            db.session.commit()
-        _set_task_progress(100)
-        return True, ''
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False, 'Unknown error'
+    cur_proc = Processor.query.get(processor_id)
+    cur_user = User.query.get(current_user_id)
+    base_path = adjust_path(app_utl.create_local_path(cur_proc))
+    mp_path = os.path.join(base_path, 'mediaplan.csv')
+    if not os.path.exists(mp_path):
+        return False, 'Media plan does not exist.'
+    df = pd.read_csv(mp_path)
+    serving_cols = ['Ad Serving Type', 'Ad Serving Rate', 'Reporting Fee']
+    for col in serving_cols:
+        if col not in df.columns:
+            df[col] = 0
+    sdf = df.groupby(serving_cols).size().reset_index()[serving_cols]
+    sdf = sdf.rename(
+        columns={'Ad Serving Type': Rates.type_name.name,
+                 'Ad Serving Rate': Rates.adserving_fee.name,
+                 'Reporting Fee': Rates.reporting_fee.name})
+    afee_cols = ['Agency Fee Rate']
+    miss_cols = [x for x in afee_cols if x not in df.columns]
+    if miss_cols:
+        return False, 'Columns Missing in Plan: {}'.format(miss_cols)
+    adf = df.groupby(afee_cols).size().reset_index()[afee_cols]
+    if cur_proc.local_path:
+        df = get_constant_dict(processor_id, current_user_id)[0]
+        df = df[df[dctc.DICT_COL_NAME] != dctc.AGF]
+        adf = pd.DataFrame(
+            {dctc.DICT_COL_NAME: [dctc.AGF],
+             dctc.DICT_COL_VALUE: [adf[afee_cols].values[0][0]],
+             dctc.DICT_COL_DICTNAME: [None]})
+        df = pd.concat([df, adf], ignore_index=True).reset_index(drop=True)
+        write_constant_dict(processor_id, current_user_id, df.to_json())
+        df = get_relational_config(processor_id, current_user_id,
+                                   parameter='Serving')[0]
+        sdf = convert_rate_card_to_relation(sdf)
+        df = df[~df[dctc.SRV].isin(sdf[dctc.SRV].to_list())]
+        df = pd.concat([df, sdf], ignore_index=True).reset_index(drop=True)
+        write_relational_config(processor_id, current_user_id, df.to_json(),
+                                parameter='Serving')
+    else:
+        cur_proc.digital_agency_fees = adf[afee_cols].values[0][0]
+        write_rate_card(processor_id, current_user_id,
+                        sdf.to_json(orient='records'), 'None')
+        rate_card_name = '{}|{}'.format(cur_proc.name,
+                                        cur_user.username)
+        rate_card = RateCard.query.filter_by(name=rate_card_name).first()
+        cur_proc.rate_card_id = rate_card.id
+        db.session.commit()
+    return True, ''
 
 
 def write_plan_property(processor_id, current_user_id, vk, new_data):
@@ -2797,10 +2768,19 @@ def write_plan_property(processor_id, current_user_id, vk, new_data):
         return False
 
 
+@error_handler
 def single_apply_processor_plan(processor_id, current_user_id, progress,
                                 progress_type, cur_path, matrix):
     os.chdir(cur_path)
     r = None
+    cur_processor = db.session.get(Processor, processor_id)
+    save_task = '.{}'.format(save_media_plan.__name__)
+    for x in range(10):
+        if cur_processor.get_task_in_progress(save_task):
+            current_app.logger.info('Media Plan still saving: {}'.format(x))
+            time.sleep(1)
+        else:
+            break
     if progress_type == 'Plan Net':
         r = set_processor_plan_net(processor_id, current_user_id, matrix)
     elif progress_type == 'Package Capping':
@@ -2822,37 +2802,29 @@ def single_apply_processor_plan(processor_id, current_user_id, progress,
     return progress
 
 
+@error_handler
 def apply_processor_plan(processor_id, current_user_id, vk):
     progress_types = Processor.get_plan_properties()
     progress = {}
     for k in progress_types:
         progress[k] = ['Failed']
-    try:
-        current_progress = 0
+    current_progress = 0
+    cur_path = adjust_path(os.path.abspath(os.getcwd()))
+    os.chdir('processor')
+    matrix = vm.VendorMatrix()
+    os.chdir(cur_path)
+    vk = json.loads(vk)
+    progress = {k: v if k in vk else ['Skipped']
+                for k, v in progress.items()}
+    for progress_type in vk:
+        progress = single_apply_processor_plan(
+            processor_id, current_user_id, progress, progress_type,
+            cur_path, matrix)
+        current_progress += (100 / len(progress_types))
         _set_task_progress(current_progress)
-        cur_path = adjust_path(os.path.abspath(os.getcwd()))
-        os.chdir('processor')
-        matrix = vm.VendorMatrix()
-        os.chdir(cur_path)
-        vk = json.loads(vk)
-        progress = {k: v if k in vk else ['Skipped']
-                    for k, v in progress.items()}
-        for progress_type in vk:
-            progress = single_apply_processor_plan(
-                processor_id, current_user_id, progress, progress_type,
-                cur_path, matrix)
-            current_progress += (100 / len(progress_types))
-            _set_task_progress(current_progress)
-        df = pd.DataFrame(progress).T.reset_index()
-        df = df.rename(columns={0: 'Result', 'index': 'Plan Task'})
-        _set_task_progress(100)
-        return [df]
-    except:
-        df = pd.DataFrame(progress)
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return [df]
+    df = pd.DataFrame(progress).T.reset_index()
+    df = df.rename(columns={0: 'Result', 'index': 'Plan Task'})
+    return [df]
 
 
 def uploader_full_placement_creation(upo, mp_df, budget_col):
@@ -2972,72 +2944,60 @@ def save_media_plan(processor_id, current_user_id, media_plan,
     return True
 
 
+@error_handler
 def save_spend_cap_file(processor_id, current_user_id, new_data,
                         from_plan=False, as_json=False):
-    try:
-        cur_obj = Processor.query.get(processor_id)
-        cur_user = User.query.get(current_user_id)
-        file_name = '/dictionaries/plannet_placement.csv'
-        if from_plan:
-            base_path = app_utl.create_local_path(cur_obj)
-            mp_file = os.path.join(base_path, 'mediaplan.csv')
-            df = pd.read_csv(mp_file)
-            pack_col = dctc.PKD.replace('mp', '')
-            if pack_col not in df.columns:
-                return False, '{} not in file'.format(pack_col)
-            df = df.groupby([pack_col])[dctc.PNC].sum().reset_index()
-            df = df[~df[pack_col].isin(['0', 0, 'None'])]
-            df = df.rename(columns={dctc.PNC: 'Net Cost (Capped)'})
-            full_file_path = base_path + file_name
-            df.to_csv(full_file_path, index=False)
-        elif as_json:
-            base_path = app_utl.create_local_path(cur_obj)
-            cap_file = os.path.join(base_path, 'dictionaries',
-                                    'plannet_placement.csv')
-            df = pd.read_json(new_data)
-            if 'index' in df.columns:
-                df = df.drop('index', axis=1)
-            df = df.replace('NaN', '')
-            df.to_csv(cap_file, index=False)
-        else:
-            new_data.seek(0)
-            with open(cur_obj.local_path + file_name, 'wb') as f:
-                shutil.copyfileobj(new_data, f, length=131072)
-        msg_text = 'Spend cap file was saved.'
-        app_utl.object_post_message(cur_obj, cur_user, msg_text)
-        _set_task_progress(100)
-        return True, ''
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False, 'Unknown Error'
-
-
-def set_spend_cap_config_file(processor_id, current_user_id, dict_col):
-    try:
-        cur_obj = Processor.query.get(processor_id)
-        cur_user = User.query.get(current_user_id)
-        cap_config_dict = {
-            'file_name': ['dictionaries/plannet_placement.csv'],
-            'file_dim': [dict_col.replace('mp', '')],
-            'file_metric': ['Net Cost (Capped)'],
-            'processor_dim': [dict_col],
-            'processor_metric': ['Planned Net Cost']}
-        df = pd.DataFrame(cap_config_dict)
+    cur_obj = Processor.query.get(processor_id)
+    cur_user = User.query.get(current_user_id)
+    file_name = '/dictionaries/plannet_placement.csv'
+    if from_plan:
         base_path = app_utl.create_local_path(cur_obj)
-        os.chdir(adjust_path(base_path))
-        df.to_csv('config/cap_config.csv', index=False)
-        msg_text = ('{} spend cap config was updated.'
-                    ''.format(cur_obj.name))
-        app_utl.object_post_message(cur_obj, cur_user, msg_text)
-        _set_task_progress(100)
-        return True, ''
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False, 'Unknown error occurred'
+        mp_file = os.path.join(base_path, 'mediaplan.csv')
+        df = pd.read_csv(mp_file)
+        pack_col = dctc.PKD.replace('mp', '')
+        if pack_col not in df.columns:
+            return False, '{} not in file'.format(pack_col)
+        df = df.groupby([pack_col])[dctc.PNC].sum().reset_index()
+        df = df[~df[pack_col].isin(['0', 0, 'None'])]
+        df = df.rename(columns={dctc.PNC: 'Net Cost (Capped)'})
+        full_file_path = base_path + file_name
+        df.to_csv(full_file_path, index=False)
+    elif as_json:
+        base_path = app_utl.create_local_path(cur_obj)
+        cap_file = os.path.join(base_path, 'dictionaries',
+                                'plannet_placement.csv')
+        df = pd.read_json(new_data)
+        if 'index' in df.columns:
+            df = df.drop('index', axis=1)
+        df = df.replace('NaN', '')
+        df.to_csv(cap_file, index=False)
+    else:
+        new_data.seek(0)
+        with open(cur_obj.local_path + file_name, 'wb') as f:
+            shutil.copyfileobj(new_data, f, length=131072)
+    msg_text = 'Spend cap file was saved.'
+    app_utl.object_post_message(cur_obj, cur_user, msg_text)
+    return True, ''
+
+
+@error_handler
+def set_spend_cap_config_file(processor_id, current_user_id, dict_col):
+    cur_obj = Processor.query.get(processor_id)
+    cur_user = User.query.get(current_user_id)
+    cap_config_dict = {
+        'file_name': ['dictionaries/plannet_placement.csv'],
+        'file_dim': [dict_col.replace('mp', '')],
+        'file_metric': ['Net Cost (Capped)'],
+        'processor_dim': [dict_col],
+        'processor_metric': ['Planned Net Cost']}
+    df = pd.DataFrame(cap_config_dict)
+    base_path = app_utl.create_local_path(cur_obj)
+    os.chdir(adjust_path(base_path))
+    df.to_csv('config/cap_config.csv', index=False)
+    msg_text = ('{} spend cap config was updated.'
+                ''.format(cur_obj.name))
+    app_utl.object_post_message(cur_obj, cur_user, msg_text)
+    return True, ''
 
 
 def processor_fix_request(processor_id, current_user_id, fix):
@@ -5357,8 +5317,8 @@ def get_topline(plan_id, current_user_id):
     if not cur_plan.start_date:
         cur_plan.start_date = dt.datetime.today()
         db.session.commit()
-    if not cur_plan.end_date:
-        cur_plan.end_date = dt.datetime.today()
+    if not cur_plan.end_date or cur_plan.start_date == cur_plan.end_date:
+        cur_plan.end_date = cur_plan.start_date + dt.timedelta(days=1)
         db.session.commit()
     sd = cur_plan.start_date
     ed = cur_plan.end_date
@@ -5376,7 +5336,15 @@ def get_topline(plan_id, current_user_id):
         partner_type: partner_type_list,
         phase_name: phase_list
     }
-    phases = [x.get_form_dict() for x in cur_plan.phases.all()]
+    phases = cur_plan.phases.all()
+    if not phases:
+        new_phase = PlanPhase()
+        form_dict = {PlanPhase.name.name: new_phase.get_name_list()[0]}
+        new_phase.set_from_form(form_dict, current_plan=cur_plan)
+        db.session.add(new_phase)
+        db.session.commit()
+        phases = cur_plan.phases.all()
+    phases = [x.get_form_dict() for x in phases]
     description = 'Plan details broken out by partner.'
     title = 'Plan Table - {}'.format(cur_plan.name)
     lt = app_utl.LiquidTable(
@@ -5605,6 +5573,7 @@ def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
         message=message)
     PartnerPlacements.create_from_rules(PartnerPlacements, parent_id,
                                         current_user_id)
+
 
 
 @error_handler

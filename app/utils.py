@@ -366,6 +366,7 @@ def create_local_path(cur_obj):
             base_path = os.path.join(base_path, x)
         tmp_dir = current_app.config['TMP_DIR']
         if tmp_dir:
+            base_path = base_path.replace('/mnt', 'mnt')
             base_path = os.path.join(tmp_dir, base_path)
     else:
         base_path = cur_obj.local_path

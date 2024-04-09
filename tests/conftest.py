@@ -109,8 +109,8 @@ def run_server(with_run=True, tmp_path_factory=None):
 
 
 @pytest.fixture(scope='module')
-def app_fixture():
-    app, app_context = run_server(False)
+def app_fixture(tmp_path_factory):
+    app, app_context = run_server(False, tmp_path_factory)
     yield app
     db.session.remove()
     db.drop_all()
@@ -150,6 +150,7 @@ def user(app_fixture):
         for row in rows:
             db.session.delete(row)
             db.session.commit()
+    RequestLog.query.filter_by(user_id=u.id).delete()
     db.session.delete(u)
     db.session.commit()
 

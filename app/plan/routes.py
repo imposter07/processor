@@ -80,6 +80,8 @@ def create_plan_from_processor():
             campaign_id=cur_processor.campaign.id)
         db.session.add(new_plan)
         db.session.commit()
+        cur_processor.plans.append(new_plan)
+        db.session.commit()
         plan_url = url_for('plan.edit_plan', object_name=new_plan.name)
     return jsonify({'url': plan_url})
 

@@ -646,7 +646,7 @@ class Processor(db.Model):
     processor_analysis = db.relationship('ProcessorAnalysis',
                                          backref='processor', lazy='dynamic')
     processor_reports = db.relationship('ProcessorReports',
-                                       backref='processor', lazy='dynamic')
+                                        backref='processor', lazy='dynamic')
     dashboard = db.relationship(
         'Dashboard', backref='processor', lazy='dynamic')
     projects = db.relationship(

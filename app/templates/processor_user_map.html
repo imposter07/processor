@@ -11,7 +11,7 @@
         <div class="card">
             <button class="btn {% if  processor_list[0].user.data%}
             btn-secondary{% else %}btn-info{% endif %} btn-block btn-secondary collapsed text-left"
-                    id="heading{{ loop.index }}"
+                    id="headingUser{{ loop.index }}"
                     type="button"
                     data-toggle="collapse"
                     data-target="#collapseUser{{ loop.index }}"
@@ -24,7 +24,7 @@
                 {{ processor_list|length }} Processors owned - {{ processor_list[0].user.username }}
             </button>
             <div id="collapseUser{{ loop.index }}" class="collapse"
-                 aria-labelledby="heading{{ loop.index }}"
+                 aria-labelledby="headingUser{{ loop.index }}"
                  data-parent="#accordionClient">
                 <div class="card-body">
                     <div class="accordion" id="accordionProcessor">

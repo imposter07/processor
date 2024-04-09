@@ -81,7 +81,7 @@ function makeRequest(url, method, data, responseFunction,
     });
 }
 
-function searchTable(tableName, selector = ' tr:not(.header)') {
+function searchTable(tableName, selector = ' tr:not(.header):not([id^="trHidden"])') {
     const searchInputId = `#tableSearchInput${tableName.replace('#', '')}`;
     const trs = document.querySelectorAll(tableName + selector);
     const filter = document.querySelector(searchInputId).value;

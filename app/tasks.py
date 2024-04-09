@@ -5385,7 +5385,8 @@ def write_topline(plan_id, current_user_id, new_data=None):
     date_col = 'dates'
     est_cols = [Partner.estimated_cpm, Partner.estimated_cpc]
     cols = [Partner.partner_type, Partner.__table__, Partner.total_budget,
-            Partner.cplpv, Partner.cpbc, Partner.cpv, Partner.cpcv]
+            Partner.cplpv, Partner.cpbc, Partner.cpv, Partner.cpcv,
+            Partner.id]
     cols += est_cols
     est_str = est_cols[0].name.split('_')[0]
     cols = [x.name for x in cols] + [date_col]

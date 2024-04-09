@@ -3067,7 +3067,8 @@ class Partner(db.Model):
         for col in cols:
             search_name = col.name
             missing_val = 'None'
-            if isinstance(col.type, db.Numeric):
+            is_key_col = col.primary_key or col.foreign_keys
+            if isinstance(col.type, db.Numeric) or is_key_col:
                 missing_val = 0
             elif isinstance(col.type, db.Date):
                 missing_val = datetime.today().date()
@@ -3076,8 +3077,8 @@ class Partner(db.Model):
             if est_val in search_name and search_name not in form:
                 search_name = search_name.replace('{}_'.format(est_val), '')
             new_val = utl.check_dict_for_key(form, search_name, missing_val)
-            is_key_col = col.primary_key or col.foreign_keys
-            if (is_key_col and new_val != missing_val) or not is_key_col:
+            if not is_key_col or (
+                    is_key_col and int(new_val) != int(missing_val)):
                 setattr(self, col.name, new_val)
 
     @staticmethod
@@ -3865,7 +3866,7 @@ class PartnerPlacements(db.Model):
                         val = val[1]
                 val = val.strip()
                 val = utl.string_to_date(val)
-            if isinstance(val, str):
+            if isinstance(val, str) or str(val) == 'NaT':
                 val = datetime.today()
             if to_str:
                 val = datetime.strftime(val, '%Y%m%d')

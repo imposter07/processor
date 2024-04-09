@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
     Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
-    PartnerPlacements, PlanRule, ProcessorReports, Account, Dashboard
+    PartnerPlacements, PlanRule, ProcessorReports, Account, Dashboard, Partner
 import app.plan.routes as plan_routes
 import app.main.routes as main_routes
 from config import basedir
@@ -504,19 +504,31 @@ class TestPlan:
 
     @staticmethod
     def set_topline_cost(worker, sw, part_budget='5000',
-                         submit_id='loadContinue'):
+                         submit_id='loadContinue', col_id='total_budget0'):
         elem_id = 'tr0'
         sw.wait_for_elem_load(elem_id)
         wait_for_id = 'partnerSelect0-selectized'
         sw.xpath_from_id_and_click(elem_id, load_elem_id=wait_for_id)
-        elem_id = 'total_budget0'
-        sw.wait_for_elem_load(elem_id)
-        elem = sw.browser.find_element_by_id(elem_id)
-        elem.click()
-        elem.clear()
-        submit_form(sw, [elem_id], test_name=part_budget,
+        sw.wait_for_elem_load(col_id)
+        elem = sw.browser.find_element_by_id(col_id)
+        if col_id == 'total_budget0':
+            elem.click()
+            elem.clear()
+        submit_form(sw, [col_id], test_name=part_budget,
                     submit_id=submit_id)
         worker.work(burst=True)
+
+    @staticmethod
+    def verify_plan_create(p, part_budget='5000', part_name='Facebook'):
+        phase = p.get_current_children()
+        assert len(phase) == 1
+        part = phase[0].get_current_children()
+        assert len(part) == 1
+        part = part[0]
+        assert part.name == part_name
+        assert int(part.total_budget) == int(part_budget)
+        assert int(part.estimated_cpc) == 1
+        assert int(part.estimated_cpm) == 1000
 
     def test_topline(self, sw, login, worker, plan_name=None):
         if not plan_name:
@@ -537,15 +549,7 @@ class TestPlan:
         self.set_topline_cost(worker, sw, part_budget)
         sow_url = self.get_url(plan_routes.edit_sow, plan_name=plan_name)
         p = Plan.query.filter_by(name=plan_name).first()
-        phase = p.get_current_children()
-        assert len(phase) == 1
-        part = phase[0].get_current_children()
-        assert len(part) == 1
-        part = part[0]
-        assert part.name == part_name
-        assert int(part.total_budget) == int(part_budget)
-        assert int(part.estimated_cpc) == 1
-        assert int(part.estimated_cpm) == 1000
+        self.verify_plan_create(p, part_budget, part_name)
         assert sw.browser.current_url == sow_url
         sw.go_to_url(edit_url, elem_id='loadingBtnTopline')
         worker.work(burst=True)
@@ -560,6 +564,17 @@ class TestPlan:
         phase = p.get_current_children()
         assert phase[0].name == plan_name
 
+    def test_topline_rename_partner(self, sw, login, worker):
+        url = plan_routes.topline
+        p = self.check_and_get_plan(sw, login, worker, url)
+        new_part_name = 'FB'
+        self.set_topline_cost(worker, sw, part_budget=new_part_name,
+                              col_id='partnerSelect0')
+        self.verify_plan_create(p, part_name=new_part_name)
+        df = pd.DataFrame([x.get_form_dict() for x in p.rules])
+        tdf = df[df[Partner.__name__] == 'ALL']
+        assert tdf.empty
+
     def test_rules(self, sw, login, worker):
         url = plan_routes.plan_rules
         p = self.check_and_get_plan(sw, login, worker, url)
@@ -568,7 +583,9 @@ class TestPlan:
         elem = sw.browser.find_element_by_id(elem_id)
         col_name = PartnerPlacements.environment.name
         assert elem.get_attribute('innerHTML').strip() == col_name
-        sw.xpath_from_id_and_click(elem_id)
+        search_id = 'tableSearchInputPlanRulesTable'
+        submit_form(sw, form_names=[search_id], submit_id=elem_id,
+                    test_name=col_name)
         elem_id = 'rule_info01SliderKey-selectized'
         second_name = '{}1'.format(self.test_name)
         add_row_id = 'rule_info0AddRow'

@@ -446,6 +446,7 @@ def write_translational_dict(processor_id, current_user_id, new_data):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+@error_handler
 def set_initial_constant_file(cur_processor):
     proc_path = cur_processor.local_path
     if not proc_path:
@@ -456,7 +457,12 @@ def set_initial_constant_file(cur_processor):
     for col in [(dctc.CLI, cur_processor.campaign.product.client.name),
                 (dctc.PRN, cur_processor.campaign.product.name),
                 (dctc.AGF, cur_processor.digital_agency_fees)]:
-        idx = dcc.df[dcc.df[dctc.DICT_COL_NAME] == col[0]].index[0]
+        idx = dcc.df[dcc.df[dctc.DICT_COL_NAME] == col[0]]
+        if idx.empty:
+            tdf = pd.DataFrame({dctc.DICT_COL_NAME: [col[0]]})
+            dcc.df = pd.concat([dcc.df, tdf]).reset_index(drop=True)
+            idx = dcc.df[dcc.df[dctc.DICT_COL_NAME] == col[0]]
+        idx = idx.index[0]
         if ((dcc.df.loc[idx, dctc.DICT_COL_VALUE] == 'None') or
                 (col[0] == dctc.AGF and cur_processor.digital_agency_fees)):
             dcc.df.loc[idx, dctc.DICT_COL_VALUE] = col[1]
@@ -5294,7 +5300,7 @@ def io_top_page(canvas, doc, partner_id):
         alignment=1
     )
     notes_text = (
-        "NOTES TO PUBLISHER:<br/>PROJECT# AND CAMPAIGN NAME MUST " 
+        "NOTES TO PUBLISHER:<br/>PROJECT# AND CAMPAIGN NAME MUST "
         "APPEAR ON ALL INVOICES FOR PAYMENT.<br/>DO NOT COMBINE MULTIPLE "
         "CAMPAIGNS ON A SINGLE INVOICE.<br/>SEND ALL INVOICES TO "
         "INVOICES@LIQUIDADVERTISING.COM.")

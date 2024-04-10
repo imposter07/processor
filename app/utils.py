@@ -12,6 +12,7 @@ from app.models import Task, Processor, User, Campaign, Project, Client, \
 from flask import current_app, render_template, jsonify, request, redirect, \
     url_for
 import uploader.upload.creator as cre
+import processor.reporting.analyze as az
 from xlrd.biffh import XLRDError
 from functools import wraps
 
@@ -563,6 +564,8 @@ class LiquidTable(object):
                  accordion=False, specify_form_cols=True, col_dict=True,
                  select_val_dict=None, select_box=None, form_cols=None,
                  metric_cols=None, def_metric_cols=None, prog_cols=None,
+                 trending_cols=None, trending_groupbys=None,
+                 trending_metrics=None, trending_periods=None,
                  header=None, highlight_row=None, new_modal_button=False,
                  col_filter=True, search_bar=True, chart_btn=True,
                  chart_func=None, chart_show=False, df=pd.DataFrame(),
@@ -589,6 +592,11 @@ class LiquidTable(object):
         self.def_metric_cols = def_metric_cols
         self.prog_cols = prog_cols
         self.prog_colors = prog_colors
+        self.trending_cols = trending_cols
+        self.trending_metrics = trending_metrics
+        self.trending_groupbys = (
+            trending_groupbys if trending_groupbys else [[]])
+        self.trending_periods = trending_periods if trending_periods else []
         self.header = header
         self.highlight_row = highlight_row
         self.table_name = table_name
@@ -615,6 +623,8 @@ class LiquidTable(object):
         if self.slider_edit_col:
             self.accordion = True
         self.df = df
+        if self.trending_cols:
+            self.create_cols()
         self.build_from_df()
         self.form_cols = self.check_form_cols(
             self.form_cols, self.specify_form_cols, self.col_list)
@@ -626,9 +636,10 @@ class LiquidTable(object):
         self.cols = self.make_columns(
             self.col_list, self.select_val_dict, self.select_box,
             self.form_cols, self.metric_cols, self.def_metric_cols,
-            self.prog_cols, self.header, self.highlight_row, self.button_col,
-            self.highlight_type, self.slider_edit_col, self.slider_abs_col,
-            self.hidden_cols, self.link_cols, self.cell_pick_cols)
+            self.prog_cols, self.trending_cols, self.header, self.highlight_row,
+            self.button_col, self.highlight_type, self.slider_edit_col,
+            self.slider_abs_col, self.hidden_cols, self.link_cols,
+            self.cell_pick_cols)
         self.table_dict = self.make_table_dict(
             self.cols, self.data, self.top_rows, self.totals, self.title,
             self.description, self.columns_toggle, self.accordion,
@@ -647,6 +658,18 @@ class LiquidTable(object):
             self.table_buttons.append(btn)
         return self.table_buttons
 
+    def create_cols(self):
+        value_cal = az.ValueCalc()
+        if self.trending_cols:
+            for i in range(len(self.trending_cols)):
+                col_name = self.trending_cols[i]
+                metric = self.trending_metrics[i]
+                groupby = self.trending_groupbys[i]
+                period = (self.trending_periods[i]
+                          if i < len(self.trending_periods) else 1)
+                self.df = value_cal.calculate_trending(
+                    self.df, col_name, metric, groupby, period)
+
     def build_from_df(self):
         if self.df.columns.tolist():
             self.df = self.df.fillna('None')
@@ -660,8 +683,8 @@ class LiquidTable(object):
         return form_cols
 
     def make_columns(self, col_list, select_val_dict, select_box, form_cols,
-                     metric_cols, def_metric_cols, prog_cols, header,
-                     highlight_row, button_col, highlight_type,
+                     metric_cols, def_metric_cols, prog_cols, trending_cols,
+                     header, highlight_row, button_col, highlight_type,
                      slider_edit_col, slider_abs_col, hidden_cols, link_cols,
                      cell_pick_cols):
         cols = []
@@ -693,6 +716,9 @@ class LiquidTable(object):
                     cur_col.type = cur_col.slider_abs_col_str
                 if prog_cols and x in prog_cols:
                     custom_col = cur_col.parse_prog_bars(x, self.prog_colors)
+                    self.custom_cols.append(custom_col)
+                if trending_cols and x in trending_cols:
+                    custom_col = cur_col.parse_trending_col(x)
                     self.custom_cols.append(custom_col)
                 if button_col and x in button_col:
                     cur_col.type = 'button_col'
@@ -825,4 +851,9 @@ class LiquidTableColumn(object):
     @staticmethod
     def parse_prog_bars(col, color):
         custom_func = {'func': 'addProgressBars', 'args': [col, color]}
+        return custom_func
+
+    @staticmethod
+    def parse_trending_col(col):
+        custom_func = {'func': 'addTrendingArrows', 'args': [col]}
         return custom_func

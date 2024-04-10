@@ -1802,6 +1802,13 @@ def edit_processor_conversions(object_name):
     return render_template('create_processor.html', **kwargs)
 
 
+@bp.route('/processor/edit/building',
+          methods=['GET', 'POST'])
+@login_required
+def edit_processor_building():
+    return render_template('processor_created.html')
+
+
 @bp.route('/processor/<object_name>/edit/finish',
           methods=['GET', 'POST'])
 @login_required
@@ -1840,8 +1847,7 @@ def edit_processor_finish(object_name):
                 '.build_processor_from_request', _(msg_text),
                 running_user=current_user.id)
             db.session.commit()
-            return redirect(url_for('main.edit_processor',
-                                    object_name=cur_proc.name))
+            return redirect(url_for('main.edit_processor_building'))
         else:
             return redirect(url_for('main.edit_processor_finish',
                                     object_name=cur_proc.name))

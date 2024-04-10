@@ -896,7 +896,7 @@ function checkSetDate(rowData, loopIndex, rowFormNames) {
     return rowFormNames
 }
 
-function addRowDetailsToForm(rowData, loopIndex, tableName) {
+function addRowDetailsToForm(rowData, loopIndex, tableName, customTableCols) {
     let topRowElem = '';
     let topRowsName = document.getElementById(tableName + 'TableSlideCol').getAttribute('data-value');
     if (topRowsName in rowData) {
@@ -937,6 +937,11 @@ function addRowDetailsToForm(rowData, loopIndex, tableName) {
     if (topRowElem) {
         topRowElem.click();
     }
+    if (customTableCols) {
+        for (let customFunc of customTableCols) {
+            applyCustomFunction(customFunc, loopIndex);
+        }
+    }
 }
 
 function deleteRow(loopIndex, tableName) {
@@ -955,7 +960,7 @@ function applyCustomFunction(customFunc, loopIndex) {
 function addRow(rowData = null, tableName, customTableCols) {
     let loopIndex = addRowToTable(rowData, tableName, customTableCols);
     if (rowData) {
-        addRowDetailsToForm(rowData, loopIndex, tableName);
+        addRowDetailsToForm(rowData, loopIndex, tableName, customTableCols);
     }
     toggleMetrics(tableName, loopIndex);
     return loopIndex;
@@ -1750,6 +1755,20 @@ function addProgressBars(progCol, color, loopIndex) {
                            aria-valuemin="0" aria-valuemax="100">${value}</div>
                    </div>`;
     cell.innerHTML += progBar;
+}
+
+function addTrendingArrows(col, loopIndex) {
+    let cell = document.getElementById(`row${col}${loopIndex}`);
+    let value = (cell.textContent) ? cell.textContent : '0';
+    value = parseFloat(value);
+    let icon;
+    if (value > 0) {
+        icon = `<i>  </i><i class="fa-solid fa-arrow-up text-success"></i>`;
+    }
+    if (value < 0) {
+        icon = `<i>  </i><i class="fa-solid fa-arrow-down text-danger"></i>`;
+    }
+    cell.innerHTML += icon
 }
 
 function showChart(tableName, chartShow) {

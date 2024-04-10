@@ -5426,6 +5426,11 @@ def write_topline(plan_id, current_user_id, new_data=None):
         if 'add' in change_log and change_log['add']:
             new_ids = [x['id'] for x in change_log['add']]
             brand_new_ids.extend(new_ids)
+        if 'delete' in change_log and change_log['delete']:
+            for old_rule in cur_plan.rules:
+                if not old_rule.partner_id:
+                    db.session.delete(old_rule)
+            db.session.commit()
     cur_partners = [x.id for x in cur_plan.get_partners()]
     cur_plan.launch_placement_task(cur_partners, words=[], message='',
                                    brand_new_ids=brand_new_ids,
@@ -5556,7 +5561,7 @@ def plan_check_placements(plan_id, current_user_id, words, new_g_children,
         vendor_names = []
         if brand_new_ids:
             vendor_names = [db.session.get(Partner, x).name for x in
-                            brand_new_ids]
+                            brand_new_ids if x]
         total_db = PartnerPlacements.get_reporting_db_df(vendor_names)
     for new_g_child_id in new_g_children:
         response += PartnerPlacements().check_gg_children(
@@ -6129,6 +6134,7 @@ def write_plan_rules(plan_id, current_user_id, new_data=None):
     cur_plan = db.session.get(Plan, plan_id)
     df = pd.read_json(new_data)
     df = pd.DataFrame(df[0][1])
+    df = df[df[Partner.__name__] != 'All']
     df = df.to_dict(orient='records')
     app_utl.set_db_values(plan_id, current_user_id, df, PlanRule, Plan)
     for phase in cur_plan.phases:

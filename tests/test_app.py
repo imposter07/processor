@@ -90,7 +90,8 @@ def submit_form(sw, form_names=None, select_form_names=None,
         if 'date' in form_name:
             form_val = datetime.now().strftime('%m-%d-%Y')
         elem_form.append((form_val, form_name))
-    sw.send_keys_from_list(elem_form)
+    if test_name:
+        sw.send_keys_from_list(elem_form)
     sw.xpath_from_id_and_click(submit_id, .1)
 
 
@@ -505,30 +506,47 @@ class TestPlan:
     @staticmethod
     def set_topline_cost(worker, sw, part_budget='5000',
                          submit_id='loadContinue', col_id='total_budget0'):
-        elem_id = 'tr0'
+        idx = str(0)
+        elem_id = 'tr{}'.format(idx)
+        col_id = col_id.replace('0', idx)
         sw.wait_for_elem_load(elem_id)
-        wait_for_id = 'partnerSelect0-selectized'
+        wait_for_id = 'partnerSelect{}-selectized'.format(idx)
         sw.xpath_from_id_and_click(elem_id, load_elem_id=wait_for_id)
         sw.wait_for_elem_load(col_id)
         elem = sw.browser.find_element_by_id(col_id)
-        if col_id == 'total_budget0':
+        if [x for x in ['deleteRow', 'total_budget'] if x in col_id]:
             elem.click()
+        if 'total_budget' in col_id:
             elem.clear()
         submit_form(sw, [col_id], test_name=part_budget,
                     submit_id=submit_id)
         worker.work(burst=True)
 
     @staticmethod
-    def verify_plan_create(p, part_budget='5000', part_name='Facebook'):
+    def verify_plan_create(p, part_budget='5000', part_name=None):
+        if not part_name:
+            part_name = []
         phase = p.get_current_children()
         assert len(phase) == 1
-        part = phase[0].get_current_children()
-        assert len(part) == 1
-        part = part[0]
-        assert part.name == part_name
-        assert int(part.total_budget) == int(part_budget)
-        assert int(part.estimated_cpc) == 1
-        assert int(part.estimated_cpm) == 1000
+        parts = phase[0].get_current_children()
+        assert len(parts) == len(part_name)
+        assert len(p.get_placements()) == len(part_name)
+        for part in parts:
+            assert part.name in part_name
+            assert int(part.total_budget) == int(part_budget)
+            assert int(part.estimated_cpc) == 1
+            assert int(part.estimated_cpm) == 1000
+            place = PartnerPlacements.query.filter_by(partner_id=part.id).all()
+            assert len(place) == 1
+
+    def topline_add_partner(self, sw, worker, part_name):
+        sel_id = 'partnerSelectAdd'
+        submit_id = 'addRowsTopline'
+        part_budget = '5000'
+        sw.wait_for_elem_load(submit_id)
+        submit_form(sw, form_names=[sel_id], submit_id=submit_id,
+                    test_name=part_name)
+        self.set_topline_cost(worker, sw, part_budget)
 
     def test_topline(self, sw, login, worker, plan_name=None):
         if not plan_name:
@@ -537,19 +555,13 @@ class TestPlan:
         if not sw.browser.current_url == edit_url:
             self.test_create_plan(sw, login, worker, plan_name=plan_name)
         assert sw.browser.current_url == edit_url
-        sel_id = 'partnerSelectAdd'
-        submit_id = 'addRowsTopline'
         worker.work(burst=True)
         TestProject.wait_for_jobs_finish()
-        sw.wait_for_elem_load(submit_id)
         part_name = 'Facebook'
-        part_budget = '5000'
-        submit_form(sw, form_names=[sel_id], submit_id=submit_id,
-                    test_name=part_name)
-        self.set_topline_cost(worker, sw, part_budget)
+        self.topline_add_partner(sw, worker, part_name=part_name)
         sow_url = self.get_url(plan_routes.edit_sow, plan_name=plan_name)
         p = Plan.query.filter_by(name=plan_name).first()
-        self.verify_plan_create(p, part_budget, part_name)
+        self.verify_plan_create(p, part_name=[part_name])
         assert sw.browser.current_url == sow_url
         sw.go_to_url(edit_url, elem_id='loadingBtnTopline')
         worker.work(burst=True)
@@ -570,7 +582,7 @@ class TestPlan:
         new_part_name = 'FB'
         self.set_topline_cost(worker, sw, part_budget=new_part_name,
                               col_id='partnerSelect0')
-        self.verify_plan_create(p, part_name=new_part_name)
+        self.verify_plan_create(p, part_name=[new_part_name])
         df = pd.DataFrame([x.get_form_dict() for x in p.rules])
         tdf = df[df[Partner.__name__] == 'ALL']
         assert tdf.empty
@@ -753,6 +765,32 @@ class TestPlan:
         url = self.get_url(url)
         assert sw.browser.current_url == url
         TestProcessor.edit_fees(sw, worker, p, url)
+
+    def test_add_delete_phase(self, sw, login, worker):
+        url = plan_routes.topline
+        p = self.check_and_get_plan(sw, login, worker, url)
+        add_top_row_id = 'addTopRowTopline'
+        submit_id = 'loadRefresh'
+        sw.wait_for_elem_load(add_top_row_id)
+        sw.xpath_from_id_and_click(add_top_row_id, load_elem_id='datePicker-2')
+        sw.xpath_from_id_and_click(submit_id, load_elem_id=submit_id)
+        worker.work(burst=True)
+        assert len(p.get_current_children()) == 2
+        top_row_elem_id = 'topRowHeaderTopline-2'
+        delete_id = 'deleteRow-2'
+        sw.wait_for_elem_load(top_row_elem_id)
+        sw.xpath_from_id_and_click(top_row_elem_id, load_elem_id=delete_id)
+        sw.xpath_from_id_and_click(delete_id, load_elem_id=add_top_row_id)
+        sw.xpath_from_id_and_click(submit_id, load_elem_id=submit_id)
+        worker.work(burst=True)
+        assert len(p.get_current_children()) == 1
+
+    def test_topline_delete_partner(self, sw, login, worker):
+        url = plan_routes.topline
+        p = self.check_and_get_plan(sw, login, worker, url)
+        self.set_topline_cost(worker, sw, part_budget='',
+                              submit_id='loadRefresh', col_id='deleteRow0')
+        self.verify_plan_create(p)
 
 
 class TestProject:

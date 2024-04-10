@@ -836,16 +836,7 @@ function createHiddenRow(loopIndex, tableName, bodyId) {
         form.appendChild(element);
     });
     form.autocomplete = "off";
-    let deleteButtonDiv = document.createElement('div');
-    deleteButtonDiv.className = 'col form-group';
-    let deleteButton = document.createElement('button');
-    deleteButton.id = `deleteRow${loopIndex}`;
-    deleteButton.className = 'btn btn-block btn-outline-danger text-left';
-    deleteButton.type = 'button';
-    deleteButton.innerHTML = '<i class="fas fa-trash" role="button" aria-hidden="true"></i> DELETE';
-    deleteButton.setAttribute('onclick', `deleteRow(${loopIndex}, '${tableName}');`);
-    deleteButtonDiv.appendChild(deleteButton);
-    form.insertBefore(deleteButtonDiv, form.firstChild);
+    form = addDeleteBtn(loopIndex, tableName, form);
     formHolderDiv.appendChild(form);
     cardBody.appendChild(formHolderDiv);
     divCollapse.appendChild(cardBody);
@@ -945,8 +936,12 @@ function addRowDetailsToForm(rowData, loopIndex, tableName, customTableCols) {
 }
 
 function deleteRow(loopIndex, tableName) {
-    document.getElementById('tr' + loopIndex).remove();
-    document.getElementById('trHidden' + loopIndex).remove();
+    let preIds = (loopIndex < 0) ? [`topRowHeader${tableName}`] : ['tr', 'trHidden'];
+    preIds.forEach(preId => {
+        let elem = document.getElementById(`${preId}${loopIndex}`);
+        elem.click();
+        elem.remove();
+    });
     populateTotalCards(tableName);
 }
 
@@ -987,6 +982,20 @@ function addRowsOnClick() {
     addElemRemoveLoadingBtn(this.id);
 }
 
+function addDeleteBtn(loopIndex, tableName, form) {
+    let deleteButtonDiv = document.createElement('div');
+    deleteButtonDiv.className = 'col form-group';
+    let deleteButton = document.createElement('button');
+    deleteButton.id = `deleteRow${loopIndex}`;
+    deleteButton.className = 'btn btn-block btn-outline-danger text-left';
+    deleteButton.type = 'button';
+    deleteButton.innerHTML = '<i class="fas fa-trash" role="button" aria-hidden="true"></i> DELETE';
+    deleteButton.setAttribute('onclick', `deleteRow(${loopIndex}, '${tableName}');`);
+    deleteButtonDiv.appendChild(deleteButton);
+    form.insertBefore(deleteButtonDiv, form.firstChild);
+    return form
+}
+
 function addTopRowCard(tableName, loopIndex, topRowData = null) {
     let topRowName = document.getElementById(tableName + 'TableSlideCol').getAttribute('data-value');
     let formNames = [topRowName, 'total_budget', 'id'];
@@ -1007,6 +1016,7 @@ function addTopRowCard(tableName, loopIndex, topRowData = null) {
     formElements.forEach(element => {
         topRowForm.appendChild(element);
     });
+    topRowForm = addDeleteBtn(loopIndex, tableName, topRowForm);
     cardBody.appendChild(topRowForm);
     topRowCard.appendChild(cardHeader);
     topRowCard.appendChild(cardBody);
@@ -1033,6 +1043,7 @@ function addTopRowCard(tableName, loopIndex, topRowData = null) {
         let idElem = document.getElementById(`id${loopIndex}`);
         idElem.value = topRowData.id;
     }
+
 }
 
 function turnOffAllCards(tableName) {

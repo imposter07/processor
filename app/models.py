@@ -2998,6 +2998,8 @@ class PlanPhase(db.Model):
             form, 'start_date', datetime.today().date())
         self.end_date = utl.check_dict_for_key(
             form, 'end_date', datetime.today().date() + timedelta(days=7))
+        if 'id' in form and form['id'] != 'undefined':
+            self.id = form['id']
 
     @staticmethod
     def get_name_list():
@@ -3077,6 +3079,8 @@ class Partner(db.Model):
             if est_val in search_name and search_name not in form:
                 search_name = search_name.replace('{}_'.format(est_val), '')
             new_val = utl.check_dict_for_key(form, search_name, missing_val)
+            if new_val == 'undefined':
+                new_val = missing_val
             if not is_key_col or (
                     is_key_col and int(new_val) != int(missing_val)):
                 setattr(self, col.name, new_val)

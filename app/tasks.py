@@ -5378,6 +5378,8 @@ def write_topline(plan_id, current_user_id, new_data=None):
             col_name = '{}{}'.format(col, phase_idx)
             new_data = [x['value'] for x in phase_data
                         if x['name'] == col_name][0]
+            if col == 'id' and new_data == 'undefined':
+                continue
             if col == 'dates':
                 phase_dict = app_utl.get_sd_ed_in_dict(phase_dict, new_data)
             else:
@@ -5419,6 +5421,8 @@ def write_topline(plan_id, current_user_id, new_data=None):
                 if new_data:
                     new_data = new_data[0]
                 else:
+                    continue
+                if new_data == 'undefined':
                     continue
                 if col == date_col:
                     tl_dict = app_utl.get_sd_ed_in_dict(tl_dict, new_data)

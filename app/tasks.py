@@ -6426,9 +6426,12 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
             _set_task_progress(100)
             return False
     df = df[sheet_name[0]]
-    df = utl.first_last_adj(df, 2, 0).reset_index(drop=True)
     cols = Rfp.column_translation()
     partner_col = cols[Rfp.partner_name.name]
+    for first_row in range(10):
+        df = pd.read_excel(new_data, header=first_row, sheet_name=sheet_name[0])
+        if partner_col in df.columns:
+            break
     df = df[df[partner_col] != 'Example Media '].reset_index(drop=True)
     mask = df.drop(partner_col, axis=1).isna().all(axis=1)
     df = df[~mask].reset_index(drop=True)

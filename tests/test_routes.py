@@ -364,7 +364,8 @@ class TestPlan:
         db.session.commit()
         place_col = PartnerPlacements.country.name
         first_val = 'a'
-        rule_info = {first_val: .5, 'b': .5}
+        second_val = 'b'
+        rule_info = {first_val: .5, second_val: .5}
         plan_rule = PlanRule(
             type='Create', plan_id=cur_plan.id, partner_id=cur_part.id,
             rule_info=rule_info, place_col=place_col)
@@ -384,8 +385,37 @@ class TestPlan:
         db.session.commit()
         data = PartnerPlacements().create_from_rules(parent_id=cur_part.id,
                                                      current_user_id=user.id)
-        rule_info[new_val] = rule_info.pop(first_val)
+        rule_info_man = rule_info.copy()
+        rule_info_man[new_val] = rule_info_man.pop(first_val)
+        self.check_plan(data, rule_info_man, cur_part, total_budget, place_col)
+        db.session.delete(plan_rule)
+        db.session.commit()
+        lookup_rule_info = {place_col: {first_val: ['d'], second_val: ['e']}}
+        env_col = PartnerPlacements.environment.name
+        plan_rule = PlanRule(
+            type='Lookup', plan_id=cur_plan.id, partner_id=cur_part.id,
+            rule_info=lookup_rule_info, place_col=env_col)
+        db.session.add(plan_rule)
+        db.session.commit()
+        data = PartnerPlacements().create_from_rules(parent_id=cur_part.id,
+                                                     current_user_id=user.id)
         self.check_plan(data, rule_info, cur_part, total_budget, place_col)
+        cre_col = PartnerPlacements.creative_line_item.name
+        lookup_rule_two = lookup_rule_info.copy()
+        cre_col_vals = ['x', 'y']
+        lookup_rule_two[place_col][first_val] = cre_col_vals
+        plan_rule = PlanRule(
+            type='Lookup', plan_id=cur_plan.id, partner_id=cur_part.id,
+            rule_info=lookup_rule_two, place_col=cre_col)
+        db.session.add(plan_rule)
+        db.session.commit()
+        data = PartnerPlacements().create_from_rules(parent_id=cur_part.id,
+                                                     current_user_id=user.id)
+        assert len(data) == 3
+        cost = sum([x[PartnerPlacements.total_budget.name] for x in data])
+        assert int(cost) == int(total_budget)
+        lookup_vals = [x[cre_col] for x in data if x[place_col] == first_val]
+        assert lookup_vals == cre_col_vals
 
     def test_write_plan_placements(self, user, app_fixture,
                                    check_for_plan=False):

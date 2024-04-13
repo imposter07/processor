@@ -4708,7 +4708,7 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
                     start_date=sd, end_date=ed,
                     campaign_id=form_campaign.id)
                 if rate_card_id:
-                    old_proc = db.session.get(old_proc_id)
+                    old_proc = db.session.get(Processor, old_proc_id)
                     sync_cols = [Processor.digital_agency_fees,
                                  Processor.trad_agency_fees,
                                  Processor.rate_card_id,

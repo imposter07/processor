@@ -3906,6 +3906,28 @@ class PartnerPlacements(db.Model):
         return combos, rule_dict
 
     @staticmethod
+    def apply_lookup_rules(parent_id, combos, rule_dict):
+        rules = PlanRule.query.filter_by(partner_id=parent_id,
+                                         type='Lookup').all()
+        df = pd.DataFrame(combos, columns=list(rule_dict.keys()))
+        for rule in rules:
+            rule_info = rule.rule_info
+            if not isinstance(rule_info, dict):
+                rule_info = json.loads(rule_info)
+            for col_name, rule_details in rule_info.items():
+                rule_dict[rule.place_col] = {}
+                for old_col_val, new_col_vals in rule_details.items():
+                    tdf = df[df[col_name] == old_col_val]
+                    df = df[df[col_name] != old_col_val]
+                    rule_percent = 1 / len(new_col_vals)
+                    for new_col_val in new_col_vals:
+                        tdf[rule.place_col] = new_col_val
+                        df = pd.concat([df, tdf])
+                        rule_dict[rule.place_col][new_col_val] = rule_percent
+        combos = df.values.tolist()
+        return combos, rule_dict
+
+    @staticmethod
     def sync_partner_budget(data, parent_id):
         cur_partner = db.session.get(Partner, parent_id)
         partner_budget = float(cur_partner.total_budget)
@@ -3994,6 +4016,8 @@ class PartnerPlacements(db.Model):
         rates = self.get_rate_card(parent)
         parent_budget = float(parent.total_budget)
         combos, rule_dict = self.get_combos_from_rules(parent_id)
+        combos, rule_dict = self.apply_lookup_rules(parent_id, combos,
+                                                    rule_dict)
         data = []
         for combo in combos:
             temp_dict = {}

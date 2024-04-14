@@ -4179,7 +4179,7 @@ class PlanRule(db.Model):
 
     def get_form_dict(self):
         fd = dict([(k, getattr(self, k)) for k in self.__dict__.keys()
-                   if not k.startswith("_") and k != 'id'])
+                   if not k.startswith("_")])
         cur_partner = 'ALL'
         part_cost = 0
         if self.partner_id:
@@ -4188,9 +4188,12 @@ class PlanRule(db.Model):
             cur_partner = cur_partner.name
         fd[Partner.__name__] = cur_partner
         fd[Partner.total_budget.name] = part_cost
+        fd.pop(PlanRule.order.name)
         return fd
 
     def set_from_form(self, form, current_object):
+        if PlanRule.id.name in form:
+            self.id = int(form[PlanRule.id.name].strip())
         self.name = form[PlanRule.name.name].strip()
         self.plan_id = int(form[PlanRule.plan_id.name].strip())
         self.partner_id = int(form[PlanRule.partner_id.name].strip())

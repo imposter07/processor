@@ -618,7 +618,7 @@ function deleteSlider(buttonElement) {
 function addNewSliderRow(addElem) {
     let key = 'NEW';
     let data = {key: 0}
-    let inputElemId = addElem.parentElement.children[1].id;
+    let inputElemId = addElem.parentElement.parentElement.children[1].id;
     let newElem = generateSliderContent(key, inputElemId, data);
     addElem.insertAdjacentHTML('beforebegin', newElem);
     addSelectize();
@@ -682,9 +682,123 @@ function toggleSliderFormat(elem) {
     });
 }
 
+function lookupValOnChange(e) {
+    let containerElem = e.currentTarget.parentElement;
+    let selElems = containerElem.querySelectorAll('select');
+    selElems.forEach(selElem => {
+        let curVals = selElem.selectize.getValue();
+        let ruleElemId = selElem.dataset['rule'];
+        let ruleInfoElem = document.getElementById(ruleElemId);
+        let ruleData = JSON.parse(ruleInfoElem.innerHTML);
+        ruleData[selElem.dataset['col']][selElem.dataset['key']] = curVals;
+        ruleInfoElem.innerHTML = JSON.stringify(ruleData);
+    });
+}
+
+function buildLookupContainerElems(ruleInfo, curIdx, placeSearch, lookupContainerId, addVals=false) {
+    let lookupContainer = document.getElementById(lookupContainerId);
+    lookupContainer.innerHTML = '';
+    let containerHtml = '';
+    let data = {};
+    let idx = 0;
+    let ruleInfoId = `rowrule_info${curIdx}`;
+    Object.entries(ruleInfo).forEach(rule => {
+        let vals = (addVals) ? rule[1] : [];
+        data[rule[0]] = vals;
+        let optHtml = '';
+        vals.forEach(val => {
+            optHtml += `<option selected>${val}</option>`;
+        });
+        containerHtml += `<label>${rule[0]}</label>`;
+        containerHtml += `<select data-key="${rule[0]}" data-rule="${ruleInfoId}" data-col="${placeSearch}"
+            id="${lookupContainerId}${idx}" multiple="">${optHtml}</select>`;
+        idx += 1;
+    });
+    lookupContainer.insertAdjacentHTML('beforeend', containerHtml);
+    addSelectize(`#${lookupContainerId} select`);
+    addOnClickEvent(`#${lookupContainerId} select`, lookupValOnChange, 'change', false);
+    return [ruleInfoId, data]
+}
+
+function lookupColOnChange(e) {
+    let lookupCol = e.currentTarget;
+    let curIdx = lookupCol.id.replace('rule_info', '').replace('LookupCol', '');
+    let partElemId = `rowPartner${curIdx}`;
+    let partElem = document.getElementById(partElemId);
+    let curPart = partElem.innerHTML.trim();
+    let placeSearch = lookupCol.value;
+    let placeCols = document.querySelectorAll('*[id^="rowplace_col"]');
+    let loopIndex = '';
+    placeCols.forEach(placeCol => {
+        let val = placeCol.innerHTML.trim();
+        if (val === placeSearch) {
+            let partId = placeCol.id.replace('place_col', 'Partner');
+            let part = document.getElementById(partId).innerHTML.trim();
+            if (part === curPart) {
+                loopIndex = placeCol.id.replace('rowplace_col', '');
+            }
+        }
+    });
+    let ruleInfo = document.getElementById(`rowrule_info${loopIndex}`);
+    ruleInfo = JSON.parse(ruleInfo.innerHTML);
+    let lookupContainerId = lookupCol.id.replace('Col', 'Container');
+    let [ruleInfoId, data] = buildLookupContainerElems(ruleInfo, curIdx, placeSearch, lookupContainerId);
+    let ruleInfoElem = document.getElementById(ruleInfoId);
+    let ruleData = {};
+    ruleData[placeSearch] = data;
+    ruleInfoElem.innerHTML = JSON.stringify(ruleData);
+}
+
+function buildLookupEditCol(elem, inputElemId, data, isLookup) {
+    let selectedCol = '';
+    if (isLookup) {
+        selectedCol = Object.keys(data)[0];
+    }
+    let lookupHtml = `<div id="${inputElemId}Lookup" style="display:none;">`;
+    let colNames = ['budget', 'country', 'targeting_bucket',
+        'creative_line_item', 'copy', 'retailer', 'buy_model', 'buy_rate',
+        'start_date', 'serving', 'ad_rate', 'reporting_rate', 'kpi',
+        'data_type_1', 'service_fee_rate', 'verification_rate',
+        'reporting_source', 'environment', 'size', 'ad_type', 'placement_description',
+        'package_description', 'media_channel'];
+    let optHtml = '';
+    colNames.forEach(colName => {
+        let selected = (colName === selectedCol) ? 'selected' : '';
+        optHtml += `<option ${selected}>${colName}</option>`;
+    });
+    let lookupColId = `${inputElemId}LookupCol`;
+    let lookupContainerId = `${inputElemId}LookupContainer`;
+    lookupHtml += `<select id="${lookupColId}" data-datacell="${inputElemId}">${optHtml}</select>`;
+    lookupHtml += `<div id="${lookupContainerId}"></div></div>`;
+    elem.insertAdjacentHTML('beforeend', lookupHtml);
+    addSelectize(`#${lookupColId}`);
+    addOnClickEvent(`#${lookupColId}`, lookupColOnChange, 'change', false);
+    if (isLookup) {
+        data = data[selectedCol];
+        let curIdx = inputElemId.replace('rule_info', '');
+        buildLookupContainerElems(data, curIdx, selectedCol, lookupContainerId, true);
+    }
+}
+
+function switchRuleType() {
+    let typeCell = this;
+    let curType = typeCell.innerHTML;
+    let colId = typeCell.id.replace('rowtype', 'rule_info');
+    let turnOnId = colId + curType;
+    let turnOnElem = document.getElementById(turnOnId);
+    turnOnElem.style.display = '';
+    let turnOffId = (curType === 'Create') ? 'Lookup' : 'Create';
+    turnOffId = colId + turnOffId;
+    let turnOffElem = document.getElementById(turnOffId);
+    turnOffElem.style.display = 'none';
+}
+
 function buildSliderEditCol(elem, newValue, inputElemId) {
     let data = JSON.parse(newValue);
-    let progHtml = '<br>';
+    let typeElemId = inputElemId.replace('rule_info', 'rowtype');
+    let typeElem = document.getElementById(typeElemId);
+    let isLookup = typeElem.innerHTML.trim() === 'Lookup';
+    let progHtml = `<br><div id="${inputElemId}Create">`;
     let idx = 0
     for (let key in data) {
         let sliderContent = generateSliderContent(key, inputElemId, data, idx);
@@ -692,10 +806,12 @@ function buildSliderEditCol(elem, newValue, inputElemId) {
         idx += 1;
     }
     progHtml += `<div id="${inputElemId}AddRow" class="btn btn-outline-success" onclick="addNewSliderRow(this)">Add New Row</div>`;
-    progHtml += `<div id="${inputElemId}SwitchDollars" class="btn btn-outline-success" onclick="toggleSliderFormat(this)">Switch Dollars</div>`;
+    progHtml += `<div id="${inputElemId}SwitchDollars" class="btn btn-outline-success" onclick="toggleSliderFormat(this)">Switch Dollars</div></div>`;
     elem.insertAdjacentHTML('beforeend', progHtml);
     addSelectize();
     addOnClickForSlider();
+    buildLookupEditCol(elem, inputElemId, data, isLookup);
+    addOnClickEvent(`#${typeElemId}`, switchRuleType, 'DOMSubtreeModified', false);
     return progHtml
 }
 

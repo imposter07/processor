@@ -5509,33 +5509,26 @@ def download_topline(plan_id, current_user_id):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+@error_handler
 def get_plan_rules(plan_id, current_user_id):
-    try:
-        _set_task_progress(0)
-        cur_plan = db.session.get(Plan, plan_id)
-        name = 'PlanRules'
-        name_col = 'column_name'
-        df = pd.DataFrame([x.get_form_dict() for x in cur_plan.rules])
-        hidden_cols = [Partner.total_budget.name, name_col, PlanRule.order.name,
-                       PlanRule.name.name, PlanRule.plan_id.name,
-                       PlanRule.partner_id.name, name_col]
-        select_val_dict = [{PlanRule.type.name: x} for x in
-                           ['Create', 'Lookup']]
-        select_val_dict = {PlanRule.type.name: select_val_dict}
-        lt = app_utl.LiquidTable(
-            df=df, title=name, table_name=name,
-            form_cols=[PlanRule.rule_info.name, PlanRule.type.name],
-            specify_form_cols=True, slider_edit_col=PlanRule.rule_info.name,
-            slider_abs_col=Partner.total_budget.name, hidden_cols=hidden_cols,
-            select_val_dict=select_val_dict)
-        _set_task_progress(100)
-        return [lt.table_dict]
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - Plan {} User {}'.format(
-                plan_id, current_user_id), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    cur_plan = db.session.get(Plan, plan_id)
+    name = 'PlanRules'
+    name_col = 'column_name'
+    rule_types = ['Create', 'Lookup']
+    data = [x.get_form_dict() for x in cur_plan.rules if x.type in rule_types]
+    df = pd.DataFrame(data)
+    hidden_cols = [Partner.total_budget.name, name_col, PlanRule.order.name,
+                   PlanRule.name.name, PlanRule.plan_id.name,
+                   PlanRule.partner_id.name, name_col, PlanRule.id.name]
+    select_val_dict = [{PlanRule.type.name: x} for x in rule_types]
+    select_val_dict = {PlanRule.type.name: select_val_dict}
+    lt = app_utl.LiquidTable(
+        df=df, title=name, table_name=name,
+        form_cols=[PlanRule.rule_info.name, PlanRule.type.name],
+        specify_form_cols=True, slider_edit_col=PlanRule.rule_info.name,
+        slider_abs_col=Partner.total_budget.name, hidden_cols=hidden_cols,
+        select_val_dict=select_val_dict)
+    return [lt.table_dict]
 
 
 @error_handler
@@ -6144,9 +6137,16 @@ def write_plan_rules(plan_id, current_user_id, new_data=None):
     cur_plan = db.session.get(Plan, plan_id)
     df = pd.read_json(new_data)
     df = pd.DataFrame(df[0][1])
+    for col in df.columns:
+        df[col] = df[col].str.strip()
     df = df[df[Partner.__name__] != 'All']
-    df = df.to_dict(orient='records')
-    app_utl.set_db_values(plan_id, current_user_id, df, PlanRule, Plan)
+    rule_types = ['Create', 'Lookup']
+    for rule_type in rule_types:
+        tdf = df[df[PlanRule.type.name] == rule_type]
+        tdf = tdf.to_dict(orient='records')
+        additional_filter = {PlanRule.type.name: rule_type}
+        app_utl.set_db_values(plan_id, current_user_id, tdf, PlanRule, Plan,
+                              additional_filter=additional_filter)
     for phase in cur_plan.phases:
         for part in phase.partners:
             PartnerPlacements.create_from_rules(PartnerPlacements, part.id,

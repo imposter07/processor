@@ -579,7 +579,7 @@ class Rates(db.Model):
         for col in [Rates.adserving_fee, Rates.reporting_fee]:
             col = col.name
             val = form[col]
-            if val == 'None':
+            if val == 'None' or val == '':
                 val = 0
             setattr(self, col, float(val))
         self.type_name = form[Rates.type_name.name]

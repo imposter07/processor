@@ -614,7 +614,8 @@ class TestPlan:
         elem_id = 'rule_info0Value'
         elem = sw.browser.find_element_by_id(elem_id)
         elem.clear()
-        submit_form(sw, [elem_id], test_name='50')
+        submit_form(sw, [elem_id], test_name='50',
+                    submit_id='loadRefresh')
         worker.work(burst=True)
         env_rule = PlanRule.query.filter_by(place_col=col_name,
                                             plan_id=p.id).all()
@@ -625,7 +626,49 @@ class TestPlan:
 
     def test_rules_lookup(self, sw, login, worker):
         url = plan_routes.plan_rules
-        self.check_and_get_plan(sw, login, worker, url)
+        p = self.check_and_get_plan(sw, login, worker, url)
+        col_name = PartnerPlacements.environment.name
+        env_rule = PlanRule.query.filter_by(place_col=col_name,
+                                            plan_id=p.id).all()
+        data = env_rule[0].rule_info
+        if self.test_name not in data:
+            self.test_rules(sw, login, worker)
+        col_name = PartnerPlacements.budget.name
+        elem_id = 'rowplace_col1'
+        sw.wait_for_elem_load(elem_id)
+        elem = sw.browser.find_element_by_id(elem_id)
+        assert elem.get_attribute('innerHTML').strip() == col_name
+        search_id = 'tableSearchInputPlanRulesTable'
+        elem = sw.browser.find_element_by_id(search_id)
+        elem.clear()
+        submit_form(sw, form_names=[search_id], submit_id=elem_id,
+                    test_name=col_name)
+        elem_id = 'typeSelect1-selectized'
+        sw.wait_for_elem_load(elem_id)
+        sw.send_keys_from_list([('Lookup', elem_id)])
+        elem_id = 'rule_info1LookupCol-selectized'
+        sw.wait_for_elem_load(elem_id)
+        env_col = PartnerPlacements.environment.name
+        sw.send_keys_from_list([(env_col, elem_id)])
+        elem_id = 'rule_info1LookupContainer0-selectized'
+        elem_two_id = elem_id.replace('0', '1')
+        sw.wait_for_elem_load(elem_id)
+        val_one = 'a'
+        val_two = 'b'
+        sw.send_keys_from_list([(val_one, elem_id), (val_two, elem_two_id)])
+        submit_form(sw, form_names=[elem_id], test_name=self.test_name)
+        worker.work(burst=True)
+        cur_places = p.get_placements()
+        poss_vals = [self.test_name, val_one, val_two]
+        assert len(cur_places) == 3
+        for cur_place in cur_places:
+            val = cur_place.__dict__[col_name]
+            assert val in poss_vals
+            poss_vals = [x for x in poss_vals if x != val]
+            if cur_place.__dict__[env_col] == self.test_name:
+                assert val in [self.test_name, val_one]
+            else:
+                assert val == val_two
 
     def test_placements(self, sw, login, worker):
         url = plan_routes.plan_placements
@@ -640,6 +683,9 @@ class TestPlan:
         elem = sw.browser.find_element_by_id(click_cell_id)
         elem_clicks = elem.get_attribute('innerHTML').replace(',', '')
         assert int(elem_clicks) == int(clicks)
+        sw.xpath_from_id_and_click(elem_id, load_elem_id=load_elem_id)
+        elem = sw.browser.find_element_by_id(load_elem_id)
+        elem.clear()
         sw.xpath_from_id_and_click(elem_id, load_elem_id=load_elem_id)
         submit_form(sw, [load_elem_id], test_name=self.test_name)
         worker.work(burst=True)

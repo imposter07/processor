@@ -3625,11 +3625,15 @@ class PartnerPlacements(db.Model):
             cols = [x.name for x in cols]
         else:
             other_names = {p.targeting_bucket.name: ['audience']}
+            omit_names = {p.environment.name: ['a']}
             for idx, col in enumerate(cols):
-                val = []
-                if col.name in other_names.keys():
-                    val = other_names[col.name]
-                cols[idx].__dict__['other_names'] = val
+                name_types = [('other_names', other_names),
+                              ('omit_names', omit_names)]
+                for name_type in name_types:
+                    val = []
+                    if col.name in name_type[1].keys():
+                        val = name_type[1][col.name]
+                    cols[idx].__dict__[name_type[0]] = val
         return cols
 
     @staticmethod
@@ -3733,7 +3737,7 @@ class PartnerPlacements(db.Model):
                                                           True)
         cur_part = db.session.get(Partner, parent.id)
         ps = Partner.query.filter_by(plan_phase_id=cur_part.plan_phase_id).all()
-        ps = [x.name.lower() for x in ps]
+        ps = [x.name.lower() for x in ps] + col.__dict__['omit_names']
         name_list = [x for x in name_list if x[db_col] not in ps]
         if old_rule:
             comp_list = [x[db_col] for x in name_list]

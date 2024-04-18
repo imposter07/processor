@@ -119,7 +119,7 @@ def error_handler(route_function):
             app.logger.error(msg, exc_info=sys.exc_info())
             os.chdir(cur_path)
             if 'run_uploader' in str(route_function):
-                uploader_run_error(args)
+                uploader_run_error(json.dumps(args))
             return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
     return decorated_function
@@ -5424,6 +5424,8 @@ def write_topline(plan_id, current_user_id, new_data=None):
                     continue
                 if new_data == 'undefined':
                     continue
+                if 'cp' in col and not new_data:
+                    new_data = 0
                 if col == date_col:
                     tl_dict = app_utl.get_sd_ed_in_dict(tl_dict, new_data)
                 else:

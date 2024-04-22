@@ -45,6 +45,10 @@ from processor.reporting.vendormatrix import full_placement_creation
 import processor.reporting.models as prc_model
 import uploader.upload.utils as u_utl
 import uploader.upload.creator as cre
+import uploader.upload.fbapi as fbapi
+import uploader.upload.awapi as awapi
+import uploader.upload.dcapi as dcapi
+
 
 app = current_app
 if not app:
@@ -1545,9 +1549,6 @@ def get_uploader_file(uploader_id, current_user_id, parameter=None, vk=None,
 
 @error_handler
 def set_uploader_config_files(uploader_id, current_user_id):
-    import uploader.upload.fbapi as fbapi
-    import uploader.upload.awapi as awapi
-    import uploader.upload.dcapi as dcapi
     new_uploader = db.session.get(Uploader, uploader_id)
     config_dicts = [
         {'id_val': new_uploader.fb_account_id,
@@ -1567,6 +1568,7 @@ def set_uploader_config_files(uploader_id, current_user_id):
         if config_dict['id_val']:
             set_uploader_config_file(uploader_id, current_user_id,
                                      **config_dict)
+    save_uploader_config_to_processor(uploader_id, current_user_id)
     return True
 
 
@@ -5587,8 +5589,8 @@ def check_plan_gg_children(plan_id, current_user_id, parent_id=None, words=None,
 
 
 
-@error_handler
 # noinspection SqlResolve
+@error_handler
 def get_screenshot_table(processor_id, current_user_id, filter_dict=None):
     cur_processor = db.session.get(Processor, processor_id)
     os.chdir(adjust_path(cur_processor.local_path))
@@ -6153,6 +6155,7 @@ def write_plan_rules(plan_id, current_user_id, new_data=None):
         for part in phase.partners:
             PartnerPlacements.create_from_rules(PartnerPlacements, part.id,
                                                 current_user_id)
+    save_plan_to_processor(plan_id, current_user_id)
 
 
 def update_rules_from_change_log(plan_id, current_user_id, part_id, change_log):
@@ -6313,6 +6316,7 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
             table=PartnerPlacements, parent_model=Partner)
         update_rules_from_change_log(plan_id, current_user_id, part_id,
                                      change_log)
+    save_plan_to_processor(plan_id, current_user_id)
 
 
 @error_handler
@@ -7020,3 +7024,30 @@ def get_rate_cards(processor_id, current_user_id):
             db.session.commit()
         db.session.commit()
     return [df]
+
+
+@error_handler
+def save_plan_to_processor(plan_id, current_user_id):
+    cur_plan = db.session.get(Plan, plan_id)
+    cur_proc = Processor.query.filter_by(name=cur_plan.name).first()
+    if cur_proc:
+        df = cur_plan.get_placements_as_df()
+        save_media_plan(cur_proc.id, current_user_id, df)
+        vk = Processor.get_plan_properties()
+        vk = [x for x in vk if 'Package' not in vk]
+        apply_processor_plan(cur_proc.id, current_user_id, vk)
+
+
+@error_handler
+def save_uploader_config_to_processor(uploader_id, current_user_id):
+    cur_up = db.session.get(Uploader, uploader_id)
+    cur_proc = Processor.query.filter_by(name=cur_up.name).first()
+    if cur_proc:
+        id_vals = [(cur_up.fb_account_id, 'Facebook'),
+                   (cur_up.aw_account_id, 'Adwords'),
+                   (cur_up.dcm_account_id, 'DCM')]
+        for id_val in id_vals:
+            cur_acc = Account.query.filter_by(
+                key=id_val[1], processor_id=cur_proc.id).first()
+            cur_acc.account_id = id_val[0]
+            db.session.commit()

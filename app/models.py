@@ -3937,10 +3937,16 @@ class PartnerPlacements(db.Model):
         partner_budget = float(cur_partner.total_budget)
         total = sum(float(x[PartnerPlacements.total_budget.name]) for x in data)
         if total != partner_budget:
-            ratio = partner_budget / total
+            if total:
+                ratio = partner_budget / total
+            else:
+                ratio = partner_budget / len(data)
             for d in data:
-                new_budget = float(d[PartnerPlacements.total_budget.name])
-                new_budget *= ratio
+                if total:
+                    new_budget = float(d[PartnerPlacements.total_budget.name])
+                    new_budget *= ratio
+                else:
+                    new_budget = ratio
                 d[PartnerPlacements.total_budget.name] = new_budget
         return data
 

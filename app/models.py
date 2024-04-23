@@ -4028,7 +4028,10 @@ class PartnerPlacements(db.Model):
             value_product = 1
             for i, key in enumerate(combo):
                 col_name = list(rule_dict.keys())[i]
-                value = rule_dict[col_name][key]
+                try:
+                    value = rule_dict[col_name][key]
+                except KeyError as e:
+                    continue
                 temp_dict[col_name] = key
                 value_product *= value
             place_budget = float(value_product) * float(parent_budget)

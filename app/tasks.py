@@ -6654,7 +6654,7 @@ def route_check(cur_plan, route_name, cur_partners, api_partners,
         plan_routes.topline: [check_topline, [cur_plan, cur_partners]],
         plan_routes.edit_sow: [check_missing_vals, [cur_sow, Sow]],
         plan_routes.plan_rules: [check_plan_rules, [api_partners]],
-        plan_routes.rfp: [check_plan_rules, [non_api_partners, Rfp, None]],
+        plan_routes.rfp: [check_plan_rules, [non_api_partners, RfpFile, None]],
         main_routes.edit_uploader: [check_missing_vals, [cur_up, Uploader]],
         main_routes.edit_request_processor:
             [check_missing_vals, [cur_up, Uploader]],

@@ -425,12 +425,8 @@ class TestProcessor:
             assert 'API_Rawfile_test' not in matrix.vm_df[
                 vmc.vendorkey].to_list()
 
-    def test_raw_file_upload(self, set_up, sw, worker, default_name, user):
-        test_name = 'Rawfile'
-        test_raw = 'rawfile_{}.csv'.format(test_name)
-        self.add_import_card(worker, sw, default_name, test_name)
-        sw.browser.refresh()
-        sw.wait_for_elem_load('apis-0')
+    @staticmethod
+    def create_test_data():
         place_col = 'Placement Name (From Ad Server)'
         placement = ('1074619450_Criteo_US_Best Buy_0_0_0_dCPM_5_45216_No '
                      'Tracking_0_0_CPV_Awareness_Launch_0_0_V_Cross Device_0'
@@ -444,6 +440,15 @@ class TestProcessor:
         utl.dir_check(raw1_path)
         raw1_path = os.path.join(raw1_path, file_name)
         df.to_csv(raw1_path)
+        return df, raw1_path
+
+    def upload_raw_file(self, set_up, sw, worker, default_name, user):
+        test_name = 'Rawfile'
+        test_raw = 'rawfile_{}.csv'.format(test_name)
+        self.add_import_card(worker, sw, default_name, test_name)
+        sw.browser.refresh()
+        sw.wait_for_elem_load('apis-0')
+        df, raw1_path = self.create_test_data()
         with self.adjust_path(basedir):
             form_file = sw.browser.find_element_by_id('apis-0-raw_file')
             file_pond = form_file.find_element_by_class_name(
@@ -458,14 +463,103 @@ class TestProcessor:
             worker.work(burst=True)
             raw_path = os.path.join(set_up.local_path, utl.raw_path, test_raw)
             raw_df = pd.read_csv(raw_path)
-            assert not raw_df.empty
-            assert (df.iloc[0][place_col] == raw_df.iloc[0][place_col])
+            os.remove(file_path)
+        return df, raw_df
+
+    def test_raw_file_upload(self, set_up, sw, worker, default_name, user):
+        place_col = 'Placement Name (From Ad Server)'
+        df, raw_df = self.upload_raw_file(set_up, sw, worker,
+                                          default_name, user)
+        assert not raw_df.empty
+        assert (df.iloc[0][place_col] == raw_df.iloc[0][place_col])
 
     def test_get_log(self, set_up, sw, worker, login, default_name):
         proc_url = self.get_url(main_routes.edit_processor_import,
                                 p_name=default_name)
         sw.go_to_url(proc_url)
         TestUploader().test_get_log(sw, login, worker, cur_name=default_name)
+
+    def create_and_go_to_clean(self, set_up, sw, worker, default_name, user):
+        data_src_ftr = '//*[@id="base_form_id"]/div[1]/div/div'
+        raw_data_src = '/html/body/div[8]/div/div[1]'
+        df = self.upload_raw_file(set_up, sw, worker, default_name, user)[0]
+        with self.adjust_path(basedir):
+            proc_url = self.get_url(main_routes.edit_processor_clean,
+                                    p_name=default_name)
+            sw.go_to_url(proc_url)
+            sw.click_on_xpath(xpath=data_src_ftr)
+            sw.click_on_xpath(xpath=raw_data_src)
+        return df
+
+    def test_auto_dict_update(self, set_up, sw, worker, default_name, user):
+        change_order_btn = '_refresh_change_dictionary_order'
+        order_selector = 'auto_order_select3-selectized'
+        select_agency = '/html/body/div[22]/div/div[1]'
+        self.create_and_go_to_clean(set_up, sw, worker, default_name, user)
+        with self.adjust_path(basedir):
+            sw.wait_for_elem_load(elem_id=change_order_btn)
+            sw.xpath_from_id_and_click(change_order_btn)
+            worker.work(burst=True)
+            sw.wait_for_elem_load(elem_id=order_selector,
+                                  sleep_time=0.75)
+            sw.xpath_from_id_and_click(order_selector)
+            sw.click_on_xpath(xpath=select_agency)
+            sw.xpath_from_id_and_click('modalTableSaveButton')
+            worker.work(burst=True)
+            sw.browser.refresh()
+            df = vm.VendorMatrix().vm_df
+            df = df[df[vmc.vendorkey].str.contains('API_Rawfile')]
+            auto_dict_first = (df[vmc.autodicord]).str.partition('|')[0]
+            auto_dict_first = auto_dict_first.to_string()
+        assert 'mpAgency' in auto_dict_first
+
+    def test_delete_dict(self, set_up, sw, worker, default_name, user):
+        test_name = 'Rawfile'
+        test_dict = 'rawfile_dictionary_{}.csv'.format(test_name)
+        close_btn = '//*[@id="modalTable"]/div/div/div[3]/div/button[2]'
+        self.create_and_go_to_clean(set_up, sw, worker, default_name, user)
+        with self.adjust_path(basedir):
+            task = set_up.launch_task(
+                '.run_processor',
+                'running basic...', user.id,
+                run_args='--basic')
+            worker.work(burst=True)
+            job = task.wait_and_get_job(20)
+            if job and job.result:
+                dict_path = os.path.join(set_up.local_path, utl.dict_path,
+                                         test_dict)
+                dict_df = pd.read_csv(dict_path)
+                assert os.path.isfile(dict_path)
+                assert not dict_df.empty
+                sw.xpath_from_id_and_click('_refresh_delete_dict')
+                worker.work(burst=True)
+                sw.wait_for_elem_load(elem_id='modalTableSaveButton')
+                sw.click_on_xpath(close_btn)
+                sw.browser.refresh()
+                assert not os.path.isfile(dict_path)
+
+    def test_download_raw(self, set_up, sw, worker, default_name, user):
+        place_col = 'Placement Name (From Ad Server)'
+        file_path = ('tmp/Processor_Base Processor_'
+                     'download_raw_data_API_Rawfile_Rawfile.csv')
+        download = pd.DataFrame()
+        download_button = '_refresh_download_raw_data'
+        df = self.create_and_go_to_clean(set_up, sw, worker, default_name, user)
+        with self.adjust_path(basedir):
+            sw.wait_for_elem_load(elem_id=download_button)
+            sw.xpath_from_id_and_click(download_button)
+            worker.work(burst=True)
+            for x in range(10):
+                if os.path.exists(file_path):
+                    break
+                time.sleep(1)
+            if os.path.isfile(file_path):
+                download = pd.read_csv(file_path)
+                os.remove(file_path)
+            else:
+                raise ValueError('%s is not a file' % file_path)
+        assert not download.empty
+        assert (df.iloc[0][place_col] == download.iloc[0][place_col])
 
 
 class TestPlan:

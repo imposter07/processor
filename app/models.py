@@ -3924,6 +3924,8 @@ class PartnerPlacements(db.Model):
                 rule_info = json.loads(rule_info)
             for col_name, rule_details in rule_info.items():
                 rule_dict[rule.place_col] = {}
+                if isinstance(rule_details, int):
+                    continue
                 for old_col_val, new_col_vals in rule_details.items():
                     tdf = df[df[col_name] == old_col_val]
                     df = df[df[col_name] != old_col_val]

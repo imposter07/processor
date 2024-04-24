@@ -62,7 +62,15 @@ def _set_task_progress(progress, total_time=0.0, route_function=None):
         job_id = job.get_id()
         job.meta['progress'] = progress
         job.save_meta()
-        task = db.session.get(Task, job_id)
+        task = None
+        for x in range(10):
+            try:
+                task = db.session.get(Task, job_id)
+            except:
+                db.session.rollback()
+                app.logger.error('Unhandled exception', exc_info=sys.exc_info())
+            if task:
+                break
         if task:
             cu = task.user
             if cu:
@@ -123,7 +131,7 @@ def error_handler(route_function):
             app.logger.error(msg, exc_info=sys.exc_info())
             os.chdir(cur_path)
             if 'run_uploader' in str(route_function):
-                uploader_run_error(json.dumps(args))
+                uploader_run_error(json.loads(args))
             return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
     return decorated_function

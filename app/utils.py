@@ -13,6 +13,7 @@ from flask import current_app, render_template, jsonify, request, redirect, \
     url_for
 import uploader.upload.creator as cre
 import processor.reporting.analyze as az
+import processor.reporting.vmcolumns as vmc
 from xlrd.biffh import XLRDError
 from functools import wraps
 
@@ -574,7 +575,8 @@ class LiquidTable(object):
                  prog_colors='success', download_table=False, filter_dict=None,
                  hidden_cols=None, link_cols=None, cell_pick_cols=None,
                  metadata=None, total_default_val=0,
-                 inline_edit=False, table_name='liquidTable'):
+                 inline_edit=False, table_name='liquidTable',
+                 percent_total_cols=None, percent_total_groupbys=None):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -597,6 +599,9 @@ class LiquidTable(object):
         self.trending_groupbys = (
             trending_groupbys if trending_groupbys else [[]])
         self.trending_periods = trending_periods if trending_periods else []
+        self.percent_total_cols = percent_total_cols
+        self.percent_total_groupbys = (
+            percent_total_groupbys if percent_total_groupbys else [])
         self.header = header
         self.highlight_row = highlight_row
         self.table_name = table_name
@@ -623,8 +628,8 @@ class LiquidTable(object):
         if self.slider_edit_col:
             self.accordion = True
         self.df = df
-        if self.trending_cols:
-            self.create_cols()
+        if self.trending_cols or self.percent_total_cols:
+            self.calculated_cols()
         self.build_from_df()
         self.form_cols = self.check_form_cols(
             self.form_cols, self.specify_form_cols, self.col_list)
@@ -658,7 +663,7 @@ class LiquidTable(object):
             self.table_buttons.append(btn)
         return self.table_buttons
 
-    def create_cols(self):
+    def calculated_cols(self):
         value_cal = az.ValueCalc()
         if self.trending_cols:
             for i in range(len(self.trending_cols)):
@@ -669,6 +674,14 @@ class LiquidTable(object):
                           if i < len(self.trending_periods) else 1)
                 self.df = value_cal.calculate_trending(
                     self.df, col_name, metric, groupby, period)
+        if self.percent_total_cols:
+            for i in range(len(self.percent_total_cols)):
+                metric = self.percent_total_cols[i]
+                groupby = (self.percent_total_groupbys[i]
+                           if i < len(self.percent_total_groupbys)
+                           else ['eventdate'])
+                self.df = value_cal.calculate_percent_total(
+                    self.df, metric, groupby)
 
     def build_from_df(self):
         if self.df.columns.tolist():

@@ -1116,6 +1116,14 @@ class TestUploader:
         assert cur_name in elem.get_attribute('innerHTML')
 
 
+class TestResearch:
+
+    def test_research_url(self, sw, login, worker):
+        r_url = get_url(plan_routes.research)
+        sw.go_to_url(r_url, elem_id='loadContinue')
+        assert sw.browser.current_url == r_url
+
+
 class TestReportingDBReadWrite:
     test_proc_name = "FFXIV Evergreen FY22 - March"
     agency = 'Liquid Advertising'

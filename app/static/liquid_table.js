@@ -1869,7 +1869,7 @@ function createTableFilter(tableId) {
 }
 
 function addProgressBars(progCol, color, loopIndex) {
-    let cell = document.querySelector(`#row${progCol}${loopIndex}`);
+    let cell = document.getElementById(`row${progCol}${loopIndex}`);
     let value = (cell.textContent) ? cell.textContent : '0';
     cell.classList.add('table-progress');
     cell.classList.add('p-0');

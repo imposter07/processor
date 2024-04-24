@@ -272,6 +272,10 @@ function createTable(colData, rawData, tableName,
             ]
         });
     });
+    $('#modalTable').on('shown.bs.modal', function () {
+        $($.fn.dataTable.tables(true)).DataTable()
+            .columns.adjust();
+    });
 }
 
 /**

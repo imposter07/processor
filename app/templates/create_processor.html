@@ -1287,7 +1287,7 @@
 
         function removeSpecialChars() {
             $('input[id$=name]').on('blur', function() {
-                const forbiddenChars = /[#&$^@*!%/]/g;
+                const forbiddenChars = /[#&$^@*!%/'"]/g;
                 this.value = this.value.replace(forbiddenChars, '')
             })
             $('input[id*=account]').on('blur', function() {

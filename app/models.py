@@ -2733,6 +2733,9 @@ class Plan(db.Model):
         df = pd.DataFrame(data)
         cols = PartnerPlacements.get_col_order()
         cols = cols + [x for x in df.columns if x not in cols]
+        for col in cols:
+            if col not in df.columns:
+                df[col] = ''
         df = df[cols]
         return df
 
@@ -3721,6 +3724,8 @@ class PartnerPlacements(db.Model):
         old_rule = PlanRule.query.filter_by(
             place_col=str_name, partner_id=parent.id,
             plan_id=plan_id).first()
+        if old_rule and old_rule.type != 'Create':
+            return new_rules, words
         name_in_list = utl.is_list_in_list(col_names, words, False, True)
         if name_in_list:
             cols = self.get_col_order(for_loop=True, as_string=False)

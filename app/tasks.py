@@ -1673,7 +1673,7 @@ def set_object_relation_file(uploader_id, current_user_id,
             else:
                 pos = '|'.join(pos_list)
             if (len(ndf['position']) > 0 and pos != ndf['position'][0] and
-                    pos):
+                    pos and not isinstance(ndf['column_name'][0], float)):
                 ndf['position'] = pos
                 col_name = ndf['column_name'][0].split('|')[0]
                 cols = '|'.join([col_name for _ in pos_list])
@@ -7043,6 +7043,7 @@ def save_plan_to_processor(plan_id, current_user_id):
         save_media_plan(cur_proc.id, current_user_id, df)
         vk = Processor.get_plan_properties()
         vk = [x for x in vk if 'Package' not in vk]
+        vk = json.dumps(vk)
         apply_processor_plan(cur_proc.id, current_user_id, vk)
 
 
@@ -7055,7 +7056,9 @@ def save_uploader_config_to_processor(uploader_id, current_user_id):
                    (cur_up.aw_account_id, 'Adwords'),
                    (cur_up.dcm_account_id, 'DCM')]
         for id_val in id_vals:
-            cur_acc = Account.query.filter_by(
-                key=id_val[1], processor_id=cur_proc.id).first()
-            cur_acc.account_id = id_val[0]
-            db.session.commit()
+            if id_val[0]:
+                cur_acc = Account.query.filter_by(
+                    key=id_val[1], processor_id=cur_proc.id).first()
+                if cur_acc:
+                    cur_acc.account_id = id_val[0]
+                    db.session.commit()

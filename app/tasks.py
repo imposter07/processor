@@ -372,16 +372,17 @@ def run_processor(processor_id, current_user_id, run_args):
                 os.chdir(cur_path)
                 task_function(processor_id, current_user_id)
         if 'exp' in run_args:
-            os.chdir(cur_path)
-            update_cached_data_in_processor_run(processor_id, current_user_id)
-            update_all_notes_table(processor_id, current_user_id)
             if processor_id == 23:
                 task_functions = [
                     get_project_numbers, get_post_mortems, get_contact_numbers,
-                    get_rate_cards, get_all_tutorials_from_google_doc]
+                    get_rate_cards, get_all_tutorials_from_google_doc,
+                    turn_on_processors_with_plans]
                 for task_function in task_functions:
                     os.chdir(cur_path)
                     task_function(processor_id, current_user_id)
+            os.chdir(cur_path)
+            update_cached_data_in_processor_run(processor_id, current_user_id)
+            update_all_notes_table(processor_id, current_user_id)
         msg_text = ("{} finished running.".format(processor_to_run.name))
         app_utl.object_post_message(proc=processor_to_run, usr=user_that_ran,
                                     text=msg_text, run_complete=True)
@@ -2044,6 +2045,10 @@ def set_processor_fees(processor_id, current_user_id):
             return False
         os.chdir(adjust_path(proc_path))
         rate_list = []
+        if not rate_card:
+            rate_card = db.session.get(RateCard, 1)
+            if not rate_card:
+                return False
         for row in rate_card.rates:
             rate_list.append(dict((col, getattr(row, col))
                                   for col in row.__table__.columns.keys()
@@ -2076,18 +2081,17 @@ def set_processor_plan_net(processor_id, current_user_id, default_vm=None):
     if not os.path.exists('mediaplan.csv'):
         return False, 'Plan does not exist.'
     df = pd.read_csv('mediaplan.csv')
-    if cre.MediaPlan.placement_phase in df.columns:
-        cam_name = cre.MediaPlan.placement_phase
-    else:
-        cam_name = cre.MediaPlan.campaign_phase
-    plan_cols = [cam_name, cre.MediaPlan.partner_name]
-    miss_cols = [x for x in plan_cols + [dctc.PNC] if x not in df.columns]
+    cam_name = get_phase_col(df)
+    part_name = get_partner_col(df, not_id=True)
+    cost_col = get_cost_col(df)
+    plan_cols = [cam_name, part_name]
+    miss_cols = [x for x in plan_cols + [cost_col] if x not in df.columns]
     if miss_cols:
         return False, '{} not a column name in plan.'.format(miss_cols)
-    df = df.groupby(plan_cols)[dctc.PNC].sum().reset_index()
-    df = df.rename(columns={cam_name: dctc.CAM,
-                            cre.MediaPlan.partner_name: dctc.VEN})
-    df[dctc.FPN] = df[dctc.CAM] + '_' + df[dctc.VEN]
+    df = df.groupby(plan_cols)[cost_col].sum().reset_index()
+    rename_cols = {cam_name: dctc.CAM, part_name: dctc.VEN, cost_col: dctc.PNC}
+    df = df.rename(columns=rename_cols)
+    df[dctc.FPN] = df[dctc.CAM].astype('U') + '_' + df[dctc.VEN].astype('U')
     if default_vm:
         matrix = default_vm
     else:
@@ -2370,6 +2374,8 @@ def set_processor_config_file(processor_id, current_user_id, config_type,
         file_path = '{}_api_cred'.format(config_type)
         file_name = '{}_dict.csv'.format(config_type)
         file_path = os.path.join(utl.config_path, file_path)
+        if not os.path.exists(file_path):
+            return False
         df = pd.read_csv(os.path.join(file_path, file_name))
         file_name = df[df['client'] == client_name]['file'].values
         if file_name:
@@ -2466,8 +2472,9 @@ def build_processor_from_request(processor_id, current_user_id):
         cur_processor.local_path = base_path
         db.session.commit()
         _set_task_progress(12)
-        result = create_processor(processor_id, current_user_id,
-                                  app.config['BASE_PROCESSOR_PATH'])
+        original_path = Processor.get_base_path()
+        app.logger.info(original_path)
+        result = create_processor(processor_id, current_user_id, original_path)
         if result:
             progress['create'] = 'Success!'
         _set_task_progress(25)
@@ -2688,10 +2695,11 @@ def add_account_types(processor_id, current_user_id):
     if not os.path.exists(mp_path):
         return False, 'Plan does not exist.'
     df = pd.read_csv(mp_path)
-    if MediaPlan.partner_name not in df.columns:
+    part_col = get_partner_col(df, not_id=True)
+    if not part_col:
         msg = '{} not a column name in plan.'.format(MediaPlan.partner_name)
         return False, msg
-    partner_list = df[MediaPlan.partner_name].unique()
+    partner_list = df[part_col].unique()
     api_dict = {}
     for key, value in vmc.api_partner_name_translation.items():
         for v in value:
@@ -2720,7 +2728,11 @@ def add_plan_fees_to_processor(processor_id, current_user_id):
     if not os.path.exists(mp_path):
         return False, 'Media plan does not exist.'
     df = pd.read_csv(mp_path)
-    serving_cols = ['Ad Serving Type', 'Ad Serving Rate', 'Reporting Fee']
+    rename_cols = {PartnerPlacements.serving.name: 'Ad Serving Type',
+                   PartnerPlacements.ad_rate.name: 'Ad Serving Rate',
+                   PartnerPlacements.reporting_rate.name: 'Reporting Fee'}
+    df = df.rename(columns=rename_cols)
+    serving_cols = list(rename_cols.values())
     for col in serving_cols:
         if col not in df.columns:
             df[col] = 0
@@ -2729,7 +2741,9 @@ def add_plan_fees_to_processor(processor_id, current_user_id):
         columns={'Ad Serving Type': Rates.type_name.name,
                  'Ad Serving Rate': Rates.adserving_fee.name,
                  'Reporting Fee': Rates.reporting_fee.name})
-    afee_cols = ['Agency Fee Rate']
+    rename_cols = {Plan.digital_agency_fees: 'Agency Fee Rate'}
+    df = df.rename(columns=rename_cols)
+    afee_cols = list(rename_cols.values())
     miss_cols = [x for x in afee_cols if x not in df.columns]
     if miss_cols:
         return False, 'Columns Missing in Plan: {}'.format(miss_cols)
@@ -2751,6 +2765,8 @@ def add_plan_fees_to_processor(processor_id, current_user_id):
         write_relational_config(processor_id, current_user_id, df.to_json(),
                                 parameter='Serving')
     else:
+        current_app.logger.info(adf)
+        current_app.logger.info(adf.columns)
         cur_proc.digital_agency_fees = adf[afee_cols].values[0][0]
         write_rate_card(processor_id, current_user_id,
                         sdf.to_json(orient='records'), 'None')
@@ -2939,6 +2955,8 @@ def uploader_add_plan_costs(uploader_id, current_user_id):
 def save_media_plan(processor_id, current_user_id, media_plan,
                     object_type=Processor):
     cur_obj = db.session.get(object_type, processor_id)
+    if not cur_obj:
+        return False
     cur_user = db.session.get(User, current_user_id)
     base_path = app_utl.create_local_path(cur_obj)
     if not os.path.exists(base_path):
@@ -6260,6 +6278,33 @@ def set_partner_from_placements(cur_plan, df, phase_col, cost_col,
             check_plan_gg_children(plan_id, current_user_id,
                                    parent_id=parent_id)
 
+def get_phase_col(df):
+    mp = cre.MediaPlan
+    phase_col = [mp.placement_phase, mp.campaign_name, mp.old_placement_phase,
+                 mp.campaign_phase, mp.old_campaign_phase,
+                 PlanPhase.__table__.name]
+    phase_col += [x.strip() for x in phase_col]
+    phase_col += [x.replace(' (If Needed)', '') for x in phase_col]
+    phase_col = [x for x in phase_col if x in df.columns][0]
+    return phase_col
+
+
+def get_partner_col(df, not_id=False):
+    col = PartnerPlacements.partner_id.name
+    if col not in df.columns or not_id:
+        poss_cols = [Partner.__name__, cre.MediaPlan.partner_name,
+                     Partner.__table__.name]
+        poss_cols = [x for x in poss_cols if x in df.columns]
+        if poss_cols:
+            col = poss_cols[0]
+    return col
+
+
+def get_cost_col(df):
+    cost_col = [vmc.cost, PartnerPlacements.total_budget.name, dctc.PNC]
+    cost_col = [x for x in cost_col if x in df.columns][0]
+    return cost_col
+
 
 @error_handler
 def write_plan_placements(plan_id, current_user_id, new_data=None,
@@ -6273,16 +6318,9 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
     df = PartnerPlacements.translate_plan_names(df)
     form_cols, metric_cols, def_metric_cols = Partner.get_metric_cols()
     df = df.fillna('')
-    mp = cre.MediaPlan
     cur_plan = db.session.get(Plan, plan_id)
-    phase_col = [mp.placement_phase, mp.campaign_name, mp.old_placement_phase,
-                 mp.campaign_phase, mp.old_campaign_phase,
-                 PlanPhase.__table__.name]
-    phase_col += [x.strip() for x in phase_col]
-    phase_col += [x.replace(' (If Needed)', '') for x in phase_col]
-    phase_col = [x for x in phase_col if x in df.columns][0]
-    cost_col = [vmc.cost, PartnerPlacements.total_budget.name, dctc.PNC]
-    cost_col = [x for x in cost_col if x in df.columns][0]
+    phase_col = get_phase_col(df)
+    cost_col = get_cost_col(df)
     date_cols = [PartnerPlacements.start_date, PartnerPlacements.end_date]
     date_cols = [x.name for x in date_cols if x.name in df.columns]
     df = utl.data_to_type(df, float_col=[cost_col], date_col=date_cols)
@@ -6294,13 +6332,7 @@ def write_plan_placements(plan_id, current_user_id, new_data=None,
                           table=PlanPhase, parent_model=Plan)
     set_partner_from_placements(cur_plan, df, phase_col, cost_col, plan_id,
                                 current_user_id, metric_cols)
-    col = PartnerPlacements.partner_id.name
-    if col not in df.columns:
-        poss_cols = [Partner.__name__, cre.MediaPlan.partner_name,
-                     Partner.__table__.name]
-        poss_cols = [x for x in poss_cols if x in df.columns]
-        if poss_cols:
-            col = poss_cols[0]
+    col = get_partner_col(df)
     cur_part = cur_plan.get_partners()
     part_dict = {x.name: x.id for x in cur_part}
     df[col] = df[col].replace(part_dict)
@@ -6696,6 +6728,8 @@ def route_check(cur_plan, route_name, cur_partners, api_partners,
 
 
 def check_objs(cur_plan, has_facebook=False, cur_user=None):
+    if not cur_user and cur_plan.user_id:
+        cur_user = db.session.get(User, cur_plan.user_id)
     cur_up = Uploader.query.filter_by(name=cur_plan.name).first()
     msg = '{}'.format(cur_plan.name)
     ali_chat = az.AliChat()
@@ -7035,14 +7069,15 @@ def get_rate_cards(processor_id, current_user_id):
 
 
 @error_handler
-def save_plan_to_processor(plan_id, current_user_id):
+def save_plan_to_processor(plan_id, current_user_id, save_plan=True):
     cur_plan = db.session.get(Plan, plan_id)
     cur_proc = Processor.query.filter_by(name=cur_plan.name).first()
     if cur_proc:
         df = cur_plan.get_placements_as_df()
-        save_media_plan(cur_proc.id, current_user_id, df)
+        if save_plan:
+            save_media_plan(cur_proc.id, current_user_id, df)
         vk = Processor.get_plan_properties()
-        vk = [x for x in vk if 'Package' not in vk]
+        vk = [x for x in vk if 'Package' not in x]
         vk = json.dumps(vk)
         apply_processor_plan(cur_proc.id, current_user_id, vk)
 
@@ -7062,3 +7097,19 @@ def save_uploader_config_to_processor(uploader_id, current_user_id):
                 if cur_acc:
                     cur_acc.account_id = id_val[0]
                     db.session.commit()
+
+
+@error_handler
+def turn_on_processors_with_plans(processor_id, current_user_id, save_plan=True):
+    today = dt.datetime.today().date()
+    today_plans = Plan.query.filter_by(start_date=today).all()
+    for today_plan in today_plans:
+        cur_up, cur_proc, cur_sow = check_objs(today_plan)
+        save_plan_to_processor(today_plan.id, today_plan.user_id,
+                               save_plan=save_plan)
+        if cur_up:
+            save_uploader_config_to_processor(cur_up.id, today_plan.user_id)
+        msg_text = 'Building processor from plan {}.'.format(today_plan.name)
+        cur_proc.launch_task(
+            '.build_processor_from_request', msg_text,
+            running_user=today_plan.user_id)

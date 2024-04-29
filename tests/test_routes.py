@@ -7,6 +7,7 @@ import processor.reporting.calc as cal
 import processor.reporting.utils as utl
 import processor.reporting.analyze as az
 import processor.reporting.vmcolumns as vmc
+import processor.reporting.dictcolumns as dctc
 import processor.reporting.models as prc_model
 import uploader.upload.creator as cre
 import app.main.routes as main_routes
@@ -445,6 +446,29 @@ class TestPlan:
             assert int(cur_places[0].cpm) == cpm
         os.remove(file_name)
         return cur_plan, df
+
+    def test_turn_on_processors_with_plans(self, user, app_fixture, worker,
+                                           reporting_db):
+        cur_plan, df = self.test_write_plan_placements(user, app_fixture)
+        cur_plan.start_date = dt.datetime.today()
+        cur_plan.end_date = dt.datetime.today()
+        cur_plan.user_id = user.id
+        db.session.commit()
+        worker.work(burst=True)
+        app_tasks.check_objs(cur_plan)
+        worker.work(burst=True)
+        app_tasks.save_plan_to_processor(cur_plan.id, user.id)
+        worker.work(burst=True)
+        app_tasks.turn_on_processors_with_plans(0, 0, save_plan=False)
+        worker.work(burst=True)
+        cur_proc = Processor.query.filter_by(name=cur_plan.name).first()
+        assert cur_proc
+        pnc_file = os.path.join(cur_proc.local_path, utl.dict_path, dctc.PFN)
+        assert os.path.exists(pnc_file)
+        pnc = pd.read_csv(str(pnc_file))
+        df_sum = float(df[PartnerPlacements.total_budget.name].sum())
+        pnc_sum = float(pnc[dctc.PNC].sum())
+        assert df_sum == pnc_sum
 
     def test_write_plan_placements_local(self, user, app_fixture):
         self.test_write_plan_placements(

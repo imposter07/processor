@@ -675,6 +675,8 @@ class Processor(db.Model):
         today = eastern.localize(datetime.today())
         if not scheduled_time:
             scheduled_time = datetime_time(8, 0, 0)
+        if not start_date:
+            start_date = today
         first_run = datetime.combine(start_date, scheduled_time)
         first_run = eastern.localize(first_run)
         if first_run < today:
@@ -1118,6 +1120,10 @@ class Processor(db.Model):
             media_plan_data, self, object_type=Uploader,
             current_user=cu, is_df=is_df)
         return True
+
+    @staticmethod
+    def get_base_path():
+        return current_app.config['BASE_PROCESSOR_PATH']
 
 
 class TaskScheduler(db.Model):

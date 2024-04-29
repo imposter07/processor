@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import json
@@ -5,6 +6,7 @@ import pytest
 import urllib
 from datetime import datetime, timedelta
 from contextlib import contextmanager
+import selenium.common.exceptions as ex
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
     Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
@@ -14,6 +16,7 @@ import app.main.routes as main_routes
 from config import basedir
 import pandas as pd
 import processor.reporting.vmcolumns as vmc
+import processor.reporting.dictcolumns as dctc
 import processor.reporting.vendormatrix as vm
 import processor.reporting.utils as utl
 import processor.reporting.calc as calc
@@ -436,34 +439,37 @@ class TestProcessor:
                 'Impressions': ['1']}
         df = pd.DataFrame(data)
         file_name = 'test1.csv'
-        raw1_path = os.path.join(basedir, 'tests', 'tmp')
-        utl.dir_check(raw1_path)
-        raw1_path = os.path.join(raw1_path, file_name)
-        df.to_csv(raw1_path)
-        return df, raw1_path
+        raw_path = os.path.join(basedir, 'tests', 'tmp')
+        utl.dir_check(raw_path)
+        raw_path = os.path.join(raw_path, file_name)
+        df.to_csv(raw_path)
+        return df, raw_path
 
     def upload_raw_file(self, set_up, sw, worker, default_name, user):
         test_name = 'Rawfile'
         test_raw = 'rawfile_{}.csv'.format(test_name)
-        self.add_import_card(worker, sw, default_name, test_name)
-        sw.browser.refresh()
-        sw.wait_for_elem_load('apis-0')
-        df, raw1_path = self.create_test_data()
-        with self.adjust_path(basedir):
-            form_file = sw.browser.find_element_by_id('apis-0-raw_file')
-            file_pond = form_file.find_element_by_class_name(
-                'filepond--browser')
-            file_path = raw1_path
-            file_pond.send_keys(file_path)
-            sw.wait_for_elem_load("loadingBtnrawFileTableBody")
-            worker.work(burst=True)
-            sw.wait_for_elem_load('00')
-            sw.xpath_from_id_and_click('modalRawFileSaveButton')
-            sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
-            worker.work(burst=True)
-            raw_path = os.path.join(set_up.local_path, utl.raw_path, test_raw)
+        df, file_path = self.create_test_data()
+        raw_path = os.path.join(set_up.local_path, utl.raw_path, test_raw)
+        if not os.path.exists(raw_path):
+            self.add_import_card(worker, sw, default_name, test_name)
+            sw.browser.refresh()
+            sw.wait_for_elem_load('apis-0')
+            with self.adjust_path(basedir):
+                form_file = sw.browser.find_element_by_id('apis-0-raw_file')
+                file_pond = form_file.find_element_by_class_name(
+                    'filepond--browser')
+                file_pond.send_keys(file_path)
+                sw.wait_for_elem_load("loadingBtnrawFileTableBody")
+                worker.work(burst=True)
+                sw.wait_for_elem_load('00')
+                sw.xpath_from_id_and_click('modalRawFileSaveButton')
+                sw.wait_for_elem_load('.alert.alert-info',
+                                      selector=sw.select_css)
+                worker.work(burst=True)
+                raw_df = pd.read_csv(raw_path)
+                os.remove(file_path)
+        else:
             raw_df = pd.read_csv(raw_path)
-            os.remove(file_path)
         return df, raw_df
 
     def test_raw_file_upload(self, set_up, sw, worker, default_name, user):
@@ -480,15 +486,15 @@ class TestProcessor:
         TestUploader().test_get_log(sw, login, worker, cur_name=default_name)
 
     def create_and_go_to_clean(self, set_up, sw, worker, default_name, user):
-        data_src_ftr = '//*[@id="base_form_id"]/div[1]/div/div'
-        raw_data_src = '/html/body/div[8]/div/div[1]'
+        data_source_selector = '//*[@id="base_form_id"]/div[1]/div/div'
+        raw_data_source = '//*[text()="API_Rawfile_Rawfile"]'
         df = self.upload_raw_file(set_up, sw, worker, default_name, user)[0]
         with self.adjust_path(basedir):
             proc_url = self.get_url(main_routes.edit_processor_clean,
                                     p_name=default_name)
             sw.go_to_url(proc_url)
-            sw.click_on_xpath(xpath=data_src_ftr)
-            sw.click_on_xpath(xpath=raw_data_src)
+            sw.click_on_xpath(xpath=data_source_selector)
+            sw.click_on_xpath(xpath=raw_data_source)
         return df
 
     def test_auto_dict_update(self, set_up, sw, worker, default_name, user):
@@ -500,18 +506,23 @@ class TestProcessor:
             sw.wait_for_elem_load(elem_id=change_order_btn)
             sw.xpath_from_id_and_click(change_order_btn)
             worker.work(burst=True)
-            sw.wait_for_elem_load(elem_id=order_selector,
-                                  sleep_time=0.75)
-            sw.xpath_from_id_and_click(order_selector)
-            sw.click_on_xpath(xpath=select_agency)
+            sw.wait_for_elem_load(elem_id=order_selector)
+            for x in range(5):
+                sw.xpath_from_id_and_click(order_selector)
+                try:
+                    sw.click_on_xpath(xpath=select_agency)
+                    break
+                except ex.NoSuchElementException:
+                    logging.warning('Could not click order selector, retrying')
+                    time.sleep(0.75)
             sw.xpath_from_id_and_click('modalTableSaveButton')
             worker.work(burst=True)
             sw.browser.refresh()
             df = vm.VendorMatrix().vm_df
             df = df[df[vmc.vendorkey].str.contains('API_Rawfile')]
-            auto_dict_first = (df[vmc.autodicord]).str.partition('|')[0]
+            auto_dict_first = (df[vmc.autodicord]).str.split('|').str[0]
             auto_dict_first = auto_dict_first.to_string()
-        assert 'mpAgency' in auto_dict_first
+            assert dctc.AGY in auto_dict_first
 
     def test_delete_dict(self, set_up, sw, worker, default_name, user):
         test_name = 'Rawfile'
@@ -557,7 +568,8 @@ class TestProcessor:
                 download = pd.read_csv(file_path)
                 os.remove(file_path)
             else:
-                raise ValueError('%s is not a file' % file_path)
+                msg = '{} is not a file'
+                raise ValueError(msg.format(file_path))
         assert not download.empty
         assert (df.iloc[0][place_col] == download.iloc[0][place_col])
 

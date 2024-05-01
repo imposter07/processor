@@ -21,7 +21,7 @@ import processor.reporting.vendormatrix as vm
 import processor.reporting.utils as utl
 import processor.reporting.calc as calc
 import processor.reporting.expcolumns as exc
-from processor.reporting.export import DB
+import processor.reporting.export as exp
 import processor.reporting.gsapi as gsapi
 
 base_url = 'http://127.0.0.1:5000/'
@@ -41,7 +41,7 @@ def create_processor(app_fixture, user, tmp_path_factory, worker):
     tmp_dir = tmp_path_factory.mktemp('test_processors')
 
     def _create_processor(name, client='test', product='test', campaign='test',
-                          create_files=False):
+                          create_files=False, df=None):
         client = Client(name=client).check_and_add()
         product = Product(name=product,
                           client_id=client.id).check_and_add()
@@ -67,6 +67,11 @@ def create_processor(app_fixture, user, tmp_path_factory, worker):
                                           exc.upload_id_file)
             if os.path.isfile(upload_id_path):
                 os.remove(upload_id_path)
+            if df is not None:
+                exph = exp.ExportHandler()
+                file = exph.config[exc.test_file][exph.export_list[0]]
+                df.to_csv(os.path.join(
+                    new_processor.local_path, exc.test_path, file))
         return new_processor
 
     yield _create_processor
@@ -75,6 +80,26 @@ def create_processor(app_fixture, user, tmp_path_factory, worker):
         db.session.delete(proc)
     db.session.commit()
     os.chdir(cur_path)
+
+
+@pytest.fixture(scope="module")
+def load_empty_model_table(reporting_db, app_fixture):
+    os.chdir(os.path.join(basedir, Processor.__name__))
+    data = {'modeltype': {0: 'None'},
+            'modelname': {0: 'None'}, 'modelcoefa': {0: 0},
+            'modelcoefb': {0: 0}, 'modelcoefc': {0: 0},
+            'modelcoefd': {0: 0}, 'eventdate': {0: '2021-07-13'}}
+    model_df = pd.DataFrame(data=data)
+    test_db = exp.DB(app_fixture.config['EXP_DB'])
+    test_db.copy_from('model', model_df, model_df.columns)
+
+
+def export_proc_data(proc, user, worker):
+    task = '.run_processor'
+    msg = 'Running processor'
+    run_args = '--noprocess --exp test'
+    proc.launch_task(task, msg, user.id, run_args)
+    worker.work(burst=True)
 
 
 def submit_form(sw, form_names=None, select_form_names=None,
@@ -108,7 +133,7 @@ def get_url(url_type, obj_name=None, obj_type=None):
     if url_type in [x.__name__ for x in idx_one_route]:
         split_idx = [1]
     elif url_type in [x.__name__ for x in idx_all_route]:
-        split_idx = [0, 1]
+        split_idx = [i for i in range(len(url_type.split('_')))]
     obj_type_name = obj_type.__name__ if obj_type else url_type
     url = '{}{}'.format(base_url, obj_type_name)
     name_url = urllib.parse.quote(obj_name)
@@ -1129,11 +1154,138 @@ class TestUploader:
 
 
 class TestResearch:
+    default_name = 'Research'
 
-    def test_research_url(self, sw, login, worker):
+    @pytest.fixture(scope="class")
+    def bt_data(self):
+        bt_dict = {'Unnamed: 0': {0: 0, 1: 1},
+                   'Adserving Cost': {0: 0.0, 1: 0.0},
+                   'Clicks': {0: 0.0, 1: 0.0},
+                   'Date': {0: '2023-06-01', 1: '2023-06-01'},
+                   'Days Played': {0: 0.0, 1: 0.0}, 'Full Placement Name': {
+                0: 'Apex Legends_Apex Legends-brandtracker',
+                1: 'Brawlhalla_Brawlhalla-brandtracker'},
+                   'Impressions': {0: 0.0, 1: 0.0},
+                   'Intent to Play (Non-Players)': {0: 0.13, 1: 0.1},
+                   'Monthly Average Users': {0: 0.0, 1: 0.0},
+                   'Net Promoter Score': {0: 33.9, 1: 12.5},
+                   'Netbase - Coverage': {0: 0.0, 1: 0.0},
+                   'NewZoo - Awareness': {0: 0.7, 1: 0.51},
+                   'Planned Net Cost': {0: 0.0, 1: 0.0},
+                   'Player Share': {0: 0.0, 1: 0.0},
+                   'Reporting Cost': {0: 0.0, 1: 0.0},
+                   'Stickiness': {0: 0.0, 1: 0.0},
+                   'Twitter Followers': {0: 0.0, 1: 0.0},
+                   'Uncapped': {0: '', 1: ''},
+                   'Vendor Key': {0: 'API_GoogleSheets_BTCard_batch0',
+                                  1: 'API_GoogleSheets_BTCard_batch0'},
+                   'Verification Cost': {0: 0.0, 1: 0.0},
+                   'mpAd': {0: '', 1: ''}, 'mpAd Format': {0: '', 1: ''},
+                   'mpAd Model': {0: '', 1: ''},
+                   'mpAd Rate': {0: 0.0, 1: 0.0}, 'mpAd Type': {0: '', 1: ''},
+                   'mpAge': {0: '', 1: ''},
+                   'mpAgency': {0: 'Liquid Advertising',
+                                1: 'Liquid Advertising'},
+                   'mpAgency Fees Rate': {0: '', 1: ''},
+                   'mpBudget': {0: '', 1: ''},
+                   'mpBuy Model': {0: '', 1: ''},
+                   'mpBuy Rate': {0: 0.0, 1: 0.0},
+                   'mpBuy Rate 2': {0: 0.0, 1: 0.0},
+                   'mpBuy Rate 3': {0: 0.0, 1: 0.0},
+                   'mpBuy Rate 4': {0: 0.0, 1: 0.0},
+                   'mpBuy Rate 5': {0: 0.0, 1: 0.0}, 'mpCTA': {0: '', 1: ''},
+                   'mpCampaign': {0: 'Apex Legends-brandtracker',
+                                  1: 'Brawlhalla-brandtracker'},
+                   'mpCampaign Phase': {0: '', 1: ''},
+                   'mpCampaign Qualifier': {0: '', 1: ''},
+                   'mpCampaign Timing': {0: '', 1: ''},
+                   'mpCampaign Type': {0: '', 1: ''},
+                   'mpCharacter': {0: '', 1: ''},
+                   'mpClickthrough URL': {0: '', 1: ''},
+                   'mpClient': {0: 'Liquid Advertising',
+                                1: 'Liquid Advertising'},
+                   'mpCopy': {0: '', 1: ''},
+                   'mpCountry/Region': {0: 'US', 1: 'US'},
+                   'mpCreative': {0: '', 1: ''},
+                   'mpCreative Description': {0: '', 1: ''},
+                   'mpCreative Length': {0: '', 1: ''},
+                   'mpCreative Line Item': {0: '', 1: ''},
+                   'mpCreative Modifier': {0: '', 1: ''},
+                   'mpCreative URL': {0: '', 1: ''},
+                   'mpData Type 1': {0: '', 1: ''},
+                   'mpData Type 2': {0: '', 1: ''},
+                   'mpDemographic': {0: '', 1: ''},
+                   'mpDescription Line 1': {0: '', 1: ''},
+                   'mpDescription Line 2': {0: '', 1: ''},
+                   'mpDisplay URL': {0: '', 1: ''},
+                   'mpEnd Date': {0: '2023-08-22', 1: '2023-08-22'},
+                   'mpEnvironment': {0: '', 1: ''},
+                   'mpFaction': {0: '', 1: ''}, 'mpFormat': {0: '', 1: ''},
+                   'mpFranchise': {0: '', 1: ''},
+                   'mpGender': {0: '', 1: ''},
+                   'mpGenre Targeting': {0: '', 1: ''},
+                   'mpGenre Targeting Fine': {0: '', 1: ''},
+                   'mpHeadline 1': {0: '', 1: ''},
+                   'mpHeadline 2': {0: '', 1: ''}, 'mpKPI': {0: '', 1: ''},
+                   'mpMedia Channel': {0: '', 1: ''},
+                   'mpMisc': {0: '', 1: ''}, 'mpMisc 2': {0: '', 1: ''},
+                   'mpMisc 3': {0: '', 1: ''}, 'mpMisc 4': {0: '', 1: ''},
+                   'mpMisc 5': {0: '', 1: ''}, 'mpMisc 6': {0: '', 1: ''},
+                   'mpModel Name': {0: '', 1: ''},
+                   'mpModel Type': {0: '', 1: ''},
+                   'mpPackage Description': {0: '', 1: ''},
+                   'mpPlacement Date': {0: '2023-08-22', 1: '2023-08-22'},
+                   'mpPlacement Date 2': {0: '2023-08-22', 1: '2023-08-22'},
+                   'mpPlacement Date 3': {0: '2023-08-22', 1: '2023-08-22'},
+                   'mpPlacement Date 4': {0: '2023-08-22', 1: '2023-08-22'},
+                   'mpPlacement Date 5': {0: '2023-08-22', 1: '2023-08-22'},
+                   'mpPlacement Description': {0: '', 1: ''},
+                   'mpPlacement Name': {0: 'Apex Legends', 1: 'Brawlhalla'},
+                   'mpPlatform': {0: '', 1: ''},
+                   'mpProduct Detail': {0: '', 1: ''},
+                   'mpProduct Name': {0: 'Apex Legends', 1: 'Brawlhalla'},
+                   'mpRegion': {0: 'North America', 1: 'North America'},
+                   'mpReporting Fee Model': {0: '', 1: ''},
+                   'mpReporting Fee Rate': {0: 0.0, 1: 0.0},
+                   'mpReporting Fee Type': {0: '', 1: ''},
+                   'mpRetailer': {0: '', 1: ''},
+                   'mpServing': {0: '', 1: ''}, 'mpSize': {0: '', 1: ''},
+                   'mpStart Date': {0: '2023-08-22', 1: '2023-08-22'},
+                   'mpTargeting': {0: '', 1: ''},
+                   'mpTargeting Bucket': {0: '', 1: ''},
+                   'mpTransaction Product': {0: '', 1: ''},
+                   'mpTransaction Product - Broad': {0: '', 1: ''},
+                   'mpTransaction Product - Fine': {0: '', 1: ''},
+                   'mpVendor': {0: '', 1: ''},
+                   'mpVendor Type': {0: '', 1: ''},
+                   'mpVerification Fee Model': {0: '', 1: ''},
+                   'mpVerification Fee Rate': {0: 0.0, 1: 0.0},
+                   'PNC FPN': {0: 'Apex Legends-brandtracker_''',
+                               1: 'Brawlhalla-brandtracker_'''},
+                   'Net Cost': {0: 0, 1: 0}, 'Net Cost Final': {0: 0.0, 1: 0.0},
+                   'Agency Fees': {0: 0.0, 1: 0.0},
+                   'Total Cost': {0: 0.0, 1: 0.0}}
+        bt_df = pd.DataFrame(bt_dict)
+        return bt_df
+
+    @pytest.fixture(scope='class')
+    def bt_setup(self, login, user, bt_data, worker, create_processor,
+                 reporting_db, load_empty_model_table):
+        new_processor = create_processor(
+            self.default_name, campaign='BRANDTRACKER', create_files=True,
+            df=bt_data)
+        export_proc_data(new_processor, user, worker)
+
+    def test_research_url(self, sw, login, worker, bt_setup):
         r_url = get_url(plan_routes.research)
         sw.go_to_url(r_url, elem_id='loadContinue')
         assert sw.browser.current_url == r_url
+        form_names = ['cur_client', 'cur_product', 'cur_campaign',
+                      'description', 'name']
+        submit_form(sw, form_names, test_name=self.default_name)
+        assert sw.browser.find_element_by_id('tableauPlaceholder')
+        submit_form(sw)
+        assert sw.browser.find_element_by_id('primary_date')
 
 
 class TestReportingDBReadWrite:
@@ -1164,25 +1316,9 @@ class TestReportingDBReadWrite:
         return new_processor
 
     @pytest.fixture(scope="class")
-    def load_empty_model_table(self, reporting_db, app_fixture):
-        os.chdir(os.path.join(basedir, Processor.__name__))
-        data = {'modeltype': {0: 'None'},
-                'modelname': {0: 'None'}, 'modelcoefa': {0: 0},
-                'modelcoefb': {0: 0}, 'modelcoefc': {0: 0},
-                'modelcoefd': {0: 0}, 'eventdate': {0: '2021-07-13'}}
-        model_df = pd.DataFrame(data=data)
-        test_db = DB(app_fixture.config['EXP_DB'])
-        test_db.copy_from('model', model_df, model_df.columns)
-
-    @pytest.fixture(scope="class")
     def export_test_data(self, set_up, user, worker, load_empty_model_table,
                          reporting_db):
-        new_processor = set_up
-        task = '.run_processor'
-        msg = 'Running processor {}...'.format(self.test_proc_name)
-        run_args = '--noprocess --exp test'
-        new_processor.launch_task(task, msg, user.id, run_args)
-        worker.work(burst=True)
+        export_proc_data(set_up, user, worker)
 
     @pytest.fixture(scope="class")
     def update_report_in_db(self, set_up, user, worker, export_test_data):

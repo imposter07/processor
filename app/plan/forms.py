@@ -116,3 +116,7 @@ class RfpForm(FlaskForm):
 class PartnerPlacementForm(FlaskForm):
     form_continue = HiddenField('form_continue')
     add_plan_file = FileField(_l('Replace Current Placements'))
+
+
+class CompetitiveSpendForm(FlaskForm):
+    form_continue = HiddenField('form_continue')

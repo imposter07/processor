@@ -986,7 +986,9 @@ class Processor(db.Model):
         elif buttons == 'Research':
             buttons = [{'Basic': ['plan.edit_research', 'list-ol']},
                        {'CompetitiveSpend': [
-                           'plan.competitive_spend', 'list-check']}]
+                           'plan.competitive_spend', 'list-check']},
+                       {'Brandtracker': [
+                           'plan.edit_brandtracker', 'list-check']}]
         elif buttons == Project.__table__.name:
             buttons = [
                 {'Basic': ['main.project_edit', 'list-ol']},

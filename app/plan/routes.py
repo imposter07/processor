@@ -6,10 +6,11 @@ import datetime as dt
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
-    CreateSowForm, RfpForm, PartnerPlacementForm
+    CreateSowForm, RfpForm, PartnerPlacementForm, CompetitiveSpendForm
+from app.brandtracker.forms import BrandtrackerForm
 from app.main.forms import FeeForm
 from app.models import Client, Product, Campaign, Plan, Post, \
-    PlanPhase, Sow, Processor
+    PlanPhase, Sow, Processor, Brandtracker
 import app.utils as app_utl
 
 
@@ -370,7 +371,7 @@ def research():
     if request.method == 'POST':
         new_plan = set_plan_form(form)
         if form.form_continue.data == 'continue':
-            route_str = 'plan.competitive_spend'
+            route_str = 'plan.edit_competitive_spend'
         else:
             route_str = 'plan.research'
         return redirect(url_for(route_str, object_name=new_plan.name))
@@ -418,11 +419,34 @@ def competitive_spend():
 @login_required
 def edit_competitive_spend(object_name):
     kwargs = Plan().get_current_plan(
-        object_name, 'edit_research', edit_progress=100,
+        object_name, 'edit_competitive_spend', edit_progress=100,
         edit_name='CompetitiveSpend', buttons='Research')
     temp_proc = Processor()
     temp_proc.tableau_view = 'CompetitveSpend'
     temp_proc.tableau_workbook = 'RefreshedTableau'
     kwargs['processor'] = temp_proc
     kwargs['tableau_workbook'] = True
+    form = CompetitiveSpendForm()
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('plan.edit_brandtracker',
+                                    object_name=object_name))
+        else:
+            return redirect(url_for('plan.edit_competitive_spend',
+                                    object_name=object_name))
+    kwargs['form'] = form
+    return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/research/<object_name>/brandtracker', methods=['GET', 'POST'])
+@login_required
+def edit_brandtracker(object_name):
+    kwargs = Plan().get_current_plan(
+        object_name, 'edit_brandtracker', edit_progress=100,
+        edit_name='Brandtracker', buttons='Research')
+    form = BrandtrackerForm()
+    form.set_title_choices()
+    brandtrackers = Brandtracker.query.filter_by(user_id=current_user.id).all()
+    kwargs['form'] = form
+    kwargs['brandtrackers'] = brandtrackers
     return render_template('plan/plan.html', **kwargs)

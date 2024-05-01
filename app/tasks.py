@@ -2682,8 +2682,7 @@ def set_plan_as_datasource(processor_id, current_user_id, base_matrix):
 
 @error_handler
 def add_account_types(processor_id, current_user_id):
-    cur_proc = Processor.query.get(processor_id)
-    from uploader.upload.creator import MediaPlan
+    cur_proc = db.session.get(Processor, processor_id)
     if cur_proc.local_path:
         cur_act_model = ProcessorDatasources
     else:
@@ -2697,7 +2696,7 @@ def add_account_types(processor_id, current_user_id):
     df = pd.read_csv(mp_path)
     part_col = get_partner_col(df, not_id=True)
     if not part_col:
-        msg = '{} not a column name in plan.'.format(MediaPlan.partner_name)
+        msg = '{} not a column name in plan.'.format(cre.MediaPlan.partner_name)
         return False, msg
     partner_list = df[part_col].unique()
     api_dict = {}
@@ -2714,6 +2713,7 @@ def add_account_types(processor_id, current_user_id):
                 new_act.processor_id = processor_id
                 if cur_proc.local_path:
                     new_act.name = 'API_{}_FromPlan'.format(api_key)
+                # act_id = get_last_account_id_for_product(cur_proc.campaign)
                 db.session.add(new_act)
                 db.session.commit()
     return True, ''
@@ -4613,6 +4613,23 @@ def parse_date_from_project_number(cur_string, date_opened):
         return sd
     except:
         return None
+
+
+def get_last_account_id_for_product(cur_campaign):
+    cur_product_name = cur_campaign.product.name
+    cur_client_name = cur_campaign.product.client.name
+    rate_query = ProcessorDatasources.query \
+        .join(Processor.campaign) \
+        .join(Campaign.product) \
+        .join(Product.client) \
+        .filter(Client.name == cur_client_name,
+                Product.name == cur_product_name) \
+        .order_by(Processor.id.desc()) \
+        .limit(1) \
+        .with_entities(Processor.rate_card_id, Processor.id) \
+        .first()
+    rate_id, proc_id = rate_query if rate_query else (None, None)
+    return rate_id, proc_id
 
 
 def get_last_rate_card_for_client(cur_campaign):
@@ -7074,6 +7091,11 @@ def save_plan_to_processor(plan_id, current_user_id, save_plan=True):
     cur_proc = Processor.query.filter_by(name=cur_plan.name).first()
     if cur_proc:
         df = cur_plan.get_placements_as_df()
+        for col in vmc.datafloatcol:
+            if col in df.columns:
+                new_col = '{}{}'.format(col, vmc.planned_suffix)
+                df[new_col] = df[col]
+                df = df.drop(columns=[col])
         if save_plan:
             save_media_plan(cur_proc.id, current_user_id, df)
         vk = Processor.get_plan_properties()
@@ -7104,6 +7126,9 @@ def turn_on_processors_with_plans(processor_id, current_user_id, save_plan=True)
     today = dt.datetime.today().date()
     today_plans = Plan.query.filter_by(start_date=today).all()
     for today_plan in today_plans:
+        cur_user = db.session.get(User, today_plan.id)
+        if cur_user.username in today_plan.name:
+            continue
         cur_up, cur_proc, cur_sow = check_objs(today_plan)
         save_plan_to_processor(today_plan.id, today_plan.user_id,
                                save_plan=save_plan)

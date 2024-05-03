@@ -15,7 +15,8 @@ import app.utils as app_utl
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
     Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, Client, \
-    Product, Processor, Account, RequestLog, RateCard, Rates
+    Product, Processor, Account, RequestLog, RateCard, Rates, \
+    ProcessorDatasources
 import app.tasks as app_tasks
 
 
@@ -337,6 +338,12 @@ class TestTasks:
         assert c_id == rate_card.id
         assert p_id == old_proc.id
 
+    def test_get_last_account_id_for_product(self, user, app_fixture):
+        old_proc = self.create_test_processor()
+        ds = ProcessorDatasources()
+        ds.key = vmc.api_fb_key
+        ds.processor_id = old_proc.id
+
 
 class TestPlan:
 
@@ -449,7 +456,11 @@ class TestPlan:
 
     def test_turn_on_processors_with_plans(self, user, app_fixture, worker,
                                            reporting_db):
-        cur_plan, df = self.test_write_plan_placements(user, app_fixture)
+        name, cli, pro, cam = TestUtils.check_and_add_parents()
+        cur_plan = Plan.query.filter_by(name=name).first()
+        if not cur_plan:
+            cur_plan, df = self.test_write_plan_placements(user, app_fixture)
+        df = cur_plan.get_placements_as_df()
         cur_plan.start_date = dt.datetime.today()
         cur_plan.end_date = dt.datetime.today()
         cur_plan.user_id = user.id

@@ -82,18 +82,6 @@ def create_processor(app_fixture, user, tmp_path_factory, worker):
     os.chdir(cur_path)
 
 
-@pytest.fixture(scope="module")
-def load_empty_model_table(reporting_db, app_fixture):
-    os.chdir(os.path.join(basedir, Processor.__name__))
-    data = {'modeltype': {0: 'None'},
-            'modelname': {0: 'None'}, 'modelcoefa': {0: 0},
-            'modelcoefb': {0: 0}, 'modelcoefc': {0: 0},
-            'modelcoefd': {0: 0}, 'eventdate': {0: '2021-07-13'}}
-    model_df = pd.DataFrame(data=data)
-    test_db = exp.DB(app_fixture.config['EXP_DB'])
-    test_db.copy_from('model', model_df, model_df.columns)
-
-
 def export_proc_data(proc, user, worker):
     task = '.run_processor'
     msg = 'Running processor'
@@ -455,7 +443,7 @@ class TestProcessor:
 
     @staticmethod
     def create_test_data():
-        place_col = 'Placement Name (From Ad Server)'
+        place_col = 'Placement Name'
         placement = ('1074619450_Criteo_US_Best Buy_0_0_0_dCPM_5_45216_No '
                      'Tracking_0_0_CPV_Awareness_Launch_0_0_V_Cross Device_0'
                      '_eCommerce_eCommerce Ads_Best Buy')
@@ -498,7 +486,7 @@ class TestProcessor:
         return df, raw_df
 
     def test_raw_file_upload(self, set_up, sw, worker, default_name, user):
-        place_col = 'Placement Name (From Ad Server)'
+        place_col = 'Placement Name'
         df, raw_df = self.upload_raw_file(set_up, sw, worker,
                                           default_name, user)
         assert not raw_df.empty
@@ -575,7 +563,7 @@ class TestProcessor:
                 assert not os.path.isfile(dict_path)
 
     def test_download_raw(self, set_up, sw, worker, default_name, user):
-        place_col = 'Placement Name (From Ad Server)'
+        place_col = 'Placement Name'
         file_path = ('tmp/Processor_Base Processor_'
                      'download_raw_data_API_Rawfile_Rawfile.csv')
         download = pd.DataFrame()
@@ -1270,7 +1258,7 @@ class TestResearch:
 
     @pytest.fixture(scope='class')
     def bt_setup(self, login, user, bt_data, worker, create_processor,
-                 reporting_db, load_empty_model_table):
+                 reporting_db):
         new_processor = create_processor(
             self.default_name, campaign='BRANDTRACKER', create_files=True,
             df=bt_data)
@@ -1316,8 +1304,7 @@ class TestReportingDBReadWrite:
         return new_processor
 
     @pytest.fixture(scope="class")
-    def export_test_data(self, set_up, user, worker, load_empty_model_table,
-                         reporting_db):
+    def export_test_data(self, set_up, user, worker, reporting_db):
         export_proc_data(set_up, user, worker)
 
     @pytest.fixture(scope="class")

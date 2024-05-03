@@ -541,7 +541,8 @@ def add_data_sources_from_processor(cur_processor, data_sources, attempt=1):
 def get_processor_sources(processor_id, current_user_id):
     cur_processor, user_that_ran = app_utl.get_obj_user(
         object_id=processor_id, current_user_id=current_user_id)
-    os.chdir('processor')
+    if os.path.exists('processor'):
+        os.chdir('processor')
     default_param_ic = vm.ImportConfig(matrix=True)
     processor_path = adjust_path(cur_processor.local_path)
     os.chdir(processor_path)
@@ -576,7 +577,8 @@ def set_processor_imports(processor_id, current_user_id, form_imports,
             return False
         cur_path = adjust_path(os.path.abspath(os.getcwd()))
         from processor.reporting.vendormatrix import ImportConfig
-        os.chdir('processor')
+        if os.path.exists('processor'):
+            os.chdir('processor')
         default_param_ic = ImportConfig(matrix=True)
         os.chdir(processor_path)
         ic = ImportConfig(
@@ -2842,7 +2844,8 @@ def apply_processor_plan(processor_id, current_user_id, vk):
         progress[k] = ['Failed']
     current_progress = 0
     cur_path = adjust_path(os.path.abspath(os.getcwd()))
-    os.chdir('processor')
+    if os.path.exists('processor'):
+        os.chdir('processor')
     matrix = vm.VendorMatrix()
     os.chdir(cur_path)
     vk = json.loads(vk)
@@ -7126,7 +7129,7 @@ def turn_on_processors_with_plans(processor_id, current_user_id, save_plan=True)
     today = dt.datetime.today().date()
     today_plans = Plan.query.filter_by(start_date=today).all()
     for today_plan in today_plans:
-        cur_user = db.session.get(User, today_plan.id)
+        cur_user = db.session.get(User, today_plan.user_id)
         if cur_user.username in today_plan.name:
             continue
         cur_up, cur_proc, cur_sow = check_objs(today_plan)

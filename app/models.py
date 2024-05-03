@@ -117,7 +117,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
     email = db.Column(db.String(120), index=True, unique=True)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.Text)
     posts = db.relationship('Post', backref='author', lazy='dynamic')
     about_me = db.Column(db.String(140))
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
@@ -677,6 +677,8 @@ class Processor(db.Model):
             scheduled_time = datetime_time(8, 0, 0)
         if not start_date:
             start_date = today
+        if not end_date:
+            end_date = start_date
         first_run = datetime.combine(start_date, scheduled_time)
         first_run = eastern.localize(first_run)
         if first_run < today:

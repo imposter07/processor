@@ -239,6 +239,17 @@ def drop_views():
     return _drop_views
 
 
+def load_empty_model_table(config):
+    os.chdir(os.path.join(basedir, Processor.__name__))
+    data = {'modeltype': {0: 'None'},
+            'modelname': {0: 'None'}, 'modelcoefa': {0: 0},
+            'modelcoefb': {0: 0}, 'modelcoefc': {0: 0},
+            'modelcoefd': {0: 0}, 'eventdate': {0: '2021-07-13'}}
+    model_df = pd.DataFrame(data=data)
+    test_db = DB(config.EXP_DB)
+    test_db.copy_from('model', model_df, model_df.columns)
+
+
 @pytest.fixture(scope='module')
 def reporting_db(drop_views):
     config = TestConfig
@@ -269,6 +280,7 @@ def reporting_db(drop_views):
                 seq_name = '_'.join([table.name, col.name, 'seq'])
                 Sequence(seq_name, metadata=sb.metadata, schema=test_db.schema)
     sb.metadata.create_all(bind=engine)
+    load_empty_model_table(config)
     yield engine
     drop_views(engine, test_db.schema)
     sb.metadata.drop_all(bind=engine)

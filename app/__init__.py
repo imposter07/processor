@@ -19,6 +19,10 @@ import rq_dashboard
 from requests_aws4auth import AWS4Auth
 
 
+def get_locale():
+    return request.accept_languages.best_match(current_app.config['LANGUAGES'])
+
+
 class SQLAlchemy(_BaseSQLAlchemy):
     def apply_pool_defaults(self, app, options):
         super(SQLAlchemy, self).apply_pool_defaults(app, options)
@@ -62,7 +66,7 @@ def create_app(config_class=Config()):
     login.init_app(app)
     mail.init_app(app)
     moment.init_app(app)
-    babel.init_app(app)
+    babel.init_app(app, locale_selector=get_locale)
     app.elasticsearch = Elasticsearch(
         hosts=[{'host': app.config['ELASTICSEARCH_URL'].replace('https://', ''),
                 'port': 443}],
@@ -138,11 +142,6 @@ def create_app(config_class=Config()):
         app.logger.addHandler(console)
         app.logger.setLevel(logging.DEBUG)
     return app
-
-
-@babel.localeselector
-def get_locale():
-    return request.accept_languages.best_match(current_app.config['LANGUAGES'])
 
 
 from app import models

@@ -7093,6 +7093,11 @@ def save_plan_to_processor(plan_id, current_user_id, save_plan=True):
     cur_plan = db.session.get(Plan, plan_id)
     cur_proc = Processor.query.filter_by(name=cur_plan.name).first()
     if cur_proc:
+        plan_model_dict = cur_plan.to_dict()
+        cols = [Processor.rate_card_id, Processor.digital_agency_fees]
+        for col in cols:
+            v = plan_model_dict[col.name]
+            setattr(cur_proc, col.name, v)
         df = cur_plan.get_placements_as_df()
         for col in vmc.datafloatcol:
             if col in df.columns:

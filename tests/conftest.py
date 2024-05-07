@@ -27,6 +27,7 @@ class TestConfig(Config):
     BASE_PROCESSOR_PATH = os.path.join(basedir, 'processor')
     BASE_UPLOADER_PATH = os.path.join(basedir, 'uploader')
     EXP_DB = 'test_dbconfig.json'
+    CUR_PATH = os.getcwd()
 
 
 def check_export_handler(db_file, config_path):

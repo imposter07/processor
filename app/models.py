@@ -1495,6 +1495,10 @@ class Notes(db.Model):
     def get_current_children():
         return []
 
+    @staticmethod
+    def get_folder_names():
+        return ['Post Mortems', 'Media Plans and Pitches']
+
 
 class Uploader(db.Model):
     id = db.Column(db.Integer, primary_key=True)

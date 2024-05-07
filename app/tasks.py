@@ -374,8 +374,9 @@ def run_processor(processor_id, current_user_id, run_args):
         if 'exp' in run_args:
             if processor_id == 23:
                 task_functions = [
-                    get_project_numbers, get_post_mortems, get_contact_numbers,
-                    get_rate_cards, get_all_tutorials_from_google_doc,
+                    get_project_numbers, get_google_slides_from_folders,
+                    get_contact_numbers, get_rate_cards,
+                    get_all_tutorials_from_google_doc,
                     turn_on_processors_with_plans]
                 for task_function in task_functions:
                     os.chdir(cur_path)
@@ -2715,7 +2716,10 @@ def add_account_types(processor_id, current_user_id):
                 new_act.processor_id = processor_id
                 if cur_proc.local_path:
                     new_act.name = 'API_{}_FromPlan'.format(api_key)
-                # act_id = get_last_account_id_for_product(cur_proc.campaign)
+                act_id, proc_id = get_last_account_id_for_product(
+                    cur_proc.campaign, api_key)
+                if act_id:
+                    new_act.account_id = act_id
                 db.session.add(new_act)
                 db.session.commit()
     return True, ''
@@ -4618,21 +4622,24 @@ def parse_date_from_project_number(cur_string, date_opened):
         return None
 
 
-def get_last_account_id_for_product(cur_campaign):
+def get_last_account_id_for_product(cur_campaign, key_filter):
     cur_product_name = cur_campaign.product.name
     cur_client_name = cur_campaign.product.client.name
-    rate_query = ProcessorDatasources.query \
-        .join(Processor.campaign) \
-        .join(Campaign.product) \
-        .join(Product.client) \
+    cur_query = (
+        ProcessorDatasources.query
+        .join(Processor, Processor.id == ProcessorDatasources.processor_id)
+        .join(Processor.campaign)
+        .join(Campaign.product)
+        .join(Product.client)
         .filter(Client.name == cur_client_name,
-                Product.name == cur_product_name) \
-        .order_by(Processor.id.desc()) \
-        .limit(1) \
-        .with_entities(Processor.rate_card_id, Processor.id) \
-        .first()
-    rate_id, proc_id = rate_query if rate_query else (None, None)
-    return rate_id, proc_id
+                Product.name == cur_product_name,
+                ProcessorDatasources.key == key_filter)
+        .order_by(Processor.id.desc())
+        .limit(1)
+        .with_entities(Processor.id, ProcessorDatasources.account_id)
+        .first())
+    proc_id, account_id = cur_query if cur_query else (None, None)
+    return account_id, proc_id
 
 
 def get_last_rate_card_for_client(cur_campaign):
@@ -6002,7 +6009,17 @@ def get_google_doc_for_tutorial(processor_id, current_user_id, sheet_id=None,
 
 
 @error_handler
-def get_post_mortems(processor_id, current_user_id):
+def get_google_slides_from_folders(processor_id, current_user_id,
+                                   is_test=False):
+    folder_names = Notes.get_folder_names()
+    for folder_name in folder_names:
+        get_google_slides(processor_id, current_user_id, folder_name,
+                          is_test=is_test)
+
+
+@error_handler
+def get_google_slides(processor_id, current_user_id,
+                      folder_name='Post Mortems', is_test=False):
     os.chdir('processor')
     api = gsapi.GsApi()
     api.input_config('gsapi_googledoc.json')
@@ -6010,7 +6027,6 @@ def get_post_mortems(processor_id, current_user_id):
     r = api.client.get(api.drive_url)
     drive = [x for x in r.json()['drives'] if x['name'] == 'Liquid']
     drive_id = drive[0]['id']
-    folder_name = 'Post Mortems'
     q = """
         mimeType = 'application/vnd.google-apps.folder' and
         name contains '{}'""".format(folder_name)
@@ -6026,6 +6042,8 @@ def get_post_mortems(processor_id, current_user_id):
         'corpora': 'drive', 'supportsAllDrives': True}
     r = api.client.get(api.files_url, params=params)
     presentations = r.json()['files']
+    if is_test:
+        presentations = [presentations[0]]
     for presentation in presentations:
         presentation_id = presentation['id']
         app.logger.info('Getting presentation: {}'.format(presentation_id))
@@ -6034,7 +6052,11 @@ def get_post_mortems(processor_id, current_user_id):
         if 'slides' not in r.json():
             continue
         slides = r.json()['slides']
+        if is_test:
+            slides = [slides[0]]
         for slide in slides:
+            if 'pageElements' not in slide:
+                continue
             elems = slide['pageElements']
             slide_text = ''
             slide_header = ''
@@ -6068,7 +6090,8 @@ def get_post_mortems(processor_id, current_user_id):
                     base_url, presentation_id, slide_id)
                 n = Notes.query.filter_by(link=url).first()
                 if not n:
-                    n = Notes(note_type=folder_name, link=url, user_id=4,
+                    n = Notes(note_type=folder_name, link=url,
+                              user_id=current_user_id,
                               note_text=slide_text, header=slide_header)
                     db.session.add(n)
                     db.session.commit()
@@ -7135,6 +7158,8 @@ def turn_on_processors_with_plans(processor_id, current_user_id, save_plan=True)
     today_plans = Plan.query.filter_by(start_date=today).all()
     for today_plan in today_plans:
         cur_user = db.session.get(User, today_plan.user_id)
+        if not cur_user:
+            cur_user = db.session.get(User, current_user_id)
         if cur_user.username in today_plan.name:
             continue
         cur_up, cur_proc, cur_sow = check_objs(today_plan)

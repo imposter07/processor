@@ -209,7 +209,7 @@ def parse_filter_dict_from_clients(processors, seven_days_ago, current_request,
                     user_list.append(query.first().id)
             if filt_name == Client.__table__.name:
                 processors = [
-                    x for x in processors if
+                    x for x in processors if x.campaign and
                     x.campaign.product.client_id in user_list]
             elif filt_name == Product.__table__.name:
                 processors = [
@@ -277,6 +277,8 @@ def get_processor_user_map(processors):
 def get_processor_client_directory(processors):
     new_dict = {}
     for x in processors:
+        if not x.campaign:
+            continue
         client = x.campaign.product.client
         product = x.campaign.product
         campaign = x.campaign

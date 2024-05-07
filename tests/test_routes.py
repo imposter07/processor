@@ -16,7 +16,7 @@ from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
     Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, Client, \
     Product, Processor, Account, RequestLog, RateCard, Rates, \
-    ProcessorDatasources
+    ProcessorDatasources, Notes
 import app.tasks as app_tasks
 
 
@@ -343,6 +343,28 @@ class TestTasks:
         ds = ProcessorDatasources()
         ds.key = vmc.api_fb_key
         ds.processor_id = old_proc.id
+        test_act_id = '123'
+        ds.account_id = test_act_id
+        db.session.add(ds)
+        db.session.commit()
+        act_id, proc_id = app_tasks.get_last_account_id_for_product(
+            old_proc.campaign, ds.key)
+        assert act_id == test_act_id
+        assert old_proc.id == proc_id
+        act_id, proc_id = app_tasks.get_last_account_id_for_product(
+            old_proc.campaign, vmc.api_aw_key)
+        assert not act_id
+        assert not proc_id
+
+    def test_get_google_slides_from_folders(self, user, app_fixture):
+        os.chdir(app_fixture.config['CUR_PATH'])
+        if 'tests' in os.getcwd().split('\\')[-1]:
+            os.chdir('..')
+        app_tasks.get_google_slides_from_folders(0, user.id,
+                                                 is_test=True)
+        for note_type in Notes.get_folder_names():
+            cur_notes = Notes.query.filter_by(note_type=note_type).all()
+            assert cur_notes
 
 
 class TestPlan:

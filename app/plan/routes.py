@@ -51,7 +51,7 @@ def set_plan_form(form):
     return new_plan
 
 
-def edit_plan(current_plan, form):
+def set_plan_from_form(current_plan, form):
     form.validate()
     form_client = Client(name=form.cur_client.data).check_and_add()
     form_product = Product(name=form.cur_product.data,
@@ -155,7 +155,7 @@ def edit_plan(object_name):
     form = EditPlanForm(original_name=current_plan.name)
     form.set_choices()
     if request.method == 'POST':
-        edit_plan(current_plan, form)
+        set_plan_from_form(current_plan, form)
         if form.form_continue.data == 'continue':
             return redirect(url_for('plan.topline',
                                     object_name=current_plan.name))
@@ -388,7 +388,7 @@ def edit_research(object_name):
     form = EditPlanForm(original_name=current_plan.name)
     form.set_choices()
     if request.method == 'POST':
-        edit_plan(current_plan, form)
+        set_plan_from_form(current_plan, form)
         if form.form_continue.data == 'continue':
             return redirect(url_for('plan.edit_competitive_spend',
                                     object_name=current_plan.name))

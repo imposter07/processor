@@ -1082,7 +1082,8 @@ class Processor(db.Model):
                      'ProjectNumber': '.get_project_number',
                      'projectObjects': '.get_project_objects',
                      'ProjectNumbers': '.get_project_numbers',
-                     'getLog': '.get_logfile'}
+                     'getLog': '.get_logfile',
+                     'brandtrackerTables': '.get_brandtracker_data'}
         return arg_trans
 
     def get_import_form_dicts(self, reverse_sort_apis=False):
@@ -4336,6 +4337,7 @@ class Brandtracker(db.Model):
     titles = db.Column(db.Text)
     dimensions = db.relationship('BrandtrackerDimensions',
                                  backref="brandtracker", lazy='dynamic')
+    plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
 
     def to_dict(self):
         return dict([(k, getattr(self, k)) for k in self.__dict__.keys()

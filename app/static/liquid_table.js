@@ -1916,7 +1916,8 @@ function showChart(tableName, chartShow) {
     }
 }
 
-function createLiquidTableChart(tableName, tableRows, chartFunc) {
+function createLiquidTableChart(tableName, tableRows, chartFunc,
+                                chartMetadata=null) {
     let chartElemId = `${tableName}ChartPlaceholder`;
     let chartElem = document.getElementById(chartElemId);
     chartElem.style.display = '';
@@ -1942,7 +1943,13 @@ function createLiquidTableChart(tableName, tableRows, chartFunc) {
         if (chartFunc) {
             let generateChart = window[chartFunc];
             document.getElementById(chartElemId).innerHTML = '';
-            generateChart(`#${chartElem.id}`, tableRows, xCols[0], yCols);
+            if (chartMetadata) {
+                generateChart(`#${chartElem.id}`, tableRows,
+                    ...Object.values(chartMetadata));
+            }
+            else {
+                generateChart(`#${chartElem.id}`, tableRows, xCols[0], yCols);
+            }
             addSelectOptions(tableRows, xCols[0], false, "", false)
         }
         else {
@@ -2144,6 +2151,7 @@ function createLiquidTable(data, kwargs) {
     let filterDict = existsInJson(tableData, 'filter_dict');
     let metadata =  existsInJson(tableData, 'metadata');
     let inlineEdit =  existsInJson(tableData, 'inline_edit');
+    let chartArgs =  existsInJson(tableData, 'chart_args');
     if (!(colDict)) {
         tableCols = convertColsToObject(tableCols);
     }
@@ -2166,7 +2174,7 @@ function createLiquidTable(data, kwargs) {
         createTableFilter(tableName + 'Table');
     }
     if (chartBtn) {
-        createLiquidTableChart(tableName, tableRows, chartFunc);
+        createLiquidTableChart(tableName, tableRows, chartFunc, chartArgs);
         showChart(tableName, chartShow);
     }
     if (filterDict) {

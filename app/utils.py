@@ -578,7 +578,8 @@ class LiquidTable(object):
                  hidden_cols=None, link_cols=None, cell_pick_cols=None,
                  metadata=None, total_default_val=0,
                  inline_edit=False, table_name='liquidTable',
-                 percent_total_cols=None, percent_total_groupbys=None):
+                 percent_total_cols=None, percent_total_groupbys=None,
+                 chart_args=None,):
         self.col_list = col_list
         self.data = data
         self.top_rows = top_rows
@@ -627,6 +628,7 @@ class LiquidTable(object):
         self.metadata = metadata
         self.total_default_val = total_default_val
         self.inline_edit = inline_edit
+        self.chart_args = chart_args
         if self.slider_edit_col:
             self.accordion = True
         self.df = df
@@ -654,7 +656,8 @@ class LiquidTable(object):
             self.new_modal_button, self.col_filter, self.search_bar,
             self.chart_btn, self.chart_func, self.chart_show, self.row_on_click,
             self.table_buttons, self.custom_cols, self.filter_dict,
-            self.metadata, self.total_default_val, self.inline_edit)
+            self.metadata, self.total_default_val, self.inline_edit,
+            self.chart_args)
 
     def create_buttons(self):
         if not self.table_buttons:
@@ -753,7 +756,7 @@ class LiquidTable(object):
                         table_name, new_modal_button, col_filter, search_bar,
                         chart_btn, chart_func, chart_show, row_on_click,
                         table_buttons, custom_cols, filter_dict, metadata,
-                        total_default_val, inline_edit):
+                        total_default_val, inline_edit, chart_args):
         table_dict = {'data': data, 'rows_name': self.rows_name, 'cols': cols,
                       'top_rows': top_rows, 'top_rows_name': self.top_rows_name,
                       'totals': totals, 'title': title,
@@ -770,7 +773,8 @@ class LiquidTable(object):
                       'custom_cols': custom_cols, 'filter_dict': filter_dict,
                       'metadata': metadata,
                       'total_default_val': total_default_val,
-                      'inline_edit': inline_edit}
+                      'inline_edit': inline_edit,
+                      'chart_args': chart_args}
         return table_dict
 
     @staticmethod

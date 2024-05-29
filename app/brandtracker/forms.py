@@ -27,6 +27,7 @@ class PlotCategoryForm(FlaskForm):
     add_child = SubmitField(label='Add Data Point',
                             render_kw={'type': 'button'})
     components = FieldList(FormField(CategoryComponentForm, label=''))
+    form_continue = HiddenField('form_continue')
 
     def set_column_choices(self):
         for comp in self.components:
@@ -47,6 +48,7 @@ class BrandtrackerForm(FlaskForm):
         _l('Dimension'), choices=[(x, x) for x in ['', 'Influence',
                                                    'Engagement',
                                                    'Momentum']])
+    form_continue = HiddenField('form_continue')
 
     def set_title_choices(self):
         campaign = Campaign.query.filter_by(name='BRANDTRACKER').first()

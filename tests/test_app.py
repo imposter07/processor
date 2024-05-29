@@ -12,6 +12,7 @@ from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
     Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
     PartnerPlacements, PlanRule, ProcessorReports, Account, Dashboard, Partner
 import app.plan.routes as plan_routes
+import app.brandtracker.routes as brandtracker_routes
 import app.main.routes as main_routes
 from config import basedir
 import pandas as pd
@@ -1146,10 +1147,9 @@ class TestResearch:
 
     @pytest.fixture(scope="class")
     def bt_data(self):
-        bt_dict = {'Unnamed: 0': {0: 0, 1: 1},
-                   'Adserving Cost': {0: 0.0, 1: 0.0},
+        bt_dict = {'Adserving Cost': {0: 0.0, 1: 0.0},
                    'Clicks': {0: 0.0, 1: 0.0},
-                   'Date': {0: '2023-06-01', 1: '2023-06-01'},
+                   vmc.date: {0: datetime.today(), 1: datetime.today()},
                    'Days Played': {0: 0.0, 1: 0.0}, 'Full Placement Name': {
                 0: 'Apex Legends_Apex Legends-brandtracker',
                 1: 'Brawlhalla_Brawlhalla-brandtracker'},
@@ -1164,6 +1164,7 @@ class TestResearch:
                    'Reporting Cost': {0: 0.0, 1: 0.0},
                    'Stickiness': {0: 0.0, 1: 0.0},
                    'Twitter Followers': {0: 0.0, 1: 0.0},
+                   'Twitch Concurrent Viewers': {0: 10.0, 1: 0.0},
                    'Uncapped': {0: '', 1: ''},
                    'Vendor Key': {0: 'API_GoogleSheets_BTCard_batch0',
                                   1: 'API_GoogleSheets_BTCard_batch0'},
@@ -1273,6 +1274,8 @@ class TestResearch:
         submit_form(sw, form_names, test_name=self.default_name)
         assert sw.browser.find_element_by_id('tableauPlaceholder')
         submit_form(sw)
+        sw.wait_for_elem_load('loadingBtnbrandtrackerTables')
+        worker.work(burst=True)
         assert sw.browser.find_element_by_id('primary_date')
 
 

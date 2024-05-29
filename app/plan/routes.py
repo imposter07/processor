@@ -1,16 +1,19 @@
+import json
 from app import db
 from flask_babel import _
 from app.plan import bp
 from datetime import datetime
+from werkzeug.datastructures import MultiDict
 import datetime as dt
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
     CreateSowForm, RfpForm, PartnerPlacementForm, CompetitiveSpendForm
-from app.brandtracker.forms import BrandtrackerForm
+from app.brandtracker.forms import PlotCategoryForm, BrandtrackerForm, \
+    CategoryComponentForm
 from app.main.forms import FeeForm
 from app.models import Client, Product, Campaign, Plan, Post, \
-    PlanPhase, Sow, Processor, Brandtracker
+    PlanPhase, Sow, Processor, Brandtracker, BrandtrackerDimensions
 import app.utils as app_utl
 
 
@@ -446,7 +449,110 @@ def edit_brandtracker(object_name):
         edit_name='Brandtracker', buttons='Research')
     form = BrandtrackerForm()
     form.set_title_choices()
-    brandtrackers = Brandtracker.query.filter_by(user_id=current_user.id).all()
+    current_plan = kwargs['object']
+    cur_bt = Brandtracker.query.filter_by(plan_id=current_plan.id).first()
+    if cur_bt:
+        form.primary_date.data = cur_bt.primary_date
+        form.comparison_date.data = cur_bt.comparison_date
+        form.titles.data = cur_bt.titles.split('|')
+    else:
+        cur_bt = Brandtracker.query.filter_by(name='Base Brandtracker').first()
+        form.primary_date.data = dt.date.today()
+        form.comparison_date.data = (dt.date.today()
+                                     - dt.timedelta(days=30))
     kwargs['form'] = form
-    kwargs['brandtrackers'] = brandtrackers
+    kwargs['brandtrackers'] = cur_bt
+    for dimension in [x[0] for x in form.categories.choices if x[0]]:
+        components = []
+        if cur_bt:
+            components = BrandtrackerDimensions.query.filter_by(
+                brandtracker_id=cur_bt.id, dimension=dimension).all()
+        comp_dicts = [
+            {'data_column': x.metric_column, 'weight': float(x.weight)}
+            for x in components
+        ]
+        form = PlotCategoryForm(formdata=None, components=comp_dicts,
+                                dimension_name=dimension)
+        form.set_column_choices()
+        form_id = '{}Form'.format(dimension)
+        new_form = render_template('_form.html', form=form,
+                                   form_id=form_id)
+        kwargs[form_id] = new_form
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('plan.edit_brandtracker',
+                                    object_name=current_plan.name))
+        else:
+            return redirect(url_for('plan.edit_brandtracker',
+                                    object_name=current_plan.name))
     return render_template('plan/plan.html', **kwargs)
+
+
+@bp.route('/save_brandtracker', methods=['GET', 'POST'])
+@login_required
+def save_brandtracker():
+    plan_name = request.form['object_name'].strip()
+    cur_plan = Plan.query.filter_by(name=plan_name).first_or_404()
+    cur_bt = Brandtracker.query.filter_by(plan_id=cur_plan.id).first()
+    if not cur_bt:
+        cur_bt = Brandtracker(plan_id=cur_plan.id, user_id=current_user.id)
+        db.session.add(cur_bt)
+    base_form_data = json.loads(request.form['base_form_id'])
+    base_form = BrandtrackerForm(MultiDict(base_form_data))
+    cur_bt.titles = '|'.join(base_form.titles.data)
+    cur_bt.primary_date = base_form.primary_date.data
+    cur_bt.comparison_date = base_form.comparison_date.data
+    for dimension in [x[0] for x in base_form.categories.choices if x[0]]:
+        form_id = '{}Form'.format(dimension)
+        form_data = json.loads(request.form[form_id])
+        form = PlotCategoryForm(MultiDict(form_data))
+        components = form.components.data
+        current_components = cur_bt.get_dimension_form_dicts()
+        new_comps = []
+        for comp_form in components:
+            comp_form['dimension_name'] = dimension
+            comp = BrandtrackerDimensions()
+            comp.set_from_form(comp_form, cur_bt)
+            new_comp = comp.get_form_dict()
+            new_comps.append(new_comp)
+            if new_comp not in current_components:
+                db.session.add(comp)
+        for old_comp in cur_bt.dimensions.filter_by(
+                dimension=dimension).all():
+            if old_comp.get_form_dict() not in new_comps:
+                db.session.delete(old_comp)
+    db.session.commit()
+    return jsonify({
+        'message': 'This brand tracker for plan {} has been saved '
+                   'successfully'.format(cur_plan.name),
+        'level': 'success'})
+
+
+@bp.route('/add_brandtracker_component', methods=['GET', 'POST'])
+@login_required
+def add_brandtracker_componenet():
+    orig_form = PlotCategoryForm(request.form)
+    kwargs = orig_form.data
+    new_component = CategoryComponentForm(formdata=None)
+    kwargs['components'].insert(0, new_component.data)
+    form = PlotCategoryForm(formdata=None, **kwargs)
+    form.set_column_choices()
+    form_id = '{}Form'.format(kwargs['dimension_name'])
+    new_form = render_template('_form.html', form=form,
+                               form_id=form_id)
+    return jsonify({'form': new_form, 'form_id': form_id})
+
+
+@bp.route('/delete_brandtracker_component', methods=['GET', 'POST'])
+@login_required
+def delete_brandtracker_component():
+    delete_id = int(request.args.get('delete_id').split('-')[1])
+    orig_form = PlotCategoryForm(request.form)
+    kwargs = orig_form.data
+    del kwargs['components'][delete_id]
+    form = PlotCategoryForm(formdata=None, **kwargs)
+    form.set_column_choices()
+    form_id = '{}Form'.format(kwargs['dimension_name'])
+    new_form = render_template('_form.html', form=form,
+                               form_id=form_id)
+    return jsonify({'form': new_form, 'form_id': form_id})

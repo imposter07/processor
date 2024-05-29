@@ -14,6 +14,7 @@ from flask import render_template, flash, redirect, url_for, request, g, \
 from flask_login import current_user, login_required
 from flask_babel import _, get_locale
 from guess_language import guess_language
+from werkzeug.datastructures import MultiDict
 from app import db
 from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     ProcessorForm, EditProcessorForm, ImportForm, APIForm, ProcessorCleanForm, \
@@ -34,7 +35,8 @@ from app.models import User, Post, Message, Notification, Processor, \
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project, \
     Notes, ProcessorReports, Tutorial, TutorialStage, Task, Plan, Walkthrough, \
     Conversation, Chat, WalkthroughSlide, Rfp, Specs, Contacts, RequestLog
-
+from app.brandtracker.forms import PlotCategoryForm, CategoryComponentForm, \
+    BrandtrackerForm
 from app.translate import translate
 from app.main import bp
 import processor.reporting.vmcolumns as vmc
@@ -934,8 +936,23 @@ def get_table_arguments():
     vk = request.form['vendorkey']
     form_dict = request.form.to_dict(flat=False)
     if form_dict['args'][0] != 'None':
-        proc_arg = {**proc_arg, **json.loads(form_dict['args'][0])}
-        proc_arg = utl.parse_additional_args(proc_arg)
+        if 'base_form_id' in form_dict['args'][0]:
+            args = json.loads(form_dict['args'][0])
+            base_form_data = json.loads(args['base_form_id'])
+            base_form = BrandtrackerForm(MultiDict(base_form_data))
+            form_data = {'titles': base_form.titles.data,
+                         'primary_date': base_form.primary_date.data,
+                         'comparison_date': base_form.comparison_date.data}
+            for dimension in [x[0] for x in base_form.categories.choices if
+                              x[0]]:
+                form_id = '{}Form'.format(dimension)
+                dimension_data = json.loads(args[form_id])
+                form = PlotCategoryForm(MultiDict(dimension_data))
+                form_data[dimension] = form.components.data
+            proc_arg['form_data'] = form_data
+        else:
+            proc_arg = {**proc_arg, **json.loads(form_dict['args'][0])}
+            proc_arg = utl.parse_additional_args(proc_arg)
     if cur_obj == Uploader.__name__.capitalize():
         proc_arg['parameter'] = table_name
         table_name = 'Uploader'

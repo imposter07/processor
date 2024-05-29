@@ -5811,78 +5811,71 @@ def get_brandtracker_imports(processor_id, current_user_id):
         return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
 
 
+@error_handler
 def get_brandtracker_data(current_user_id, running_user, form_data):
-    try:
-        _set_task_progress(0)
-        # Get all brandtracker processors and their associated reporting data
-        campaign = Campaign.query.filter_by(name='BRANDTRACKER').first()
-        bt_procs = Processor.query.filter_by(campaign_id=campaign.id).all()
-        df = pd.DataFrame()
-        metric_cols = ['media_spend', 'youtube_subscribers',
-                       'twitter_followers', 'twitch_views', 'twitch_viewers',
-                       'subreddit_members', 'player_share', 'nz_awareness',
-                       'np_score', 'coverage', 'month_avg_user', 'stickiness',
-                       'days_played', 'play_intent']
-        for proc in bt_procs:
-            tdf = get_data_tables_from_db(
-                proc.id, current_user_id,
-                dimensions=['productname', 'eventdate'],
-                metrics=metric_cols, use_cache=True)[0]
-            if not tdf.empty:
-                df = pd.concat([df, tdf], ignore_index=True)
+    # Get all brandtracker processors and their associated reporting data
+    campaign = Campaign.query.filter_by(name='BRANDTRACKER').first()
+    bt_procs = Processor.query.filter_by(campaign_id=campaign.id).all()
+    df = pd.DataFrame()
+    metric_cols = ['media_spend', 'youtube_subscribers',
+                   'twitter_followers', 'twitch_views', 'twitch_viewers',
+                   'subreddit_members', 'player_share', 'nz_awareness',
+                   'np_score', 'coverage', 'month_avg_user', 'stickiness',
+                   'days_played', 'play_intent']
+    for proc in bt_procs:
+        tdf = get_data_tables_from_db(
+            proc.id, current_user_id,
+            dimensions=['productname', 'eventdate'],
+            metrics=metric_cols, use_cache=True)[0]
+        if not tdf.empty:
+            df = pd.concat([df, tdf], ignore_index=True)
+    _set_task_progress(40)
+    # Filter dataframe to contain only requested data
+    c_str = '_comparison'
+    date = form_data['primary_date']
+    if type(date) == str:
+        date = utl.string_to_date(date)
+    cdate = form_data['comparison_date']
+    if type(cdate) == str:
+        cdate = utl.string_to_date(cdate)
+    titles = form_data['titles']
+    df = utl.data_to_type(df, date_col=['eventdate'])
+    cdf = df[(df['eventdate'].dt.month == cdate.month)
+             & (df['productname'].isin(titles))]
+    cdf = cdf.drop(['eventdate'], axis=1)
+    cdf = cdf.groupby(['productname']).mean().fillna(0)
+    df = df[(df['eventdate'].dt.month == date.month)
+            & (df['productname'].isin(titles))]
+    df = df.drop(['eventdate'], axis=1)
+    df = df.groupby(['productname']).mean().fillna(0)
+    df = df.merge(cdf, how='left', left_index=True,
+                  right_index=True, suffixes=(None, c_str))
+    # Get equations for any calculated columns, then add them to df
+    calculated_cols = Brandtracker.get_calculated_fields(c_str=c_str)
+    df = df.assign(**calculated_cols)
 
-        # Filter dataframe to contain only requested data
-        c_str = '_comparison'
-        date = form_data['primary_date']
-        cdate = form_data['comparison_date']
-        titles = form_data['titles']
-        df = utl.data_to_type(df, date_col=['eventdate'])
-        cdf = df[(df['eventdate'].dt.month == cdate.month)
-                 & (df['productname'].isin(titles))]
-        cdf = cdf.drop(['eventdate'], axis=1)
-        cdf = cdf.groupby(['productname']).mean().fillna(0)
-        df = df[(df['eventdate'].dt.month == date.month)
-                & (df['productname'].isin(titles))]
-        df = df.drop(['eventdate'], axis=1)
-        df = df.groupby(['productname']).mean().fillna(0)
-        df = df.merge(cdf, how='left', left_index=True,
-                      right_index=True, suffixes=(None, c_str))
-        # Get equations for any calculated columns, then add them to df
-        calculated_cols = Brandtracker.get_calculated_fields(c_str=c_str)
-        df = df.assign(**calculated_cols)
-
-        # Create map of columns to weights for each dimension
-        columns = {}
-        weights_dict = {}
-        brandtracker_dimensions = ['Influence', 'Engagement', 'Momentum']
-        for dim in brandtracker_dimensions:
-            weights_dict[dim] = {x['data_column']: float(x['weight'])
-                                 for x in form_data[dim] if dim in form_data}
-        # Add z-scores and weighted totals to dataframe
-        output_df = cal.calculate_weight_z_score(
-            df, weights_dict).reset_index(drop=True).fillna('None')
-        result = [output_df]
-        # Get LiquidTable dictionary for each dimension and append to result
-        for dim in brandtracker_dimensions:
-            columns[dim] = [x for x in weights_dict[dim].keys()
-                            if x in output_df]
-            columns[dim].extend(['{}_zscore'.format(x) for x
-                                 in columns[dim]])
-            columns[dim].sort()
-            columns[dim] = ['productname'] + columns[dim] + [dim]
-            table_name = '{}Table'.format(dim)
-            lt = app_utl.LiquidTable(
-                table_name=table_name, df=output_df[columns[dim]],
-                col_filter=False, chart_btn=False, specify_form_cols=False)
-            result.append(lt.table_dict)
-        _set_task_progress(100)
-        return result
-    except:
-        _set_task_progress(100)
-        msg = 'Unhandled exception - User {}'.format(
-            current_user_id)
-        app.logger.error(msg, exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    # Create map of columns to weights for each dimension   
+    columns = {}
+    weights_dict = {}
+    brandtracker_dimensions = ['Influence', 'Engagement', 'Momentum']
+    for dim in brandtracker_dimensions:
+        weights_dict[dim] = {x['data_column']: float(x['weight'])
+                             for x in form_data[dim] if dim in form_data}
+    # Add z-scores and weighted totals to dataframe
+    output_df = cal.calculate_weight_z_score(
+        df, weights_dict).reset_index(drop=True).fillna('None')
+    args_dict = [
+        'Engagement', ['Influence'], 'productname', [-2, 2], [-2, 2], True]
+    form_data['primary_date'] = date.strftime('%m/%d/%y')
+    form_data['comparison_date'] = cdate.strftime('%m/%d/%y')
+    lt = app_utl.LiquidTable(df=output_df, table_name='brandtrackerTables',
+                             chart_func='generateBubbleChart',
+                             chart_args=args_dict, chart_show=True,
+                             metadata={'form_data': form_data},
+                             download_table=True)
+    # Get LiquidTable dictionary for each dimension and append to result
+    _set_task_progress(90)
+    return [lt.table_dict]
 
 
 def get_processor_data_source_table(processor_id, current_user_id):

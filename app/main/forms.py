@@ -2,7 +2,8 @@ from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, TextAreaField, SelectField, \
     FormField, FieldList, HiddenField, DateTimeField, FileField, BooleanField, \
-    DecimalField, SelectMultipleField, MultipleFileField, DateField, TimeField
+    DecimalField, SelectMultipleField, MultipleFileField, DateField, TimeField, \
+    FloatField
 
 from wtforms_sqlalchemy.fields import QuerySelectField
 from wtforms.validators import ValidationError, DataRequired, Length, Regexp
@@ -396,8 +397,8 @@ class GeneralAccountForm(FlaskForm):
 
 
 class FeeForm(FlaskForm):
-    digital_agency_fees = DecimalField(_('Digital Agency Fees'))
-    trad_agency_fees = DecimalField(_('Traditional Agency Fees'))
+    digital_agency_fees = FloatField(_('Digital Agency Fees'))
+    trad_agency_fees = FloatField(_('Traditional Agency Fees'))
     rate_card = QuerySelectField(_l('Rate Card'),
                                  query_factory=lambda: RateCard.query.all(),
                                  get_label='name', validators=[DataRequired()])

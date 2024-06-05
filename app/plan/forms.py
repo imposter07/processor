@@ -39,6 +39,25 @@ class PlanForm(FlaskForm):
             choices.extend(set([(x.name, x.name) for x in obj[0].query.all()]))
             obj[1].choices = choices
 
+    def set_form(self, plan):
+        self.name.data = plan.name
+        self.description.data = plan.description
+        self.client_requests.data = plan.client_requests
+        self.restrictions.data = plan.restrictions
+        self.objective.data = plan.objective
+        self.start_date.data = plan.start_date
+        self.end_date.data = plan.end_date
+        self.total_budget.data = plan.total_budget
+        self_campaign = Campaign.query.filter_by(
+            id=plan.campaign_id).first_or_404()
+        self_product = Product.query.filter_by(
+            id=self_campaign.product_id).first_or_404()
+        self_client = Client.query.filter_by(
+            id=self_product.client_id).first_or_404()
+        self.cur_campaign.data = self_campaign.name
+        self.cur_product.data = self_product.name
+        self.cur_client.data = self_client.name
+
 
 class EditPlanForm(PlanForm):
     def __init__(self, original_name, *args, **kwargs):

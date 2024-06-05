@@ -2702,6 +2702,41 @@ class Plan(db.Model):
         self.end_date = utl.check_dict_for_key(
             form, 'end_date', datetime.today().date() + timedelta(days=7))
         self.total_budget = utl.check_dict_for_key(form, 'total_budget', 0)
+        self.client_requests = utl.check_dict_for_key(
+            form, 'client_requests', None)
+        self.restrictions = utl.check_dict_for_key(form, 'description', None)
+        self.restrictions = utl.check_dict_for_key(form, 'restrictions', None)
+        self.objective = utl.check_dict_for_key(form, 'objective', None)
+
+    @staticmethod
+    def get_parent_model_from_form(form):
+        form_client = Client(name=form.cur_client.data).check_and_add()
+        form_product = Product(name=form.cur_product.data,
+                               client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(name=form.cur_campaign.data,
+                                 product_id=form_product.id).check_and_add()
+        return form_campaign
+
+    @staticmethod
+    def new_plan_from_form(form):
+        form_client = Client(name=form.cur_client.data).check_and_add()
+        form_product = Product(
+            name=form.cur_product.data,
+            client_id=form_client.id).check_and_add()
+        form_campaign = Campaign(
+            name=form.cur_campaign.data,
+            product_id=form_product.id).check_and_add()
+        sd = form.start_date.data
+        sd = sd if sd else datetime.today()
+        ed = form.end_date.data
+        ed = ed if ed else datetime.today() + timedelta(days=7)
+        new_plan = Plan(
+            name=form.name.data, description=form.description.data,
+            client_requests=form.client_requests.data,
+            restrictions=form.restrictions.data, objective=form.objective.data,
+            start_date=sd, end_date=ed, total_budget=form.total_budget.data,
+            campaign_id=form_campaign.id)
+        return new_plan
 
     def check(self):
         client_check = Client.query.filter_by(name=self.name).first()

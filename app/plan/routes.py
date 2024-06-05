@@ -17,95 +17,6 @@ from app.models import Client, Product, Campaign, Plan, Post, \
 import app.utils as app_utl
 
 
-def set_plan_form(form):
-    form.validate()
-    form_client = Client(name=form.cur_client.data).check_and_add()
-    form_product = Product(
-        name=form.cur_product.data,
-        client_id=form_client.id).check_and_add()
-    form_campaign = Campaign(
-        name=form.cur_campaign.data,
-        product_id=form_product.id).check_and_add()
-    sd = form.start_date.data
-    sd = sd if sd else datetime.today()
-    ed = form.end_date.data
-    ed = ed if ed else datetime.today() + dt.timedelta(days=7)
-    new_plan = Plan(
-        name=form.name.data, description=form.description.data,
-        client_requests=form.client_requests.data,
-        restrictions=form.restrictions.data, objective=form.objective.data,
-        start_date=sd, end_date=ed, total_budget=form.total_budget.data,
-        campaign_id=form_campaign.id)
-    db.session.add(new_plan)
-    db.session.commit()
-    creation_text = 'Plan was requested for creation.'
-    flash(_(creation_text))
-    post = Post(body=creation_text, author=current_user,
-                plan_id=new_plan.id)
-    db.session.add(post)
-    db.session.commit()
-    if not new_plan.phases.all():
-        phase = PlanPhase(
-            name='Launch', plan_id=new_plan.id,
-            start_date=new_plan.start_date,
-            end_date=new_plan.end_date)
-        db.session.add(phase)
-        db.session.commit()
-    return new_plan
-
-
-def set_plan_from_form(current_plan, form):
-    form.validate()
-    form_client = Client(name=form.cur_client.data).check_and_add()
-    form_product = Product(name=form.cur_product.data,
-                           client_id=form_client.id).check_and_add()
-    form_campaign = Campaign(name=form.cur_campaign.data,
-                             product_id=form_product.id).check_and_add()
-    current_plan.name = form.name.data
-    current_plan.client_requests = form.client_requests.data
-    current_plan.restrictions = form.restrictions.data
-    current_plan.objective = form.objective.data
-    current_plan.start_date = form.start_date.data
-    current_plan.end_date = form.end_date.data
-    current_plan.total_budget = form.total_budget.data
-    current_plan.campaign_id = form_campaign.id
-    db.session.commit()
-    creation_text = 'Plan was edited.'
-    flash(_(creation_text))
-    post = Post(body=creation_text, author=current_user,
-                plan_id=current_plan.id)
-    db.session.add(post)
-    db.session.commit()
-    if not current_plan.phases.all():
-        phase = PlanPhase(
-            name='Launch', plan_id=current_plan.id,
-            start_date=current_plan.start_date,
-            end_date=current_plan.end_date)
-        db.session.add(phase)
-        db.session.commit()
-
-
-def get_plan(form, current_plan):
-    form.name.data = current_plan.name
-    form.description.data = current_plan.description
-    form.client_requests.data = current_plan.client_requests
-    form.restrictions.data = current_plan.restrictions
-    form.objective.data = current_plan.objective
-    form.start_date.data = current_plan.start_date
-    form.end_date.data = current_plan.end_date
-    form.total_budget.data = current_plan.total_budget
-    form_campaign = Campaign.query.filter_by(
-        id=current_plan.campaign_id).first_or_404()
-    form_product = Product.query.filter_by(
-        id=form_campaign.product_id).first_or_404()
-    form_client = Client.query.filter_by(
-        id=form_product.client_id).first_or_404()
-    form.cur_campaign.data = form_campaign.name
-    form.cur_product.data = form_product.name
-    form.cur_client.data = form_client.name
-    return form
-
-
 @bp.route('/plan', methods=['GET', 'POST'])
 @login_required
 def plan():
@@ -116,7 +27,23 @@ def plan():
     form.set_choices()
     kwargs['form'] = form
     if request.method == 'POST':
-        new_plan = set_plan_form(form)
+        form.validate()
+        new_plan = Plan.new_plan_from_form(form)
+        db.session.add(new_plan)
+        db.session.commit()
+        creation_text = 'Plan was requested for creation.'
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    plan_id=new_plan.id)
+        db.session.add(post)
+        db.session.commit()
+        if not new_plan.phases.all():
+            phase = PlanPhase(
+                name='Launch', plan_id=new_plan.id,
+                start_date=new_plan.start_date,
+                end_date=new_plan.end_date)
+            db.session.add(phase)
+            db.session.commit()
         if form.form_continue.data == 'continue':
             route_str = 'plan.topline'
         else:
@@ -158,7 +85,23 @@ def edit_plan(object_name):
     form = EditPlanForm(original_name=current_plan.name)
     form.set_choices()
     if request.method == 'POST':
-        set_plan_from_form(current_plan, form)
+        form.validate()
+        form_campaign = current_plan.get_parent_model_from_form(form)
+        current_plan.set_from_form(form.data, form_campaign, current_user.id)
+        db.session.commit()
+        creation_text = 'Plan was edited.'
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    plan_id=current_plan.id)
+        db.session.add(post)
+        db.session.commit()
+        if not current_plan.phases.all():
+            phase = PlanPhase(
+                name='Launch', plan_id=current_plan.id,
+                start_date=current_plan.start_date,
+                end_date=current_plan.end_date)
+            db.session.add(phase)
+            db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('plan.topline',
                                     object_name=current_plan.name))
@@ -166,7 +109,7 @@ def edit_plan(object_name):
             return redirect(url_for('plan.edit_plan',
                                     object_name=current_plan.name))
     elif request.method == 'GET':
-        form = get_plan(form, current_plan)
+        form.set_form(current_plan)
     kwargs['form'] = form
     return render_template('plan/plan.html', **kwargs)
 
@@ -372,7 +315,23 @@ def research():
     form.set_choices()
     kwargs['form'] = form
     if request.method == 'POST':
-        new_plan = set_plan_form(form)
+        form.validate()
+        new_plan = Plan.new_plan_from_form(form)
+        db.session.add(new_plan)
+        db.session.commit()
+        creation_text = 'Plan was requested for creation.'
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    plan_id=new_plan.id)
+        db.session.add(post)
+        db.session.commit()
+        if not new_plan.phases.all():
+            phase = PlanPhase(
+                name='Launch', plan_id=new_plan.id,
+                start_date=new_plan.start_date,
+                end_date=new_plan.end_date)
+            db.session.add(phase)
+            db.session.commit()
         if form.form_continue.data == 'continue':
             route_str = 'plan.edit_competitive_spend'
         else:
@@ -391,7 +350,23 @@ def edit_research(object_name):
     form = EditPlanForm(original_name=current_plan.name)
     form.set_choices()
     if request.method == 'POST':
-        set_plan_from_form(current_plan, form)
+        form.validate()
+        form_campaign = current_plan.get_parent_model_from_form(form)
+        current_plan.set_from_form(form.data, form_campaign, current_user.id)
+        db.session.commit()
+        creation_text = 'Plan was edited.'
+        flash(_(creation_text))
+        post = Post(body=creation_text, author=current_user,
+                    plan_id=current_plan.id)
+        db.session.add(post)
+        db.session.commit()
+        if not current_plan.phases.all():
+            phase = PlanPhase(
+                name='Launch', plan_id=current_plan.id,
+                start_date=current_plan.start_date,
+                end_date=current_plan.end_date)
+            db.session.add(phase)
+            db.session.commit()
         if form.form_continue.data == 'continue':
             return redirect(url_for('plan.edit_competitive_spend',
                                     object_name=current_plan.name))
@@ -399,7 +374,7 @@ def edit_research(object_name):
             return redirect(url_for('plan.edit_research',
                                     object_name=current_plan.name))
     elif request.method == 'GET':
-        form = get_plan(form, current_plan)
+        form.set_form(current_plan)
     kwargs['form'] = form
     return render_template('plan/plan.html', **kwargs)
 

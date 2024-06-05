@@ -84,11 +84,13 @@ def create_processor(app_fixture, user, tmp_path_factory, worker):
 
 
 def export_proc_data(proc, user, worker):
+    os.chdir(os.path.join(basedir, Processor.__name__))
     task = '.run_processor'
     msg = 'Running processor'
     run_args = '--noprocess --exp test'
     proc.launch_task(task, msg, user.id, run_args)
     worker.work(burst=True)
+    os.chdir(basedir)
 
 
 def submit_form(sw, form_names=None, select_form_names=None,

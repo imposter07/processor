@@ -12,7 +12,6 @@ from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
     Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
     PartnerPlacements, PlanRule, ProcessorReports, Account, Dashboard, Partner
 import app.plan.routes as plan_routes
-import app.brandtracker.routes as brandtracker_routes
 import app.main.routes as main_routes
 from config import basedir
 import pandas as pd
@@ -137,6 +136,14 @@ def get_url(url_type, obj_name=None, obj_type=None):
     return url
 
 
+@contextmanager
+def adjust_path(path):
+    cur_path = os.path.abspath(os.getcwd())
+    os.chdir(path)
+    yield path
+    os.chdir(cur_path)
+
+
 @pytest.mark.usefixtures("app_fixture")
 class TestUserModelCase:
 
@@ -238,14 +245,6 @@ class TestProcessor:
         new_proc = create_processor(default_name, create_files=True)
         worker.work(burst=True)
         return new_proc
-
-    @staticmethod
-    @contextmanager
-    def adjust_path(path):
-        cur_path = os.path.abspath(os.getcwd())
-        os.chdir(path)
-        yield path
-        os.chdir(cur_path)
 
     @staticmethod
     def get_url(url_type=None, p_name=None, obj_type=main_routes.processor):
@@ -400,7 +399,7 @@ class TestProcessor:
         self.click_to_plan(sw, p)
 
     def add_import_card(self, worker, sw, default_name, name):
-        with self.adjust_path(basedir):
+        with adjust_path(basedir):
             proc_url = self.get_url(main_routes.edit_processor_import,
                                     p_name=default_name)
             add_child_id = 'add_child'
@@ -417,7 +416,7 @@ class TestProcessor:
             worker.work(burst=True)
 
     def delete_import_card(self, worker, sw, default_name, name):
-        with self.adjust_path(basedir):
+        with adjust_path(basedir):
             proc_url = self.get_url(main_routes.edit_processor_import,
                                     p_name=default_name)
             sw.go_to_url(proc_url, elem_id='add_child', sleep=.5)
@@ -436,7 +435,7 @@ class TestProcessor:
         self.add_import_card(worker, sw, default_name, 'test')
         sw.browser.refresh()
         sw.wait_for_elem_load('base_form_id')
-        with self.adjust_path(set_up.local_path):
+        with adjust_path(set_up.local_path):
             matrix = vm.VendorMatrix()
             assert 'API_Rawfile_test' in matrix.vm_df[vmc.vendorkey].to_list()
             self.delete_import_card(worker, sw, default_name, 'test')
@@ -470,7 +469,7 @@ class TestProcessor:
             self.add_import_card(worker, sw, default_name, test_name)
             sw.browser.refresh()
             sw.wait_for_elem_load('apis-0')
-            with self.adjust_path(basedir):
+            with adjust_path(basedir):
                 form_file = sw.browser.find_element_by_id('apis-0-raw_file')
                 file_pond = form_file.find_element_by_class_name(
                     'filepond--browser')
@@ -505,7 +504,7 @@ class TestProcessor:
         data_source_selector = '//*[@id="base_form_id"]/div[1]/div/div'
         raw_data_source = '//*[text()="API_Rawfile_Rawfile"]'
         df = self.upload_raw_file(set_up, sw, worker, default_name, user)[0]
-        with self.adjust_path(basedir):
+        with adjust_path(basedir):
             proc_url = self.get_url(main_routes.edit_processor_clean,
                                     p_name=default_name)
             sw.go_to_url(proc_url)
@@ -518,7 +517,7 @@ class TestProcessor:
         order_selector = 'auto_order_select3-selectized'
         select_agency = '/html/body/div[22]/div/div[1]'
         self.create_and_go_to_clean(set_up, sw, worker, default_name, user)
-        with self.adjust_path(basedir):
+        with adjust_path(basedir):
             sw.wait_for_elem_load(elem_id=change_order_btn)
             sw.xpath_from_id_and_click(change_order_btn)
             worker.work(burst=True)
@@ -545,7 +544,7 @@ class TestProcessor:
         test_dict = 'rawfile_dictionary_{}.csv'.format(test_name)
         close_btn = '//*[@id="modalTable"]/div/div/div[3]/div/button[2]'
         self.create_and_go_to_clean(set_up, sw, worker, default_name, user)
-        with self.adjust_path(basedir):
+        with adjust_path(basedir):
             task = set_up.launch_task(
                 '.run_processor',
                 'running basic...', user.id,
@@ -572,7 +571,7 @@ class TestProcessor:
         download = pd.DataFrame()
         download_button = '_refresh_download_raw_data'
         df = self.create_and_go_to_clean(set_up, sw, worker, default_name, user)
-        with self.adjust_path(basedir):
+        with adjust_path(basedir):
             sw.wait_for_elem_load(elem_id=download_button)
             sw.xpath_from_id_and_click(download_button)
             worker.work(burst=True)
@@ -1149,113 +1148,256 @@ class TestResearch:
 
     @pytest.fixture(scope="class")
     def bt_data(self):
+        today = datetime.today()
+        last_month = datetime.today() - timedelta(32)
         bt_dict = {'Adserving Cost': {0: 0.0, 1: 0.0},
                    'Clicks': {0: 0.0, 1: 0.0},
-                   vmc.date: {0: datetime.today(), 1: datetime.today()},
-                   'Days Played': {0: 0.0, 1: 0.0}, 'Full Placement Name': {
-                0: 'Apex Legends_Apex Legends-brandtracker',
-                1: 'Brawlhalla_Brawlhalla-brandtracker'},
-                   'Impressions': {0: 0.0, 1: 0.0},
-                   'Intent to Play (Non-Players)': {0: 0.13, 1: 0.1},
-                   'Monthly Average Users': {0: 0.0, 1: 0.0},
-                   'Net Promoter Score': {0: 33.9, 1: 12.5},
-                   'Netbase - Coverage': {0: 0.0, 1: 0.0},
-                   'NewZoo - Awareness': {0: 0.7, 1: 0.51},
-                   'Planned Net Cost': {0: 0.0, 1: 0.0},
-                   'Player Share': {0: 0.0, 1: 0.0},
-                   'Reporting Cost': {0: 0.0, 1: 0.0},
-                   'Stickiness': {0: 0.0, 1: 0.0},
-                   'Twitter Followers': {0: 0.0, 1: 0.0},
-                   'Twitch Concurrent Viewers': {0: 10.0, 1: 0.0},
-                   'Uncapped': {0: '', 1: ''},
+                   vmc.date: {0: today, 1: today, 2: today, 3: last_month,
+                              4: last_month, 5: today, 6: last_month},
+                   'Conv2': {0: '', 1: '', 2: 3233262.11, 3: 3211150.78,
+                             4: 3042110.622, 5: 374578.7819, 6: 368006.5343},
+                   'Conv3': {0: '', 1: '', 2: 0.5990408, 3: 0.578724597,
+                             4: 0.600778925, 5: 0.570196173, 6: 0.592007002},
+                   'Conv4': {0: '', 1: '', 2: 1.850889279, 3: 1.925019732,
+                             4: 1.835357877, 5: 3.978519821, 6: 3.402354372},
+                   'Conv5': {0: '', 1: '', 2: 77.40348485, 3: 79.90994968,
+                             4: 67.53260198, 5: 85.50771613, 6: 75.50764333},
+                   'Conv6': {0: '', 1: '', 2: 2213367.429, 3: 2090516.089,
+                             4: 2020139.057, 5: 249731.3413, 6: 246113.5981},
+                   'Full Placement Name': {
+                       0: 'Apex Legends_Apex Legends-brandtracker',
+                       1: 'Brawlhalla_Brawlhalla-brandtracker',
+                       2: 'dexerto.com_US', 3: 'dexerto.com_US',
+                       4: 'dexerto.com_US', 5: 'dualshockers.com_US',
+                       6: 'dualshockers.com_US'},
+                   'Intent to Play (Non-Players)': {0: 0.13, 1: 0.1, 2: 0.0,
+                                                    3: 0.0, 4: 0.0, 5: 0.0,
+                                                    6: 0.0},
+                   'Monthly Average Users': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0,
+                                             4: 0.0, 5: 0.0, 6: 0.0},
+                   'Net Promoter Score': {0: 33.9, 1: 12.5, 2: 0.0, 3: 0.0,
+                                          4: 0.0, 5: 0.0, 6: 0.0},
+                   'Netbase - Coverage': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0,
+                                          4: 0.0, 5: 0.0, 6: 0.0},
+                   'NewZoo - Awareness': {0: 0.7, 1: 0.51, 2: 0.0, 3: 0.0,
+                                          4: 0.0, 5: 0.0, 6: 0.0},
+                   'Planned Net Cost': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0,
+                                        5: 0.0, 6: 0.0},
+                   'Player Share': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0,
+                                    5: 0.0, 6: 0.0},
+                   'Reporting Cost': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0,
+                                      5: 0.0, 6: 0.0},
+                   'Stickiness': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0,
+                                  5: 0.0, 6: 0.0},
+                   'Twitter Followers': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0,
+                                         5: 0.0, 6: 0.0},
+                   'Uncapped': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                6: ''},
                    'Vendor Key': {0: 'API_GoogleSheets_BTCard_batch0',
-                                  1: 'API_GoogleSheets_BTCard_batch0'},
-                   'Verification Cost': {0: 0.0, 1: 0.0},
-                   'mpAd': {0: '', 1: ''}, 'mpAd Format': {0: '', 1: ''},
-                   'mpAd Model': {0: '', 1: ''},
-                   'mpAd Rate': {0: 0.0, 1: 0.0}, 'mpAd Type': {0: '', 1: ''},
-                   'mpAge': {0: '', 1: ''},
-                   'mpAgency': {0: 'Liquid Advertising',
-                                1: 'Liquid Advertising'},
-                   'mpAgency Fees Rate': {0: '', 1: ''},
-                   'mpBudget': {0: '', 1: ''},
-                   'mpBuy Model': {0: '', 1: ''},
-                   'mpBuy Rate': {0: 0.0, 1: 0.0},
-                   'mpBuy Rate 2': {0: 0.0, 1: 0.0},
-                   'mpBuy Rate 3': {0: 0.0, 1: 0.0},
-                   'mpBuy Rate 4': {0: 0.0, 1: 0.0},
-                   'mpBuy Rate 5': {0: 0.0, 1: 0.0}, 'mpCTA': {0: '', 1: ''},
+                                  1: 'API_GoogleSheets_BTCard_batch0',
+                                  2: 'API_Rawfile_SW', 3: 'API_Rawfile_SW',
+                                  4: 'API_Rawfile_SW', 5: 'API_Rawfile_SW',
+                                  6: 'API_Rawfile_SW'},
+                   'Verification Cost': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0,
+                                         5: 0.0, 6: 0.0},
+                   'mpAd': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                            6: ''},
+                   'mpAd Format': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                   5: '', 6: ''},
+                   'mpAd Model': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                  5: '', 6: ''},
+                   'mpAd Rate': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0,
+                                 6: 0.0},
+                   'mpAd Type': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                 6: ''},
+                   'mpAge': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                             6: ''}, 'mpAgency': {0: 'Liquid Advertising',
+                                                   1: 'Liquid Advertising',
+                                                   2: 'Liquid Advertising',
+                                                   3: 'Liquid Advertising',
+                                                   4: 'Liquid Advertising',
+                                                   5: 'Liquid Advertising',
+                                                   6: 'Liquid Advertising'},
+                   'mpAgency Fees Rate': {0: '', 1: '', 2: 0.075, 3: 0.075,
+                                          4: 0.075, 5: 0.075, 6: 0.075},
+                   'mpBudget': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                6: ''},
+                   'mpBuy Model': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                   5: '', 6: ''},
+                   'mpBuy Rate': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0,
+                                  5: 0.0, 6: 0.0},
+                   'mpBuy Rate 2': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0,
+                                    5: 0.0, 6: 0.0},
+                   'mpBuy Rate 3': {0: '0', 1: '0', 2: '0', 3: '0', 4: '0',
+                                    5: '0', 6: '0'},
+                   'mpBuy Rate 4': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0,
+                                    5: 0.0, 6: 0.0},
+                   'mpBuy Rate 5': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0,
+                                    5: 0.0, 6: 0.0},
+                   'mpCTA': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                             6: ''},
                    'mpCampaign': {0: 'Apex Legends-brandtracker',
-                                  1: 'Brawlhalla-brandtracker'},
-                   'mpCampaign Phase': {0: '', 1: ''},
-                   'mpCampaign Qualifier': {0: '', 1: ''},
-                   'mpCampaign Timing': {0: '', 1: ''},
-                   'mpCampaign Type': {0: '', 1: ''},
-                   'mpCharacter': {0: '', 1: ''},
-                   'mpClickthrough URL': {0: '', 1: ''},
+                                  1: 'Brawlhalla-brandtracker', 2: '', 3: '',
+                                  4: '', 5: '', 6: ''},
+                   'mpCampaign Phase': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                        5: '', 6: ''},
+                   'mpCampaign Qualifier': {0: '', 1: '', 2: '', 3: '',
+                                            4: '', 5: '', 6: ''},
+                   'mpCampaign Timing': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                         5: '', 6: ''},
+                   'mpCampaign Type': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                       5: '', 6: ''},
+                   'mpCharacter': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                   5: '', 6: ''},
+                   'mpClickthrough URL': {0: '', 1: '', 2: '', 3: '',
+                                          4: '', 5: '', 6: ''},
                    'mpClient': {0: 'Liquid Advertising',
-                                1: 'Liquid Advertising'},
-                   'mpCopy': {0: '', 1: ''},
-                   'mpCountry/Region': {0: 'US', 1: 'US'},
-                   'mpCreative': {0: '', 1: ''},
-                   'mpCreative Description': {0: '', 1: ''},
-                   'mpCreative Length': {0: '', 1: ''},
-                   'mpCreative Line Item': {0: '', 1: ''},
-                   'mpCreative Modifier': {0: '', 1: ''},
-                   'mpCreative URL': {0: '', 1: ''},
-                   'mpData Type 1': {0: '', 1: ''},
-                   'mpData Type 2': {0: '', 1: ''},
-                   'mpDemographic': {0: '', 1: ''},
-                   'mpDescription Line 1': {0: '', 1: ''},
-                   'mpDescription Line 2': {0: '', 1: ''},
-                   'mpDisplay URL': {0: '', 1: ''},
-                   'mpEnd Date': {0: '2023-08-22', 1: '2023-08-22'},
-                   'mpEnvironment': {0: '', 1: ''},
-                   'mpFaction': {0: '', 1: ''}, 'mpFormat': {0: '', 1: ''},
-                   'mpFranchise': {0: '', 1: ''},
-                   'mpGender': {0: '', 1: ''},
-                   'mpGenre Targeting': {0: '', 1: ''},
-                   'mpGenre Targeting Fine': {0: '', 1: ''},
-                   'mpHeadline 1': {0: '', 1: ''},
-                   'mpHeadline 2': {0: '', 1: ''}, 'mpKPI': {0: '', 1: ''},
-                   'mpMedia Channel': {0: '', 1: ''},
-                   'mpMisc': {0: '', 1: ''}, 'mpMisc 2': {0: '', 1: ''},
-                   'mpMisc 3': {0: '', 1: ''}, 'mpMisc 4': {0: '', 1: ''},
-                   'mpMisc 5': {0: '', 1: ''}, 'mpMisc 6': {0: '', 1: ''},
-                   'mpModel Name': {0: '', 1: ''},
-                   'mpModel Type': {0: '', 1: ''},
-                   'mpPackage Description': {0: '', 1: ''},
-                   'mpPlacement Date': {0: '2023-08-22', 1: '2023-08-22'},
-                   'mpPlacement Date 2': {0: '2023-08-22', 1: '2023-08-22'},
-                   'mpPlacement Date 3': {0: '2023-08-22', 1: '2023-08-22'},
-                   'mpPlacement Date 4': {0: '2023-08-22', 1: '2023-08-22'},
-                   'mpPlacement Date 5': {0: '2023-08-22', 1: '2023-08-22'},
-                   'mpPlacement Description': {0: '', 1: ''},
-                   'mpPlacement Name': {0: 'Apex Legends', 1: 'Brawlhalla'},
-                   'mpPlatform': {0: '', 1: ''},
-                   'mpProduct Detail': {0: '', 1: ''},
-                   'mpProduct Name': {0: 'Apex Legends', 1: 'Brawlhalla'},
-                   'mpRegion': {0: 'North America', 1: 'North America'},
-                   'mpReporting Fee Model': {0: '', 1: ''},
-                   'mpReporting Fee Rate': {0: 0.0, 1: 0.0},
-                   'mpReporting Fee Type': {0: '', 1: ''},
-                   'mpRetailer': {0: '', 1: ''},
-                   'mpServing': {0: '', 1: ''}, 'mpSize': {0: '', 1: ''},
-                   'mpStart Date': {0: '2023-08-22', 1: '2023-08-22'},
-                   'mpTargeting': {0: '', 1: ''},
-                   'mpTargeting Bucket': {0: '', 1: ''},
-                   'mpTransaction Product': {0: '', 1: ''},
-                   'mpTransaction Product - Broad': {0: '', 1: ''},
-                   'mpTransaction Product - Fine': {0: '', 1: ''},
-                   'mpVendor': {0: '', 1: ''},
-                   'mpVendor Type': {0: '', 1: ''},
-                   'mpVerification Fee Model': {0: '', 1: ''},
-                   'mpVerification Fee Rate': {0: 0.0, 1: 0.0},
-                   'PNC FPN': {0: 'Apex Legends-brandtracker_''',
-                               1: 'Brawlhalla-brandtracker_'''},
-                   'Net Cost': {0: 0, 1: 0}, 'Net Cost Final': {0: 0.0, 1: 0.0},
-                   'Agency Fees': {0: 0.0, 1: 0.0},
-                   'Total Cost': {0: 0.0, 1: 0.0}}
+                                1: 'Liquid Advertising', 2: 'Square Enix',
+                                3: 'Square Enix', 4: 'Square Enix',
+                                5: 'Square Enix', 6: 'Square Enix'},
+                   'mpCopy': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                              6: ''},
+                   'mpCountry/Region': {0: 'US', 1: 'US', 2: '', 3: '',
+                                        4: '', 5: '', 6: ''},
+                   'mpCreative': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                  5: '', 6: ''},
+                   'mpCreative Description': {0: '', 1: '', 2: '', 3: '',
+                                              4: '', 5: '', 6: ''},
+                   'mpCreative Length': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                         5: '', 6: ''},
+                   'mpCreative Line Item': {0: '', 1: '', 2: '', 3: '',
+                                            4: '', 5: '', 6: ''},
+                   'mpCreative Modifier': {0: '', 1: '', 2: '', 3: '',
+                                           4: '', 5: '', 6: ''},
+                   'mpCreative URL': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                      5: '', 6: ''},
+                   'mpData Type 1': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                     5: '', 6: ''},
+                   'mpData Type 2': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                     5: '', 6: ''},
+                   'mpDemographic': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                     5: '', 6: ''},
+                   'mpDescription Line 1': {0: '', 1: '', 2: '', 3: '',
+                                            4: '', 5: '', 6: ''},
+                   'mpDescription Line 2': {0: '', 1: '', 2: '', 3: '',
+                                            4: '', 5: '', 6: ''},
+                   'mpDisplay URL': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                     5: '', 6: ''},
+                   'mpEnd Date': {0: 45160.0, 1: 45160.0, 2: 45442.0,
+                                  3: 45442.0, 4: 45442.0, 5: 45442.0,
+                                  6: 45442.0},
+                   'mpEnvironment': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                     5: '', 6: ''},
+                   'mpFaction': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                 6: ''},
+                   'mpFormat': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                6: ''},
+                   'mpFranchise': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                   5: '', 6: ''},
+                   'mpGender': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                6: ''},
+                   'mpGenre Targeting': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                         5: '', 6: ''},
+                   'mpGenre Targeting Fine': {0: '', 1: '', 2: '', 3: '',
+                                              4: '', 5: '', 6: ''},
+                   'mpHeadline 1': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                    5: '', 6: ''},
+                   'mpHeadline 2': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                    5: '', 6: ''},
+                   'mpKPI': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                             6: ''},
+                   'mpMedia Channel': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                       5: '', 6: ''},
+                   'mpMisc': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                              6: ''},
+                   'mpMisc 2': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                6: ''},
+                   'mpMisc 3': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                6: ''},
+                   'mpMisc 4': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                6: ''},
+                   'mpMisc 5': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                6: ''},
+                   'mpMisc 6': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                6: ''},
+                   'mpModel Name': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                    5: '', 6: ''},
+                   'mpModel Type': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                    5: '', 6: ''},
+                   'mpPackage Description': {0: '', 1: '', 2: '', 3: '',
+                                             4: '', 5: '', 6: ''},
+                   'mpPlacement Date': {0: 45160.0, 1: 45160.0, 2: 45442.0,
+                                        3: 45442.0, 4: 45442.0, 5: 45442.0,
+                                        6: 45442.0},
+                   'mpPlacement Date 2': {0: 45160.0, 1: 45160.0, 2: 45442.0,
+                                          3: 45442.0, 4: 45442.0, 5: 45442.0,
+                                          6: 45442.0},
+                   'mpPlacement Date 3': {0: 45160.0, 1: 45160.0, 2: 45442.0,
+                                          3: 45442.0, 4: 45442.0, 5: 45442.0,
+                                          6: 45442.0},
+                   'mpPlacement Date 4': {0: 45160.0, 1: 45160.0, 2: 45442.0,
+                                          3: 45442.0, 4: 45442.0, 5: 45442.0,
+                                          6: 45442.0},
+                   'mpPlacement Date 5': {0: 45160.0, 1: 45160.0, 2: 45442.0,
+                                          3: 45442.0, 4: 45442.0, 5: 45442.0,
+                                          6: 45442.0},
+                   'mpPlacement Description': {0: '', 1: '', 2: '', 3: '',
+                                               4: '', 5: '', 6: ''},
+                   'mpPlacement Name': {0: 'Apex Legends', 1: 'Brawlhalla',
+                                        2: 'dexerto.com', 3: 'dexerto.com',
+                                        4: 'dexerto.com', 5: 'dualshockers.com',
+                                        6: 'dualshockers.com'},
+                   'mpPlatform': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                  5: '', 6: ''},
+                   'mpProduct Detail': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                        5: '', 6: ''},
+                   'mpProduct Name': {0: 'Apex Legends', 1: 'Brawlhalla',
+                                      2: 'Final Fantasy XIV',
+                                      3: 'Final Fantasy XIV',
+                                      4: 'Final Fantasy XIV',
+                                      5: 'Final Fantasy XIV',
+                                      6: 'Final Fantasy XIV'},
+                   'mpRegion': {0: 'North America', 1: 'North America', 2: '',
+                                3: '', 4: '', 5: '', 6: ''},
+                   'mpReporting Fee Model': {0: '', 1: '', 2: '', 3: '',
+                                             4: '', 5: '', 6: ''},
+                   'mpReporting Fee Rate': {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0,
+                                            4: 0.0, 5: 0.0, 6: 0.0},
+                   'mpReporting Fee Type': {0: '', 1: '', 2: '', 3: '',
+                                            4: '', 5: '', 6: ''},
+                   'mpRetailer': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                  5: '', 6: ''},
+                   'mpServing': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                                 6: ''},
+                   'mpSize': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '',
+                              6: ''},
+                   'mpStart Date': {0: 45160.0, 1: 45160.0, 2: 45442.0,
+                                    3: 45442.0, 4: 45442.0, 5: 45442.0,
+                                    6: 45442.0},
+                   'mpTargeting': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                   5: '', 6: ''},
+                   'mpTargeting Bucket': {0: '', 1: '', 2: '', 3: '',
+                                          4: '', 5: '', 6: ''},
+                   'mpTransaction Product': {0: '', 1: '', 2: '', 3: '',
+                                             4: '', 5: '', 6: ''},
+                   'mpTransaction Product - Broad': {0: '', 1: '', 2: '',
+                                                     3: '', 4: '', 5: '',
+                                                     6: ''},
+                   'mpTransaction Product - Fine': {0: '', 1: '', 2: '',
+                                                    3: '', 4: '', 5: '',
+                                                    6: ''},
+                   'mpVendor': {0: '', 1: '', 2: 'dexerto.com',
+                                3: 'dexerto.com', 4: 'dexerto.com',
+                                5: 'dualshockers.com', 6: 'dualshockers.com'},
+                   'mpVendor Type': {0: '', 1: '', 2: '', 3: '', 4: '',
+                                     5: '', 6: ''},
+                   'mpVerification Fee Model': {0: '', 1: '', 2: '', 3: '',
+                                                4: '', 5: '', 6: ''},
+                   'PNC FPN': {0: 'Apex Legends-brandtracker_nan',
+                               1: 'Brawlhalla-brandtracker_nan',
+                               2: 'nan_dexerto.com', 3: 'nan_dexerto.com',
+                               4: 'nan_dexerto.com', 5: 'nan_dualshockers.com',
+                               6: 'nan_dualshockers.com'}}
         bt_df = pd.DataFrame(bt_dict)
         return bt_df
 
@@ -1276,9 +1418,46 @@ class TestResearch:
         submit_form(sw, form_names, test_name=self.default_name)
         assert sw.browser.find_element_by_id('tableauPlaceholder')
         submit_form(sw)
-        sw.wait_for_elem_load('loadingBtnbrandtrackerTables')
+        bt_id = 'brandtrackerTables'
+        sw.wait_for_elem_load('loadingBtn{}'.format(bt_id))
         worker.work(burst=True)
-        assert sw.browser.find_element_by_id('primary_date')
+        dash_form_fill = [(['Apex Legends', 'Brawlhalla'], 'titles-selectized'),
+                          ('Engagement', 'categories-selectized')]
+        sw.send_keys_from_list(dash_form_fill)
+        parent_form = sw.browser.find_element_by_id('EngagementForm')
+        add_child = parent_form.find_element_by_id('add_child')
+        sw.click_on_elem(add_child)
+        weight = [('1', 'components-0-weight')]
+        sw.send_keys_from_list(weight)
+        select_form_names = ['components-0-data_column']
+        submit_form(sw, select_form_names=select_form_names,
+                    submit_id='update_data', test_name=vmc.play_intent)
+        sw.wait_for_elem_load('loadingBtn{}'.format(bt_id))
+        worker.work(burst=True)
+        with adjust_path(basedir):
+            file_path = 'tmp/{}_{}_{}.png'.format(
+                Plan.__name__, self.default_name, bt_id)
+            sw.wait_for_elem_load(
+                "#ChartPlaceholder svg", selector=sw.select_css)
+            sw.xpath_from_id_and_click('downloadBtn{}'.format(bt_id))
+            for x in range(10):
+                if os.path.exists(file_path):
+                    break
+                time.sleep(.1)
+            assert os.path.isfile(file_path)
+            os.remove(file_path)
+        sw.xpath_from_id_and_click('showChartBtn{}'.format(bt_id))
+        intent_row_id = 'row{}0'.format(vmc.play_intent)
+        sw.wait_for_elem_load(intent_row_id)
+        intent_row = sw.browser.find_element_by_id(intent_row_id)
+        assert intent_row.text == '0.13'
+        submit_form(sw)
+        impact_score_id = 'impactScoreTable'
+        sw.wait_for_elem_load('loadingBtn{}'.format(impact_score_id))
+        worker.work(burst=True)
+        impact_table_id = '{}Table'.format(impact_score_id)
+        sw.wait_for_elem_load(impact_table_id)
+        assert sw.browser.find_element_by_id(impact_table_id)
 
 
 class TestReportingDBReadWrite:

@@ -98,9 +98,6 @@ def create_app(config_class=Config()):
     from app.plan import bp as plan_bp
     app.register_blueprint(plan_bp)
 
-    from app.brandtracker import bp as brandtracker_bp
-    app.register_blueprint(brandtracker_bp)
-
     app.config.from_object(rq_dashboard.default_settings)
     app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rq")
 

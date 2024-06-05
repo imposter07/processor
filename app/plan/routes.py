@@ -8,9 +8,8 @@ import datetime as dt
 from flask_login import current_user, login_required
 from flask import render_template, redirect, url_for, request, jsonify, flash
 from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
-    CreateSowForm, RfpForm, PartnerPlacementForm, CompetitiveSpendForm
-from app.brandtracker.forms import PlotCategoryForm, BrandtrackerForm, \
-    CategoryComponentForm
+    CreateSowForm, RfpForm, PartnerPlacementForm, CompetitiveSpendForm, \
+    PlotCategoryForm, BrandtrackerForm, CategoryComponentForm, ImpactScoreForm
 from app.main.forms import FeeForm
 from app.models import Client, Product, Campaign, Plan, Post, \
     PlanPhase, Sow, Processor, Brandtracker, BrandtrackerDimensions
@@ -455,7 +454,7 @@ def edit_brandtracker(object_name):
         kwargs[form_id] = new_form
     if request.method == 'POST':
         if form.form_continue.data == 'continue':
-            return redirect(url_for('plan.edit_brandtracker',
+            return redirect(url_for('plan.edit_impact_score',
                                     object_name=current_plan.name))
         else:
             return redirect(url_for('plan.edit_brandtracker',
@@ -531,3 +530,21 @@ def delete_brandtracker_component():
     new_form = render_template('_form.html', form=form,
                                form_id=form_id)
     return jsonify({'form': new_form, 'form_id': form_id})
+
+
+@bp.route('/research/<object_name>/impact_score', methods=['GET', 'POST'])
+@login_required
+def edit_impact_score(object_name):
+    kwargs = Plan().get_current_plan(
+        object_name, 'edit_impact_score', edit_progress=100,
+        edit_name='ImpactScore', buttons='Research')
+    form = ImpactScoreForm()
+    if request.method == 'POST':
+        if form.form_continue.data == 'continue':
+            return redirect(url_for('plan.edit_impact_score',
+                                    object_name=object_name))
+        else:
+            return redirect(url_for('plan.edit_impact_score',
+                                    object_name=object_name))
+    kwargs['form'] = form
+    return render_template('plan/plan.html', **kwargs)

@@ -163,6 +163,9 @@ class User(UserMixin, db.Model):
     conversation = db.relationship(
         'Conversation', foreign_keys='Conversation.user_id', backref='user',
         lazy='dynamic')
+    brandtracker = db.relationship(
+        'Brandtracker',  foreign_keys='Brandtracker.user_id', backref='user',
+        lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -990,7 +993,9 @@ class Processor(db.Model):
                        {'CompetitiveSpend': [
                            'plan.competitive_spend', 'list-check']},
                        {'Brandtracker': [
-                           'plan.edit_brandtracker', 'list-check']}]
+                           'plan.edit_brandtracker', 'list-check']},
+                       {'ImpactScore': [
+                           'plan.edit_impact_score', 'list-check']}]
         elif buttons == Project.__table__.name:
             buttons = [
                 {'Basic': ['main.project_edit', 'list-ol']},
@@ -1083,7 +1088,8 @@ class Processor(db.Model):
                      'projectObjects': '.get_project_objects',
                      'ProjectNumbers': '.get_project_numbers',
                      'getLog': '.get_logfile',
-                     'brandtrackerTables': '.get_brandtracker_data'}
+                     'brandtrackerTables': '.get_brandtracker_data',
+                     'impactScoreTable': '.get_impact_score_data'}
         return arg_trans
 
     def get_import_form_dicts(self, reverse_sort_apis=False):
@@ -2611,6 +2617,8 @@ class Plan(db.Model):
         lazy='dynamic', back_populates='plan_associated')
     phases = db.relationship('PlanPhase', backref='plan', lazy='dynamic')
     rules = db.relationship('PlanRule', backref='plan', lazy='dynamic')
+    brandtracker = db.relationship(
+        'Brandtracker', backref='plan', lazy='dynamic')
 
     @staticmethod
     def get_output_links():

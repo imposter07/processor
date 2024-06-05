@@ -35,7 +35,7 @@ from app.models import User, Post, Message, Notification, Processor, \
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project, \
     Notes, ProcessorReports, Tutorial, TutorialStage, Task, Plan, Walkthrough, \
     Conversation, Chat, WalkthroughSlide, Rfp, Specs, Contacts, RequestLog
-from app.brandtracker.forms import PlotCategoryForm, CategoryComponentForm, \
+from app.plan.forms import PlotCategoryForm, CategoryComponentForm, \
     BrandtrackerForm
 from app.translate import translate
 from app.main import bp

@@ -40,16 +40,25 @@
             return prepareFormsForRequest(formIds);
         }
 
-        function saveBrandtracker() {
+        function saveBrandtracker(formContinue) {
             let data = getBrandtrackerFormData();
             let jv = document.getElementById('jinjaValues');
             data['object_name'] = jv.dataset['object_name'].trim();
+            let kwargs = {
+                'formContinue': formContinue,
+                'oldPage': 'brandtracker',
+                'newPage': 'impact_score'
+            };
             makeRequest('/save_brandtracker', 'POST', data,
-                saveBrandtrackerModalResponse);
+                saveBrandtrackerResponse, 'json', kwargs);
         }
 
-        function saveBrandtrackerModalResponse(response) {
-            displayAlert(response['message'], response['level']);
+        function saveBrandtrackerResponse(data, kwargs) {
+            let newPage = kwargs['newPage'];
+            let formContinue = kwargs['formContinue'];
+            let oldPage = kwargs['oldPage'];
+            completeSave({'message': 'Saved!', 'level': 'success'},
+                formContinue, oldPage, newPage);
         }
 
         function addComponentOnClick() {
@@ -89,8 +98,17 @@
 
         function updateBtTables() {
             let data = getBrandtrackerFormData();
-            getTable('brandtrackerTables', 'brandtrackerTables', 'None',
+            getTable('brandtrackerTables', 'brandtrackerTablesProgress', 'None',
                 'None', 'None', true, 'None', false, data)
+        }
+
+        function getImpactScoreTable(){
+            appendRows();
+            let rowZero = document.getElementById('rowZero');
+            let impactScoreElem = document.createElement("div");
+            impactScoreElem.id = "impactScoreTable";
+            rowZero.insertAdjacentElement("beforebegin", impactScoreElem);
+            getTable('impactScoreTable', 'impactScoreTable', 'None');
         }
 
         function brandTrackerListeners(get=true) {
@@ -100,8 +118,7 @@
                 addComponentOnClick);
             addOnClickEvent('input[id^="components-"][id$="-delete"][value="Delete"]',
                 deleteComponentOnClick);
-            addOnClickEvent('input[id="update_data"]',
-                () => {updateBtTables()});
+            addOnClickEvent('input[id="update_data"]', updateBtTables);
             if (get) {
                 updateBtTables();
             }

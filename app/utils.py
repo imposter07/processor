@@ -671,6 +671,10 @@ class LiquidTable(object):
     def calculated_cols(self):
         value_cal = az.ValueCalc()
         if self.trending_cols:
+            # format: trending_cols=['Name of new Trending Col']
+            #         trending_groupbys=[['Dimension(s) to Calc Trending On']]
+            #         trending_metrics=['Metric to Calc Trending On']
+            # Default adds trending arrows
             for i in range(len(self.trending_cols)):
                 col_name = self.trending_cols[i]
                 metric = self.trending_metrics[i]
@@ -680,6 +684,9 @@ class LiquidTable(object):
                 self.df = value_cal.calculate_trending(
                     self.df, col_name, metric, groupby, period)
         if self.percent_total_cols:
+            # format: percent_total_cols=['Metric to Calc % Total On]
+            #         trending_groupbys=[['Dimension(s) to Calc % Total On']]
+            # Default does NOT add progress bars
             for i in range(len(self.percent_total_cols)):
                 metric = self.percent_total_cols[i]
                 groupby = (self.percent_total_groupbys[i]

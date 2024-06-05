@@ -5878,6 +5878,38 @@ def get_brandtracker_data(current_user_id, running_user, form_data):
     return [lt.table_dict]
 
 
+@error_handler
+def get_impact_score_data(current_user_id, running_user):
+    # Get all brandtracker processors and their associated reporting data
+    _set_task_progress(20)
+    campaign = Campaign.query.filter_by(name='BRANDTRACKER').first()
+    bt_procs = Processor.query.filter_by(campaign_id=campaign.id).all()
+    df = pd.DataFrame()
+    #['conv2': desktop_visits, 'conv3': desktop_bounce_rate, 
+    # 'conv4': desktop_pages_per_visit, 'conv5': desktop_average_visit_duration,
+    # 'conv6': desktop_unique_visitors]
+    metric_cols = ['conv2', 'conv3', 'conv4', 'conv5', 'conv6']
+    for proc in bt_procs:
+        tdf = get_data_tables_from_db(
+            proc.id, current_user_id,
+            dimensions=['vendorname', 'eventdate'],
+            metrics=metric_cols, use_cache=True)[0]
+        if not tdf.empty:
+            df = pd.concat([df, tdf], ignore_index=True)
+    df['vendorname'].replace('None', np.nan, inplace=True)
+    df = df.dropna(axis=0, subset=['vendorname'])
+    _set_task_progress(90)
+    lt = app_utl.LiquidTable(df=df, table_name='impactScoreTable',
+                             download_table=True,
+                             trending_cols=['MoM traffic change'],
+                             trending_groupbys=[['vendorname']],
+                             trending_metrics=[vmc.conv2],
+                             percent_total_cols=[vmc.conv2],
+                             percent_total_groupbys=[['eventdate']],
+                             prog_cols=['% of Conv2 by eventdate'])
+    return [lt.table_dict]
+
+
 def get_processor_data_source_table(processor_id, current_user_id):
     try:
         _set_task_progress(0)

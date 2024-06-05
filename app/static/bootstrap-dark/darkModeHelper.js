@@ -8,27 +8,11 @@ window.addEventListener('load', () => {
     }
 });
 
-/**
- * Summary: function that adds or removes the attribute 'data-theme' depending if
- * the switch is 'on' or 'off'.
- *
- * Description: initTheme is a function that uses localStorage from JavaScript DOM,
- * to store the value of the HTML switch. If the switch was already switched to
- * 'on' it will set an HTML attribute to the body named: 'data-theme' to a 'dark'
- * value. If it is the first time opening the page, or if the switch was off the
- * 'data-theme' attribute will not be set.
- * @return {void}
- */
-function enableStylesheet(node) {
-    if (node) {
-        node.media = '';
-    }
-}
-
-function disableStylesheet(node) {
-    if (node) {
-        node.media = 'none';
-    }
+function setIcon() {
+    let iconVal = (darkSwitch.checked) ? 'bi-moon-fill': 'bi-sun-fill';
+    let iconElem = document.getElementById('darkSwitchIcon');
+    iconElem.classList.remove('bi-moon-fill', 'bi-sun-fill');
+    iconElem.classList.add(iconVal);
 }
 
 function initTheme() {
@@ -36,10 +20,9 @@ function initTheme() {
         localStorage.getItem('darkSwitch') !== null &&
         localStorage.getItem('darkSwitch') === 'dark';
     darkSwitch.checked = darkThemeSelected;
-    darkThemeSelected ? document.body.setAttribute('class', 'bootstrap-dark') :
-        document.body.removeAttribute('class');
-    darkThemeSelected ? enableStylesheet(document.getElementById('selectizeDark')) :
-        disableStylesheet(document.getElementById('selectizeDark'));
+    darkThemeSelected ? document.documentElement.setAttribute('data-bs-theme', 'dark') :
+        document.documentElement.removeAttribute('data-bs-theme');
+    setIcon();
 }
 
 
@@ -51,12 +34,11 @@ function initTheme() {
  */
 function resetTheme() {
     if (darkSwitch.checked) {
-        document.body.setAttribute('class', 'bootstrap-dark');
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
         localStorage.setItem('darkSwitch', 'dark');
-        enableStylesheet(document.getElementById('selectizeDark'));
     } else {
-        document.body.removeAttribute('class');
+        document.documentElement.removeAttribute('data-bs-theme');
         localStorage.removeItem('darkSwitch');
-        disableStylesheet(document.getElementById('selectizeDark'));
     }
+    setIcon();
 }

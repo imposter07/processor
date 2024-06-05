@@ -1,6 +1,6 @@
 <div class="card shadow outer">
     <div class="card-header">
-        <h3>Processors by User<i class="fas fa-chart-bar btn btn-info"
+        <h3>Processors by User<i class="bi bi-bar-chart btn btn-info"
                            style="float:right;"></i></h3>
         <h6 class="card-subtitle mb-2 text-muted">Processor instances organized by owner.</h6>
     </div>
@@ -10,11 +10,11 @@
         {% set outer_loop = loop %}
         <div class="card">
             <button class="btn {% if  processor_list[0].user.data%}
-            btn-secondary{% else %}btn-info{% endif %} btn-block btn-secondary collapsed text-left"
+            btn-secondary{% else %}btn-info{% endif %} w-100 btn-secondary collapsed text-start"
                     id="headingUser{{ loop.index }}"
                     type="button"
-                    data-toggle="collapse"
-                    data-target="#collapseUser{{ loop.index }}"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapseUser{{ loop.index }}"
                     aria-expanded="false"
                     aria-controls="collapseUser{{ loop.index }}">
                 <a href="{{ url_for('main.user', username=processor_list[0].user.username) }}">
@@ -25,16 +25,16 @@
             </button>
             <div id="collapseUser{{ loop.index }}" class="collapse"
                  aria-labelledby="headingUser{{ loop.index }}"
-                 data-parent="#accordionClient">
+                 data-bs-parent="#accordionClient">
                 <div class="card-body">
                     <div class="accordion" id="accordionProcessor">
                     {% for processor in processor_list %}
                         <div class="card">
-                            <div class="card-header form-inline collapsed"
+                            <div class="card-header d-flex flex-row align-items-center flex-wrap collapsed"
                                  id="headingProcessor{{ processor.id }}"
                                  type="button"
-                                 data-toggle="collapse"
-                                 data-target="#collapseProcessor{{ processor.id }}"
+                                 data-bs-toggle="collapse"
+                                 data-bs-target="#collapseProcessor{{ processor.id }}"
                                  aria-expanded="false"
                                  aria-controls="collapseProcessor{{ processor.id }}">
                                 <div class="col">
@@ -57,7 +57,7 @@
                         </div>
                         <div id="collapseProcessor{{ processor.id }}" class="collapse"
                              aria-labelledby="headingProcessor{{ processor.id }}"
-                             data-parent="#accordionProcessor">
+                             data-bs-parent="#accordionProcessor">
                             <div id="processorBody{{ processor.id }}" class="card-body"></div>
                         </div>
                     {% endfor %}

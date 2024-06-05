@@ -14323,17 +14323,17 @@ var FullCalendar = (function (exports) {
     };
     BootstrapTheme.prototype.baseIconClass = 'fa';
     BootstrapTheme.prototype.iconClasses = {
-        close: 'fa-times',
-        prev: 'fa-chevron-left',
-        next: 'fa-chevron-right',
-        prevYear: 'fa-angle-double-left',
-        nextYear: 'fa-angle-double-right',
+        close: 'bi-times',
+        prev: 'bi-chevron-left',
+        next: 'bi-chevron-right',
+        prevYear: 'bi-angle-double-left',
+        nextYear: 'bi-angle-double-right',
     };
     BootstrapTheme.prototype.rtlIconClasses = {
-        prev: 'fa-chevron-right',
-        next: 'fa-chevron-left',
-        prevYear: 'fa-angle-double-right',
-        nextYear: 'fa-angle-double-left',
+        prev: 'bi-chevron-right',
+        next: 'bi-chevron-left',
+        prevYear: 'bi-angle-double-right',
+        nextYear: 'bi-angle-double-left',
     };
     BootstrapTheme.prototype.iconOverrideOption = 'bootstrapFontAwesome'; // TODO: make TS-friendly. move the option-processing into this plugin
     BootstrapTheme.prototype.iconOverrideCustomButtonOption = 'bootstrapFontAwesome';

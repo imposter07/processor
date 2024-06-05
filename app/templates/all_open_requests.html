@@ -4,19 +4,19 @@
         {% set outer_loop = loop %}
         {% if open_requests|length > 0 %}
             <div class="card">
-                <button class="btn btn-block collapsed text-left progress-bar"
+                <button class="btn w-100 collapsed text-start progress-bar"
                         id="heading{{ loop.index }}"
                         type="button"
                         style="background-color: #ffcccb;width:{{ open_requests|length * 20 }}%;color:black;"
-                        data-toggle="collapse"
-                        data-target="#collapseUser{{ loop.index }}"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#collapseUser{{ loop.index }}"
                         aria-expanded="false"
                         aria-controls="collapseUser{{ loop.index }}">
                     {{ processor.name }} - {{ open_requests|length }} Open Requests
                 </button>
                 <div id="collapseUser{{ loop.index }}" class="collapse"
                      aria-labelledby="heading{{ loop.index }}"
-                     data-parent="#accordionClient">
+                     data-bs-parent="#accordionClient">
                     <div class="card-body">
                         <div class="accordion" id="accordionProcessor">
                             {% for fix in open_requests %}

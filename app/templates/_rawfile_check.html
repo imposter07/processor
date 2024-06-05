@@ -1,5 +1,5 @@
 <button id="modalRawFileButton" type="button" class="btn btn-primary"
-        data-toggle="modal" data-target="#modalRawFile" style="display: none;">
+        data-bs-toggle="modal" data-bs-target="#modalRawFile" style="display: none;">
     Launch demo modal
 </button>
 <div class="modal fade bd-example-modal-xl" id="modalRawFile" tabindex="-1"
@@ -8,14 +8,14 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div class="col card-header">
-                    <h3>Raw File Check<i class="fas fa-file-export btn btn-secondary"
+                    <h3>Raw File Check<i class="bi bi-file-arrow-down btn btn-secondary"
                                        style="float:right;"></i></h3>
                     <h6 class="card-subtitle mb-2 text-muted">
                         Automated checks between the file you just supplied and the
                         one currently in the processor are below.  Your new file will
                         not be saved unless you click save at the bottom of this modal.
                     </h6>
-                    <button type="button" class="close" data-dismiss="modal"
+                    <button type="button" class="close" data-bs-dismiss="modal"
                             aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -80,14 +80,14 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <div class="btn-group btn-group-lg btn-block" role="group"
+                <div class="btn-group btn-group-lg w-100" role="group"
                      aria-label="Basic example">
                     <button type="button" class="btn btn-success"
                             id="modalRawFileSaveButton"
                             onclick="SendDataTable('modalRawFile')">Save
                     </button>
                     <button type="button" class="btn btn-secondary"
-                            data-dismiss="modal">Close
+                            data-bs-dismiss="modal">Close
                     </button>
                 </div>
             </div>

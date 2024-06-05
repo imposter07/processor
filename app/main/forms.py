@@ -41,7 +41,7 @@ class PostForm(FlaskForm):
 
 
 class SearchForm(FlaskForm):
-    q = StringField(_l('Search'), validators=[DataRequired()])
+    q = StringField(_l('Search'))
 
     def __init__(self, *args, **kwargs):
         if 'formdata' not in kwargs:
@@ -85,7 +85,8 @@ class ProcessorForm(FlaskForm):
 
 
 class APIForm(FlaskForm):
-    vendor_key = StringField('Vendor Key', render_kw={'readonly': True})
+    vendor_key = StringField(
+        'Vendor Key', render_kw={'readonly': True, 'disabled': True})
     name = StringField('Name', validators=[Regexp(r'\W+')])
     key = SelectField('API Type', choices=[(x, x) for x in vmc.api_keys])
     account_id = StringField('Account ID')
@@ -186,6 +187,7 @@ class EditProcessorForm(ProcessorForm):
         super(EditProcessorForm, self).__init__(*args, **kwargs)
         self.original_name = original_name
         self.name.render_kw['readonly'] = True
+        self.name.render_kw['disabled'] = True
 
     def validate_name(self, name):
         if name.data != self.original_name:
@@ -595,9 +597,10 @@ class EditUploaderForm(UploaderForm):
 
 class RelationForm(FlaskForm):
     impacted_column_name = StringField(
-        'Column Name', render_kw={'readonly': True})
+        'Column Name', render_kw={'readonly': True, 'disabled': True})
     unresolved_relations = StringField(
-        'Unresolved Relations', render_kw={'readonly': True})
+        'Unresolved Relations',
+        render_kw={'readonly': True, 'disabled': True})
     relation_constant = StringField(
         'Relation Constant', description='Only populate if you want a '
                                          'value to appear for all line items.')
@@ -747,7 +750,7 @@ class ProcessorMetricsForm(FlaskForm):
 
 class ProcessorDeleteForm(FlaskForm):
     processor_name = StringField(
-        'Processor Name', render_kw={'readonly': True},
+        'Processor Name', render_kw={'readonly': True, 'disabled': True},
         description='WARNING - Clicking this will delete this processor. \n'
                     'This can not be undone.')
     delete_metric = SubmitField(

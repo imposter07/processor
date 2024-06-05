@@ -20,20 +20,20 @@
                     {% endfor %}
                 </div>
             </div>
-            <div class="btn-group btn-group-sm btn-block" role="group">
+            <div class="btn-group btn-group-sm w-100" role="group">
                 <button id="dash{{ dash.id }}View"
                         class="btn btn-outline-success">
-                    <i class="fas fa-chart-bar" href="#" role="button"></i>
+                    <i class="bi bi-bar-chart" href="#" role="button"></i>
                     View
                 </button>
                 <button id="dash{{ dash.id }}Save"
                         class="btn btn-outline-info">
-                    <i class="fas fa-save" href="#" role="button"></i>
+                    <i class="bi bi-floppy" href="#" role="button"></i>
                     Save
                 </button>
                 <button id="dash{{ dash.id }}Delete"
                         class="btn btn-outline-danger">
-                    <i class="fas fa-trash" href="#" role="button"></i>
+                    <i class="bi bi-trash" href="#" role="button"></i>
                     Delete
                 </button>
             </div>
@@ -57,7 +57,7 @@
                             onclick="deleteCustomChart(this);"
                             tabindex="0" aria-controls=${tableName}
                             type="button">
-                        <i class="fas fa-minus" style="color:white"></i>
+                        <i class="bi bi-dash" style="color:white"></i>
                     </button>
                 {% endif %}
             </div>

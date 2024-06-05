@@ -3,16 +3,16 @@
 {% block vertical_navbar %}
     <div class="card shadow outer">
         <div class="card-header">
-            <h3>Processor<i class="fas fa-blender-phone btn btn-secondary"
+            <h3>Processor<i class="bi bi-telephone btn btn-secondary"
                             style="float:right;"></i></h3>
             <h6 class="card-subtitle mb-2 text-muted">Create a new processor
                 instance.</h6>
         </div>
 
         <button id="requestProcessor"
-                class="btn btn-outline-info btn-block text-left"
+                class="btn btn-outline-info w-100 text-start"
                 type="button" href="">
-            <i class="fas fa-blender-phone"
+            <i class="bi bi-telephone"
                role="button"></i>
             {{ _('Request Processor') }}
         </button>
@@ -20,15 +20,15 @@
     </div>
     <div class="card shadow outer">
         <div class="card-header">
-            <h3>Date Filter<i class="fas fa-calendar btn btn-secondary"
+            <h3>Date Filter<i class="bi bi-calendar btn btn-secondary"
                                style="float:right;"></i></h3>
             <h6 class="card-subtitle mb-2 text-muted">Date filter for Notes and plots.</h6>
         </div>
         <div class="col mb-3">
             <button id="allDates"
-                    class="btn btn-outline-info btn-block text-left"
+                    class="btn btn-outline-info w-100 text-start"
                     type="button" href="">
-                <i class="fas fa-calendar"
+                <i class="bi bi-calendar"
                    role="button"></i>
                 {{ _('ALL TIME') }}
             </button>
@@ -46,7 +46,7 @@
         <div class="col">
             <div class="card shadow outer">
                 <div class="card-header">
-                    <h3>Notes<i class="fas fa-tasks btn btn-info" style="float:right; opacity:.8;"></i></h3>
+                    <h3>Notes<i class="bi bi-list-task btn btn-info" style="float:right; opacity:.8;"></i></h3>
                     <h6 class="card-subtitle mb-2 text-muted">Notes/POV from campaigns or meetings over the past week</h6>
                 </div>
                 <div class="card-body">
@@ -63,10 +63,10 @@
         Reporting data across all campaigns, defaulting to the past 30 days.
     </h6>
 {% endblock %}
-{% block app_content %}
+{% block app_content_2 %}
 
     <button id="modalTableButton" type="button" class="btn btn-primary"
-            data-toggle="modal" data-target="#modalTable"
+            data-bs-toggle="modal" data-bs-target="#modalTable"
             style="display: none;">
         Launch demo modal
     </button>
@@ -77,7 +77,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title" id="exampleModalLabel">
                         Data Tables - {{ object_name }}</h5>
-                    <button type="button" class="close" data-dismiss="modal"
+                    <button type="button" class="close" data-bs-dismiss="modal"
                             aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -92,18 +92,18 @@
                     <div id="modal-body-table"></div>
                 </div>
                 <div class="modal-footer">
-                    <div class="btn-group btn-group-lg btn-block" role="group"
+                    <div class="btn-group btn-group-lg w-100" role="group"
                          aria-label="Basic example">
                         <a id="modalSubmitRequestProcessor"
-                                class="btn btn-outline-info btn-block text-left"
+                                class="btn btn-outline-info w-100 text-start"
                                 type="button"
                                 href="{{ url_for('main.request_processor') }}">
-                            <i class="fas fa-blender-phone"
+                            <i class="bi bi-telephone"
                                role="button"></i>
                             {{ _('Request Processor') }}
                         </a>
                         <button type="button" class="btn btn-secondary"
-                                data-dismiss="modal">Close
+                                data-bs-dismiss="modal">Close
                         </button>
                     </div>
                 </div>
@@ -114,10 +114,10 @@
         <div class="col-md-12">
             <div class="card-header">
                 <div class="row" id="navRow">
-                    <div class="btn-group btn-group-sm btn-block" role="group">
+                    <div class="btn-group btn-group-sm w-100" role="group">
                         <button id="getAllCharts"
                                 class="btn btn-outline-primary"><i
-                                class="fas fa-chart-bar" href="#" role="button"
+                                class="bi bi-bar-chart" href="#" role="button"
                                 aria-hidden="true"></i>Get All Charts
                         </button>
                     </div>
@@ -171,7 +171,7 @@
                     </div>
                     <div class="col mb-3">
                         <button id="applyFilter" type="button"
-                                class="btn btn-block btn-outline-primary btn-sm">
+                                class="btn w-100 btn-outline-primary btn-sm">
                             Apply Filter
                         </button>
                     </div>
@@ -183,7 +183,7 @@
     <br>
     <div class="row">
         <div class="col-md-12 h-50">
-            <div class="card-deck container-fluid text-center">
+            <div class="card-group container-fluid text-center">
                 <div id="totalMetricsProgress"></div>
                 <div id="totalMetrics" class="row w-100"></div>
             </div>

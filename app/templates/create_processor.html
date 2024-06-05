@@ -5,7 +5,7 @@
     {% include '_view_selector.html' %}
     <!-- Modal -->
     <button id="logModalButton" type="button" class="btn btn-primary"
-            data-toggle="modal" data-target="#logModal" style="display: none;">
+            data-bs-toggle="modal" data-bs-target="#logModal" style="display: none;">
       Launch demo modal
     </button>
     <div class="modal hide fade" id="logModal" tabindex="-1" role="dialog"
@@ -15,20 +15,20 @@
           <div class="modal-header">
             <h5 class="modal-title" id="logModalLabel">
                 Logfile - {{object_name }}</h5>
-            <button type="button" class="close" data-dismiss="modal"
+            <button type="button" class="close" data-bs-dismiss="modal"
                     aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
           <div class="modal-body"></div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-block btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn w-100 btn-secondary" data-bs-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
     </div>
     <button id="importRunButton" type="button" class="btn btn-primary"
-            data-toggle="modal" data-target="#importModal"
+            data-bs-toggle="modal" data-bs-target="#importModal"
         style="display: none;">
       Launch demo modal
     </button>
@@ -40,7 +40,7 @@
             <h5 class="modal-title" id="exampleModalLabel">
                 Import - {{ object_name }}</h5>
             <button type="button" class="close"
-                    data-dismiss="modal" aria-label="Close">
+                    data-bs-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
@@ -51,7 +51,7 @@
                   {% for api_name, api_arg in api_imports[api].items() %}
                      <a class="list-group-item list-group-item-action
                          list-group-item-linkable"
-                         id="list-all" data-toggle="list"
+                         id="list-all" data-bs-toggle="list"
                          href="javascript: runObject('{{ api_arg }}', null, null, 'importModal');"
                          role="tab" aria-controls="home">{{ api_name }}</a>
                   {% endfor %}
@@ -60,14 +60,14 @@
               </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-block btn-secondary"
-                    data-dismiss="modal">Close</button>
+            <button type="button" class="btn w-100 btn-secondary"
+                    data-bs-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
     </div>
     <button id="modalTableButton" type="button" class="btn btn-primary"
-            data-toggle="modal" data-target="#modalTable" style="display: none;">
+            data-bs-toggle="modal" data-bs-target="#modalTable" style="display: none;">
       Launch demo modal
     </button>
     <div class="modal fade bd-example-modal-xl" id="modalTable" tabindex="-1"
@@ -77,7 +77,7 @@
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
                 Data Tables - {{ object_name }}</h5>
-            <button type="button" class="close" data-dismiss="modal"
+            <button type="button" class="close" data-bs-dismiss="modal"
                     aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
@@ -86,12 +86,12 @@
               <div id="modal-body-table"></div>
           </div>
           <div class="modal-footer">
-            <div class="btn-group btn-group-lg btn-block" role="group" aria-label="Basic example">
+            <div class="btn-group btn-group-lg w-100" role="group" aria-label="Basic example">
                 <button type="button" class="btn btn-success"
                         id="modalTableSaveButton"
                         onclick="SendDataTable()">Save</button>
                 <button type="button" class="btn btn-secondary"
-                        data-dismiss="modal">Close</button>
+                        data-bs-dismiss="modal">Close</button>
             </div>
           </div>
         </div>
@@ -104,7 +104,7 @@
           <div class="modal-header">
             <h5 class="modal-title" id="exampleModalLabel">
                 Add new active metric</h5>
-            <button type="button" class="close" data-dismiss="modal"
+            <button type="button" class="close" data-bs-dismiss="modal"
                     aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
@@ -113,7 +113,7 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-success w-25" id="activeMetricModalTableSaveButton">
                 Save</button>
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
@@ -125,8 +125,8 @@
           <div class="modal-header text-center">
             <h5 class="modal-title w-100">
                 COLUMN NAME</h5>
-            <button type="button" class="close" data-dismiss="modal"
-                data-toggle="modal" data-target="#modalTable" aria-label="Close">
+            <button type="button" class="close" data-bs-dismiss="modal"
+                data-bs-toggle="modal" data-bs-target="#modalTable" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
@@ -136,19 +136,14 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-success w-25" id="changeOrderMoreOptionsSave"
-                data-toggle="modal" data-target="#modalTable"
-                data-dismiss="modal">Save</button>
-            <button type="button" class="btn btn-secondary" data-dismiss="modal"
-                data-toggle="modal" data-target="#modalTable">Close</button>
+                data-bs-toggle="modal" data-bs-target="#modalTable"
+                data-bs-dismiss="modal">Save</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+                data-bs-toggle="modal" data-bs-target="#modalTable">Close</button>
           </div>
         </div>
       </div>
     </div>
-    <script>
-        $('.modal').on('shown.bs.modal', function () {
-            $("body").addClass("modal-open")
-        });
-    </script>
 {% endblock %}
 {% block vertical_navbar %}
     {% if object %}
@@ -159,23 +154,23 @@
     {% if (object and object.local_path) or title == 'Plan' %}
     <div class="accordion" id="accordionExample">
         <div class="card">
-            <button class="btn btn-outline-success btn-block
-                           dropdown-toggle text-left"
-                    type="button" data-toggle="collapse"
+            <button class="btn btn-outline-success w-100
+                           dropdown-toggle text-start"
+                    type="button" data-bs-toggle="collapse"
                     id="runObjectDropdownButton"
-                    data-target="#collapseOne" aria-expanded="false"
+                    data-bs-target="#collapseOne" aria-expanded="false"
                     aria-controls="collapseOne">
-                <i class="fas fa-play-circle" href="#" role="button"></i>
+                <i class="bi bi-play-circle" href="#" role="button"></i>
                 {{ _('Run {}'.format(title)) }}
                 <span class="caret"></span>
             </button>
             <div id="collapseOne" class="collapse"
-                 aria-labelledby="headingOne" data-parent="#accordionExample">
+                 aria-labelledby="headingOne" data-bs-parent="#accordionExample">
                 <div class="card-body">
                     {% if run_links %}
                         {% for run_link_idx in run_links %}
                           <a class="dropdown-item" href="#"
-                            data-toggle="hover" data-placement="bottom"
+                            data-bs-toggle="hover" data-placement="bottom"
                             title="{{ run_links[run_link_idx]['title']}}"
                             data-content="{{ run_links[run_link_idx]['tooltip'] }}"
                             id="{{ 'runObject{}'.format(run_links[run_link_idx]['title']) }}">
@@ -186,43 +181,43 @@
             </div>
         </div>
         <div class="card">
-            <button class="btn btn-outline-info btn-block
-                           dropdown-toggle text-left"
-                    type="button" data-toggle="collapse"
+            <button class="btn btn-outline-info w-100
+                           dropdown-toggle text-start"
+                    type="button" data-bs-toggle="collapse"
                     id="editTableDropdownButton"
-                    data-target="#collapseTwo" aria-expanded="true"
+                    data-bs-target="#collapseTwo" aria-expanded="true"
                     aria-controls="collapseTwo">
-                <i class="fas fa-edit" href="#" role="button"></i>
+                <i class="bi bi-pencil" href="#" role="button"></i>
                 {{ _('Edit {} Files'.format(title)) }}
                 <span class="caret"></span>
             </button>
             <div id="collapseTwo" class="collapse"
                  aria-labelledby="headingTwo"
-                 data-parent="#accordionExample">
+                 data-bs-parent="#accordionExample">
                 <div class="card-body">
                     {% if edit_links %}
                         {% for edit_link_idx in edit_links %}
                               <a class="dropdown-item" href="#"
-                                 data-toggle="hover" data-placement="bottom"
+                                 data-bs-toggle="hover" data-placement="bottom"
                                  title="{{ edit_links[edit_link_idx]['title'] }}"
                                  data-content="{{ edit_links[edit_link_idx]['tooltip'] }}"
                                  id="{{ 'editTable{}'.format(edit_links[edit_link_idx]['title']) }}">
                                   {{ edit_links[edit_link_idx]['title'] }}</a>
                               {% if edit_links[edit_link_idx]['nest'] %}
                               <div class="card">
-                                    <button class="btn btn-outline-info btn-block
-                                                   dropdown-toggle text-left"
-                                            type="button" data-toggle="collapse"
+                                    <button class="btn btn-outline-info w-100
+                                                   dropdown-toggle text-start"
+                                            type="button" data-bs-toggle="collapse"
                                             id="{{ "editTable{}DropdownButton".format(edit_links[edit_link_idx]['title']) }}"
-                                            data-target="#collapseTwoOne" aria-expanded="true"
+                                            data-bs-target="#collapseTwoOne" aria-expanded="true"
                                             aria-controls="collapseTwoOne">
-                                        <i class="fas fa-ellipsis-v" href="#" role="button"></i>
+                                        <i class="bi bi-three-dots" href="#" role="button"></i>
                                         {{ _('Edit {} Dictionaries'.format(edit_links[edit_link_idx]['title'])) }}
                                         <span class="caret"></span>
                                     </button>
                                     <div id="collapseTwoOne" class="collapse"
                                      aria-labelledby="headingTwoOne"
-                                     data-parent="#editTableRelationDropdownButton">
+                                     data-bs-parent="#editTableRelationDropdownButton">
                                         <div class="card-body">
                                   {% for nested_link in edit_links[edit_link_idx]['nest'] %}
                                     <a class="dropdown-item"
@@ -241,24 +236,24 @@
         </div>
         {% if output_links %}
         <div class="card">
-            <button class="btn btn-outline-primary btn-block
-                           dropdown-toggle text-left"
-                    type="button" data-toggle="collapse"
+            <button class="btn btn-outline-primary w-100
+                           dropdown-toggle text-start"
+                    type="button" data-bs-toggle="collapse"
                     id="editTableDropdownButtonView"
-                    data-target="#collapseThree" aria-expanded="true"
+                    data-bs-target="#collapseThree" aria-expanded="true"
                     aria-controls="collapseThree">
-                <i class="fas fa-table" href="#" role="button"></i>
+                <i class="bi bi-table" href="#" role="button"></i>
                 {{ _('View Output Data') }}
                 <span class="caret"></span>
             </button>
             <div id="collapseThree" class="collapse"
                  aria-labelledby="headingThree"
-                 data-parent="#accordionExample">
+                 data-bs-parent="#accordionExample">
                 <div class="card-body">
                     {% if output_links %}
                         {% for out_link_idx in output_links %}
                           <a class="dropdown-item"
-                             data-toggle="hover" data-placement="bottom"
+                             data-bs-toggle="hover" data-placement="bottom"
                              title="{{ output_links[out_link_idx]['title'] }}"
                              data-content="{{ output_links[out_link_idx]['tooltip'] }}"
                              id="{{ 'editTableOutputData{}'.format(output_links[out_link_idx]['title']) }}"
@@ -271,24 +266,24 @@
         </div>
         {% endif %}
         <div class="card">
-            <button class="btn btn-outline-danger btn-block
-                           dropdown-toggle text-left"
-                    type="button" data-toggle="collapse"
+            <button class="btn btn-outline-danger w-100
+                           dropdown-toggle text-start"
+                    type="button" data-bs-toggle="collapse"
                     id="editTableDropdownButtonView"
-                    data-target="#collapseFour" aria-expanded="true"
+                    data-bs-target="#collapseFour" aria-expanded="true"
                     aria-controls="collapseFour">
-                <i class="fas fa-blender-phone" href="#" role="button"></i>
+                <i class="bi bi-telephone" href="#" role="button"></i>
                 {{ _('Requests') }}
                 <span class="caret"></span>
             </button>
             <div id="collapseFour" class="collapse"
                  aria-labelledby="headingFour"
-                 data-parent="#accordionExample">
+                 data-bs-parent="#accordionExample">
                 <div class="card-body">
                     {% if request_links %}
                         {% for request_link_idx in request_links %}
                           <a class="dropdown-item"
-                             data-toggle="hover" data-placement="bottom"
+                             data-bs-toggle="hover" data-placement="bottom"
                              title="{{ request_links[request_link_idx]['title'] }}"
                              data-content="{{ request_links[request_link_idx]['tooltip'] }}"
                              href="{{ request_links[request_link_idx]['href'] }}">
@@ -300,10 +295,10 @@
         </div>
         <div class="card">
             <button type="button"
-                    class="btn btn-outline-secondary btn-block text-left"
+                    class="btn btn-outline-secondary w-100 text-start"
                     id="getLog"
-                    data-toggle="modal" data-target="#exampleModal">
-                <i class="fas fa-file-alt" href="#" role="button"></i>
+                    data-bs-toggle="modal" data-bs-target="#exampleModal">
+                <i class="bi bi-file-text" href="#" role="button"></i>
               {{ _('Show Logs') }}
             </button>
         </div>
@@ -314,16 +309,16 @@
             <nav>
                 <div class="nav nav-tabs" id="nav-tab" role="tablist">
                     <a class="nav-link active" id="nav-home-tab"
-                       data-toggle="tab" href="#nav-home" role="tab"
+                       data-bs-toggle="tab" href="#nav-home" role="tab"
                        aria-controls="nav-home" aria-selected="true">
-                        <h4><i class="fas fa-comments btn btn-secondary"
+                        <h4><i class="bi bi-chat btn btn-secondary"
                                style="float:right;"></i></h4>
                     </a>
-                    <a class="nav-link" id="nav-profile-tab" data-toggle="tab"
+                    <a class="nav-link" id="nav-profile-tab" data-bs-toggle="tab"
                        href="#nav-profile" role="tab"
                        aria-controls="nav-profile"
                        aria-selected="false">
-                        <h4><i class="fas fa-question-circle btn btn-secondary"
+                        <h4><i class="bi bi-question-circle btn btn-secondary"
                                style="float:right;"></i></h4>
                     </a>
                 </div>
@@ -368,15 +363,18 @@
 {% endblock %}
 
 {% block app_content %}
+    <div class="card">
     {% include '_nav_and_progress.html' %}
+    </div>
+    <div class="card">
     {% if form_title %}
         <div class="card-header">
         <h5 class="text-capitalize text-center text-muted">{{ form_title }}
-            <a class="nav-link" id="nav-profile-tab" data-toggle="tab"
+            <a class="nav-link" id="nav-profile-tab" data-bs-toggle="tab"
                href="#nav-profile" role="tab"
                aria-controls="nav-profile"
                aria-selected="false">
-                    <i class="fas fa-question-circle btn btn-secondary"
+                    <i class="bi bi-question-circle btn btn-secondary"
                        style="float:right;"></i>
             </a>
         </h5>
@@ -385,12 +383,13 @@
         {% endif %}
         </div>
     {% endif %}
+
     {% if form %}
         {% if edit_name == 'Import' %}
             <div class="input-group mb-3">
                 <div class="input-group-prepend">
                     <span class="input-group-text"><i
-                            class="fa-solid fa-magnifying-glass"
+                            class="bi bi-search"
                             href="#"
                             role="button"></i></span>
                 </div>
@@ -431,9 +430,8 @@
     {% endif %}
     {% if tables %}
         <script type="text/javascript">
-            $(document).ready(function() {
-                showModalTable('modalTableButton');
-            });</script>
+            showModalTable('modalTableButton');
+        </script>
     {% endif %}
     {% if tableau_workbook %}
         <script type='text/javascript'
@@ -450,20 +448,22 @@
                 <param name='filter' value='iframeSizedToWindow=true' />
             </object>
         </div>
+    </div>
     {% endif %}
-{% endblock %}
-{% block scripts %}
+
+
     {{ moment.include_moment() }}
     {{ moment.lang(g.locale) }}
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='filepond/filepond.css') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='filepond/filepond.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='filepond/filepond-plugin-file-metadata.js') }}"></script>
 
-    <script type="text/javascript" src="{{ url_for('static', filename='bootstrap-dark/darkModeHelper.js') }}"></script>
+
     <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
     <script src="{{ url_for('static', filename='liquid_table.js') }}"></script>
     <script src="{{ url_for('static', filename='get_table.js') }}"></script>
     <script>
+
         function checkDuplicationType() {
             let duplicationType = document.getElementById('duplication_type');
             if (duplicationType) {
@@ -621,8 +621,8 @@
 
         function addCollapse(elem, tableID){
             var rows = elem.getElementsByTagName('tr');
-            button = `<button class="btn btn-secondary btn-block mt-auto  bi bi-chevron-up collapsed"
-                      type="button" data-toggle="collapse" data-target="#collapse${ tableID }"
+            button = `<button class="btn btn-secondary w-100 mt-auto  bi bi-chevron-up collapsed"
+                      type="button" data-bs-toggle="collapse" data-bs-target="#collapse${ tableID }"
                       aria-expanded="false" aria-controls="${ tableID }"></button>`
             if (rows.length > 4) {
                 for (var i = 4, row; row = rows[i]; i++) {
@@ -740,7 +740,7 @@
                         elem.parentNode.parentNode.parentNode.parentNode
                             .parentNode.querySelector(buttonSelector));
                     test_button.setAttribute('style', '');
-                    test_button.setAttribute('class', 'btn-block btn-sm btn-success');
+                    test_button.setAttribute('class', 'w-100 btn-sm btn-success');
                     addOnClickEvent('input[id*="test_connection"]' +
                         '[class*="btn"]:not([style*="visibility:hidden"])',
                         testApiOnClick);
@@ -956,15 +956,15 @@
                     '<div class="col text-center">' +
                     '<div class="card">' +
                     '<h5 class="card-header font-weight-bold text-primary">DICTIONARY</h5>' +
-                    '<div id="refresh_dictionary_buttons" class="btn-group btn-group-sm btn-block" role="group">' +
+                    '<div id="refresh_dictionary_buttons" class="btn-group btn-group-sm w-100" role="group">' +
                     '<button id="_refresh_dictionary"' +
                     'class="btn btn-outline-success" type="button">' +
-                    '<i class="fas fa-binoculars" href="#" role="button"></i>' +
+                    '<i class="bi bi-binoculars" href="#" role="button"></i>' +
                     'View' +
                     '</button>' +
                     '<button id="_refresh_delete_dict"' +
                     'class="btn btn-outline-danger" type="button">' +
-                    '<i class="fas fa-trash" href="#" role="button"></i>' +
+                    '<i class="bi bi-trash" href="#" role="button"></i>' +
                     'Delete' +
                     '</button>' +
                     '</div>' +
@@ -975,15 +975,15 @@
                     '<div class="col text-center">' +
                     '<div class="card">' +
                     '<h5 class="card-header font-weight-bold text-primary">RAW FILE</h5>' +
-                    '<div id="refresh_raw_buttons" class="btn-group btn-group-sm btn-block" role="group">' +
+                    '<div id="refresh_raw_buttons" class="btn-group btn-group-sm w-100" role="group">' +
                     '<button id="_refresh_raw_data"' +
                     'class="btn btn-outline-success" type="button">' +
-                    '<i class="fas fa-binoculars" href="#" role="button"></i>' +
+                    '<i class="bi bi-binoculars" href="#" role="button"></i>' +
                     'View' +
                     '</button>' +
                     '<button id="_refresh_download_raw_data"' +
                     'class="btn btn-outline-primary" type="button">' +
-                    '<i class="fas fa-download" href="#" role="button"></i>' +
+                    '<i class="bi bi-download" href="#" role="button"></i>' +
                     'Download' +
                     '</button>' +
                     '</div>' +
@@ -992,20 +992,20 @@
                     '<div class="col text-center">' +
                     '<div class="card">' +
                     '<h5 class="card-header font-weight-bold text-primary">DICTIONARY</h5>' +
-                    '<div id="refresh_dictionary_buttons" class="btn-group btn-group-sm btn-block" role="group">' +
+                    '<div id="refresh_dictionary_buttons" class="btn-group btn-group-sm w-100" role="group">' +
                     '<button id="_refresh_dictionary"' +
                     'class="btn btn-outline-success" type="button">' +
-                    '<i class="fas fa-binoculars" href="#" role="button"></i>' +
+                    '<i class="bi bi-binoculars" href="#" role="button"></i>' +
                     'View' +
                     '</button>' +
                     '<button id="_refresh_change_dictionary_order"' +
                     'class="btn btn-outline-warning" type="button">' +
-                    '<i class="fas fa-sort-amount-up-alt" href="#" role="button"></i>' +
+                    '<i class="bi bi-sort-up" href="#" role="button"></i>' +
                     'Change Order' +
                     '</button>' +
                     '<button id="_refresh_delete_dict"' +
                     'class="btn btn-outline-danger" type="button">' +
-                    '<i class="fas fa-trash" href="#" role="button"></i>' +
+                    '<i class="bi bi-trash" href="#" role="button"></i>' +
                     'Delete' +
                     '</button>' +
                     '</div>' +
@@ -1103,7 +1103,7 @@
         function completeSave(data, formContinue, oldPage = 'clean', newPage = 'export') {
             displayAlert(data['message'], data['level'])
             if (data['level'] === 'success') {
-                let element = document.getElementsByClassName('jumbotron')[0];
+                let element = document.getElementsByClassName('bg-body-tertiary')[0];
                 let originalColor = element.style.backgroundColor;
                 element.style.backgroundColor = "#b3ecff";
                 let t = setTimeout(function () {
@@ -1217,7 +1217,7 @@
                 '<div class="col">' +
                 '<div class="card">' +
                 '<h6 class="card-header"><small class="text-muted">Categories</small></h6>' +
-                '<div id="noteButtons" class="btn-group btn-group-sm btn-block" role="group">' +
+                '<div id="noteButtons" class="btn-group btn-group-sm w-100" role="group">' +
                 '</div>' +
                 '</div>')
             for (var i = 0; i < buttons.length; i++) {
@@ -1376,21 +1376,13 @@
             }
         }
 
-        $(document).ready(function() {
-            $('#duplication_type').on('change', function(e){
-                checkHideElem(this);
-            });
-        });
+        function duplicationTypeOnChange() {
+            checkHideElem(this);
+        }
 
-        $(document).ready(function() {
-            $('#name_create_type').on('change', function(e){
-                SubmitForm('', 'form_continue');
-                loadingBtn(this, '');
-            });
-        });
-
-        function addPopovers() {
-            $('[data-toggle="hover"]').popover({trigger: "hover"})
+        function nameCreateOnChange() {
+            SubmitForm('', 'form_continue');
+            loadingBtn(this, '');
         }
 
         function loadJS() {
@@ -1408,16 +1400,18 @@
                             'change');
             addOnClickEvent('input[id*="add_child"][value="Add Static Filter"]',
                 addStaticFilterOnClick);
+            loadJQuery();
             addFilePond();
             addFilePondMeta();
             addSelectize();
             changeDataSource();
             changeAutoNote();
             getSelectedDashboard();
-            addPopovers();
             addWalkthrough();
             addOnClickEvent('[id^="viewSelector"]', viewSelectorChangeEvent, 'change');
             addOnClickEvent('#data_source', changeImportFilter, 'change');
+            addOnClickEvent('#duplication_type', duplicationTypeOnChange, 'change');
+            addOnClickEvent('#name_create_type', nameCreateOnChange, 'change');
             addOnClickEvent('.list-group-item-linkable', listGroupOnClick);
             addLogModalObserver();
             reloadPageOnModalCloseListener();

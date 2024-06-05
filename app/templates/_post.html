@@ -1,74 +1,61 @@
 <table class="table table-hover text-wrap shadow outer">
-    <tr><td>
-    <div class="text-wrap"
-         style="word-wrap: break-word; overflow-wrap: break-word;">
-        {% set user_link %}
-            <span class="user_popup">
-                <a href="{{ url_for('main.user',
-                   username=post.author.username) }}"
-                   style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
-                    {{ post.author.username }}
-                </a>
-            </span>
-        {% endset %}
-        <div class="media">
-        {% with size=40 %}
-            {% include '_user_image.html' %}
-        {% endwith %}
-          <div class="media-body">
-            <a class="mt-0">{{ _('%(username)s said %(when)s',
-            username=user_link, when=moment(post.timestamp).fromNow()) }}</a>
-          <div class="media">
-          <div class="media-body">
-            {% if post.processor_id %}
-                <span class="processor_popup">
-                    <a href="{{ url_for('main.processor_page',
-                     object_name=post.processor.name) }}"
-                     style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
-                        {{ post.processor.name }}
-                    </a>
-                </span>
-            {% endif %}
-            {% if post.uploader_id %}
-                <span class="uploader_popup">
-                    <a href="{{ url_for('main.uploader_page',
-                     object_name=post.uploader.name) }}">
-                        {{ post.uploader.name }}
-                    </a>
-                </span>
-            {% endif %}
-            {% if post.request_id %}
-                <span class="uploader_popup">
-                    <a href="{{ url_for('main.edit_processor_view_fix',
-                     object_name=post.processor.name,
-                     fix_id=post.request_id) }}">
-                        #{{ post.request_id }}
-                    </a>
-                </span>
-            {% endif %}
-            <span id="post{{ post.id }}"
-                  style="font-size: 90%; word-wrap: break-word;
-                  word-break: break-word; overflow-wrap: break-word;">
-                {{ post.body }}</span>
-                {% if post.language and post.language != g.locale %}
-                <br><br>
-                <span id="translation{{ post.id }}">
-                    <a href="javascript:translate(
-                                '#post{{ post.id }}',
-                                '#translation{{ post.id }}',
-                                '{{ post.language }}',
-                                '{{ g.locale }}');">{{ _('Translate') }}</a>
-                </span>
-             {% endif %}
+    <tr>
+        <td>
+            <div class="d-flex align-items-start align-items-center">
+                <!-- Image section -->
+                {% with size=40 %}
+                    {% include '_user_image.html' %}
+                {% endwith %}
+
+                <!-- Text content section -->
+                <div class="flex-grow-1 ms-3">
+                    {% set user_link %}
+                        <a href="{{ url_for('main.user', username=post.author.username) }}" class="user_popup">
+                            {{ post.author.username }}
+                        </a>
+                    {% endset %}
+
+                    <div>
+                        <a class="mt-0">{{ _('%(username)s said %(when)s', username=user_link, when=moment(post.timestamp).fromNow()) }}</a>
+                    </div>
+
+                    <div>
+                        {% if post.processor_id %}
+                            <a href="{{ url_for('main.processor_page', object_name=post.processor.name) }}" class="processor_popup">
+                                {{ post.processor.name }}
+                            </a>
+                        {% endif %}
+                        {% if post.uploader_id %}
+                            <a href="{{ url_for('main.uploader_page', object_name=post.uploader.name) }}" class="uploader_popup">
+                                {{ post.uploader.name }}
+                            </a>
+                        {% endif %}
+                        {% if post.request_id %}
+                            <a href="{{ url_for('main.edit_processor_view_fix', object_name=post.processor.name, fix_id=post.request_id) }}" class="uploader_popup">
+                                #{{ post.request_id }}
+                            </a>
+                        {% endif %}
+                        <span id="post{{ post.id }}" style="font-size: 90%;">
+                            {{ post.body }}
+                        </span>
+                        {% if post.language and post.language != g.locale %}
+                            <br><br>
+                            <span id="translation{{ post.id }}">
+                                <a href="javascript:translate('#post{{ post.id }}', '#translation{{ post.id }}', '{{ post.language }}', '{{ g.locale }}');">{{ _('Translate') }}</a>
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        {% if post.processor_run_success() %}
+                            <i class="bi bi-check-lg btn btn-success pull-right"></i>
+                        {% endif %}
+                        {% if post.processor_run_failed() %}
+                            <i class="bi bi-x-lg btn btn-danger pull-right"></i>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-            {% if post.processor_run_success() %}
-                <i class="fas fa-check btn-secondary btn-sm btn-success"></i>
-            {% endif %}
-            {% if post.processor_run_failed() %}
-                <i class="fas fa-times btn-secondary btn-sm btn-danger"></i>
-            {% endif %}
-          </div>
-            </div>
-              </div></div>
-    </td></tr>
+        </td>
+    </tr>
 </table>

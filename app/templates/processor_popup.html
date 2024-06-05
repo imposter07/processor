@@ -26,31 +26,31 @@
                          role="tablist">
                         <a class="nav-link active"
                            id="nav-plinks-tab{{ processor.id }}"
-                           data-toggle="tab"
+                           data-bs-toggle="tab"
                            href="#nav-plinks{{ processor.id }}"
                            role="tab"
                            aria-controls="nav-plinks{{ processor.id }}"
                            aria-selected="true">
-                            <h4><i class="fas fa-bars btn btn-primary"
+                            <h4><i class="bi bi-list btn btn-primary"
                                    style="float:right; opacity:.5;"></i></h4>
                         </a>
                         <a class="nav-link"
                            id="nav-appgraph-tab{{ processor.id }}"
-                           data-toggle="tab"
+                           data-bs-toggle="tab"
                            href="#nav-appgraph{{ processor.id }}"
                            role="tab"
                            aria-controls="nav-appgraph{{ processor.id }}"
                            aria-selected="false">
-                            <h4><i class="fas fa-chart-bar btn btn-primary"
+                            <h4><i class="bi bi-bar-chart btn btn-primary"
                                    style="float:right; opacity:.5;"></i></h4>
                         </a>
                         <a class="nav-link"
                            id="nav-tableau-tab{{ processor.id }}"
-                           data-toggle="tab"
+                           data-bs-toggle="tab"
                            href="#nav-tableau{{ processor.id }}" role="tab"
                            aria-controls="nav-tableau{{ processor.id }}"
                            aria-selected="false">
-                            <h4><i class="fas fa-table btn btn-primary"
+                            <h4><i class="bi bi-table btn btn-primary"
                                    style="float:right; opacity:.5;"></i></h4>
                         </a>
                     </div>
@@ -64,7 +64,7 @@
         <div class="tab-content" id="nav-tabContent-processor{{ processor.id }}">
             <div class="tab-pane fade show active" id="nav-plinks{{ processor.id }}"
                  role="tabpanel" aria-labelledby="nav-plinks-tab{{ processor.id }}">
-                <div id='listTabs' class="btn-group btn-block btn-group-sm" style="opacity:.6;">
+                <div id='listTabs' class="btn-group w-100 btn-group-sm" style="opacity:.6;">
                     {% with buttons=processor.get_navigation_buttons() %}
                         {% with object_function_call=processor.get_object_function_call() %}
                             {% with icon_only = true %}

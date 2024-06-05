@@ -2,7 +2,7 @@
     <div class="row">
         <div class="col">
             <button id="createPlan{{ processor.id }}" type="button"
-                    class="btn btn-block btn-outline-primary btn-sm">
+                    class="btn w-100 btn-outline-primary btn-sm">
                 Create/View Plan
             </button>
             <select id="ownerSelect{{ processor.name }}"
@@ -36,19 +36,19 @@
         {% if not processor.local_path %}
         <div class="col">
             <a href="{{ url_for('main.edit_processor_duplication_from_another', object_name=processor.name) }}">
-                <button class="btn btn-outline-success btn-block text-left"
+                <button class="btn btn-outline-success bw-100 text-start"
                         type="button"
                         href="{{ url_for('main.edit_processor_duplication_from_another', object_name=processor.name) }}">
-                    <i class="fas fa-plus-circle"
+                    <i class="bi bi-plus-circle"
                        role="button"></i>
                     {{ _('Create From Existing Processor') }}
                 </button>
             </a>
             <a href="{{ url_for('main.delete_processor', object_name=processor.name) }}">
-                <button class="btn btn-outline-danger btn-block text-left"
+                <button class="btn btn-outline-danger w-100 text-start"
                         type="button"
                         href="{{ url_for('main.delete_processor', object_name=processor.name) }}">
-                    <i class="fas fa-times-circle"
+                    <i class="bi bi-trash"
                        role="button"></i>
                     {{ _('Delete Processor') }}
                 </button>

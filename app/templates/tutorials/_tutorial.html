@@ -34,7 +34,7 @@
     </div>
     {% if tutorial_stage.question_answers %}
         <div class="card-footer">
-            <div class="btn-group btn-group-sm btn-block">
+            <div class="btn-group btn-group-sm w-100">
             {% set answers = tutorial_stage.get_question_answers() %}
                 {% for answer in answers %}
                     <button id="answer{{ loop.index }}" type="button"

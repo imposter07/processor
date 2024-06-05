@@ -56,7 +56,6 @@
 
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/LIB/d3-scale-radial.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
@@ -1876,7 +1875,7 @@
 
     function getTooltip(content, cell){
         cell.setAttribute("class", "dropdown-item");
-        cell.setAttribute("data-toggle", "hover");
+        cell.setAttribute("data-bs-toggle", "hover");
         cell.setAttribute("data-placement", "bottom");
         cell.setAttribute("title", content);
         cell.style.height = "100%"
@@ -1885,8 +1884,8 @@
     function addAccordianSetup(tableName) {
         const rows = document.getElementById(tableName).getElementsByTagName('tr');
         for (let i = 1, row; row = rows[i]; i++) {
-            let expandButtonHTML = `<button class="btn btn-primary btn-sm fa-solid fa-chevron-up collapsed"
-                data-target="#collapseRow` + (i-1) + `" data-toggle="collapse"
+            let expandButtonHTML = `<button class="btn btn-primary btn-sm bi bi-chevron-up collapsed"
+                data-bs-target="#collapseRow` + (i-1) + `" data-bs-toggle="collapse"
                 aria-expanded="False" type="button" style="color:white">
                 </button>`;
             let expandCell = rows[i].insertCell(-1);
@@ -1931,10 +1930,10 @@
             val = parseFloat(val)
             if (Math.abs(val) > parseFloat(threshold)) {
                 if (val > 0) {
-                    icon = `<i>  </i><i class="fa-solid fa-arrow-up" style="color: #00C851"></i>`;
+                    icon = `<i>  </i><i class="bi bi-arrow-up" style="color: #00C851"></i>`;
                 }
                 if (val < 0) {
-                    icon = `<i>  </i><i class="fa-solid fa-arrow-down" style="color: #ff4444"></i>`;
+                    icon = `<i>  </i><i class="bi bi-arrow-down" style="color: #ff4444"></i>`;
                 }
                 let iconCell = rows[i].cells[colInd]
                 iconCell.innerHTML += icon
@@ -2134,6 +2133,7 @@
 
     function staticFilterChange() {
         $('select[id$="filter_col"]').selectize({
+            plugins: ['drag_drop', 'remove_button', 'restore_on_backspace', 'clear_button'],
             onChange: function () {
                 const selectElement = this.$input[0];
                 getStaticFilterOptions(selectElement);
@@ -2166,18 +2166,20 @@
         makeRequest(url, 'POST', formData, addDeleteStaticFilterResponse);
     }
 
-    $(document).ready(function () {
-        $('#chart_type').on('change', function (e) {
-            let selectedText = this.options[e.target.selectedIndex].text;
-            let dimensionsJquery = '#dimensions';
-            if ((selectedText === 'Area') || (selectedText === 'Line')) {
-                let selectize = document.getElementById(`dimensions`).selectize;
-                selectize.setValue('eventdate');
-                selectize.disable();
-            } else {
-                let selectize = document.getElementById(`dimensions`).selectize;
-                selectize.enable();
-            }
-        });
+    function checkChartTypeOnChange (e) {
+        let selectedText = this.options[e.target.selectedIndex].text;
+        if ((selectedText === 'Area') || (selectedText === 'Line')) {
+            let selectize = document.getElementById(`dimensions`).selectize;
+            selectize.setValue('eventdate');
+            selectize.disable();
+        } else {
+            let selectize = document.getElementById(`dimensions`).selectize;
+            selectize.enable();
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+         addOnClickEvent('#chart_type', checkChartTypeOnChange, 'change', false);
     });
+
 </script>

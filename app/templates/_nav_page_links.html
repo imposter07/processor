@@ -5,7 +5,7 @@
            href="{% if object_function_call %}{{ url_for(button_link['route'], **object_function_call) }}
                         {% endif %}">
             {% if button_link['icon'] %}
-                <i class="fas fa-{{ button_link['icon'] }}" href="#" role="button"></i>
+                <i class="bi bi-{{ button_link['icon'] }}" href="#" role="button"></i>
             {% endif %}
             {% if not icon_only %}
                 {{ button_name }}

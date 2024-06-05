@@ -9,13 +9,13 @@
 {% block vertical_navbar %}
 <div class="card shadow outer">
     <div class="card-header">
-        <h3>Filters<i class="fas fa-filter btn btn-secondary"
+        <h3>Filters<i class="bi bi-filter btn btn-secondary"
                            style="float:right;"></i></h3>
         <h6 class="card-subtitle mb-2 text-muted">Use the filters below to quickly find a processor instance.</h6>
     </div>
     <div class="card-body">
-    <div class="custom-control custom-switch" id="customSwitchDiv">
-        <input type="checkbox" class="custom-control-input" id="liveProcessorsSwitch"
+    <div class="form-check form-switch" id="customSwitchDiv">
+        <input type="checkbox" role="switch" class="form-check-input" id="liveProcessorsSwitch"
                checked>
         <label class="custom-control-label" for="liveProcessorsSwitch">
             {{ _("Live Processors") }}</label>
@@ -78,7 +78,7 @@
     </div>
     <div class="col">
         <button id="applyFilter" type="button"
-                class="btn btn-block btn-outline-primary btn-sm">
+                class="btn w-100 btn-outline-primary btn-sm">
             Apply Filter
         </button>
     </div>

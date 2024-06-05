@@ -1,6 +1,6 @@
 {% extends "create_processor.html" %}
 
-{% block app_content %}
+{% block app_content_3 %}
     <style type="text/css">
         .widget {
             height: 20vh !important;
@@ -63,22 +63,21 @@
         }
     </style>
     <nav>
-        {% include '_nav_and_progress.html' %}
         <div class="row">
             <div class="col-md-12 p-0">
                 <div class="card-header">
                     <div class="nav nav-tabs" id="nav-tab" role="tablist">
                         <a class="nav-link d-flex align-items-center border text-secondary p-2 active" id="nav-dash-tab"
-                           data-toggle="tab" href="#nav-dash" role="tab"
+                           data-bs-toggle="tab" href="#nav-dash" role="tab"
                            aria-controls="nav-dash" aria-selected="true">
                             <h6 class="pl-1 pr-1 m-0 d-flex align-items-center">
-                                <i class="fas fa-solid fa-chart-column btn btn-secondary btn-sm mr-2"
+                                <i class="bi bi-bar-chart-fill btn btn-secondary btn-sm mr-2"
                                    style="float:right;" aria-hidden="true"></i>
                                 Topline
                             </h6>
                         </a>
                         <a class="nav-link d-flex align-items-center border text-secondary p-2" id="nav-partner-tab"
-                           data-toggle="tab" href="#nav-partner" role="tab"
+                           data-bs-toggle="tab" href="#nav-partner" role="tab"
                            aria-controls="nav-partner" aria-selected="true"
                            onclick="setTimeout(getPartnerMetrics, 1000);
                                  this.onclick=null;">
@@ -86,7 +85,7 @@
                                 <div hidden>
                                     <div id="pacingAlertCountProgress"></div>
                                 </div>
-                                <i class="fas fa-solid fa-handshake btn btn-secondary btn-sm mr-2"
+                                <i class="bi bi-person-fill btn btn-secondary btn-sm mr-2"
                                    style="float:right;" aria-hidden="true"></i>
                                 Partner
                                 <div class="icon-badge-container align-self-baseline pl-1">
@@ -96,54 +95,54 @@
                             </h6>
                         </a>
                         <a class="nav-link d-flex align-items-center border text-secondary p-2" id="nav-country-tab"
-                           data-toggle="tab" href="#nav-country" role="tab"
+                           data-bs-toggle="tab" href="#nav-country" role="tab"
                            aria-controls="nav-country" aria-selected="true"
                            onclick="setTimeout(getCountryMetrics, 1000);
                                  this.onclick=null;">
                             <h6 class="pl-1 pr-1 m-0 d-flex align-items-center">
-                                <i class="fas fa-solid fa-globe btn btn-secondary btn-sm mr-2"
+                                <i class="bi bi-globe btn btn-secondary btn-sm mr-2"
                                    style="float:right;" aria-hidden="true"></i>
                                 Country
                             </h6>
                         </a>
                         <a class="nav-link d-flex align-items-center border text-secondary p-2" id="nav-targeting-tab"
-                           data-toggle="tab" href="#nav-targeting" role="tab"
+                           data-bs-toggle="tab" href="#nav-targeting" role="tab"
                            aria-controls="nav-targeting" aria-selected="true"
                            onclick="setTimeout(getTargetingMetrics, 1000);
                                  this.onclick=null;">
                             <h6 class="pl-1 pr-1 m-0 d-flex align-items-center">
-                                <i class="fas fa-solid fa-bullseye btn btn-secondary btn-sm mr-2"
+                                <i class="bi bi-bullseye btn btn-secondary btn-sm mr-2"
                                    style="float:right;" aria-hidden="true"></i>
                                 Targeting
                             </h6>
                         </a>
                         <a class="nav-link d-flex align-items-center border text-secondary p-2" id="nav-placement-tab"
-                           data-toggle="tab" href="#nav-placement" role="tab"
+                           data-bs-toggle="tab" href="#nav-placement" role="tab"
                            aria-controls="nav-placement" aria-selected="true"
                            onclick="setTimeout(getPlacementMetrics, 1000);
                                  this.onclick=null;">
                             <h6 class="pl-1 pr-1 m-0 d-flex align-items-center">
-                                <i class="fas fa-solid fa-box btn btn-secondary btn-sm mr-2"
+                                <i class="bi bi-box btn btn-secondary btn-sm mr-2"
                                    style="float:right;" aria-hidden="true"></i>
                                 Placement
                             </h6>
                         </a>
                         <a class="nav-link d-flex align-items-center border text-secondary p-2" id="nav-creative-tab"
-                           data-toggle="tab" href="#nav-creative" role="tab"
+                           data-bs-toggle="tab" href="#nav-creative" role="tab"
                            aria-controls="nav-creative" aria-selected="true"
                            onclick="setTimeout(getCreativeMetrics, 1000);
                                  this.onclick=null;">
                             <h6 class="pl-1 pr-1 m-0 d-flex align-items-center">
-                                <i class="fas fa-solid fa-image btn btn-secondary btn-sm mr-2"
+                                <i class="bi bi-image btn btn-secondary btn-sm mr-2"
                                    style="float:right;" aria-hidden="true"></i>
                                 Creative
                             </h6>
                         </a>
                         <a class="nav-link d-flex align-items-center border text-secondary p-2" id="nav-billing-tab"
-                           data-toggle="tab" href="#nav-billing" role="tab"
+                           data-bs-toggle="tab" href="#nav-billing" role="tab"
                            aria-controls="nav-billing" aria-selected="true">
                             <h6 class="pl-1 pr-1 m-0 d-flex align-items-center">
-                                <i class="fas fa-solid fa-money-bill btn btn-secondary btn-sm mr-2"
+                                <i class="bi bi-cash btn btn-secondary btn-sm mr-2"
                                    style="float:right;" aria-hidden="true"></i>
                                 Billing
                             </h6>
@@ -160,11 +159,11 @@
                 <div class="col-md-12 p-0">
                     <div class="card-header">
                         <div class="row" id="navRow">
-                            <div class="btn-group btn-group-sm btn-block"
+                            <div class="btn-group btn-group-sm w-100"
                                  role="group">
                                 <button id="getAllCharts"
                                         class="btn btn-outline-primary"><i
-                                        class="fas fa-chart-bar" href="#"
+                                        class="bi bi-bar-chart" href="#"
                                         role="button"
                                         aria-hidden="true"></i>Get All Charts
                                 </button>
@@ -213,7 +212,7 @@
                             </div>
                             <div class="col mb-3">
                                 <button id="applyFilter" type="button"
-                                        class="btn btn-block btn-outline-primary btn-sm">
+                                        class="btn w-100 btn-outline-primary btn-sm">
                                     Apply Filter
                                 </button>
                             </div>
@@ -225,10 +224,10 @@
             <br>
             <div class="row">
                 <button class="btn btn-success ml-3 text-right" id="add-dash">
-                    <i class="fas fa-plus" style="color:white" onclick="addDashModal('Topline')"></i>
+                    <i class="bi bi-plus" style="color:white" onclick="addDashModal('Topline')"></i>
                 </button>
                 <div class="col-md-12 h-50">
-                    <div class="card-deck container-fluid text-center mx-auto mb-2 mt-2">
+                    <div class="card-group container-fluid text-center mx-auto mb-2 mt-2">
                         <div id="totalMetricsProgress"></div>
                         <div id="totalMetrics" class="row w-100 mx-auto"></div>
                     </div>
@@ -373,7 +372,12 @@
         </div>
     </div>
 
+
     <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='liquid_table.js') }}"></script>
+    <script src="{{ url_for('static', filename='get_table.js') }}"></script>
+
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             addOnClickEvent('button[id^="getAllCharts"]', getAllChartsClickEvent);
@@ -392,4 +396,9 @@
             getAllCharts();
         });
     </script>
+    {% include "dashboards/_dash_builder.html" %}
+    {% include "_table_builder.html" %}
+    {% include "_report_builder.html" %}
+    {% include "_select_builder.html" %}
+    {% include "_rawfile_check.html" %}
 {% endblock %}

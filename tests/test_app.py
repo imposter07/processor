@@ -1,4 +1,3 @@
-import logging
 import os
 import time
 import json
@@ -6,7 +5,6 @@ import pytest
 import urllib
 from datetime import datetime, timedelta
 from contextlib import contextmanager
-import selenium.common.exceptions as ex
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
     Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
@@ -93,7 +91,8 @@ def export_proc_data(proc, user, worker):
 
 
 def submit_form(sw, form_names=None, select_form_names=None,
-                submit_id='loadContinue', test_name='test'):
+                submit_id='loadContinue', test_name='test',
+                clear_existing=True, send_escape=True):
     if not form_names:
         form_names = []
     if not select_form_names:
@@ -109,7 +108,8 @@ def submit_form(sw, form_names=None, select_form_names=None,
             form_val = datetime.now().strftime('%m-%d-%Y')
         elem_form.append((form_val, form_name))
     if test_name:
-        sw.send_keys_from_list(elem_form)
+        sw.send_keys_from_list(elem_form, clear_existing=clear_existing,
+                               send_escape=send_escape)
     sw.xpath_from_id_and_click(submit_id, .1)
 
 
@@ -419,13 +419,11 @@ class TestProcessor:
         with adjust_path(basedir):
             proc_url = self.get_url(main_routes.edit_processor_import,
                                     p_name=default_name)
-            sw.go_to_url(proc_url, elem_id='add_child', sleep=.5)
-            import_card = sw.browser.find_element_by_xpath(
-                '//div[@class="card col-" and .//input[@value="{}"]]'.format(
-                    name))
-            card_body = import_card.find_element_by_xpath('./*')
-            api_id = card_body.get_attribute('id')
-            sw.xpath_from_id_and_click('{}-delete'.format(api_id))
+            sw.go_to_url(proc_url, elem_id='add_child')
+            xp = """//input[@value="{}"]""".format(name)
+            import_card = sw.browser.find_element_by_xpath(xp)
+            api_id = import_card.get_attribute('id').replace('name', 'delete')
+            sw.xpath_from_id_and_click(api_id)
             sw.browser.execute_script("window.scrollTo(0, 0)")
             sw.xpath_from_id_and_click('loadRefresh')
             sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
@@ -515,24 +513,26 @@ class TestProcessor:
     def test_auto_dict_update(self, set_up, sw, worker, default_name, user):
         change_order_btn = '_refresh_change_dictionary_order'
         order_selector = 'auto_order_select3-selectized'
-        select_agency = '/html/body/div[22]/div/div[1]'
         self.create_and_go_to_clean(set_up, sw, worker, default_name, user)
         with adjust_path(basedir):
             sw.wait_for_elem_load(elem_id=change_order_btn)
-            sw.xpath_from_id_and_click(change_order_btn)
+            load_btn_id = 'loadingBtn{}'.format(change_order_btn)
+            sw.xpath_from_id_and_click(change_order_btn,
+                                       load_elem_id=load_btn_id)
             worker.work(burst=True)
             sw.wait_for_elem_load(elem_id=order_selector)
-            for x in range(5):
-                sw.xpath_from_id_and_click(order_selector)
-                try:
-                    sw.click_on_xpath(xpath=select_agency)
+            submit_form(sw, form_names=[order_selector],
+                        submit_id='modalTableSaveButton', test_name=dctc.AGY,
+                        send_escape=False)
+            alert_elem = 'alertPlaceholder'
+            sw.wait_for_elem_load(elem_id=alert_elem, visible=True)
+            for x in range(10):
+                time.sleep(.1)
+                elem = sw.browser.find_element_by_id(alert_elem)
+                task_done = elem.get_attribute('innerHTML')
+                if task_done:
                     break
-                except ex.NoSuchElementException:
-                    logging.warning('Could not click order selector, retrying')
-                    time.sleep(0.75)
-            sw.xpath_from_id_and_click('modalTableSaveButton')
             worker.work(burst=True)
-            sw.browser.refresh()
             df = vm.VendorMatrix().vm_df
             df = df[df[vmc.vendorkey].str.contains('API_Rawfile')]
             auto_dict_first = (df[vmc.autodicord]).str.split('|').str[0]
@@ -777,7 +777,8 @@ class TestPlan:
         val_one = 'a'
         val_two = 'b'
         sw.send_keys_from_list([(val_one, elem_id), (val_two, elem_two_id)])
-        submit_form(sw, form_names=[elem_id], test_name=self.test_name)
+        submit_form(sw, form_names=[elem_id], test_name=self.test_name,
+                    clear_existing=False)
         worker.work(burst=True)
         cur_places = p.get_placements()
         poss_vals = [self.test_name, val_one, val_two]
@@ -884,6 +885,7 @@ class TestPlan:
             plan_id=p.id, factor_name=PlanEffectiveness.brand_low[0]).first()
         assert pe.selected_val == float(selected_val)
         sw.browser.refresh()
+        sw.wait_for_elem_load('loadingBtnCalc')
         worker.work(burst=True)
         elem_id = 'rowValue50'
         sw.wait_for_elem_load(elem_id)
@@ -1577,10 +1579,11 @@ class TestReportingDBReadWrite:
                          export_test_data):
         ffxiv_proc_url = '{}/processor/{}'.format(
             base_url, urllib.parse.quote(self.test_proc_name))
-        sw.go_to_url(ffxiv_proc_url)
+        elem_id = 'getAllCharts'
+        sw.go_to_url(ffxiv_proc_url, elem_id=elem_id)
         worker.work(burst=True)
-        sw.wait_for_elem_load('getAllCharts')
-        assert sw.browser.find_element_by_id("getAllCharts")
+        sw.wait_for_elem_load(elem_id)
+        assert sw.browser.find_element_by_id(elem_id)
         metric_select_path = "dailyMetricsChartPlaceholderSelect0"
         sw.wait_for_elem_load(metric_select_path, selector=sw.select_xpath)
         metric_select = sw.browser.find_element_by_id(metric_select_path)
@@ -1593,28 +1596,29 @@ class TestReportingDBReadWrite:
                           export_test_data):
         ffxiv_proc_url = '{}/processor/{}'.format(
             base_url, urllib.parse.quote(self.test_proc_name))
-        sw.go_to_url(ffxiv_proc_url)
-        worker.work(burst=True)
         add_dash_id = 'add-dash'
+        sw.go_to_url(ffxiv_proc_url, elem_id=add_dash_id)
+        worker.work(burst=True)
         sw.wait_for_elem_load(add_dash_id)
-        sw.xpath_from_id_and_click(add_dash_id,
-                                   load_elem_id='chart_type-selectized')
+        load_elem_id = 'chart_type-selectized'
+        sw.xpath_from_id_and_click(add_dash_id, load_elem_id=load_elem_id)
         dash_name = 'Test'
         dash_form_fill = [(dash_name, 'name'),
-                          ('Lollipop', 'chart_type-selectized', 'clear'),
+                          ('Lollipop', load_elem_id, 'clear'),
                           ('environmentname', 'dimensions-selectized', 'clear'),
                           ('impressions', 'metrics-selectized'),
                           ('Chart', 'default_view-selectized', 'clear'),
                           ('Topline', 'tab-selectized', 'clear')]
-        sw.send_keys_from_list(dash_form_fill)
+        sw.send_keys_from_list(dash_form_fill, send_escape=False)
         save_id = 'saveDashButton'
         sw.wait_for_elem_load(save_id)
-        sw.xpath_from_id_and_click(save_id)
-        sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
+        load_elem_id = '.alert.alert-info'
+        sw.xpath_from_id_and_click(save_id, load_elem_id='alertPlaceholder')
+        sw.wait_for_elem_load(load_elem_id, selector=sw.select_css)
         worker.work(burst=True)
         dash = Dashboard.query.filter_by(name=dash_name).all()
         assert dash
-        custom_charts ='customChartsTopline'
+        custom_charts = 'customChartsTopline'
         sw.wait_for_elem_load(custom_charts)
         chart = sw.browser.find_element_by_id(custom_charts)
         sw.scroll_to_elem(chart)
@@ -1639,10 +1643,10 @@ class TestReportingDBReadWrite:
                             export_test_data):
         ffxiv_proc_url = '{}/processor/{}'.format(
             base_url, urllib.parse.quote(self.test_proc_name))
-        if not sw.browser.current_url == ffxiv_proc_url:
-            sw.go_to_url(ffxiv_proc_url)
-            worker.work(burst=True)
         add_dash_id = 'add-dash'
+        if not sw.browser.current_url == ffxiv_proc_url:
+            sw.go_to_url(ffxiv_proc_url, elem_id=add_dash_id)
+            worker.work(burst=True)
         sw.wait_for_elem_load(add_dash_id)
         sw.xpath_from_id_and_click(add_dash_id,
                                    load_elem_id='chart_type-selectized')
@@ -1655,15 +1659,18 @@ class TestReportingDBReadWrite:
                           ('clicks', 'metrics-selectized'),
                           ('Table', 'default_view-selectized', 'clear'),
                           ('Partner', 'tab-selectized', 'clear')]
-        sw.send_keys_from_list(dash_form_fill)
-        sw.xpath_from_id_and_click('saveDashButton')
+        sw.send_keys_from_list(dash_form_fill, send_escape=False)
+        sw.xpath_from_id_and_click('saveDashButton',
+                                   load_elem_id='alertPlaceholder')
         sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
         worker.work(burst=True)
         partner_tab = 'nav-partner-tab'
         assert sw.browser.find_element_by_id(partner_tab)
-        sw.xpath_from_id_and_click('nav-partner-tab')
-        custom_charts = sw.browser.find_element_by_id('customChartsPartner')
+        load_elem_id = 'customChartsPartner'
+        sw.xpath_from_id_and_click('nav-partner-tab', load_elem_id=load_elem_id)
+        custom_charts = sw.browser.find_element_by_id(load_elem_id)
         sw.scroll_to_elem(custom_charts)
+        sw.wait_for_elem_load('loadingBtndash1MetricsProgress')
         worker.work(burst=True)
         assert sw.browser.find_element_by_id('partnerSummaryMetrics')
         selector = '[data-name="{}"]'.format(test_partner)
@@ -1785,14 +1792,22 @@ class TestReportingDBReadWrite:
                          update_report_in_db):
         report_url = '{}/processor/{}/edit/report_builder'.format(
             base_url, urllib.parse.quote(self.test_proc_name))
+        save_btn = 'reportBuilderSaveButton'
         if not sw.browser.current_url == report_url:
-            sw.go_to_url(report_url, elem_id='reportBuilder')
+            sw.go_to_url(report_url, elem_id=save_btn)
             worker.work(burst=True)
         report_name = 'AutoTest'
         report_date = datetime.utcnow().date()
         submit_form(sw, select_form_names=['name'], test_name=report_name,
-                    submit_id='reportBuilderSaveButton')
-        sw.wait_for_elem_load('alertPlaceholder')
+                    submit_id=save_btn)
+        alert_elem = 'alertPlaceholder'
+        sw.wait_for_elem_load(alert_elem, visible=True)
+        for x in range(10):
+            time.sleep(.1)
+            elem = sw.browser.find_element_by_id(alert_elem)
+            task_done = elem.get_attribute('innerHTML')
+            if task_done:
+                break
         for x in range(50):
             report_saved = worker.work(burst=True)
             if report_saved:

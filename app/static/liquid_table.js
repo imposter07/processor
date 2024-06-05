@@ -47,7 +47,7 @@ function createModal(modalId='', modalTitleText='', form = null,
 
     // Create the save button
     const saveButton = document.createElement("button");
-    saveButton.classList.add("btn", "btn-outline-success", "btn-block");
+    saveButton.classList.add("btn", "btn-outline-success", "w-100");
     saveButton.textContent = "Save";
     saveButton.addEventListener("click", function () {
         saveBtnFunction(saveBtnFunctionKwargs);
@@ -153,28 +153,28 @@ function createTableElements(tableName, rowsName,
         </div>`: '';
     let colToggleBtnHtml = (colToggle) ? `
         <button id="toggleMetrics"
-                class="btn btn-outline-secondary text-left"
+                class="btn btn-outline-secondary text-start"
                 type="button" href="" onclick="toggleMetricsSelect('${tableName}');">
-            <i class="fas fa-list-check"
+            <i class="bi bi-list-check"
                role="button"></i>
             Toggle Metrics
         </button>
     `: '';
     let topRowsBtnHtml = (topRowsName) ? `
         <button id="addTopRow${tableName}"
-                class="btn btn-outline-success text-left"
+                class="btn btn-outline-success text-start"
                 type="button" href="">
-            <i class="fas fa-plus"
+            <i class="bi bi-plus-lg"
                role="button"></i>
             Add ${topRowsName}
         </button>
     ` : '';
     let newModalBtnHtml = (newModalBtn)? `
         <button id="addNewRowModal${tableName}"
-                class="btn btn-outline-success text-left"
+                class="btn btn-outline-success text-start"
                 type="button" href=""
                 onclick="addNewRowModal('${tableName}');">
-            <i class="fas fa-plus"
+            <i class="bi bi-plus-lg"
                role="button"></i>
             Add New Row
         </button>
@@ -182,7 +182,7 @@ function createTableElements(tableName, rowsName,
     let showSearchBarHtml = (searchBar) ? `
         <div class="input-group-prepend">
                 <span class="input-group-text"><i
-                        class="fa-solid fa-magnifying-glass"
+                        class="bi bi-search"
                         href="#"
                         role="button"></i></span>
             </div>
@@ -195,9 +195,9 @@ function createTableElements(tableName, rowsName,
         </div>` : '';
     let showChartBtnHtml = (chartBtn) ? `
             <button id="showChartBtn${tableName}"
-                class="btn btn-outline-success text-left d-block"" type="button" 
+                class="btn btn-outline-success text-start d-block"" type="button" 
                 href="" onclick="showChart('${tableName}');">
-                <i class="fas fa-chart-bar" role="button"></i>
+                <i class="bi bi-bar-chart-fill" role="button"></i>
             </button>
     ` : '';
     let customButtons = createButtonsFromArray(tableName, tableButtons);
@@ -227,9 +227,9 @@ function createTableElements(tableName, rowsName,
             </div>
         </div>
         <div class="row m-2">
-            <div id="${tableName}TableSlideCol" class="col-xs"
-                 style="" data-value="${topRowsName}">
-                <div id="${tableName}TableSlide" class="card-deck"></div>
+            <div id="${tableName}TableSlideCol" class="col"
+                 style="display:none;" data-value="${topRowsName}">
+                <div id="${tableName}TableSlide" class="card-group"></div>
             </div>
             <div id="${tableName}TableBaseCol" class="col">
                 <table id="${tableName}Table" data-value="${rowsName}" data-accordion="${collapseStr}"
@@ -392,6 +392,7 @@ function buttonColOnClick(tableName, colName, loopIndex) {
     let titleName = `${tableName} - ${colName} - ${loopIndex}`;
     switchBaseFormId(tableName, loopIndex);
     createModal(modalId, titleName, form, returnBaseFormId);
+    loadJQuery();
     addFilePond();
     addFilePondMeta();
 }
@@ -426,10 +427,10 @@ function getRowHtml(loopIndex, tableName, rowData = null) {
         let cellData = getCellContent(rowData, colName);
         let isButtonCol = tableHeadElem.dataset['type'] === 'button_col';
         let buttonColBtn = `
-            <button id="btn${colName}${loopIndex}" class="btn btn-outline-success text-left"
+            <button id="btn${colName}${loopIndex}" class="btn btn-outline-success text-start"
                     type="button" href="" 
                     onclick="buttonColOnClick('${tableName}', '${colName}', '${loopIndex}');">
-                <i class="fas fa-plus"  role="button"></i>
+                <i class="bi bi-plus-lg"  role="button"></i>
             </button>`
         let buttonColHtml = (isButtonCol) ? buttonColBtn: '';
         let isLinkCol = tableHeadElem.dataset['type'] === 'link_col';
@@ -464,7 +465,7 @@ function getCellContent(rowData, colName) {
 
 function getDateForm(loopIndex, tableName) {
     let dateFormGroup = document.createElement('div');
-    dateFormGroup.className = 'col form-group';
+    dateFormGroup.className = 'col mb-3';
     let label = document.createElement('label');
     label.className = 'control-label';
     label.setAttribute('for', `datePicker${loopIndex}`);
@@ -854,7 +855,7 @@ function buildFormFromCols(loopIndex, formNames, tableName) {
 
         let displayColNames = col.dataset['displayname'];
         let formGroupDiv = document.createElement('div');
-        formGroupDiv.className = "col form-group";
+        formGroupDiv.className = "col mb-3";
         formGroupDiv.id = `${formName}FormGroupCol`;
         if (formName === 'id') {
             formGroupDiv.style.display = 'none';
@@ -916,8 +917,8 @@ function checkCellPickCol(loopIndex) {
 function createVisibleRow(loopIndex, curTable, tableName, rowData) {
     let tr = document.createElement('tr');
     tr.id = `tr${loopIndex}`;
-    tr.setAttribute('data-toggle', curTable.getAttribute('data-accordion') || '');
-    tr.setAttribute('data-target', `#collapseRow${loopIndex}`);
+    tr.setAttribute('data-bs-toggle', curTable.getAttribute('data-accordion') || '');
+    tr.setAttribute('data-bs-target', `#collapseRow${loopIndex}`);
     tr.className = 'accordion-toggle';
     tr.setAttribute('data-table', tableName);
     let rowOnClick = curTable.getAttribute('data-rowclick');
@@ -938,7 +939,7 @@ function createHiddenRow(loopIndex, tableName, bodyId) {
     divCollapse.id = `collapseRow${loopIndex}`;
     divCollapse.className = 'collapse';
     divCollapse.setAttribute('aria-labelledby', `heading${loopIndex}`);
-    divCollapse.setAttribute('data-parent', `#${bodyId}`);
+    divCollapse.setAttribute('data-bs-parent', `#${bodyId}`);
     let cardBody = document.createElement('div');
     cardBody.className = 'card-body';
     let formHolderDiv = document.createElement('div');
@@ -1100,12 +1101,12 @@ function addRowsOnClick() {
 
 function addDeleteBtn(loopIndex, tableName, form) {
     let deleteButtonDiv = document.createElement('div');
-    deleteButtonDiv.className = 'col form-group';
+    deleteButtonDiv.className = 'col mb-3';
     let deleteButton = document.createElement('button');
     deleteButton.id = `deleteRow${loopIndex}`;
-    deleteButton.className = 'btn btn-block btn-outline-danger text-left';
+    deleteButton.className = 'btn w-100 btn-outline-danger text-start';
     deleteButton.type = 'button';
-    deleteButton.innerHTML = '<i class="fas fa-trash" role="button" aria-hidden="true"></i> DELETE';
+    deleteButton.innerHTML = '<i class="bi bi-trash" role="button" aria-hidden="true"></i> DELETE';
     deleteButton.setAttribute('onclick', `deleteRow(${loopIndex}, '${tableName}');`);
     deleteButtonDiv.appendChild(deleteButton);
     form.insertBefore(deleteButtonDiv, form.firstChild);
@@ -1435,9 +1436,9 @@ function createTotalCards(tableName, defaultTotalVal = 0) {
                     for the current plan.</h6>
             </div>
             <div class="card-body">
-                <div class="card-deck container-fluid text-center">
+                <div class="container-fluid text-center">
                     <div id="${tableName}TotalCards" data-default="${defaultTotalVal}"
-                        class="row w-100"></div>
+                        class="row w-100 card-group"></div>
                 </div>
             </div>
         </div>`
@@ -1654,9 +1655,9 @@ function addTableColumn(col, specifyFormCol, thead, name) {
                     <div id="${placeHolderName}" class="p-0">Select ${colName}...</div>
                     <div class="input-group-append">
                         <button id="addRows${name}"
-                                class="btn btn-outline-success btn-block text-left"
+                                class="btn btn-outline-success w-100 text-start"
                                 type="button" href="">
-                            <i class="fas fa-plus"  role="button"></i>
+                            <i class="bi bi-plus-lg"  role="button"></i>
                         </button>
                     </div>`;
             elem.insertAdjacentHTML('beforeend', newElem);
@@ -1823,7 +1824,7 @@ function createTableFilter(tableId) {
         dialogHeader.onclick = closeFilterDialog;
         dialog.appendChild(dialogHeader);
         const closeIcon = document.createElement("i");
-        closeIcon.classList.add("fa", "fa-filter");
+        closeIcon.classList.add("bi", "bi-filter");
         closeIcon.onclick = closeFilterDialog;
         closeIcon.dataset.tableId = tableId;
         dialogHeader.appendChild(closeIcon);
@@ -1842,10 +1843,10 @@ function createTableFilter(tableId) {
             let filterPrefix = 'colFilterSwitchItem';
             let switchId = `${filterPrefix}${tableId}${j}${i}`;
             let elemToAdd = `
-                <div class="custom-control custom-switch">
+                <div class="form-check form-switch">
                     <input data-tableid="${tableId}" data-colidx="${j}" data-curvalue="${value}"
-                         type="checkbox" checked class="custom-control-input" id="${switchId}">
-                    <label class="custom-control-label" for="${switchId}">${value}</label>
+                         type="checkbox" checked class="form-check-input" id="${switchId}">
+                    <label class="form-check-label" for="${switchId}">${value}</label>
                 </div>
             `
             dialog.insertAdjacentHTML('beforeend', elemToAdd);
@@ -1854,7 +1855,7 @@ function createTableFilter(tableId) {
 
         // Add the filter icon
         const icon = document.createElement("i");
-        icon.classList.add("fa", "fa-filter");
+        icon.classList.add("bi", "bi-filter");
         icon.id = `colFilterIcon${tableId}${j}`
         icon.dataset.tableId = tableId;
         icon.dataset.colIdx = j;
@@ -1890,10 +1891,10 @@ function addTrendingArrows(col, loopIndex) {
     value = parseFloat(value);
     let icon;
     if (value > 0) {
-        icon = `<i>  </i><i class="fa-solid fa-arrow-up text-success"></i>`;
+        icon = `<i>  </i><i class="bi bi-arrow-up text-success"></i>`;
     }
     if (value < 0) {
-        icon = `<i>  </i><i class="fa-solid fa-arrow-down text-danger"></i>`;
+        icon = `<i>  </i><i class="bi bi-arrow-down text-danger"></i>`;
     }
     cell.innerHTML += icon
 }

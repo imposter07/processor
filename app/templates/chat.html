@@ -43,7 +43,7 @@
 
 .yours .message {
   margin-right: 25%;
-  background-color: #eee;
+  background-color: var(--bs-tertiary-bg);
   position: relative;
 }
 
@@ -55,7 +55,7 @@
   left: -7px;
   height: 20px;
   width: 20px;
-  background: #eee;
+  background: var(--bs-tertiary-bg);
   border-bottom-right-radius: 15px;
 }
 .yours .message.last:after {
@@ -118,21 +118,21 @@
 {% block vertical_navbar %}
     <div class="card shadow outer">
     <div class="card-header">
-        <h3>Conversations<i class="fas fa-comments btn btn-secondary"
+        <h3>Conversations<i class="bi bi-chat btn btn-secondary"
                            style="float:right;"></i></h3>
         <h6 class="card-subtitle mb-2 text-muted">
             Previous conversations you have had with ALI can be accessed here.
         </h6>
     </div>
     <div class="card-body" id="conversationButtons">
-        <a class="btn btn-outline-success btn-block" href="">
-            <i class="fas fa-plus" href="#" role="button" aria-hidden="true"></i>
+        <a class="btn btn-outline-success w-100" href="">
+            <i class="bi bi-plus" href="#" role="button" aria-hidden="true"></i>
             New Conversation
         </a>
         {% for conversation in conversations %}
-            <btn class="btn btn-outline-primary btn-block" id="conversationBtn{{ conversation.id }}"
+            <btn class="btn btn-outline-primary w-100" id="conversationBtn{{ conversation.id }}"
                data-cid="{{ conversation.id }}" onclick="getConversation({{ conversation.id }})">
-                <i class="fas fa-message" href="#" role="button" aria-hidden="true"></i>
+                <i class="bi bi-chat" href="#" role="button" aria-hidden="true"></i>
                 {{ conversation.name }}
             </btn>
         {% endfor %}
@@ -163,8 +163,7 @@
             </div>
         </div>
     </div>
-{% endblock %}
-{% block scripts %}
+
     <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
     <script src="{{ url_for('static', filename='liquid_table.js') }}"></script>
     <script src="{{ url_for('static', filename='get_table.js') }}"></script>
@@ -173,9 +172,9 @@
         function htmlResponseFormat(htmlResponse) {
             if (htmlResponse) {
                 let oldElem = `<div id="msgTableElem">`;
-                let iconElem = `<i class="fa-solid fa-arrows-rotate"></i>`;
+                let iconElem = `<i class="bi bi-arrow-repeat"></i>`;
                 let newElem = `
-                    <div class="msgTableElem btn btn-outline-primary btn-block">
+                    <div class="msgTableElem btn btn-outline-primary w-100">
                         ${iconElem}Reload Table`;
                 htmlResponse = htmlResponse.replace(oldElem, newElem);
                 oldElem = `<div class="msgTableElem">`;
@@ -283,10 +282,10 @@
             let conversationName = data['name'];
             let convButtonsElem = document.getElementById('conversationButtons');
             let elemToAdd = `
-                <btn id="currentConv" class="btn btn-primary btn-block"
+                <btn id="currentConv" class="btn btn-primary w-100"
                         data-cid="${conversationId}"
                         onclick="getConversation(${conversationId})">
-                    <i class="fas fa-message" href="#" role="button" aria-hidden="true"></i>
+                    <i class="bi bi-chat" href="#" role="button" aria-hidden="true"></i>
                     ${conversationName}
                 </btn>`;
             convButtonsElem.insertAdjacentHTML('beforeend', elemToAdd);
@@ -352,7 +351,7 @@
             let elemSelector = '.examplePrompt';
             let elems = document.querySelectorAll(elemSelector);
             let copyHtml = '<div class="btn btn-outline-primary">';
-            copyHtml = copyHtml + '<i class="fa-solid fa-copy"></i>';
+            copyHtml = copyHtml + '<i class="bi bi-copy"></i>';
             elems.forEach(elem => {
                 if (!(elem.children[0])) {
                     elem.dataset['prompt'] = elem.innerHTML;

@@ -957,36 +957,33 @@ class Processor(db.Model):
         elif buttons == 'UploaderDCM':
             buttons = [
                 {'Basic': ['main.edit_uploader', 'upload']},
-                {'Campaign': ['main.edit_uploader_campaign_dcm',
-                              'champagne-glasses']},
+                {'Campaign': ['main.edit_uploader_campaign_dcm', 'controller']},
                 {'Adset': ['main.edit_uploader_adset_dcm', 'bullseye']},
-                {'Ad': ['main.edit_uploader_ad_dcm', 'rectangle-ad']}]
+                {'Ad': ['main.edit_uploader_ad_dcm', 'badge-ad']}]
         elif buttons == 'UploaderFacebook':
             buttons = [
                 {'Basic': ['main.edit_uploader', 'upload']},
-                {'Campaign': ['main.edit_uploader_campaign',
-                              'champagne-glasses']},
+                {'Campaign': ['main.edit_uploader_campaign', 'controller']},
                 {'Adset': ['main.edit_uploader_adset', 'bullseye']},
                 {'Creative': ['main.edit_uploader_creative', 'palette']},
-                {'Ad': ['main.edit_uploader_ad', 'rectangle-ad']}]
+                {'Ad': ['main.edit_uploader_ad', 'badge-ad']}]
         elif buttons == 'UploaderAdwords':
             buttons = [
                 {'Basic': ['main.edit_uploader', 'upload']},
-                {'Campaign': ['main.edit_uploader_campaign_aw',
-                              'champagne-glasses']},
+                {'Campaign': ['main.edit_uploader_campaign_aw', 'controller']},
                 {'Adset': ['main.edit_uploader_adset_aw', 'bullseye']},
-                {'Ad': ['main.edit_uploader_ad_aw', 'rectangle-ad']}]
+                {'Ad': ['main.edit_uploader_ad_aw', 'badge-ad']}]
         elif buttons == 'Plan':
             buttons = [{'Checklist': ['plan.checklist', 'list-check']},
                        {'Basic': ['plan.edit_plan', 'list-ol']},
-                       {'Fees': ['plan.fees', 'comment-dollar']},
+                       {'Fees': ['plan.fees', 'currency-dollar']},
                        {'Topline': ['plan.topline', 'calendar']},
-                       {'SOW': ['plan.edit_sow', 'file-signature']},
-                       {'PlanRules': ['plan.plan_rules', 'ruler']},
-                       {'RFP': ['plan.rfp', 'file-contract']},
+                       {'SOW': ['plan.edit_sow', 'pen']},
+                       {'PlanRules': ['plan.plan_rules', 'rulers']},
+                       {'RFP': ['plan.rfp', 'file-earmark-spreadsheet']},
                        {'PlanPlacements': ['plan.plan_placements', 'table']},
-                       {'Specs': ['plan.specs', 'glasses']},
-                       {'Contacts': ['plan.contacts', 'address-book']},
+                       {'Specs': ['plan.specs', 'eyeglasses']},
+                       {'Contacts': ['plan.contacts', 'person-lines-fill']},
                        {'Calc': ['plan.calc', 'calculator']}]
         elif buttons == 'Research':
             buttons = [{'Basic': ['plan.edit_research', 'list-ol']},
@@ -999,15 +996,15 @@ class Processor(db.Model):
         elif buttons == Project.__table__.name:
             buttons = [
                 {'Basic': ['main.project_edit', 'list-ol']},
-                {'Bill': ['main.project_billing', 'money-bill']}]
+                {'Bill': ['main.project_billing', 'cash']}]
         else:
             buttons = [
                 {'Basic': ['main.edit_processor', 'list-ol']},
-                {'Plan': ['main.edit_processor_plan_normal', 'plane']},
-                {'Import': ['main.edit_processor_import', 'file-import']},
-                {'Clean': ['main.edit_processor_clean', 'soap']},
-                {'Export': ['main.edit_processor_export', 'file-export']},
-                {'Bill': ['main.edit_processor_billing', 'money-bill']}]
+                {'Plan': ['main.edit_processor_plan_normal', 'airplane']},
+                {'Import': ['main.edit_processor_import', 'file-arrow-down']},
+                {'Clean': ['main.edit_processor_clean', 'droplet']},
+                {'Export': ['main.edit_processor_export', 'file-arrow-up']},
+                {'Bill': ['main.edit_processor_billing', 'cash']}]
         new_buttons = []
         for button in buttons:
             new_button = {}

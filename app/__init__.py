@@ -13,7 +13,7 @@ from flask_moment import Moment
 from flask_babel import Babel, lazy_gettext as _l
 from config import Config
 from elasticsearch import Elasticsearch, RequestsHttpConnection
-from redis import Redis
+from redis import Redis, ConnectionPool
 from rq_scheduler import Scheduler
 import rq_dashboard
 from requests_aws4auth import AWS4Auth
@@ -78,7 +78,8 @@ def create_app(config_class=Config()):
         connection_class=RequestsHttpConnection
     ) \
         if app.config['ELASTICSEARCH_URL'] else None
-    app.redis = Redis.from_url(app.config['REDIS_URL'])
+    pool = ConnectionPool.from_url(app.config['REDIS_URL'], max_connections=10)
+    app.redis = Redis(connection_pool=pool)
     app.task_queue = rq.Queue('lqapp-tasks', connection=app.redis,
                               default_timeout=18000)
     app.scheduler = Scheduler(queue=app.task_queue, connection=app.redis)

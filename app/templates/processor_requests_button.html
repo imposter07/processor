@@ -1,28 +1,28 @@
-<div class="btn-group btn-block" role="group">
+<div class="btn-group w-100" role="group">
     {% if processor.local_path %}
         {% set req = processor.get_open_requests() %}
         {% if req|length > 0 %}
             <a href="{{ url_for('main.edit_processor_submit_fix',
                            object_name=processor.name) }}"
                type="button" class="btn btn-outline-danger btn-large">
-                Open Requests <span class="badge badge-light">
+                Open Requests <span class="badge badge-dark">
                         {{ req|length }}</span>
-                <span class="sr-only">Open Requests</span>
+                <span class="visually-hidden">Open Requests</span>
             </a>
         {% else %}
             <a href="{{ url_for('main.edit_processor_request_fix',
                            object_name=processor.name) }}"
                type="button" class="btn btn-outline-success btn-large">
-                No Open Requests <span class="badge badge-light">
+                No Open Requests <span class="badge badge-dark">
                         {{ req|length }}</span>
-                <span class="sr-only">No Open Requests</span>
+                <span class="visually-hidden">No Open Requests</span>
             </a>
         {% endif %}
     {% else %}
         <a href="{{ url_for('main.edit_request_processor', object_name=processor.name) }}"
            type="button" class="btn btn-outline-warning btn-large">
             Processor not built.  Finish creating.
-            <span class="sr-only">Processor not built.  Finish creating.</span>
+            <span class="visually-hidden">Processor not built.  Finish creating.</span>
         </a>
     {% endif %}
     {% set notes = processor.get_notes() %}
@@ -31,6 +31,6 @@
        type="button" class="btn btn-outline-info btn-large">
         Notes <span class="badge badge-light">
                     {{ notes|length }}</span>
-        <span class="sr-only">Open Requests</span>
+        <span class="visually-hidden">Open Requests</span>
     </a>
 </div>

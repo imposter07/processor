@@ -1,5 +1,5 @@
 <style>
-    .fa-trophy {
+    .bi-trophy {
         color: goldenrod;
         position: absolute;
         top: 0;
@@ -8,10 +8,10 @@
 </style>
 {% if cur_tutorial %}
     {% if cur_tutorial.tutorial_completed(trophy_user) %}
-        <i class="fas fa-trophy"></i>
+        <i class="bi bi-trophy"></i>
     {% endif %}
 {% else %}
     {% if trophy_user.tutorial_stages_completed.all()|length >= 31 %}
-        <i class="fas fa-trophy"></i>
+        <i class="bi bi-trophy"></i>
     {% endif %}
 {% endif %}

@@ -1,5 +1,4 @@
 <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='Selectize/selectize.bootstrap4.css') }}">
-<link rel="stylesheet" type="text/css" id="selectizeDark" href="{{ url_for('static', filename='Selectize/selectize.dark.css') }}">
 <script type="text/javascript" src="{{ url_for('static', filename='Selectize/selectize.js') }}"></script>
 <script>
     function addSelectize(selector = "select:not(.flatpickr-monthDropdown-months):not(select[id^='colSelect'])") {
@@ -8,7 +7,7 @@
             shouldSort: false,
             duplicates: true,
             persist: true,
-            plugins: ['drag_drop', 'remove_button', 'restore_on_backspace'],
+            plugins: ['drag_drop', 'remove_button', 'restore_on_backspace', 'clear_button'],
             create: function (input) {
                 return {
                     value: input,
@@ -17,5 +16,4 @@
             }
         });
     }
-
 </script>

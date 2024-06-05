@@ -1,28 +1,81 @@
 <!doctype html>
+<html lang="en" data-bs-theme="">
 <head>
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-<script src="https://kit.fontawesome.com/ddffae10e4.js"></script>
+<link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+    crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
 <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.3/font/bootstrap-icons.css">
-<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='bootstrap-dark/css/toggle-bootstrap-dark.min.css') }}">
-
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
 <style>
     .page-item, .btn-sm, .btn, .img-wrp, .navbar{
-        opacity: .85;
+        opacity: .8;
     }
+
+    .btn-primary {
+        background-color: var(blue-100) !important;
+    }
+
+    body {
+        padding-top: 55px;
+        overflow-x: hidden;
+        background-color: var(--bs-secondary-bg);
+    }
+
+    .navbar {
+        background-color: var(--bs-secondary-bg);
+    }
+
+    .card-header, .card-body, .card-footer {
+        padding: 20px;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+
+    .shadow {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    @media (max-width: 768px) {
+        body {
+            font-size: 0.9rem;
+        }
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        transition: all 0.3s ease-in-out;
+    }
+
+    .card {
+        margin-right: 20px !important;
+        border-radius: .5rem !important;
+    }
+
+    .table {
+        border-radius: 1rem !important;
+    }
+
+    .selectize-input {
+        background-color: var(--bs-body-bg) !important;
+    }
+
+    .selectize-dropdown {
+        z-index: 10000 !important;
+    }
+
 </style>
 
 
 <title>
-{% block title %}
     {% if title %}Liquid App | {{ title }}{% else %}
         {{ _('Welcome to the  Liquid App') }}{% endif %}
-{% endblock %}
 </title>
 </head>
 <div id="jinjaValues" data-index="{{ url_for('main.index', _external=True) }}"
@@ -32,73 +85,69 @@
     {% if edit_name %}data-edit_name="{{ edit_name }}"{% endif %}
     {% if current_user %}data-username="{{ current_user.username }}"{% endif %}>
 </div>
-{% block navbar %}
-<nav id="navbar" class="navbar navbar-expand-lg bg-secondary fixed-top shadow outer"
-     style="padding-top:1px;">
-    <a class="navbar-brand" href="{{ url_for('main.index') }}">
+<nav id="navbar" class="navbar navbar-expand-lg fixed-top shadow outer align-items-center" style="padding-top:1px;">
+    <a class="navbar-brand mb-2 " href="{{ url_for('main.index') }}">
         <img alt="Brand" class="img-responsive" style="height: 30px;"
-             src={{ url_for('static', filename='logo-light.png') }}>
+             src={{ url_for('static', filename='logo-blk.png') }}>
     </a>
-  <button class="navbar-toggler navbar-light btn btn-secondary" type="button"
-          data-toggle="collapse" data-target="#navbarToggler"
+  <button class="navbar-toggler" type="button"
+          data-bs-toggle="collapse" data-bs-target="#navbarToggler"
           aria-controls="navbarToggler" aria-expanded="false"
           aria-label="Toggle navigation">
     <span class="navbar-toggler-icon"></span>
   </button>
     <div class="collapse navbar-collapse" id="navbarToggler">
-      <ul class="navbar-nav mr-auto">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item">
-              <a id="collapseSide" class="nav-link" data-toggle="collapse"
-                 href="#" data-target=".collapse" role="button"
+              <a id="collapseSide" class="nav-link" data-bs-toggle="collapse"
+                 href="#" data-bs-target=".collapse" role="button"
                  onclick="toggleNav()">
-              <i class="fas fa-bars btn btn-secondary" style="color:black"></i></a>
+              <i class="bi bi-list btn" style="color:black"></i></a>
           <li class="nav-item"><a class="nav-link" title={{ _('Explore') }}
                   href="{{ url_for('main.explore') }}">
-              <i class="fas fa-paper-plane btn btn-secondary" href="#" style="color:black"></i></a>
+              <i class="bi bi-send-fill btn" href="#" style="color:black"></i></a>
           </li>
           <li class="nav-item"><a id="navLinkProcessor" class="nav-link" title={{ _('Processor') }}
                   href="{{ url_for('main.processor') }}">
-              <i class="fas fa-chart-bar btn btn-secondary" href="#" style="color:black"></i></a>
+              <i class="bi bi-bar-chart-fill btn" href="#" style="color:black"></i></a>
           </li>
       </ul>
         {% if g.search_form %}
-        <form class="form-inline" method="get" action="{{ url_for('main.chat') }}">
-            <div class="form-group">
+            <form class="d-flex justify-content-center" method="get"
+                  action="{{ url_for('main.chat') }}">
                 {{ g.search_form.q(size=30, class='form-control', placeholder='Ask questions here....') }}
-                <a class="btn btn-primary" href="{{ url_for('main.chat') }}">CHAT
-                    <i class="fas fa-message"></i></a>
-            </div>
-        </form>
+                <button class="btn btn-primary d-flex align-items-center"
+                        href="{{ url_for('main.chat') }}">CHAT
+                    <i class="bi bi-chat-fill ms-2"></i></button>
+            </form>
         {% endif %}
-        <ul class="navbar-nav ml-auto">
+        <ul class="navbar-nav ml-auto align-items-center">
             {% if current_user.is_anonymous %}
             <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('auth.login') }}">
                     {{ _('Login') }}</a>
             </li>
             {% else %}
-                <li class="nav-item ">
-                    <div class="custom-control custom-switch btn btn-secondary align-center">
-                      <input type="checkbox" class="custom-control-input" id="darkSwitch" />
-                      <label class="custom-control-label" for="darkSwitch">
-                          <a class="" title={{ _('Dark Mode') }}>
-                              <i class="fas fa-moon btn btn-secondary"
-                                 href="#" style="color:black"></i>
-                          </a>
-                      </label>
+                <li class="nav-item">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="darkSwitch" style="display:none;">
+                        <label class="form-check-label" for="darkSwitch">
+                            <span id="darkSwitchIcon" class="bi bi-sun-fill btn" style="color: black;"></span>
+                        </label>
                     </div>
                 </li>
+
                 <li class="nav-item">
                     <a class="nav-link" title={{ _('Clients') }}
                             href="{{ url_for('main.clients') }}">
-                    <i class="fas fa-calendar-alt btn btn-secondary" href="#" style="color:black"></i></a>
+                    <i class="bi bi-calendar-fill btn" href="#" style="color:black"></i></a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" title={{ _('Messages') }}
                             href="{{ url_for('main.messages') }}">
-                        <i class="fas fa-envelope btn btn-secondary" href="#" style="color:black"></i>
+                        <i class="bi bi-envelope-fill btn" href="#" style="color:black"></i>
                     {% set new_messages = current_user.new_messages() %}
-                    <span id="message_count" class="badge badge-light" style="visibility: {% if new_messages %}visible
+                    <span id="message_count" class="badge text-dark" style="visibility: {% if new_messages %}visible
                           {% else %}hidden{% endif %};">
                         {{ new_messages }}
                     </span>
@@ -107,28 +156,26 @@
             <li class="nav-item">
                 <a class="nav-link" title={{ _('Profile') }}
                         href="{{ url_for('main.user', username=current_user.username) }}">
-                    <i class="fas fa-user btn btn-secondary" href="#" style="color:black"></i>
+                    <i class="bi bi-person-fill btn" href="#" style="color:black"></i>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" title={{ _('Help') }}
                         href="{{ url_for('main.app_help') }}">
-                    <i class="fas fa-question-circle btn btn-secondary" href="#" style="color:black"></i>
+                    <i class="bi bi-question-circle-fill btn" href="#" style="color:black"></i>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" title={{ _('Logout') }}
                         href="{{ url_for('auth.logout') }}">
-                    <i class="fas fa-times-circle btn btn-secondary" href="#" style="color:black"></i>
+                    <i class="bi bi-x-circle-fill btn" href="#" style="color:black"></i>
                 </a>
             </li>
             {% endif %}
         </ul>
     </div>
 </nav>
-{% endblock %}
 
-<div class="container-fluid"></div>
 <div class="row vh-100 flex-nowrap" style="">
     <div class="bd-sidebar col-md-3 collapse show" style="overflow-y: auto; max-height: calc(100vh - 55px); position: fixed">
         {% block vertical_navbar %}{% endblock %}
@@ -136,30 +183,33 @@
     <main class="col-9" role="main"
           style="overflow-y: visible; max-height: calc(100vh); margin-left: 25%;
           transition: margin .18s;">
-        <div class="jumbotron text-center shadow outer"
+        <div class="mb-4 bg-body-tertiary rounded-3 text-center shadow outer"
              style="padding-top: 5px; padding-bottom: 5px;">
             <div class="container-fluid">
                 {% if current_user.is_authenticated %}
                 {% with tasks = current_user.get_tasks_in_progress() %}
                 {% if tasks %}
                     {% for task in tasks %}
-                      <div aria-live="polite" aria-atomic="true" style="position: relative; min-height: 1px;">
-                          <div id="toast" role="alert" aria-live="assertive"
-                               class="toast" data-autohide="false" style="position: absolute; top: 0; right: 0; z-index: 999">
-                            <div class="toast-header">
-                              <i class="fas fa-envelope btn btn-dark"></i>
-                              <strong class="mr-auto">Task Complete!</strong>
-                              <small> <span id="toast-small"></span></small>
-                              <button type="button" class="ml-2 mb-1 close"
-                                      data-dismiss="toast" aria-label="Close"
-                                      onclick="destroyToast()">
-                                <span aria-hidden="true">&times;</span>
-                              </button>
+                        <div aria-live="polite" aria-atomic="true"
+                             style="position: relative; min-height: 1px;">
+                            <div role="alert" aria-live="assertive" aria-atomic="true" class="toast" data-bs-autohide="false">
+                                <div class="toast-header">
+                                    <strong class="mr-auto">Task
+                                        Complete!</strong>
+                                    <small> <span
+                                            id="toast-small"></span></small>
+                                    <button type="button"
+                                            class="ml-2 mb-1 close"
+                                            data-bs-dismiss="toast"
+                                            aria-label="Close"
+                                            onclick="destroyToast()">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div id="toast-body" class="toast-body">
+                                    {{ task.description }}
+                                </div>
                             </div>
-                            <div id="toast-body" class="toast-body">
-                              {{ task.description }}
-                            </div>
-                          </div>
                         </div>
                     <div class="alert alert-success" role="alert">
                         {{ task.description }}
@@ -183,9 +233,10 @@
                 {% block app_header %}{% endblock %}
             </div>
         </div>
-        <div class="container-fluid shadow-sm outer">
+        <div class="container-fluid shadow-sm outer card">
             {% block app_content %}{% endblock %}
             {% block app_content_2 %}{% endblock %}
+            {% block app_content_3 %}{% endblock %}
         </div>
     </main>
 </div>
@@ -221,153 +272,107 @@
 </style>
 
 
-{% block scripts %}
-    {{ moment.include_moment() }}
-    {{ moment.lang(g.locale) }}
-    <script type="text/javascript"
-            src="{{ url_for('static', filename='bootstrap-dark/darkModeHelper.js') }}"></script>
 
-    <script>
+{{ moment.include_moment() }}
+{{ moment.lang(g.locale) }}
 
-        function showToast(timestamp, text){
-            var offset = moment().utcOffset();
-            var localText = moment.utc(timestamp).utcOffset(offset).fromNow();
-            $('#toast-body').text(text);
-            $('#toast-small').text('\xa0\xa0\xa0\xa0\xa0\xa0\xa0' + localText);
-            $('#toast').toast('show');
-        }
-        function destroyToast(){
-            $('#toast').toast('dispose');
-        }
-        function translate(sourceElem, destElem, sourceLang, destLang) {
-            $(destElem).html('<img src="{{ url_for('static', filename='loading.gif') }}">');
-            $.post('/translate', {
-                text: $(sourceElem).text(),
+<script defer type="text/javascript"
+        src="{{ url_for('static', filename='bootstrap-dark/darkModeHelper.js') }}"></script>
+<script defer
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous">
+</script>
+
+<script>
+
+    async function translate(sourceElem, destElem, sourceLang, destLang) {
+        document.getElementById(destElem).innerHTML =
+            '<img src="{{ url_for('static', filename='loading.gif') }}">';
+        const response = await fetch('/translate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json; charset=utf-8'},
+            body: JSON.stringify({
+                text: document.getElementById(sourceElem).innerText,
                 source_language: sourceLang,
                 dest_language: destLang
-            }).done(function(response) {
-                $(destElem).text(response['text'])
-            }).fail(function() {
-                $(destElem).text("{{ _('Error: Could not contact server.') }}");
+            })
+        })
+        const data = await response.json();
+        document.getElementById(destElem).innerText = data.text;
+    }
+
+    function initializePopovers(modelName='user') {
+        const popups = document.getElementsByClassName(`${modelName}_popup`);
+        for (let i = 0; i < popups.length; i++) {
+            const popover = new bootstrap.Popover(popups[i], {
+                content: 'Loading...',
+                trigger: 'hover focus',
+                placement: 'right',
+                html: true,
+                sanitize: false,
+                delay: {show: 500, hide: 0},
+                container: popups[i],
+                customClass: 'd-inline',
+            });
+            popups[i].addEventListener('show.bs.popover', async (ev) => {
+                if (ev.target.popupLoaded) {
+                    return;
+                }
+                const response = await fetch(`/${modelName}/${ev.target.innerText.trim()}/popup`);
+                const data = await response.text();
+                const popover = bootstrap.Popover.getInstance(ev.target);
+                if (popover && data) {
+                    ev.target.popupLoaded = true;
+                    popover.setContent({'.popover-body': data});
+                    flask_moment_render_all();
+                }
             });
         }
-        $(function () {
-            var timer = null;
-            var xhr = null;
-            $('.user_popup').hover(
-                function(event) {
-                    // mouse in event handler
-                    var elem = $(event.currentTarget);
-                    timer = setTimeout(function() {
-                        timer = null;
-                        xhr = $.ajax(
-                            '/user/' + elem.first().text().trim() + '/popup').done(
-                                function(data) {
-                                    xhr = null;
-                                    elem.popover({
-                                        trigger: 'hover',
-                                        html: true,
-                                        animation: false,
-                                        container: elem,
-                                        content: data
-                                    }).popover('show');
-                                    flask_moment_render_all();
-                                }
-                            );
-                    }, 1000);
-                },
-                function(event) {
-                    // mouse out event handler
-                    var elem = $(event.currentTarget);
-                    if (timer) {
-                        clearTimeout(timer);
-                        timer = null;
-                    }
-                    else if (xhr) {
-                        xhr.abort();
-                        xhr = null;
-                    }
-                    else {
-                        elem.popover('destroy');
-                    }
-                }
-            );
-        });
-        $(function () {
-            var timer = null;
-            var xhr = null;
-            $('.processor_popup').hover(
-                function(event) {
-                    // mouse in event handler
-                    var elem = $(event.currentTarget);
-                    timer = setTimeout(function() {
-                        timer = null;
-                        xhr = $.ajax(
-                            '/processor/' + elem.first().text().trim() + '/popup').done(
-                                function(data) {
-                                    xhr = null;
-                                    elem.popover({
-                                        trigger: 'hover',
-                                        html: true,
-                                        animation: false,
-                                        container: elem,
-                                        content: data
-                                    }).popover('show');
-                                    flask_moment_render_all();
-                                }
-                            );
-                    }, 1000);
-                },
-                function(event) {
-                    // mouse out event handler
-                    var elem = $(event.currentTarget);
-                    if (timer) {
-                        clearTimeout(timer);
-                        timer = null;
-                    }
-                    else if (xhr) {
-                        xhr.abort();
-                        xhr = null;
-                    }
-                    else {
-                        elem.popover('destroy');
-                    }
-                }
-            );
-        });
-        function set_message_count(n) {
-            $('#message_count').text(n);
-            $('#message_count').css('visibility', n ? 'visible' : 'hidden');
+    }
+
+    function processorPopovers() {
+        initializePopovers('processor');
+    }
+
+    document.addEventListener('DOMContentLoaded', initializePopovers);
+    document.addEventListener('DOMContentLoaded', processorPopovers);
+
+    function set_message_count(n) {
+        const count = document.getElementById('message_count');
+        count.innerText = n;
+        count.style.visibility = n ? 'visible' : 'hidden';
+    }
+
+    function set_task_progress(task_id, progress) {
+        const progressElement = document.getElementById(task_id + '-progress');
+        if (progressElement) {
+            progressElement.innerText = progress;
         }
-        function set_task_progress(task_id, progress) {
-            $('#' + task_id + '-progress').text(progress);
-        }
-        {% if current_user.is_authenticated %}
-        $(function() {
-            var since = 0;
-            setInterval(function() {
-                $.ajax('{{ url_for('main.notifications') }}?since=' + since).done(
-                    function(notifications) {
-                        for (var i = 0; i < notifications.length; i++) {
-                            switch (notifications[i].name) {
-                                case 'unread_message_count':
-                                    set_message_count(notifications[i].data);
-                                    break;
-                                case 'task_progress':
-                                    set_task_progress(notifications[i].data.task_id,
-                                        notifications[i].data.progress);
-                                    break;
-                                case 'task_complete':
-                                    showToast(notifications[i].data.timestamp,
-                                              notifications[i].data.text);
-                                    break;
-                            }
-                            since = notifications[i].timestamp;
-                        }
+    }
+
+    {% if current_user.is_authenticated %}
+        function initialize_notifications() {
+            let since = 0;
+            setInterval(async function () {
+                const response = await fetch('{{ url_for('main.notifications') }}?since=' + since);
+                const notifications = await response.json();
+                for (let i = 0; i < notifications.length; i++) {
+                    switch (notifications[i].name) {
+                        case 'unread_message_count':
+                            set_message_count(notifications[i].data);
+                            break;
+                        case 'task_progress':
+                            set_task_progress(notifications[i].data.task_id,
+                                notifications[i].data.progress);
+                            break;
                     }
-                );
+                    since = notifications[i].timestamp;
+                }
             }, 10000);
-        });
-        {% endif %}
-    </script>
-{% endblock %}
+        }
+        document.addEventListener('DOMContentLoaded', initialize_notifications);
+
+    {% endif %}
+</script>
+</html>

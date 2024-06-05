@@ -137,11 +137,11 @@ function sortTableEvent() {
     )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
     let sortArrow = this.getElementsByClassName('fas');
     if (sortArrow.length > 0) {
-        let downArrow = sortArrow[0].classList.contains('fa-arrow-down');
+        let downArrow = sortArrow[0].classList.contains('bi-arrow-down');
         let arrowReplace = (downArrow) ? ['down', 'up'] : ['up', 'down'];
         sortArrow[0].className = sortArrow[0].className.replace(arrowReplace[0], arrowReplace[1]);
     } else {
-        this.insertAdjacentHTML('beforeend', `<i class="fas fa-arrow-down" href="#" role="button"></i>`);
+        this.insertAdjacentHTML('beforeend', `<i class="bi bi-arrow-down" href="#" role="button"></i>`);
     }
     Array.from(table.querySelectorAll("tr:not([id*='Hidden']):not([id*='Header'])"))
         .sort(comparer(Array.from(this.parentNode.children).indexOf(this), this.asc = !this.asc))
@@ -182,7 +182,7 @@ function addOnClickEvent(elemSelector, clickFunction, type = 'click', preventDef
     }
 }
 
-function loadingBtn(elem, currentStyle = '', btnClass="btn btn-primary btn-block") {
+function loadingBtn(elem, currentStyle = '', btnClass="btn btn-primary w-100") {
     let loadingBtnId = 'loadingBtn' + elem.id;
     elem.style.display = 'none';
     elem.insertAdjacentHTML('beforebegin', `
@@ -256,7 +256,7 @@ function setDownloadBar(currentElement, textContent, pond = true) {
     if (pond) {
         let dlPondId = 'downloadBarPond' + currentElement.id;
         let pondElemToAdd = `
-            <div class="form-group" style="height:96px">
+            <div class="mb-3" style="height:96px">
                 <input id="${dlPondId}" type="file">
             </div>
         `
@@ -318,7 +318,7 @@ function showModalTable(destElemId) {
         let modalElemId = destElemId + 'modalTable';
         let modalHtml = `
             <button id="${destElemId}" type="button" class="btn btn-primary"
-            data-toggle="modal" data-target="#${modalElemId}" style="display: none;">
+            data-bs-toggle="modal" data-bs-target="#${modalElemId}" style="display: none;">
             </button>
             <div class="modal fade bd-example-modal-xl" id="${modalElemId}" tabindex="-1"
                  role="dialog" aria-labelledby="exampleModalLabel">
@@ -327,7 +327,7 @@ function showModalTable(destElemId) {
                   <div class="modal-header">
                     <h5 class="modal-title" id="exampleModalLabel">
                         Data Tables - ${jinjaValues['object_name']}</h5>
-                    <button type="button" class="close" data-dismiss="modal"
+                    <button type="button" class="close" data-bs-dismiss="modal"
                             aria-label="Close">
                       <span aria-hidden="true">&times;</span>
                     </button>
@@ -336,12 +336,12 @@ function showModalTable(destElemId) {
                       <div id="modal-body-table"></div>
                   </div>
                   <div class="modal-footer">
-                    <div class="btn-group btn-group-lg btn-block" role="group" aria-label="Basic example">
+                    <div class="btn-group btn-group-lg w-100" role="group" aria-label="Basic example">
                         <button type="button" class="btn btn-success"
                                 id="modalTableSaveButton"
                                 onclick="SendDataTable()">Save</button>
                         <button type="button" class="btn btn-secondary"
-                                data-dismiss="modal">Close</button>
+                                data-bs-dismiss="modal">Close</button>
                     </div>
                   </div>
                 </div>
@@ -371,14 +371,12 @@ function displayAlert(message, level) {
         alertContainer.insertAdjacentHTML('beforeend', '<div id="alertPlaceholder"></div>');
         alertPlaceholderElem = document.getElementById(alertPlaceholderId);
     }
-    alertPlaceholderElem.classList.add('alert');
-    alertPlaceholderElem.classList.add('alert-' + level);
+    alertPlaceholderElem.classList.add('alert', 'alert-' + level, 'alert-dismissible', 'fade', 'show');
+    alertPlaceholderElem.setAttribute('role', 'alert');
     alertPlaceholderElem.innerHTML = message;
     let btnHtml = `
-        <button type="button" class="close" data-dismiss="alert"
-            aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>`;
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
     alertPlaceholderElem.insertAdjacentHTML('beforeend', btnHtml);
     fadeInElement(alertPlaceholderElem);
 }
@@ -463,5 +461,45 @@ function combineColumns(data, cols) {
         let newItem = Object.assign({}, item);
         newItem[combinedCols] = combinedValue;
         return newItem;
+    });
+}
+
+// Function to load a script dynamically
+function loadScript(url, callback) {
+    let script = document.createElement("script");
+    script.type = "text/javascript";
+    script.onload = function() {
+        if (callback) callback();
+    };
+    script.src = url;
+    document.head.appendChild(script);
+}
+
+function loadJQuery() {
+    // Check for jQuery, and load it if it's not present
+    if (typeof jQuery === 'undefined') {
+        loadScript('https://code.jquery.com/jquery-3.3.1.min.js', function () {
+            // Check for jQuery UI after jQuery has loaded
+            if (typeof jQuery.ui === 'undefined') {
+                loadScript('https://code.jquery.com/ui/1.12.0/jquery-ui.js', function () {
+                });
+            }
+        });
+    } else {
+        // Still check for jQuery UI if jQuery exists
+        if (typeof jQuery.ui === 'undefined') {
+            loadScript('https://code.jquery.com/ui/1.12.0/jquery-ui.js', function () {
+            });
+        } else {
+        }
+    }
+}
+
+function loadScripts(scriptsToLoad) {
+    scriptsToLoad.forEach(function (src) {
+        let script = document.createElement('script');
+        script.src = src;
+        script.type = 'text/javascript';
+        document.body.appendChild(script);
     });
 }

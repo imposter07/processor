@@ -71,6 +71,7 @@ function onMetricClick(elem, opts, multiple=false) {
                                                   searchField: 'text',
                                                   items: defaultValue,
                                                   delimiter: '|',
+                                                  plugins: ['drag_drop', 'remove_button', 'restore_on_backspace', 'clear_button'],
                                                   onBlur: function() {submitSelection(opts, multiple);}
                                                   });
     metricSelectize[0].selectize.open()
@@ -141,7 +142,7 @@ function deleteButton(tableName) {
     let deleteButtonHTML = `<button class="btn btn-danger btn-sm"
         onclick="deleteTableRow(this); resetIndex('${tableElem}');"
         tabindex="0" aria-controls=${tableName} type="button">
-          <i class="fas fa-minus" style="color:white"></i>
+          <i class="bi bi-dash-lg" style="color:white"></i>
         </button>`
     return deleteButtonHTML
 }
@@ -300,9 +301,9 @@ function createMetricTable(colData, rawData, tableName,
         return {text: e, value: e}
     });
 
-    let buttonsHtml = `<button class="btn btn-success" data-toggle="modal" data-target="#activeMetricModal"
+    let buttonsHtml = `<button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#activeMetricModal"
         tabindex="0" aria-controls=${tableName} type="button">
-          <i class="fas fa-plus" style="color:white"></i>
+          <i class="bi bi-plus-lg" style="color:white"></i>
         </button>`
 
     let deleteButtonHtml = deleteButton(tableName)
@@ -310,13 +311,13 @@ function createMetricTable(colData, rawData, tableName,
     $(document).ready(function () {
         // Populate modal with select inputs with relevant options.
         let modalElem = $("#activeMetricModal .modal-body")
-        modalElem.html(`<div class="form-group row justify-content-center align-items-center">
+        modalElem.html(`<div class="mb-3 row justify-content-center align-items-center">
                           <div class="col-md-6" style="word-break: break-word">
                             <label for="metric_name_select">Metric Name</label>
                             <select name='metric_name_select' id='metric_name_select'></select>
                           </div>
                         </div>
-                        <div class="form-group row justify-content-center align-items-center">
+                        <div class="mb-3 row justify-content-center align-items-center">
                           <div class="col-md-6" style="word-break: break-word">
                             <label for="metric_value_select">Metric Value</label>
                             <select name='metric_value_select' id='metric_value_select' multiple></select>
@@ -326,11 +327,13 @@ function createMetricTable(colData, rawData, tableName,
         modalSaveButton.attr("onclick", `addActiveMetric(${JSON.stringify(vmcOptions)}, ${JSON.stringify(rawOptions)})`)
         let nameSelect = $(`select[name='metric_name_select']`);
         let nameSelectize = nameSelect.selectize({options: vmcOptions,
+                                                  plugins: ['drag_drop', 'remove_button', 'restore_on_backspace', 'clear_button'],
                                                   searchField: 'text',
                                                   delimiter: '|'
                                                   });
         let valueSelect = $(`select[name='metric_value_select']`);
         let valueSelectize = valueSelect.selectize({options: rawOptions,
+                                                  plugins: ['drag_drop', 'remove_button', 'restore_on_backspace', 'clear_button'],
                                                   searchField: 'text',
                                                   delimiter: '|'
                                                   });
@@ -397,14 +400,14 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
     });
     let relationalOrderData = JSON.parse(relationalData);
     // Populate default modal with button and table html
-    let buttonsHtml = `<div class="text-left">
+    let buttonsHtml = `<div class="text-start">
         <button class="btn btn-primary" id="shiftUp" tabindex="0"  
             aria-controls=${tableName} type="button" title="Shift order up">
-          <i class="fas fa-angle-double-up" style="color:white"></i>
+          <i class="bi bi-chevron-double-up" style="color:white"></i>
         </button>
         <button class="btn btn-primary" id="shiftDown" tabindex="1" 
             aria-controls=${tableName} type="button" title="Shift order down">
-          <i class="fas fa-angle-double-down" style="color:white"></i>
+          <i class="bi bi-chevron-double-down" style="color:white"></i>
         </button>
       </div>`
 
@@ -430,12 +433,13 @@ function createChangeDictOrder(colData, rawData, tableName, dictColData,
         let labelElem = rows[i].cells[labelColIndex]
         let defaultValue = labelElem.innerHTML;
         dictOptions.push({text: defaultValue, value: defaultValue})
-        labelElem.innerHTML = `<div class='form-group' style='margin-bottom: 0;'>
+        labelElem.innerHTML = `<div class='mb-3' style='margin-bottom: 0;'>
                                  <select name='auto_order_select${i}' 
                                     id='auto_order_select${i}'></select>
                                </div>`;
         let labelSelect = $(`select[name='auto_order_select${i}']`);
         labelSelect.selectize({options: dictOptions,
+                               plugins: ['drag_drop', 'remove_button', 'restore_on_backspace', 'clear_button'],
                                searchField: 'text',
                                dropdownParent: 'body',
                                items: [defaultValue],
@@ -588,6 +592,7 @@ function getDictColumnDetails(selectElem, relationalData) {
             $('#'+ subSelectId).selectize({options: subOptions,
                                            items: [defaultValue],
                                            dropdownParent: 'body',
+                                           plugins: ['remove_button', 'restore_on_backspace', 'clear_button'],
                                            onBlur: function() {if (this.getValue() === '') {
                                                this.setValue(
                                                    Object.keys(this.options)[0]
@@ -713,11 +718,12 @@ function populateMoreOptionsModal(selectElems, relationData, delimOptions) {
     inputElem.value = data.map(function(e) {return e.value}).join(',')
     $(inputElem).selectize({
         options: data,
-        plugins: ['drag_drop'],
+        plugins: ['drag_drop', 'remove_button', 'restore_on_backspace', 'clear_button'],
         delimiter: ',',
     });
     $(delimSelect).selectize({
         options: delimOptions,
+        plugins: ['drag_drop', 'remove_button', 'restore_on_backspace', 'clear_button'],
         items: [defaultDelim]
     });
     //TODO: Set up preview
@@ -819,9 +825,9 @@ function addMoreOrderOptions(relationData) {
     // same selected option.
     let delimOptions = ['-', '_', '/']
     let moreButton = `<button type="button" class="btn btn-primary btn-circle btn-sm"
-                              data-dismiss="modal"
-                              data-toggle="modal" data-target="#changeOrderMoreOptions">
-                        <i class="fas fa-ellipsis-h" style="color:white"></i>
+                              data-bs-dismiss="modal"
+                              data-bs-toggle="modal" data-bs-target="#changeOrderMoreOptions">
+                        <i class="bi bi-three-dots-vertical" style="color:white"></i>
                       </button>`
     let $primarySelects = $('select[id*=auto_order_select]').not('[id$=subSelect]')
     let $secondarySelects = $('select[id*=auto_order_select][id$=subSelect]')

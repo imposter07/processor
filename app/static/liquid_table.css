@@ -1,4 +1,4 @@
-.table .card-deck {
+.table .card-group {
     overflow-x: scroll;
 }
 
@@ -37,11 +37,11 @@ td
     white-space: nowrap;
 }
 
-.fa-filter {
+.bi-filter {
   visibility: hidden;
 }
 
-th:hover .fa-filter {
+th:hover .bi-filter {
   visibility: visible;
 }
 

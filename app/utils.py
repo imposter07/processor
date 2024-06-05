@@ -663,7 +663,7 @@ class LiquidTable(object):
         if not self.table_buttons:
             self.table_buttons = []
         if self.download_table:
-            btn = {'icon': {'classList': ["fa-solid", "fa-download"]},
+            btn = {'icon': {'classList': ["bi", "bi-download"]},
                    'id': 'downloadBtn{}'.format(self.table_name)}
             self.table_buttons.append(btn)
         return self.table_buttons

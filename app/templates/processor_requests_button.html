@@ -5,7 +5,7 @@
             <a href="{{ url_for('main.edit_processor_submit_fix',
                            object_name=processor.name) }}"
                type="button" class="btn btn-outline-danger btn-large">
-                Open Requests <span class="badge badge-dark">
+                Open Requests <span class="badge text-bg-success">
                         {{ req|length }}</span>
                 <span class="visually-hidden">Open Requests</span>
             </a>
@@ -13,7 +13,7 @@
             <a href="{{ url_for('main.edit_processor_request_fix',
                            object_name=processor.name) }}"
                type="button" class="btn btn-outline-success btn-large">
-                No Open Requests <span class="badge badge-dark">
+                No Open Requests <span class="badge text-bg-success">
                         {{ req|length }}</span>
                 <span class="visually-hidden">No Open Requests</span>
             </a>
@@ -29,7 +29,7 @@
     <a href="{{ url_for('main.edit_processor_note',
                        object_name=processor.name) }}"
        type="button" class="btn btn-outline-info btn-large">
-        Notes <span class="badge badge-light">
+        Notes <span class="badge text-bg-info">
                     {{ notes|length }}</span>
         <span class="visually-hidden">Open Requests</span>
     </a>

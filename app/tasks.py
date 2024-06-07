@@ -1244,8 +1244,11 @@ def full_run_processor(processor_id, current_user_id, processor_args=None):
 def get_logfile(processor_id, current_user_id, object_type=Processor):
     cur_obj = db.session.get(object_type, processor_id)
     file_path = os.path.join(adjust_path(cur_obj.local_path), 'logfile.log')
-    with open(file_path, 'r') as f:
-        log_file = f.read()
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as f:
+            log_file = f.read()
+    else:
+        log_file = 'Logfile does not exist.'
     log_file = json.dumps(log_file.split('\n'))
     return [log_file]
 

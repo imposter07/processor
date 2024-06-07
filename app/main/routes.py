@@ -1070,7 +1070,10 @@ def get_table_return(task, table_name, proc_arg, job_name,
                     table_name, request.form['vendorkey'].replace(' ', '___'))
     table_name = "modalTable{}".format(table_name)
     is_log_table = 'getLog' in table_name
-    is_liq_table = utl.LiquidTable.id_col in df and df[utl.LiquidTable.id_col]
+    is_liq_table = False
+    if not is_log_table:
+        is_liq_table = (utl.LiquidTable.id_col in
+                        df and df[utl.LiquidTable.id_col])
     no_parse_tables = ['.get_raw_file_comparison', '.check_processor_plan']
     if job_name in no_parse_tables:
         data = {'data': {'data': df, 'name': table_name}}

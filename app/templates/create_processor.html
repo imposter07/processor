@@ -4,29 +4,7 @@
     <h2 class="">{{ _('{} - {}'.format(title, object_name)) }}</h2>
     {% include '_view_selector.html' %}
     <!-- Modal -->
-    <button id="logModalButton" type="button" class="btn btn-primary"
-            data-bs-toggle="modal" data-bs-target="#logModal" style="display: none;">
-      Launch demo modal
-    </button>
-    <div class="modal hide fade" id="logModal" tabindex="-1" role="dialog"
-         aria-labelledby="logModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-xl mw-100 w-90" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="logModalLabel">
-                Logfile - {{object_name }}</h5>
-            <button type="button" class="close" data-bs-dismiss="modal"
-                    aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-          <div class="modal-body"></div>
-          <div class="modal-footer">
-            <button type="button" class="btn w-100 btn-secondary" data-bs-dismiss="modal">Close</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div id="logModalPlaceholder"></div>
     <button id="importRunButton" type="button" class="btn btn-primary"
             data-bs-toggle="modal" data-bs-target="#importModal"
         style="display: none;">
@@ -171,8 +149,8 @@
                         {% for run_link_idx in run_links %}
                           <a class="dropdown-item" href="#"
                             data-bs-toggle="hover" data-placement="bottom"
-                            title="{{ run_links[run_link_idx]['title']}}"
-                            data-content="{{ run_links[run_link_idx]['tooltip'] }}"
+                            data-bs-title="{{ run_links[run_link_idx]['title']}}"
+                            data-bs-content="{{ run_links[run_link_idx]['tooltip'] }}"
                             id="{{ 'runObject{}'.format(run_links[run_link_idx]['title']) }}">
                               {{ run_links[run_link_idx]['title'] }}</a>
                         {% endfor %}
@@ -199,8 +177,8 @@
                         {% for edit_link_idx in edit_links %}
                               <a class="dropdown-item" href="#"
                                  data-bs-toggle="hover" data-placement="bottom"
-                                 title="{{ edit_links[edit_link_idx]['title'] }}"
-                                 data-content="{{ edit_links[edit_link_idx]['tooltip'] }}"
+                                 data-bs-title="{{ edit_links[edit_link_idx]['title'] }}"
+                                 data-bs-content="{{ edit_links[edit_link_idx]['tooltip'] }}"
                                  id="{{ 'editTable{}'.format(edit_links[edit_link_idx]['title']) }}">
                                   {{ edit_links[edit_link_idx]['title'] }}</a>
                               {% if edit_links[edit_link_idx]['nest'] %}
@@ -254,8 +232,8 @@
                         {% for out_link_idx in output_links %}
                           <a class="dropdown-item"
                              data-bs-toggle="hover" data-placement="bottom"
-                             title="{{ output_links[out_link_idx]['title'] }}"
-                             data-content="{{ output_links[out_link_idx]['tooltip'] }}"
+                             data-bs-title="{{ output_links[out_link_idx]['title'] }}"
+                             data-bs-content="{{ output_links[out_link_idx]['tooltip'] }}"
                              id="{{ 'editTableOutputData{}'.format(output_links[out_link_idx]['title']) }}"
                              href="#">
                               {{ output_links[out_link_idx]['title'] }}</a>
@@ -284,8 +262,8 @@
                         {% for request_link_idx in request_links %}
                           <a class="dropdown-item"
                              data-bs-toggle="hover" data-placement="bottom"
-                             title="{{ request_links[request_link_idx]['title'] }}"
-                             data-content="{{ request_links[request_link_idx]['tooltip'] }}"
+                             data-bs-title="{{ request_links[request_link_idx]['title'] }}"
+                             data-bs-content="{{ request_links[request_link_idx]['tooltip'] }}"
                              href="{{ request_links[request_link_idx]['href'] }}">
                               {{ request_links[request_link_idx]['title'] }}</a>
                         {% endfor %}
@@ -637,7 +615,45 @@
             getTable(this.id, this.id);
         }
 
+        function createModal(modalName) {
+            let jv = document.getElementById('jinjaValues');
+            let modalHtml = `
+                <!-- Button trigger modal -->
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                    data-bs-target="#${modalName}" id="${modalName}Button" style="display: none;">
+                  Launch demo modal
+                </button>
+
+                <!-- Modal -->
+                <div class="modal modal-xl mw-100 w-90 hide fade" id="${modalName}" tabindex="-1"
+                    aria-labelledby="${modalName}Label" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h1 class="modal-title fs-5" id="${modalName}Label">Logfile - ${jv.dataset['object_name']}</h1>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                      <div class="modal-body">
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn w-100 btn-secondary" data-bs-dismiss="modal">Close</button>
+                      </div>
+                    </div>
+                  </div>
+
+            `
+            let placeHolderId = `${modalName}Placeholder`;
+            let placeHolder = document.getElementById(placeHolderId);
+            if (!(placeHolder)) {
+                const placeHolder = document.createElement("div");
+                placeHolder.setAttribute("id", modalName);
+            }
+            placeHolder.innerHTML = modalHtml;
+        }
+
         function parseLog(data, kwargs) {
+            createModal('logModal');
+            addLogModalObserver();
             let logFile = JSON.parse(data['data']);
             logFile = "<p align=\"left\" style='white-space: pre; font-family: Consolas;'>" +
                 logFile.join("</p><p align=\"left\" style='white-space: pre; font-family: Consolas;'>") +
@@ -1413,7 +1429,6 @@
             addOnClickEvent('#duplication_type', duplicationTypeOnChange, 'change');
             addOnClickEvent('#name_create_type', nameCreateOnChange, 'change');
             addOnClickEvent('.list-group-item-linkable', listGroupOnClick);
-            addLogModalObserver();
             reloadPageOnModalCloseListener();
             reformatDataTableOnShown();
         }

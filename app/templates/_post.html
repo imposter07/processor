@@ -1,16 +1,17 @@
 <table class="table table-hover text-wrap shadow outer">
     <tr>
         <td>
-            <div class="d-flex align-items-start align-items-center">
+            <div class="d-flex align-items-start align-items-center text-wrap"
+             style="word-wrap: break-word; overflow-wrap: break-word;">
                 <!-- Image section -->
                 {% with size=40 %}
                     {% include '_user_image.html' %}
                 {% endwith %}
 
                 <!-- Text content section -->
-                <div class="flex-grow-1 ms-3">
+                <div class="flex-grow-1 ms-3" style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
                     {% set user_link %}
-                        <a href="{{ url_for('main.user', username=post.author.username) }}" class="user_popup">
+                        <a href="{{ url_for('main.user', username=post.author.username) }}" class="user_popup" style="font-size: 90%; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
                             {{ post.author.username }}
                         </a>
                     {% endset %}
@@ -35,7 +36,7 @@
                                 #{{ post.request_id }}
                             </a>
                         {% endif %}
-                        <span id="post{{ post.id }}" style="font-size: 90%;">
+                        <span id="post{{ post.id }}" style="font-size: 90%; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
                             {{ post.body }}
                         </span>
                         {% if post.language and post.language != g.locale %}
@@ -48,10 +49,10 @@
 
                     <div>
                         {% if post.processor_run_success() %}
-                            <i class="bi bi-check-lg btn btn-success pull-right"></i>
+                            <i class="bi bi-check-lg btn btn-sm btn-success pull-right"></i>
                         {% endif %}
                         {% if post.processor_run_failed() %}
-                            <i class="bi bi-x-lg btn btn-danger pull-right"></i>
+                            <i class="bi bi-x-lg btn btn-sm btn-danger pull-right"></i>
                         {% endif %}
                     </div>
                 </div>

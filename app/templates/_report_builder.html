@@ -30,6 +30,10 @@
 <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
 <script src="{{ url_for('static', filename='js_utils.js') }}"></script>
 <script>
+    /**
+     * Toggles checkbox via tree-like structure on hover or selection --
+     * Selecting/Deselecting a header hides all child elements as well.
+     */
     function toggleCheckbox(elem, checkbox, hover = false, leave = false) {
         if (hover && checkbox.checked) return;
         if ((!checkbox.checked && !hover) || (!checkbox.checked && leave)) {
@@ -87,6 +91,10 @@
     }
 
 
+    /**
+     * Mouse over event while dragging sections to determine drop zone.
+     * Like checkboxes, headers will drag child elements as well.
+     */
     function findPos(event) {
         let id = JSON.parse(event.dataTransfer.types[0]);
         let draggableElement = document.getElementById(id);
@@ -107,6 +115,11 @@
         }
     }
 
+
+    /**
+     * Moves section on drop.
+     * Uses border to indicate to user location of drop.
+     */
     function onDrop(event) {
         event.currentTarget.classList.remove("border-top");
         event.currentTarget.classList.remove("border-bottom");
@@ -115,6 +128,10 @@
         event.dataTransfer.clearData();
     }
 
+
+    /**
+     * Moves border to indicate to user location of drop.
+     */
     function onDragLeave(event) {
         event.currentTarget.classList.remove("border-top");
         event.currentTarget.classList.remove("border-bottom");
@@ -124,6 +141,9 @@
         event.preventDefault();
     }
 
+    /**
+     * Moves border to indicate to user location of drop.
+     */
     function onDragOver(event) {
         preventDrag(event);
         const position = findPos(event);
@@ -132,6 +152,9 @@
         event.currentTarget.classList.add(border);
     }
 
+    /**
+     * Triggers scroll near top and bottom of page while dragging.
+     */
     function onDrag(event) {
         let scrollThreshold = 30;
         let headerHeight = document.getElementById('navbar').offsetHeight;
@@ -140,11 +163,20 @@
         }
     }
 
+    /**
+     * Re-adds getReportCharts event listener when drag finishes.
+     * Removes shading of dragged section.
+     */
     function onDragEnd(event) {
         window.addEventListener('scroll', getReportCharts);
         event.currentTarget.classList.remove('bg-light');
     }
 
+    /**
+     * Removes getReportCharts event listener -- causes issues when charts
+     * load on drag due to resizing of divs.
+     * Adds shading of dragged section.
+     */
     function onDragStart(event) {
         window.removeEventListener('scroll', getReportCharts);
         event.currentTarget.childNodes.forEach(child => {
@@ -164,6 +196,9 @@
         elem.appendChild(grip);
     }
 
+    /**
+     * Manages all drag events.
+     */
     function addDragDrop(elem) {
         elem.draggable = true;
         elem.addEventListener('dragstart', function (e) {
@@ -186,6 +221,10 @@
         }, false);
     }
 
+    /**
+     * Adds keys as data attributes for later saving.
+     * Keys are from build_processor_analysis_email task.
+     */
     function storeJsonAsDataAttr(data, elem) {
         for (let key in data) {
             if (!(['data', 'message'].includes(key))) {
@@ -195,6 +234,9 @@
         if (!('selected' in data)) elem.setAttribute('data-selected', 'true');
     }
 
+    /**
+     * On build checks for deselected headers (for previously saved reports).
+     */
     function checkHideHeaders(elem) {
         elem.childNodes.forEach(child => {
             if (child.id === 'saveRow') return;
@@ -206,6 +248,10 @@
         });
     }
 
+    /**
+     * Builds sections -- sections refer to parent elements rather than
+     * individual analyses.
+     */
     function buildSection(data) {
         let newSection = document.createElement('div');
         newSection.id = ('section' + data['key']).toLowerCase();
@@ -237,6 +283,9 @@
         }
     }
 
+    /**
+     * Translates html formats from build_processor_analysis_email to elements.
+     */
     function getTagType(format){
         let tags = {
             'HEADING_1': 'h2',
@@ -247,6 +296,11 @@
         return tags.hasOwnProperty(format) ? tags[format] : 'span';
     }
 
+
+    /**
+     * Builds either a section when elem is a header or
+     * individual analysis bullet points otherwise.
+     */
     function buildReportElem(data) {
         if (data['format'] === "HEADING_1") {
             buildSection(data);
@@ -343,6 +397,9 @@
         return chart_args
     }
 
+    /**
+     * Builds entire chart section.
+     */
     function buildReportCharts(reportCharts) {
         let data = {'key': 'Charts', 'message': 'Charts'};
         buildSection(data);
@@ -383,6 +440,9 @@
         });
     }
 
+    /**
+     * Gets indidividual analysis for saving.
+     */
     async function getAnalysisJson(elem, name, date) {
         let analysisJson = {};
         for (let key in elem.firstChild.dataset) {
@@ -423,6 +483,9 @@
         return bulletJson;
     }
 
+    /**
+     * Gets entire section under header for saving.
+     */
     async function getSectionJson(elem, name, date) {
         let sectionJson = [];
         const children = elem.childNodes;
@@ -433,6 +496,10 @@
         return sectionJson
     }
 
+    /**
+     * Manages saving based on user selection of email and/or google doc.
+     * Always saves to database.
+     */
     async function saveReportBuilder() {
         let name = document.getElementById("name").value;
         let date = document.getElementById("report_date").value;
@@ -485,6 +552,9 @@
         addOnClickEvent("#" + id, toggleSaveOption);
     }
 
+    /**
+     * Allows for saving as google doc and/or email.
+     */
     function addSaveOptions(elem) {
         addSaveOption(elem, "saveDocBtn", "Save As Google Doc", "saveGoogleDoc", "true");
         addSaveOption(elem, "saveEmailBtn", "Send As Email", "sendEmail");
@@ -510,6 +580,10 @@
         addSaveButton(saveRow);
     }
 
+    /**
+     * Updates selectize with saved reports when date is changed.
+     * Dates are non-inclusive with regard to data.*
+     */
     function updateNames(id, names) {
         let nameField = document.getElementById('name');
         delete nameField.dataset.options;
@@ -525,6 +599,9 @@
         nameField.selectize.setValue('Auto');
     }
 
+    /**
+     * Avoids trying to load a report if entering a new name.
+     */
     function checkNames(id, val) {
         let select = document.getElementById(id);
         if (select.dataset.options) {
@@ -537,12 +614,20 @@
         return true
     }
 
+    /**
+     * Updates date stored in html for later retrieval.
+     * (Quicker/easier than getting from selectize.)
+     */
     function updateDate(id, date) {
         let dateField = document.getElementById(id);
         delete dateField.dataset.prev;
         dateField.dataset.prev = date;
     }
 
+    /**
+     * Builds selected report builder.
+     * Callback function for /get_report_builder route response.
+     */
     function buildReportElems(data, kwargs) {
         addElemRemoveLoadingBtn(kwargs['clickElem']);
         let nameId = "name";

@@ -1538,6 +1538,21 @@
         }
     }
 
+    /**
+     * Builds arg dict for /get_table route and subsequently passed to
+     * get_liquid_table_from_db task.
+     *
+     * use_cache: Determines whether to use stored values in db.
+     * proc_id: Processor ID.
+     * table_name: Table Name in html.
+     * chart_show: Boolean of whether to default to showing table or chart.
+     * return_func: Desired chart builder javascript function
+     *              (e.g. generateBarChart).
+     * dimensions: Array of table and chart dimensions -- db names.
+     * metrics: Array of table and chart metrics -- db names.
+     * filter_dict: Dictionary of filters to filter to e.g. select campaigns or
+     *              dates.
+     */
     function getDataTableArgsDict(return_func='', dimensions=[], metrics = [],
                                   filter_dict = [], use_cache, proc_id,
                                   table_name, chart) {

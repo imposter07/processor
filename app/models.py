@@ -2635,6 +2635,11 @@ class Plan(db.Model):
                       edit_progress=edit_progress, edit_name=edit_name,
                       output_links=output_links,
                       buttons=Processor.get_navigation_buttons(buttons))
+        kwargs['view_selector'] = [{'view': 'Plan', 'active': buttons == 'Plan',
+                                    'value': 'plan.edit_plan'},
+                                   {'view': 'Research',
+                                    'active': buttons == 'Research',
+                                    'value': 'plan.edit_research'}]
         if object_name:
             cur_obj = Plan.query.filter_by(name=object_name).first_or_404()
             kwargs['object'] = cur_obj

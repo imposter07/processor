@@ -191,19 +191,20 @@ class BrandtrackerForm(FlaskForm):
 
     def set_title_choices(self):
         campaign = Campaign.query.filter_by(name='BRANDTRACKER').first()
-        bt_procs = Processor.query.filter_by(campaign_id=campaign.id).all()
-        all_titles = []
-        for proc in bt_procs:
-            proc_data = proc.processor_analysis.filter_by(
-                key=az.Analyze.database_cache,
-                parameter='productname|eventdate').order_by(
-                ProcessorAnalysis.date.desc()).first()
-            if not proc_data:
-                continue
-            proc_data = json.loads(proc_data.data)
-            titles = [v for v in proc_data['productname'].values()]
-            all_titles.extend(titles)
         choices = [('', '')]
-        if all_titles:
-            choices.extend([(x, x) for x in set(all_titles)])
+        if campaign:
+            bt_procs = Processor.query.filter_by(campaign_id=campaign.id).all()
+            all_titles = []
+            for proc in bt_procs:
+                proc_data = proc.processor_analysis.filter_by(
+                    key=az.Analyze.database_cache,
+                    parameter='productname|eventdate').order_by(
+                    ProcessorAnalysis.date.desc()).first()
+                if not proc_data:
+                    continue
+                proc_data = json.loads(proc_data.data)
+                titles = [v for v in proc_data['productname'].values()]
+                all_titles.extend(titles)
+            if all_titles:
+                choices.extend([(x, x) for x in set(all_titles)])
         self.titles.choices = choices

@@ -9,7 +9,9 @@ function turnOffProgress(oldHtml, clickElem) {
     let downloadElem = document.getElementById(downloadID);
     if (downloadElem) {
         downloadElem.style.width = '100%';
-        downloadElem.parentElement.remove();
+        setTimeout(function () {
+            downloadElem.parentElement.remove();
+        }, 500);
     }
     unanimateBar(downloadID);
 }
@@ -182,14 +184,15 @@ function getTaskProgressResponse(data, kwargs) {
                 if (updateFunction) {
                     updateFunction(newPercent);
                 } else {
-                    downloadProgress.setAttribute("style", "width: " + newPercent + "%")
+                    downloadProgress.setAttribute("style", "width: " + newPercent + "%");
                 }
             } else {
-                let percent = oldPercent + 2;
+                let newIncrement = (oldPercent === 1) ? 25 : 5;
+                let percent = oldPercent + newIncrement;
                 if (updateFunction) {
                     updateFunction(percent);
                 } else {
-                    downloadProgress.setAttribute("style", "width: " + percent + "%")
+                    downloadProgress.setAttribute("style", "width: " + percent + "%");
                 }
             }
         }

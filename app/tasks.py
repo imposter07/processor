@@ -4784,26 +4784,18 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
     return [df]
 
 
+@error_handler
 def get_all_processors(user_id, running_user):
-    try:
-        _set_task_progress(0)
-        p = Processor.query.all()
-        df = pd.DataFrame([
-            {'name': x.name, 'id': x.id, 'campaign': x.campaign.name,
-             'product': x.campaign.product.name,
-             'client': x.campaign.product.client.name,
-             'project_numbers': ','.join(
-                 [y.project_number for y in x.projects.all()]),
-             'url': 'lqadata.com/processor/{}'.format(x.name)} for x in p])
-        tables = [df]
-        _set_task_progress(100)
-        return tables
-    except:
-        _set_task_progress(100)
-        app.logger.error(
-            'Unhandled exception - User {} running_user - {}'.format(
-                user_id, running_user), exc_info=sys.exc_info())
-        return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+    p = Processor.query.all()
+    df = pd.DataFrame([
+        {'name': x.name, 'id': x.id, 'campaign': x.campaign.name,
+         'product': x.campaign.product.name,
+         'client': x.campaign.product.client.name,
+         'project_numbers': ','.join(
+             [y.project_number for y in x.projects.all()]),
+         'url': 'lqadata.com/processor/{}'.format(x.name)} for x in p if x])
+    tables = [df]
+    return tables
 
 
 @error_handler

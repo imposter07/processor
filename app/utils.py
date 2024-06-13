@@ -859,8 +859,8 @@ class LiquidTableColumn(object):
     @staticmethod
     def parse_highlight_type(highlight_type):
         full_row = True
-        true_color = 'shadeCell3'
-        false_color = 'shadeCell4'
+        true_color = 'table-success'
+        false_color = 'table-danger'
         comparison_values = 'true'
         comparator = '==='
         if highlight_type == 'blank':

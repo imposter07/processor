@@ -9,7 +9,7 @@
                 {% endwith %}
 
                 <!-- Text content section -->
-                <div class="flex-grow-1 ms-3" style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
+                <div class="row flex-grow-1 ms-3" style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
                     {% set user_link %}
                         <a href="{{ url_for('main.user', username=post.author.username) }}" class="user_popup" style="font-size: 90%; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;">
                             {{ post.author.username }}
@@ -20,7 +20,7 @@
                         <a class="mt-0">{{ _('%(username)s said %(when)s', username=user_link, when=moment(post.timestamp).fromNow()) }}</a>
                     </div>
 
-                    <div>
+                    <div class="col">
                         {% if post.processor_id %}
                             <a href="{{ url_for('main.processor_page', object_name=post.processor.name) }}" class="processor_popup">
                                 {{ post.processor.name }}
@@ -47,7 +47,7 @@
                         {% endif %}
                     </div>
 
-                    <div>
+                    <div class="col-1 d-flex justify-content-end align-items-center" style="height: 100%;">
                         {% if post.processor_run_success() %}
                             <i class="bi bi-check-lg btn btn-sm btn-success pull-right"></i>
                         {% endif %}

@@ -144,10 +144,10 @@
             </button>
             <div id="collapseOne" class="collapse"
                  aria-labelledby="headingOne" data-bs-parent="#accordionExample">
-                <div class="card-body">
+                <div class="list-group">
                     {% if run_links %}
                         {% for run_link_idx in run_links %}
-                          <a class="dropdown-item" href="#"
+                          <a class="list-group-item list-group-item-action" href="#"
                             data-bs-toggle="hover" data-placement="bottom"
                             data-bs-title="{{ run_links[run_link_idx]['title']}}"
                             data-bs-content="{{ run_links[run_link_idx]['tooltip'] }}"
@@ -172,10 +172,10 @@
             <div id="collapseTwo" class="collapse"
                  aria-labelledby="headingTwo"
                  data-bs-parent="#accordionExample">
-                <div class="card-body">
+                <div class="list-group">
                     {% if edit_links %}
                         {% for edit_link_idx in edit_links %}
-                              <a class="dropdown-item" href="#"
+                              <a class="list-group-item list-group-item-action" href="#"
                                  data-bs-toggle="hover" data-placement="bottom"
                                  data-bs-title="{{ edit_links[edit_link_idx]['title'] }}"
                                  data-bs-content="{{ edit_links[edit_link_idx]['tooltip'] }}"
@@ -196,9 +196,9 @@
                                     <div id="collapseTwoOne" class="collapse"
                                      aria-labelledby="headingTwoOne"
                                      data-bs-parent="#editTableRelationDropdownButton">
-                                        <div class="card-body">
+                                        <div class="list-group">
                                   {% for nested_link in edit_links[edit_link_idx]['nest'] %}
-                                    <a class="dropdown-item"
+                                    <a class="list-group-item list-group-item-action"
                                        id="{{'editTable{}{}'.format(edit_links[edit_link_idx]['title'], nested_link)}}" href="#">
                                         {{ _('{} - {}'.format(edit_links[edit_link_idx]['title'], nested_link)) }}</a>
                                   {% endfor %}
@@ -227,10 +227,10 @@
             <div id="collapseThree" class="collapse"
                  aria-labelledby="headingThree"
                  data-bs-parent="#accordionExample">
-                <div class="card-body">
+                <div class="list-group">
                     {% if output_links %}
                         {% for out_link_idx in output_links %}
-                          <a class="dropdown-item"
+                          <a class="list-group-item list-group-item-action"
                              data-bs-toggle="hover" data-placement="bottom"
                              data-bs-title="{{ output_links[out_link_idx]['title'] }}"
                              data-bs-content="{{ output_links[out_link_idx]['tooltip'] }}"
@@ -257,10 +257,10 @@
             <div id="collapseFour" class="collapse"
                  aria-labelledby="headingFour"
                  data-bs-parent="#accordionExample">
-                <div class="card-body">
+                <div class="list-group">
                     {% if request_links %}
                         {% for request_link_idx in request_links %}
-                          <a class="dropdown-item"
+                          <a class="list-group-item list-group-item-action"
                              data-bs-toggle="hover" data-placement="bottom"
                              data-bs-title="{{ request_links[request_link_idx]['title'] }}"
                              data-bs-content="{{ request_links[request_link_idx]['tooltip'] }}"

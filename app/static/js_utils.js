@@ -287,13 +287,18 @@ function viewSelectorChangeEvent(e) {
     window.location = e.target.selectize.getValue();
 }
 
-function toggleNav () {
-    let elem = document.getElementById("navbarToggler");
-    let main = document.getElementsByTagName("main")[0];
-    main.style.marginLeft = (elem.classList.contains('show')) ?
-         "25%" : "0%";
-    main.classList = (elem.classList.contains('show')) ?
-         "col-9" : "col";
+function toggleNav (e) {
+    let btnElem = document.getElementById('collapseSide');
+    let mainElem = document.getElementsByTagName("main")[0];
+    let colVal = 'col';
+    if (btnElem.classList.contains('hide')) {
+        btnElem.classList.remove('hide');
+        colVal = 'col-9';
+    } else {
+        btnElem.classList.add('hide');
+    }
+    mainElem.className = '';
+    mainElem.classList.add(colVal);
 }
 
 function hexToRgb(hex) {

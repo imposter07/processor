@@ -472,7 +472,7 @@ function getDateForm(loopIndex, tableName) {
     label.textContent = 'Dates';
     let input = document.createElement('input');
     input.id = `datePicker${loopIndex}`;
-    input.className = 'custom-select custom-select-sm flatpickr flatpickr-input active';
+    input.className = 'form-control form-control-sm flatpickr flatpickr-input active';
     input.type = 'text';
     input.placeholder = 'Date';
     input.setAttribute('data-id', 'range');
@@ -2039,8 +2039,8 @@ function buildFilterDict(tableName, filterDict) {
         let select = '';
         if (key === 'Date') {
             select = document.createElement('input');
-            select.classList.add('custom-select');
-            select.classList.add('custom-select-sm');
+            select.classList.add('form-control');
+            select.classList.add('form-control-sm');
             select.classList.add('flatpickr');
             select.classList.add('flatpickr-input');
             select.classList.add('active');

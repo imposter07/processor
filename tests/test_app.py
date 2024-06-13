@@ -1141,6 +1141,7 @@ class TestUploader:
         sw.wait_for_elem_load(elem_id)
         sw.xpath_from_id_and_click(elem_id, load_elem_id=label_id)
         worker.work(burst=True)
+        sw.wait_for_elem_load(label_id)
         elem = sw.browser.find_element_by_id(label_id)
         assert cur_name in elem.get_attribute('innerHTML')
 

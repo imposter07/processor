@@ -21,7 +21,7 @@
     }
 
     body {
-        padding-top: 55px;
+        padding-top: 65px;
         overflow-x: hidden;
         background-color: var(--bs-secondary-bg);
     }
@@ -66,8 +66,34 @@
         background-color: var(--bs-body-bg) !important;
     }
 
-    .selectize-dropdown {
+    .selectize-dropdown, .processor_popup {
         z-index: 10000 !important;
+    }
+
+        .custom-control-input {
+      transform: scale(5);
+    }
+
+    .sidebar.collapse.show,
+    .sidebar.collapse.show + .col {
+        transition: .18s linear;
+        left: 0;
+    }
+
+    .sidebar.collapse,
+    .sidebar.collapsing,
+    .sidebar.collapsing + .col {
+        transition: .18s linear;
+        z-index: 1050;
+        left: -25%;
+    }
+
+    input[id^="apis-"]::placeholder {
+        color: lightgrey;
+    }
+
+    .progress-bar, .bd-sidebar {
+        transition: all 0.3s ease-in-out;
     }
 
 </style>
@@ -85,8 +111,8 @@
     {% if edit_name %}data-edit_name="{{ edit_name }}"{% endif %}
     {% if current_user %}data-username="{{ current_user.username }}"{% endif %}>
 </div>
-<nav id="navbar" class="navbar navbar-expand-lg fixed-top shadow outer align-items-center" style="padding-top:1px;">
-    <a class="navbar-brand mb-2 " href="{{ url_for('main.index') }}">
+<nav id="navbar" class="navbar navbar-expand-lg fixed-top align-items-center" style="padding-top:1px;">
+    <a class="navbar-brand" href="{{ url_for('main.index') }}">
         <img alt="Brand" class="img-responsive" style="height: 30px;"
              src={{ url_for('static', filename='logo-blk.png') }}>
     </a>
@@ -177,12 +203,11 @@
 </nav>
 
 <div class="row vh-100 flex-nowrap" style="">
-    <div class="bd-sidebar col-md-3 collapse show" style="overflow-y: auto; max-height: calc(100vh - 55px); position: fixed">
+    <div class="bd-sidebar col-3 collapse show" style="overflow-y: auto;">
         {% block vertical_navbar %}{% endblock %}
     </div>
     <main class="col-9" role="main"
-          style="overflow-y: visible; max-height: calc(100vh); margin-left: 25%;
-          transition: margin .18s;">
+          style="overflow-y: visible; max-height: calc(100vh);">
         <div class="mb-4 bg-body-tertiary rounded-3 text-center shadow outer"
              style="padding-top: 5px; padding-bottom: 5px;">
             <div class="container-fluid">
@@ -233,45 +258,13 @@
                 {% block app_header %}{% endblock %}
             </div>
         </div>
-        <div class="container-fluid shadow-sm outer card">
+        <div class="">
             {% block app_content %}{% endblock %}
             {% block app_content_2 %}{% endblock %}
             {% block app_content_3 %}{% endblock %}
         </div>
     </main>
 </div>
-
-<style>
-    .custom-control-input {
-      transform: scale(5);
-    }
-
-    body {
-        overflow-x: hidden;
-        padding-top: 55px;
-    }
-
-    .sidebar.collapse.show,
-    .sidebar.collapse.show + .col {
-        transition: .18s linear;
-        left: 0;
-    }
-
-    .sidebar.collapse,
-    .sidebar.collapsing,
-    .sidebar.collapsing + .col {
-        transition: .18s linear;
-        z-index: 1050;
-        left: -25%;
-    }
-
-    input[id^="apis-"]::placeholder {
-                color: lightgrey;
-            }
-
-</style>
-
-
 
 {{ moment.include_moment() }}
 {{ moment.lang(g.locale) }}
@@ -302,7 +295,7 @@
         document.getElementById(destElem).innerText = data.text;
     }
 
-    function initializePopovers(modelName='user') {
+    function initializePopovers(modelName = 'user') {
         const popups = document.getElementsByClassName(`${modelName}_popup`);
         for (let i = 0; i < popups.length; i++) {
             const popover = new bootstrap.Popover(popups[i], {
@@ -329,6 +322,8 @@
                 }
             });
         }
+        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="hover"]')
+        const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
     }
 
     function processorPopovers() {

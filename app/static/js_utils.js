@@ -100,7 +100,7 @@ function searchTable(tableName, selector = ' tr:not(.header):not([id^="trHidden"
     trs.forEach(setTrStyleDisplay);
 }
 
-function searchForms(formID, selector = 'div[class*="card col-"]', query = '') {
+function searchForms(formID, selector = 'div[class*="card col"]', query = '') {
     let filter = document.querySelector('#formSearchInput').value.trim()
         .toLowerCase();
     if (query) {

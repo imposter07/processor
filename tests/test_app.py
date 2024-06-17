@@ -8,7 +8,8 @@ from contextlib import contextmanager
 from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
     Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
-    PartnerPlacements, PlanRule, ProcessorReports, Account, Dashboard, Partner
+    PartnerPlacements, PlanRule, ProcessorReports, Account, Dashboard, \
+    Partner, ProcessorDatasources
 import app.plan.routes as plan_routes
 import app.main.routes as main_routes
 from config import basedir
@@ -235,6 +236,7 @@ class TestUserLogin:
 class TestProcessor:
     test_name = 'test'
     request_test_name = 'test_request'
+    test_act_id = '123'
 
     @pytest.fixture(scope="class")
     def default_name(self):
@@ -398,22 +400,32 @@ class TestProcessor:
         TestPlan().test_topline(sw, login, worker, plan_name=p.name)
         self.click_to_plan(sw, p)
 
-    def add_import_card(self, worker, sw, default_name, name):
+    @staticmethod
+    def import_save(worker, sw):
+        sw.browser.execute_script("window.scrollTo(0, 0)")
+        submit_elem = 'loadRefresh'
+        load_elem = 'loadingBtn{}'.format(submit_elem)
+        sw.xpath_from_id_and_click(submit_elem, load_elem_id=load_elem)
+        sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
+        worker.work(burst=True)
+
+    def add_import_card(self, worker, sw, default_name, name,
+                        api_type='Rawfile'):
         with adjust_path(basedir):
             proc_url = self.get_url(main_routes.edit_processor_import,
                                     p_name=default_name)
             add_child_id = 'add_child'
             sw.go_to_url(proc_url, elem_id=add_child_id)
-            sw.xpath_from_id_and_click(add_child_id,
-                                       load_elem_id='apis-0-key-selectized')
+            api_elem = 'apis-0-key-selectized'
+            sw.xpath_from_id_and_click(add_child_id, load_elem_id=api_elem)
             import_form = [(name, 'apis-0-name'),
-                           ('Rawfile', "apis-0-key-selectized", 'clear'),
+                           (api_type, api_elem, 'clear'),
+                           (self.test_act_id, 'apis-0-account_id'),
                            ('11-16-2023', 'apis-0-start_date')]
             sw.send_keys_from_list(import_form)
-            sw.browser.execute_script("window.scrollTo(0, 0)")
-            sw.xpath_from_id_and_click('loadRefresh')
-            sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
-            worker.work(burst=True)
+            self.import_save(worker, sw)
+        sw.browser.refresh()
+        sw.wait_for_elem_load('base_form_id')
 
     def delete_import_card(self, worker, sw, default_name, name):
         with adjust_path(basedir):
@@ -423,23 +435,37 @@ class TestProcessor:
             xp = """//input[@value="{}"]""".format(name)
             import_card = sw.browser.find_element_by_xpath(xp)
             api_id = import_card.get_attribute('id').replace('name', 'delete')
-            sw.xpath_from_id_and_click(api_id)
-            sw.browser.execute_script("window.scrollTo(0, 0)")
-            sw.xpath_from_id_and_click('loadRefresh')
-            sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
-            worker.work(burst=True)
+            sw.xpath_from_id_and_click(api_id, load_elem_id='add_child')
+            self.import_save(worker, sw)
 
     def test_add_delete_import(self, set_up, sw, worker, default_name):
-        self.add_import_card(worker, sw, default_name, 'test')
-        sw.browser.refresh()
-        sw.wait_for_elem_load('base_form_id')
+        names = [vmc.api_raw_key, vmc.api_fb_key]
+        for name in [vmc.api_raw_key, vmc.api_fb_key]:
+            self.add_import_card(worker, sw, default_name, name, api_type=name)
         with adjust_path(set_up.local_path):
             matrix = vm.VendorMatrix()
-            assert 'API_Rawfile_test' in matrix.vm_df[vmc.vendorkey].to_list()
-            self.delete_import_card(worker, sw, default_name, 'test')
-            matrix = vm.VendorMatrix()
-            assert 'API_Rawfile_test' not in matrix.vm_df[
-                vmc.vendorkey].to_list()
+            vm_list = matrix.vm_df[vmc.vendorkey].to_list()
+            df = matrix.vm_df
+            for name in names:
+                vk = 'API_{}_{}'.format(name, name)
+                assert vk in vm_list
+                tdf = df[df[vmc.vendorkey].str.contains(vmc.api_raw_key)]
+                api_fields = tdf[vmc.apifields].to_list()
+                assert str(api_fields[0]) == str(api_fields[1])
+                ds = ProcessorDatasources.query.filter_by(
+                    vendor_key=vk, processor_id=set_up.id).first()
+                assert ds.name == name
+                if name == vmc.api_fb_key:
+                    file_name = df[df[vmc.vendorkey] == vk][vmc.apifile]
+                    file_name = file_name.to_list()[0]
+                    file_name = os.path.join(utl.config_path, file_name)
+                    with open(file_name, 'rb') as f:
+                        data = json.load(f)
+                    assert data['act_id'] == 'act_{}'.format(self.test_act_id)
+                    assert ds.account_id == self.test_act_id
+                self.delete_import_card(worker, sw, default_name, name)
+                matrix = vm.VendorMatrix()
+                assert vk not in matrix.vm_df[vmc.vendorkey].to_list()
 
     @staticmethod
     def create_test_data():
@@ -495,7 +521,7 @@ class TestProcessor:
     def test_get_log(self, set_up, sw, worker, login, default_name):
         proc_url = self.get_url(main_routes.edit_processor_import,
                                 p_name=default_name)
-        sw.go_to_url(proc_url)
+        sw.go_to_url(proc_url, elem_id='loadRefresh')
         TestUploader().test_get_log(sw, login, worker, cur_name=default_name)
 
     def create_and_go_to_clean(self, set_up, sw, worker, default_name, user):
@@ -505,7 +531,7 @@ class TestProcessor:
         with adjust_path(basedir):
             proc_url = self.get_url(main_routes.edit_processor_clean,
                                     p_name=default_name)
-            sw.go_to_url(proc_url)
+            sw.go_to_url(proc_url, elem_id='loadRefresh')
             sw.click_on_xpath(xpath=data_source_selector)
             sw.click_on_xpath(xpath=raw_data_source)
         return df
@@ -1689,9 +1715,10 @@ class TestReportingDBReadWrite:
         req_dash_url = '/dashboard/create'
         ffxiv_proc_url = '{}/processor/{}/{}'.format(
             base_url, urllib.parse.quote(self.test_proc_name), req_dash_url)
-        sw.go_to_url(ffxiv_proc_url)
+        elem_id = 'chart_type-selectized'
+        sw.go_to_url(ffxiv_proc_url, elem_id=elem_id)
         dash_form_fill = [(name, 'name'),
-                          (chart, 'chart_type-selectized', 'clear'),
+                          (chart, elem_id, 'clear'),
                           (metrics, 'metrics-selectized'),
                           (default_view, 'default_view-selectized', 'clear')]
         if include_in_report:

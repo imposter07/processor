@@ -77,7 +77,7 @@ the necessary fix for required=False attributes, but will also not set the requi
     {%- for subfield in field %}
       {# if not bootstrap_is_hidden_field(subfield) -#}
         {% if subfield.widget.input_type != 'hidden' %}
-         <div class="col-">{{ form_field(subfield,
+         <div class="col">{{ form_field(subfield,
                       form_type=form_type,
                       horizontal_columns=horizontal_columns,
                       button_map=button_map) }}</div>
@@ -149,7 +149,7 @@ the necessary fix for required=False attributes, but will also not set the requi
     {{ form_errors(form, hiddens="only") }}
     {% for field in form if field.widget.input_type != 'hidden'%}
         {% if field.entries is defined %}
-            <div class="row">
+            <div class="row" id="cardColumnsRow">
             {% for entry in field.entries if entry.widget.input_type != 'hidden'%}
                 {{ entry.csrf_token }}
                  <div class="col">

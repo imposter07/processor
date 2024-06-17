@@ -756,7 +756,7 @@
                         elem.parentNode.parentNode.parentNode.parentNode
                             .parentNode.querySelector(buttonSelector));
                     test_button.setAttribute('style', '');
-                    test_button.setAttribute('class', 'w-100 btn-sm btn-success');
+                    test_button.setAttribute('class', 'w-100 btn btn-sm btn-success');
                     addOnClickEvent('input[id*="test_connection"]' +
                         '[class*="btn"]:not([style*="visibility:hidden"])',
                         testApiOnClick);
@@ -1031,22 +1031,17 @@
         }
 
         function appendRows() {
-            let cardCol = '.card-columns'
-            let parent = $(cardCol).parent()[0]
-            if (typeof parent === 'undefined') {
-                parent = $('#base_form_id').parent()[0]
-                parent.insertAdjacentHTML('beforeend', '<div class="" id="baseRow"></div>')
-            } else {
-                parent.classList.remove("row");
-                parent.innerHTML = '<div class="" id="baseRow"></div>'
-                $(cardCol).removeClass("card-columns")
-            }
-            $('#baseRow').append(
-                '<div class="row" id="rowZero"></div><br>' +
-                '<div class="row" id="rowOne"></div><br>' +
-                '<div class="row" id="rowTwo"></div><br>' +
-                '<div class="row" id="rowThree"></div><br>'
-            )
+            let baseRowId = 'baseRow';
+            let baseRowHtml = `<div class="" id="${baseRowId}"></div>`;
+            let baseFormElem = document.getElementById('base_form_id');
+            baseFormElem.insertAdjacentHTML('beforeend', baseRowHtml);
+            let rowHtml = `
+                <div class="row" id="rowZero"></div><br>
+                <div class="row" id="rowOne"></div><br>
+                <div class="row" id="rowTwo"></div><br>
+                <div class="row" id="rowThree"></div><br>
+            `
+            document.getElementById('baseRow').insertAdjacentHTML('beforeend', rowHtml);
         }
 
         function appendForm(form, row, name, title) {

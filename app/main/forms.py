@@ -86,7 +86,7 @@ class ProcessorForm(FlaskForm):
 
 class APIForm(FlaskForm):
     vendor_key = StringField(
-        'Vendor Key', render_kw={'readonly': True, 'disabled': True})
+        'Vendor Key', render_kw={'readonly': True})
     name = StringField('Name', validators=[Regexp(r'\W+')])
     key = SelectField('API Type', choices=[(x, x) for x in vmc.api_keys])
     account_id = StringField('Account ID')
@@ -187,7 +187,6 @@ class EditProcessorForm(ProcessorForm):
         super(EditProcessorForm, self).__init__(*args, **kwargs)
         self.original_name = original_name
         self.name.render_kw['readonly'] = True
-        self.name.render_kw['disabled'] = True
 
     def validate_name(self, name):
         if name.data != self.original_name:
@@ -597,10 +596,10 @@ class EditUploaderForm(UploaderForm):
 
 class RelationForm(FlaskForm):
     impacted_column_name = StringField(
-        'Column Name', render_kw={'readonly': True, 'disabled': True})
+        'Column Name', render_kw={'readonly': True})
     unresolved_relations = StringField(
         'Unresolved Relations',
-        render_kw={'readonly': True, 'disabled': True})
+        render_kw={'readonly': True})
     relation_constant = StringField(
         'Relation Constant', description='Only populate if you want a '
                                          'value to appear for all line items.')
@@ -750,7 +749,7 @@ class ProcessorMetricsForm(FlaskForm):
 
 class ProcessorDeleteForm(FlaskForm):
     processor_name = StringField(
-        'Processor Name', render_kw={'readonly': True, 'disabled': True},
+        'Processor Name', render_kw={'readonly': True},
         description='WARNING - Clicking this will delete this processor. \n'
                     'This can not be undone.')
     delete_metric = SubmitField(

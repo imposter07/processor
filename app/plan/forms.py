@@ -190,10 +190,13 @@ class BrandtrackerForm(FlaskForm):
     form_continue = HiddenField('form_continue')
 
     def set_title_choices(self):
-        campaign = Campaign.query.filter_by(name='BRANDTRACKER').first()
+        bt_camps = Campaign.query.filter_by(name='BRANDTRACKER').all()
         choices = [('', '')]
-        if campaign:
-            bt_procs = Processor.query.filter_by(campaign_id=campaign.id).all()
+        if bt_camps:
+            bt_procs = []
+            for c in bt_camps:
+                cur_proc = Processor.query.filter_by(campaign_id=c.id).all()
+                bt_procs.extend(cur_proc)
             all_titles = []
             for proc in bt_procs:
                 proc_data = proc.processor_analysis.filter_by(

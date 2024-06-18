@@ -983,16 +983,14 @@ class Processor(db.Model):
                        {'RFP': ['plan.rfp', 'file-earmark-spreadsheet']},
                        {'PlanPlacements': ['plan.plan_placements', 'table']},
                        {'Specs': ['plan.specs', 'eyeglasses']},
-                       {'Contacts': ['plan.contacts', 'person-lines-fill']},
-                       {'Calc': ['plan.calc', 'calculator']}]
+                       {'Contacts': ['plan.contacts', 'person-lines-fill']}]
         elif buttons == 'Research':
-            buttons = [{'Basic': ['plan.edit_research', 'list-ol']},
-                       {'CompetitiveSpend': [
-                           'plan.competitive_spend', 'list-check']},
-                       {'Brandtracker': [
-                           'plan.edit_brandtracker', 'list-check']},
-                       {'ImpactScore': [
-                           'plan.edit_impact_score', 'list-check']}]
+            buttons = [
+                {'Basic': ['plan.edit_research', 'list-ol']},
+                {'CompetitiveSpend': ['plan.edit_competitive_spend', 'list-check']},
+                {'Brandtracker': [ 'plan.edit_brandtracker', 'list-check']},
+                {'ImpactScore': ['plan.edit_impact_score', 'list-check']},
+                {'Calc': ['plan.calc', 'calculator']}]
         elif buttons == Project.__table__.name:
             buttons = [
                 {'Basic': ['main.project_edit', 'list-ol']},

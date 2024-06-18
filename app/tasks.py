@@ -5809,8 +5809,11 @@ def get_brandtracker_imports(processor_id, current_user_id):
 @error_handler
 def get_brandtracker_data(current_user_id, running_user, form_data):
     # Get all brandtracker processors and their associated reporting data
-    campaign = Campaign.query.filter_by(name='BRANDTRACKER').first()
-    bt_procs = Processor.query.filter_by(campaign_id=campaign.id).all()
+    bt_camps = Campaign.query.filter_by(name='BRANDTRACKER').all()
+    bt_procs = []
+    for c in bt_camps:
+        cur_proc = Processor.query.filter_by(campaign_id=c.id).all()
+        bt_procs.extend(cur_proc)
     df = pd.DataFrame()
     metric_cols = ['media_spend', 'youtube_subscribers',
                    'twitter_followers', 'twitch_views', 'twitch_viewers',
@@ -5877,8 +5880,11 @@ def get_brandtracker_data(current_user_id, running_user, form_data):
 def get_impact_score_data(current_user_id, running_user):
     # Get all brandtracker processors and their associated reporting data
     _set_task_progress(20)
-    campaign = Campaign.query.filter_by(name='BRANDTRACKER').first()
-    bt_procs = Processor.query.filter_by(campaign_id=campaign.id).all()
+    bt_camps = Campaign.query.filter_by(name='BRANDTRACKER').all()
+    bt_procs = []
+    for c in bt_camps:
+        cur_proc = Processor.query.filter_by(campaign_id=c.id).all()
+        bt_procs.extend(cur_proc)
     df = pd.DataFrame()
     #['conv2': desktop_visits, 'conv3': desktop_bounce_rate, 
     # 'conv4': desktop_pages_per_visit, 'conv5': desktop_average_visit_duration,

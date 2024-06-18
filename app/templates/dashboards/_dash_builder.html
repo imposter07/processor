@@ -1417,7 +1417,7 @@
             if (totalCardElem === null) {
                 let curElem = document.getElementById(elem);
                 curElem.innerHTML += `
-                    <div id="totalCard` + d['name'] + `" class="card mb-auto shadow-sm">
+                    <div id="totalCard` + d['name'] + `" class="card col mb-auto shadow-sm">
                     <div class="card-body p-3">
                     <h3 class="text-muted small">` + d['name'].toUpperCase().replace('ESTIMATED_', 'e').split('_').join(' ') + `</h3>
                     <h5 id="totalCardValue` + d['name'] + `" class="text-large" style="text-align:center">

@@ -496,7 +496,8 @@ function changeSliderValues(slider, newValue) {
     let key = slider.dataset['key'];
     data[key] = newValue / 100.0;
     dataCell.value = JSON.stringify(data);
-    dataCell.onchange();
+    let event = new Event('change');
+    dataCell.dispatchEvent(event);
 }
 
 function adjustOtherSliders(changedSlider) {
@@ -544,7 +545,9 @@ function syncSliderDataCell(elem, dataCell) {
         sliders[idx].dataset['key'] = k.value;
     });
     dataCell.value = JSON.stringify(data);
-    dataCell.onchange();
+    console.log(dataCell)
+    let event = new Event('change');
+    dataCell.dispatchEvent(event);
 }
 
 function sliderKeyEditOnInput(e) {
@@ -613,7 +616,7 @@ function deleteSlider(buttonElement) {
     const sliderContainer = buttonElement.parentElement;
     let containerParent = sliderContainer.parentElement;
     sliderContainer.remove();
-    syncSliderDataCell(containerParent, containerParent.children[1]);
+    syncSliderDataCell(containerParent, containerParent.parentElement.children[1]);
 }
 
 function addNewSliderRow(addElem) {
@@ -626,6 +629,7 @@ function addNewSliderRow(addElem) {
     addOnClickForSlider();
     let elem = addElem.parentElement.querySelectorAll('input.slider')[0];
     let dataCell = elem.dataset['datacell'];
+    dataCell = document.getElementById(dataCell);
     syncSliderDataCell(elem, dataCell);
 }
 

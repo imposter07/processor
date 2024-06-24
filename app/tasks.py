@@ -132,7 +132,12 @@ def error_handler(route_function):
             os.chdir(cur_path)
             if 'run_uploader' in str(route_function):
                 uploader_run_error(json.loads(args))
-            return [pd.DataFrame([{'Result': 'DATA WAS UNABLE TO BE LOADED.'}])]
+            error_msg = 'DATA WAS UNABLE TO BE LOADED.'
+            if 'get_logfile' in str(route_function):
+                error_return = json.dumps(error_msg.split('\n'))
+            else:
+                error_return = pd.DataFrame([{'Result': error_msg}])
+            return [error_return]
 
     return decorated_function
 

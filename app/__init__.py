@@ -107,7 +107,7 @@ def create_app(config_class=Config()):
     app.config['RQ_DASHBOARD_REDIS_URL'] = app.config['REDIS_URL']
     app.config.from_object(rq_dashboard.default_settings)
     rq_dashboard.web.setup_rq_connection(app)
-    rq_dashboard.blueprint.before_request(rq_login_required)
+    # rq_dashboard.blueprint.before_request(rq_login_required)
     app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rq")
 
     formatter = RequestFormatter(

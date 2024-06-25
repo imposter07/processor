@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import json
+import pytz
 import yaml
 import time
 import copy
@@ -2443,25 +2444,20 @@ def make_database_view(processor_id, current_user_id):
         return False
 
 
+@error_handler
 def schedule_processor(processor_id, current_user_id):
-    try:
-        cur_processor = Processor.query.get(processor_id)
-        msg_text = 'Scheduling processor: {}'.format(cur_processor.name)
-        sched = TaskScheduler.query.filter_by(
-            processor_id=cur_processor.id).first()
-        if not sched:
-            cur_processor.schedule_job('.full_run_processor', msg_text,
-                                       start_date=cur_processor.start_date,
-                                       end_date=cur_processor.end_date,
-                                       scheduled_time=dt.time(8, 0, 0),
-                                       interval=24)
-            db.session.commit()
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+    cur_processor = Processor.query.get(processor_id)
+    msg_text = 'Scheduling processor: {}'.format(cur_processor.name)
+    sched = TaskScheduler.query.filter_by(
+        processor_id=cur_processor.id).first()
+    if not sched:
+        cur_processor.schedule_job('.full_run_processor', msg_text,
+                                   start_date=cur_processor.start_date,
+                                   end_date=cur_processor.end_date,
+                                   scheduled_time=None,
+                                   interval=24)
+        db.session.commit()
+    return True
 
 
 def build_processor_from_request(processor_id, current_user_id):
@@ -7202,3 +7198,56 @@ def turn_on_processors_with_plans(processor_id, current_user_id, save_plan=True)
         cur_proc.launch_task(
             '.build_processor_from_request', msg_text,
             running_user=today_plan.user_id)
+
+
+@error_handler
+def reset_processor_schedule():
+    current_jobs = app.scheduler.get_jobs()
+    for x in current_jobs:
+        app.scheduler.cancel(x)
+    scheduled = TaskScheduler.query.filter(
+        TaskScheduler.end_date > dt.datetime.today())
+    eastern = pytz.timezone('US/Eastern')
+    for x in scheduled:
+        cur_hour = int(x.scheduled_time.hour)
+        if cur_hour == 8:
+            cur_hour = Processor.get_best_schedule_hour()
+        first_run = dt.datetime.combine(
+            dt.datetime.today() + dt.timedelta(days=1),
+            dt.time(cur_hour, 0))
+        first_run = eastern.localize(first_run)
+        first_run = first_run.astimezone(pytz.utc)
+        interval_sec = int(x.interval) * 60 * 60
+        repeat = (x.end_date - x.start_date).days * (24 / int(x.interval))
+        job = app.scheduler.schedule(
+            scheduled_time=first_run,
+            func='app.tasks' + x.name,
+            kwargs={'processor_id': x.processor_id,
+                    'current_user_id': x.user_id,
+                    'processor_args': 'full'},
+            interval=int(interval_sec),
+            repeat=int(repeat),
+            timeout=32400,
+            result_ttl=None
+        )
+        sched = TaskScheduler.query.filter_by(
+            processor_id=x.processor_id).first()
+        if sched:
+            db.session.delete(sched)
+            db.session.commit()
+        name = '.full_run_processor'
+        processor = Processor.query.get(x.processor_id)
+        description = 'Scheduling processor: {}'.format(processor.name)
+        app.logger.info(description)
+        app.logger.info('Scheduled hour: {}'.format(cur_hour))
+        schedule = TaskScheduler(
+            id=job.get_id(), name=name, description=description,
+            created_at=dt.datetime.utcnow(),
+            scheduled_time=dt.time(cur_hour, 0),
+            start_date=x.start_date, end_date=x.end_date, interval=x.interval,
+            user_id=x.user_id, processor=processor)
+        db.session.add(schedule)
+        task = Task(id=job.get_id(), name=name, description=description,
+                    user_id=x.user_id, processor=processor, complete=True)
+        db.session.add(task)
+        db.session.commit()

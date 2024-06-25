@@ -16,7 +16,7 @@ from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
     Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, Client, \
     Product, Processor, Account, RequestLog, RateCard, Rates, \
-    ProcessorDatasources, Notes
+    ProcessorDatasources, Notes, TaskScheduler
 import app.tasks as app_tasks
 
 
@@ -258,6 +258,39 @@ class TestUtils:
         cr, nr = app_utl.get_next_route_from_buttons(buttons, edit_name)
         assert cr == cur_route
         assert nr == next_route
+
+    @staticmethod
+    def verify_schedule(app_fixture, hours):
+        current_jobs = app_fixture.scheduler.get_jobs()
+        assert sum(1 for _ in current_jobs) == len(hours)
+        for x in current_jobs:
+            app_fixture.scheduler.cancel(x)
+
+    def test_proc_schedule(self, user, app_fixture):
+        name, cli, pro, cam = self.check_and_add_parents()
+        tomorrow = dt.datetime.today() + dt.timedelta(days=1)
+        hours = []
+        current_jobs = app_fixture.scheduler.get_jobs()
+        for x in current_jobs:
+            app_fixture.scheduler.cancel(x)
+        for x in range(4):
+            cur_proc = Processor(name='{}'.format(x), campaign_id=cam.id)
+            db.session.add(cur_proc)
+            db.session.commit()
+            cur_proc.schedule_job('.full_run_processor', 'msg_text',
+                                  start_date=dt.datetime.today(),
+                                  end_date=tomorrow,
+                                  scheduled_time=None,
+                                  interval=24)
+            cur_scheduled = TaskScheduler.query.filter_by(
+                processor_id=cur_proc.id).first()
+            assert cur_scheduled
+            cur_hour = int(cur_scheduled.scheduled_time.hour)
+            assert cur_hour not in hours
+            hours.append(cur_hour)
+        self.verify_schedule(app_fixture, hours)
+        app_tasks.reset_processor_schedule()
+        self.verify_schedule(app_fixture, hours)
 
 
 class TestTasks:

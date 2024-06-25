@@ -672,12 +672,24 @@ class Processor(db.Model):
         db.session.add(task)
         return task
 
+    @staticmethod
+    def get_best_schedule_hour():
+        scheduled = TaskScheduler.query.filter(
+            TaskScheduler.end_date > datetime.today())
+        hour_dict = {x: [] for x in range(3, 9)}
+        for x in scheduled:
+            hour_int = x.scheduled_time.hour
+            hour_dict[hour_int].append(x)
+        hour = min(hour_dict, key=lambda k: len(hour_dict[k]))
+        return hour
+
     def schedule_job(self, name, description, start_date, end_date,
                      scheduled_time, interval):
         eastern = pytz.timezone('US/Eastern')
         today = eastern.localize(datetime.today())
         if not scheduled_time:
-            scheduled_time = datetime_time(8, 0, 0)
+            best_hour = self.get_best_schedule_hour()
+            scheduled_time = datetime_time(best_hour, 0, 0)
         if not start_date:
             start_date = today
         if not end_date:

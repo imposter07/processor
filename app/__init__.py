@@ -7,7 +7,7 @@ from flask import Flask, request, current_app, has_request_context
 from flask_sqlalchemy import SQLAlchemy as _BaseSQLAlchemy
 from sqlalchemy import MetaData
 from flask_migrate import Migrate
-from flask_login import LoginManager
+from flask_login import LoginManager, login_required
 from flask_mail import Mail
 from flask_moment import Moment
 from flask_babel import Babel, lazy_gettext as _l
@@ -57,6 +57,11 @@ moment = Moment()
 babel = Babel()
 
 
+@login_required
+def rq_login_required():
+    return None
+
+
 def create_app(config_class=Config()):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -78,7 +83,7 @@ def create_app(config_class=Config()):
         connection_class=RequestsHttpConnection
     ) \
         if app.config['ELASTICSEARCH_URL'] else None
-    pool = ConnectionPool.from_url(app.config['REDIS_URL'], max_connections=10)
+    pool = ConnectionPool.from_url(app.config['REDIS_URL'], max_connections=100)
     app.redis = Redis(connection_pool=pool)
     app.task_queue = rq.Queue('lqapp-tasks', connection=app.redis,
                               default_timeout=18000)
@@ -99,7 +104,10 @@ def create_app(config_class=Config()):
     from app.plan import bp as plan_bp
     app.register_blueprint(plan_bp)
 
+    app.config['RQ_DASHBOARD_REDIS_URL'] = app.config['REDIS_URL']
     app.config.from_object(rq_dashboard.default_settings)
+    rq_dashboard.web.setup_rq_connection(app)
+    rq_dashboard.blueprint.before_request(rq_login_required)
     app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rq")
 
     formatter = RequestFormatter(

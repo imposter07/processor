@@ -5201,15 +5201,11 @@ def get_sow(plan_id, current_user_id):
         net_media = df['Total Net Dollars'].sum()
         sum_by_cat = df.groupby('Vendor')['Total Net Dollars'].sum()
         sum_by_cat.reset_index(name='Total Net Dollars')
-    digital = 0
     program = 0
-    trad = 0
-    if 'Digital' in sum_by_cat:
-        digital = sum_by_cat['Digital'] * 0.075
     if 'Programmatic' in sum_by_cat:
         program = sum_by_cat['Programmatic'] * 0.125
-    if 'Traditional' in sum_by_cat:
-        trad = sum_by_cat['Traditional'] * 0.045
+    digital = net_media * cur_plan.digital_agency_fees
+    trad = net_media * cur_plan.trad_agency_fees
     ag_fee = digital + trad
     as_cost = cur_sow.ad_serving if cur_sow.ad_serving else 0
     camp_ttl = net_media + ag_fee + float(as_cost) + program

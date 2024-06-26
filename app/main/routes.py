@@ -1028,10 +1028,11 @@ def get_table_arguments():
 def get_table_return(task, table_name, proc_arg, job_name,
                      force_return=False):
     job = task.wait_and_get_job(force_return=True)
+    error_msg = {'Result': 'AN UNEXPECTED ERROR OCCURRED.'}
     if job and job.result:
         df = job.result[0]
     else:
-        df = pd.DataFrame([{'Result': 'AN UNEXPECTED ERROR OCCURRED.'}])
+        df = pd.DataFrame([error_msg])
     dl_table = table_name in ['SOW', 'ToplineDownload', 'downloadTable']
     dl_table_1 = ('parameter' in proc_arg and
                   (proc_arg['parameter'] in ['RawDataOutput', 'Download']))
@@ -1083,6 +1084,8 @@ def get_table_return(task, table_name, proc_arg, job_name,
         table_data = df_to_html(df, table_name, job_name)
         data = {'html_data': table_data, 'msg': msg}
     elif is_liq_table or is_log_table:
+        if isinstance(df, pd.DataFrame):
+            df = error_msg
         data = {'data': df}
     elif 'return_func' in proc_arg and 'table_name' not in proc_arg:
         df = df.rename(columns=str)

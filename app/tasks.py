@@ -108,6 +108,13 @@ def uploader_run_error(args):
     app_utl.object_post_message(cur_up, cur_user, msg_text, object_name=obj)
 
 
+def get_boolean_return_tasks():
+    fns = [set_processor_config_files, set_processor_config_file,
+           schedule_processor]
+    fns = [x.__name__ for x in fns]
+    return fns
+
+
 def error_handler(route_function):
     @wraps(route_function)
     def decorated_function(*args, **kwargs):
@@ -134,11 +141,15 @@ def error_handler(route_function):
             if 'run_uploader' in str(route_function):
                 uploader_run_error(json.loads(args))
             error_msg = 'DATA WAS UNABLE TO BE LOADED.'
-            if 'get_logfile' in str(route_function):
-                error_return = json.dumps(error_msg.split('\n'))
+            bool_functions = get_boolean_return_tasks()
+            is_bool = [x for x in bool_functions if x in str(route_function)]
+            if get_logfile.__name__ in str(route_function):
+                error_return = [json.dumps(error_msg.split('\n'))]
+            elif is_bool:
+                error_return = False
             else:
-                error_return = pd.DataFrame([{'Result': error_msg}])
-            return [error_return]
+                error_return = [pd.DataFrame([{'Result': error_msg}])]
+            return error_return
 
     return decorated_function
 
@@ -2374,48 +2385,40 @@ def send_app_monthly_email(processor_id, current_user_id):
             processor_id, current_user_id), exc_info=sys.exc_info())
 
 
+@error_handler
 def set_processor_config_file(processor_id, current_user_id, config_type,
                               config_file_name):
-    try:
-        cur_processor = Processor.query.get(processor_id)
-        client_name = cur_processor.campaign.product.client.name
-        proc_path = cur_processor.local_path
-        if not proc_path:
-            return False
-        os.chdir(adjust_path(proc_path))
-        file_path = '{}_api_cred'.format(config_type)
-        file_name = '{}_dict.csv'.format(config_type)
-        file_path = os.path.join(utl.config_path, file_path)
-        if not os.path.exists(file_path):
-            return False
-        df = pd.read_csv(os.path.join(file_path, file_name))
-        file_name = df[df['client'] == client_name]['file'].values
-        if file_name:
-            file_name = file_name[0]
-            copy_file(os.path.join(file_path, file_name),
-                      os.path.join(utl.config_path, config_file_name))
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
+    cur_processor = db.session.get(Processor, processor_id)
+    cur_user = db.session.get(User, current_user_id)
+    client_name = cur_processor.campaign.product.client.name
+    proc_path = cur_processor.local_path
+    if not proc_path:
         return False
+    os.chdir(adjust_path(proc_path))
+    file_path = '{}_api_cred'.format(config_type)
+    file_name = '{}_dict.csv'.format(config_type)
+    file_path = os.path.join(utl.config_path, file_path)
+    if not os.path.exists(file_path):
+        return False
+    df = pd.read_csv(os.path.join(file_path, file_name))
+    file_name = df[df['client'] == client_name]['file'].values
+    if file_name:
+        file_name = file_name[0]
+        copy_file(os.path.join(file_path, file_name),
+                  os.path.join(utl.config_path, config_file_name))
+    if 'export' in config_file_name and cur_user.username in cur_processor.name:
+        os.remove(os.path.join(utl.config_path, config_file_name))
+    return True
 
 
+@error_handler
 def set_processor_config_files(processor_id, current_user_id):
-    try:
-        for ct in [('twitter', 'twconfig.json'), ('rs', 'rsapi.json'),
-                   ('dc', 'dcapi.json'), ('dv', 'dvapi.json'),
-                   ('s3', 's3config.json'),
-                   ('exp', 'export_handler.csv')]:
-            set_processor_config_file(
-                processor_id=processor_id, current_user_id=current_user_id,
-                config_type=ct[0], config_file_name=ct[1])
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+    for ct in [('twitter', 'twconfig.json'), ('rs', 'rsapi.json'),
+               ('dc', 'dcapi.json'), ('dv', 'dvapi.json'),
+               ('s3', 's3config.json'), ('exp', 'export_handler.csv')]:
+        set_processor_config_file(
+            processor_id=processor_id, current_user_id=current_user_id,
+            config_type=ct[0], config_file_name=ct[1])
 
 
 def make_database_view(processor_id, current_user_id):

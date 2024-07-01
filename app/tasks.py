@@ -110,7 +110,7 @@ def uploader_run_error(args):
 
 def get_boolean_return_tasks():
     fns = [set_processor_config_files, set_processor_config_file,
-           schedule_processor]
+           schedule_processor, make_database_view]
     fns = [x.__name__ for x in fns]
     return fns
 
@@ -207,7 +207,7 @@ def copy_file(old_file, new_file, attempt=1, max_attempts=100):
             app.logger.warning('Attempt {}: could not copy {} due to OSError '
                                'retrying in 60s: {}'.format(attempt, old_file,
                                                             e))
-            time.sleep(60)
+            time.sleep(1)
             copy_file(old_file, new_file, attempt=attempt,
                       max_attempts=max_attempts)
 
@@ -2402,12 +2402,14 @@ def set_processor_config_file(processor_id, current_user_id, config_type,
         return False
     df = pd.read_csv(os.path.join(file_path, file_name))
     file_name = df[df['client'] == client_name]['file'].values
+    active_config = os.path.join(utl.config_path, config_file_name)
     if file_name:
         file_name = file_name[0]
-        copy_file(os.path.join(file_path, file_name),
-                  os.path.join(utl.config_path, config_file_name))
+    else:
+        file_name = config_file_name
+    copy_file(os.path.join(file_path, file_name), active_config)
     if 'export' in config_file_name and cur_user.username in cur_processor.name:
-        os.remove(os.path.join(utl.config_path, config_file_name))
+        os.remove(active_config)
     return True
 
 
@@ -2419,32 +2421,28 @@ def set_processor_config_files(processor_id, current_user_id):
         set_processor_config_file(
             processor_id=processor_id, current_user_id=current_user_id,
             config_type=ct[0], config_file_name=ct[1])
+    return True
 
 
+@error_handler
 def make_database_view(processor_id, current_user_id):
-    try:
-        cur_processor = Processor.query.get(processor_id)
-        os.chdir(adjust_path(cur_processor.local_path))
-        product_name = cur_processor.campaign.product.name
-        sb = exp.ScriptBuilder()
-        script_text = sb.get_full_script(
-            filter_col='productname',
-            filter_val=product_name,
-            filter_table='product')
-        for x in [' ', ',', '.', '-', ':', '&', '+', '/']:
-            product_name = product_name.replace(x, '')
-        view_name = 'lqadb.lqapp_{}'.format(product_name)
-        view_script = "CREATE OR REPLACE VIEW {} AS \n".format(view_name)
-        view_script = view_script + script_text
-        report_db = exp.DB('dbconfig.json')
-        report_db.connect()
-        report_db.cursor.execute(view_script)
-        return True
-    except:
-        _set_task_progress(100)
-        app.logger.error('Unhandled exception - Processor {} User {}'.format(
-            processor_id, current_user_id), exc_info=sys.exc_info())
-        return False
+    cur_processor = Processor.query.get(processor_id)
+    os.chdir(adjust_path(cur_processor.local_path))
+    product_name = cur_processor.campaign.product.name
+    sb = exp.ScriptBuilder()
+    script_text = sb.get_full_script(
+        filter_col='productname',
+        filter_val=product_name,
+        filter_table='product')
+    for x in [' ', ',', '.', '-', ':', '&', '+', '/']:
+        product_name = product_name.replace(x, '')
+    view_name = 'lqadb.lqapp_{}'.format(product_name)
+    view_script = "CREATE OR REPLACE VIEW {} AS \n".format(view_name)
+    view_script = view_script + script_text
+    report_db = exp.DB('dbconfig.json')
+    report_db.connect()
+    report_db.cursor.execute(view_script)
+    return True
 
 
 @error_handler

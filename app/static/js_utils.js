@@ -100,11 +100,11 @@ function searchTable(tableName, selector = ' tr:not(.header):not([id^="trHidden"
     trs.forEach(setTrStyleDisplay);
 }
 
-function searchForms(formID, selector = 'div[class*="card col"]', query = '') {
+function searchForms(formID, selector = 'div[class*="card"]', query = '') {
     let filter = document.querySelector('#formSearchInput').value.trim()
         .toLowerCase();
     if (query) {
-        filter = query.trim().toLowerCase()
+        filter = query.trim().toLowerCase();
     }
     const forms = document.getElementById(formID);
     const searchableElements = forms.querySelectorAll(selector);
@@ -135,13 +135,15 @@ function sortTableEvent() {
     const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
             v1 !== '' && v2 !== '' && !isNaN(v1.replace(/[$%]/g, '')) && !isNaN(v2.replace(/[$%]/g, '')) ? v1.replace(/[$%]/g, '') - v2.replace(/[$%]/g, '') : v1.toString().localeCompare(v2)
     )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
-    let sortArrow = this.getElementsByClassName('fas');
+    let sortArrow = this.getElementsByClassName('bi');
+    const arrowDown = 'bi-arrow-down';
+    const arrowUp = 'bi-arrow-up';
     if (sortArrow.length > 0) {
-        let downArrow = sortArrow[0].classList.contains('bi-arrow-down');
-        let arrowReplace = (downArrow) ? ['down', 'up'] : ['up', 'down'];
+        let downArrow = sortArrow[0].classList.contains(arrowDown);
+        let arrowReplace = (downArrow) ? [arrowDown, arrowUp] : [arrowUp, arrowDown];
         sortArrow[0].className = sortArrow[0].className.replace(arrowReplace[0], arrowReplace[1]);
     } else {
-        this.insertAdjacentHTML('beforeend', `<i class="bi bi-arrow-down" href="#" role="button"></i>`);
+        this.insertAdjacentHTML('beforeend', `<i class="bi ${arrowDown}" href="#" role="button"></i>`);
     }
     Array.from(table.querySelectorAll("tr:not([id*='Hidden']):not([id*='Header'])"))
         .sort(comparer(Array.from(this.parentNode.children).indexOf(this), this.asc = !this.asc))

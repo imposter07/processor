@@ -297,6 +297,12 @@ class TestTasks:
 
     @staticmethod
     def create_test_processor(db_object=Processor):
+        """
+        Makes a db_model object with parents (Campaign/Product/Client)
+
+        :param db_object: Database model - Processor by default
+        returns: db_object: Created database object - processor by default
+        """
         name, cli, pro, cam = TestUtils.check_and_add_parents()
         proc = db_object(name=name, campaign_id=cam.id)
         db.session.add(proc)
@@ -398,6 +404,35 @@ class TestTasks:
         for note_type in Notes.get_folder_names():
             cur_notes = Notes.query.filter_by(note_type=note_type).all()
             assert cur_notes
+
+    def test_set_processor_config_files(self, user, app_fixture):
+        cur_proc = self.create_test_processor()
+        cur_client = cur_proc.campaign.product.client.name
+        cur_proc.local_path = os.path.join(app_fixture.config['TMP_DIR'])
+        db.session.commit()
+        config_path = os.path.join(str(cur_proc.local_path), utl.config_path)
+        utl.dir_check(config_path)
+        config_type = 'exp'
+        file_path = '{}_api_cred'.format(config_type)
+        file_path = os.path.join(config_path, file_path)
+        utl.dir_check(file_path)
+        config_file_name = 'export_handler.csv'
+        c_file_name = 'c_{}'.format(config_file_name)
+        c_file_name = os.path.join(file_path, c_file_name)
+        correct = 'CORRECT'
+        df = pd.DataFrame({correct})
+        df.to_csv(c_file_name, index=False)
+        df = pd.DataFrame({'client': [cur_client], 'file': [c_file_name]})
+        file_name = '{}_dict.csv'.format(config_type)
+        file_name = os.path.join(file_path, file_name)
+        df.to_csv(file_name, index=False)
+        df = pd.DataFrame({'INCORRECT'})
+        file_name = os.path.join(config_path, config_file_name)
+        df.to_csv(file_name, index=False)
+        app_tasks.set_processor_config_files(cur_proc.id, user.id)
+        file_name = os.path.join(config_path, config_file_name)
+        df = pd.read_csv(file_name)
+        assert df['0'][0] == correct
 
 
 class TestPlan:

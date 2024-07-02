@@ -434,6 +434,22 @@ class TestTasks:
         df = pd.read_csv(file_name)
         assert df['0'][0] == correct
 
+    def test_get_all_processors(self, user, app_fixture):
+        """
+        Create two processors and check the dataframe returns.
+
+        :param user: conftest.py fixture that is the initial user
+        :param app_fixture: conftest.py fixture of the current app
+        """
+        cur_proc = self.create_test_processor()
+        name = 'test_get_all_processors'
+        p = Processor(name=name)
+        db.session.add(p)
+        db.session.commit()
+        df = app_tasks.get_all_processors(user.id, user.id)[0]
+        assert not df.empty
+        assert cur_proc.name in df['name'].values
+
 
 class TestPlan:
 

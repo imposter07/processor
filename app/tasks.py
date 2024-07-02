@@ -4788,6 +4788,13 @@ def get_project_numbers(processor_id, running_user=None, spec_args=None,
 
 @error_handler
 def get_all_processors(user_id, running_user):
+    """
+    Queries db for all processors and returns as a dataframe wrapped in a list
+
+    :param user_id: Unused - the id of the user that ran
+    :param running_user: Unused - the user currently running
+    :returns: Dataframe of all processors wrapped in a list
+    """
     p = Processor.query.all()
     df = pd.DataFrame([
         {'name': x.name, 'id': x.id, 'campaign': x.campaign.name,
@@ -4795,7 +4802,8 @@ def get_all_processors(user_id, running_user):
          'client': x.campaign.product.client.name,
          'project_numbers': ','.join(
              [y.project_number for y in x.projects.all()]),
-         'url': 'lqadata.com/processor/{}'.format(x.name)} for x in p if x])
+         'url': 'lqadata.com/processor/{}'.format(x.name)}
+        for x in p if x and x.campaign])
     tables = [df]
     return tables
 

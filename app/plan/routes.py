@@ -113,6 +113,12 @@ def edit_plan(object_name):
     return render_template('plan/plan.html', **kwargs)
 
 
+@bp.route('/plan/<object_name>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_plan_two(object_name):
+    return edit_plan(object_name)
+
+
 @bp.route('/plan/<object_name>/topline', methods=['GET', 'POST'])
 @login_required
 def topline(object_name):

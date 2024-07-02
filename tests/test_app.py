@@ -686,6 +686,12 @@ class TestPlan:
             place = PartnerPlacements.query.filter_by(partner_id=part.id).all()
             assert len(place) == 1
 
+    def test_edit_plan(self, sw, login, worker):
+        edit_url = plan_routes.edit_plan
+        cur_plan = self.check_and_get_plan(sw, login, worker, url=edit_url)
+        TestUploader().edit_db_model(sw, worker, cur_plan, Plan,
+                                     name=self.test_name)
+
     def topline_add_partner(self, sw, worker, part_name):
         sel_id = 'partnerSelectAdd'
         submit_id = 'addRowsTopline'
@@ -1106,11 +1112,27 @@ class TestUploader:
 
     def test_edit_uploader(self, sw, login, worker):
         cur_up = self.check_create_uploader(sw, login, worker)
-        new_camp = '{}1'.format(cur_up.campaign.name)
+        self.edit_db_model(sw, worker, cur_up)
+
+    def edit_db_model(self, sw, worker, cur_model, db_model=Uploader,
+                      name=None):
+        """
+        Edits the campaign on a currently made database object, by default
+        uses the current class (Uploader) but can take other models.
+
+        :param sw: Selenium wrapper instance
+        :param worker: Redis rq worker for task server
+        :param cur_model: Already created instance of model
+        :param db_model: Database model - Processor by default
+        :param name: name of the created model
+        """
+        if not name:
+            name = self.test_name
+        new_camp = '{}1'.format(cur_model.campaign.name)
         form_names = ['cur_campaign']
         submit_form(sw, form_names, test_name=new_camp)
         worker.work(burst=True)
-        cur_up = Uploader.query.filter_by(name=self.test_name).first()
+        cur_up = db_model.query.filter_by(name=name).first()
         assert cur_up.campaign.name == new_camp
 
     @staticmethod

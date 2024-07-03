@@ -5154,7 +5154,7 @@ def get_sow(plan_id, current_user_id):
     cur_sow = Sow.query.filter_by(plan_id=cur_plan.id).first()
     if not cur_sow:
         cur_sow = Sow()
-        cur_sow.create_from_plan(cur_plan)
+        cur_sow.create_from_plan(cur_plan, current_user_id)
         db.session.add(cur_sow)
         db.session.commit()
     file_name = "SOW_{}.pdf".format(plan_id)

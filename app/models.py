@@ -1576,7 +1576,6 @@ class Uploader(db.Model):
     def get_unfollow_url(self):
         return self.get_url(route='main.unfollow_processor')
 
-
     def get_object_function_call(self):
         return {'object_name': self.name}
 
@@ -2699,6 +2698,11 @@ class Plan(db.Model):
                                     complete=False).first()
 
     @staticmethod
+    def get_navigation_buttons():
+        buttons = Processor.get_navigation_buttons('Plan')
+        return buttons
+
+    @staticmethod
     def get_model_name_list():
         return ['plan', 'topline']
 
@@ -2987,13 +2991,16 @@ class Sow(db.Model):
     total_project_budget = db.Column(db.Numeric)
     ad_serving = db.Column(db.Numeric)
 
-    def create_from_plan(self, cur_plan):
+    def create_from_plan(self, cur_plan, current_user_id=None):
         self.plan_id = cur_plan.id
         self.project_name = cur_plan.name
         self.date_submitted = datetime.today().date()
         liquid_contact = db.session.get(User, cur_plan.user_id)
         if not liquid_contact:
-            liquid_contact = current_user
+            if current_user_id:
+                liquid_contact = db.session.get(User, current_user_id)
+            else:
+                liquid_contact = current_user
         self.liquid_contact = liquid_contact.username
         cur_proj = cur_plan.projects.first()
         self.liquid_project = cur_proj if cur_proj else 0

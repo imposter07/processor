@@ -617,3 +617,19 @@ class TestPlan:
         db.session.commit()
         db.session.delete(r)
         db.session.commit()
+
+    def test_get_sow(self, user, app_fixture):
+        """
+        Checks response to get_sow task using a test plan (cur_plan)
+
+        :param user: conftest.py fixture that is the initial user
+        :param app_fixture: conftest.py fixture of the current app
+        """
+        cur_plan = TestTasks.create_test_processor(Plan)
+        cur_plan.start_date = dt.datetime.today()
+        cur_plan.end_date = dt.datetime.today()
+        cur_plan.digital_agency_fees = .1
+        cur_plan.trad_agency_fees = .1
+        db.session.commit()
+        task_response = app_tasks.get_sow(cur_plan.id, user.id)
+        # assert not isinstance(task_response[0], pd.DataFrame)

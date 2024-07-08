@@ -170,6 +170,7 @@ def get_processor_by_date():
 
 @bp.route('/get_live_processors', methods=['GET', 'POST'])
 @login_required
+@app_utl.error_handler
 def get_live_processors():
     page_num = int(request.form['page'])
     page = request.args.get('page', page_num, type=int)
@@ -178,7 +179,7 @@ def get_live_processors():
     else:
         processors = Processor.query
     processors = processors.filter(
-        Processor.end_date > datetime.today().date()).order_by(
+        Processor.end_date >= datetime.today().date()).order_by(
         Processor.created_at.desc())
     processors_all = [x.name for x in processors.all()]
     if 'filter_dict' in request.form and request.form['filter_dict'] != 'null':
@@ -1418,7 +1419,7 @@ def processor_page(object_name):
     kwargs = Processor().get_current_processor(
         object_name, 'processor_page', edit_progress=100, edit_name='Page')
     if not kwargs['object'].local_path:
-        return redirect(url_for('main.edit_request_processor',
+        return redirect(url_for('main.edit_processor_request',
                                 object_name=object_name))
     if kwargs['object'].name == 'SCREENSHOT':
         form = ScreenshotForm()
@@ -1607,13 +1608,13 @@ def request_processor():
 
 @bp.route('/processor/<object_name>/edit/request', methods=['GET', 'POST'])
 @login_required
-def edit_request_processor(object_name):
+def edit_processor_request(object_name):
     form_description = """
     General descriptive data about a processor.
     This is essentially metadata, such as processor name and client name.
     """
     kwargs = Processor().get_current_processor(
-        object_name, current_page='edit_request_processor', edit_progress=25,
+        object_name, current_page='edit_processor_request', edit_progress=25,
         edit_name='Basic', buttons='ProcessorRequest', form_title='BASIC',
         form_description=form_description)
     processor_to_edit = kwargs['processor']
@@ -1644,7 +1645,7 @@ def edit_request_processor(object_name):
             return redirect(url_for('main.edit_processor_plan',
                                     object_name=processor_to_edit.name))
         else:
-            return redirect(url_for('main.edit_request_processor',
+            return redirect(url_for('main.edit_processor_request',
                                     object_name=processor_to_edit.name))
     elif request.method == 'GET':
         form.name.data = processor_to_edit.name

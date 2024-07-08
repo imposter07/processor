@@ -38,13 +38,14 @@
                                  aria-expanded="false"
                                  aria-controls="collapseProcessor{{ processor.id }}">
                                 <div class="col">
-                                    <a href="{{ processor.get_url() }}">
+                                    <a href="{{ processor.get_url() }}" onclick="window.location.href = this.href;"
+                                       id="headingProcessorLink{{ processor.id }}">
                                         {{ processor.name }}
                                     </a>
-                                    <span class="badge badge-pill
-                                        {% if processor_status == 'Live' %} badge-success
-                                        {% elif processor_status == 'Completed' %} badge-secondary
-                                        {% else %} badge-info{% endif %}">{{ processor.status }}</span>
+                                    <span class="badge rounded-pill
+                                        {% if processor_status == 'Live' %} text-bg-success
+                                        {% elif processor_status == 'Completed' %} text-bg-secondary
+                                        {% else %} text-bg-info{% endif %}">{{ processor.status }}</span>
                                 </div>
                                 <div class="col">
                                     <div class="btn-group"

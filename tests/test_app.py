@@ -256,10 +256,10 @@ class TestProcessor:
         return url
 
     def check_and_get_proc(self, sw, login, worker, set_up, url=None):
-        cur_proc = Plan.query.filter_by(name=self.test_name).first()
+        cur_proc = Processor.query.filter_by(name=self.test_name).first()
         if not cur_proc:
             self.test_create_processor(sw, login, worker, set_up)
-            cur_proc = Plan.query.filter_by(name=self.test_name).first()
+            cur_proc = Processor.query.filter_by(name=self.test_name).first()
         if url:
             elem_id = ''.join(x.capitalize() for x in url.__name__.split('_'))
             url = self.get_url(url)
@@ -272,7 +272,7 @@ class TestProcessor:
         submit_id = 'loadContinue'
         sw.go_to_url(create_url, elem_id=submit_id)
         form = ['cur_client', 'cur_product', 'cur_campaign', 'description',
-                'name']
+                'name', 'start_date', 'end_date']
         submit_form(sw, form_names=form, submit_id=submit_id)
         worker.work(burst=True)
         sw.wait_for_elem_load('refresh_imports')
@@ -613,6 +613,20 @@ class TestProcessor:
                 raise ValueError(msg.format(file_path))
         assert not download.empty
         assert (df.iloc[0][place_col] == download.iloc[0][place_col])
+
+    def test_client_page(self, sw, login, worker, set_up):
+        url = main_routes.clients.__name__
+        url = '{}{}'.format(base_url, url)
+        cur_proc = self.check_and_get_proc(sw, login, worker, set_up)
+        elem_id = 'headingUser1'
+        sw.go_to_url(url, elem_id=elem_id)
+        heading_str = 'headingProcessor'
+        load_elem_id = '{}{}'.format(heading_str, cur_proc.id)
+        sw.xpath_from_id_and_click(elem_id, load_elem_id=load_elem_id)
+        link_id = '{}Link{}'.format(heading_str, cur_proc.id)
+        sw.xpath_from_id_and_click(link_id, load_elem_id='base_form_id')
+        edit_url = self.get_url(main_routes.edit_processor_request)
+        assert sw.browser.current_url == edit_url
 
 
 class TestPlan:

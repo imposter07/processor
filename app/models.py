@@ -918,7 +918,7 @@ class Processor(db.Model):
     def get_processor_request_links(object_name):
         run_links = {
             0: {'title': 'View Initial Request',
-                'href': url_for('main.edit_request_processor',
+                'href': url_for('main.edit_processor_request',
                                 object_name=object_name),
                 'tooltip': 'View/Edits the initial request that made this '
                            'processor instance. This will not change '
@@ -945,7 +945,7 @@ class Processor(db.Model):
     @staticmethod
     def get_navigation_buttons(buttons=None):
         if buttons == 'ProcessorRequest':
-            buttons = [{'Basic': ['main.edit_request_processor']},
+            buttons = [{'Basic': ['main.edit_processor_request']},
                        {'Plan': ['main.edit_processor_plan']},
                        {'Accounts': ['main.edit_processor_accounts']},
                        {'Fees': ['main.edit_processor_fees']},
@@ -1580,8 +1580,8 @@ class Uploader(db.Model):
         return {'object_name': self.name}
 
     @staticmethod
-    def get_navigation_buttons():
-        buttons = Processor.get_navigation_buttons('UploaderFacebook')
+    def get_navigation_buttons(buttons='UploaderFacebook'):
+        buttons = Processor.get_navigation_buttons(buttons)
         return buttons
 
     @staticmethod
@@ -2284,7 +2284,11 @@ class Project(db.Model):
                       form_title=form_title, form_description=form_description)
         if object_name:
             cur_obj = Project.query.filter_by(
-                project_number=object_name).first_or_404()
+                project_number=object_name).first()
+            if not cur_obj:
+                object_name = object_name[:6]
+                cur_obj = Project.query.filter_by(
+                    project_number=object_name).first_or_404()
             cur_obj = self.find_campaign(cur_obj)
             kwargs['object'] = cur_obj
             kwargs['buttons'] = Processor.get_navigation_buttons(buttons)
@@ -2698,8 +2702,8 @@ class Plan(db.Model):
                                     complete=False).first()
 
     @staticmethod
-    def get_navigation_buttons():
-        buttons = Processor.get_navigation_buttons('Plan')
+    def get_navigation_buttons(buttons='Plan'):
+        buttons = Processor.get_navigation_buttons(buttons)
         return buttons
 
     @staticmethod

@@ -19,8 +19,8 @@
             </a>
         {% endif %}
     {% else %}
-        <a href="{{ url_for('main.edit_request_processor', object_name=processor.name) }}"
-           type="button" class="btn btn-outline-warning btn-large">
+        <a href="{{ url_for('main.edit_processor_request', object_name=processor.name) }}"
+           type="button" class="btn btn-outline-warning btn-large" onclick="window.location.href = this.href;">
             Processor not built.  Finish creating.
             <span class="visually-hidden">Processor not built.  Finish creating.</span>
         </a>
@@ -28,7 +28,7 @@
     {% set notes = processor.get_notes() %}
     <a href="{{ url_for('main.edit_processor_note',
                        object_name=processor.name) }}"
-       type="button" class="btn btn-outline-info btn-large">
+       type="button" class="btn btn-outline-info btn-large" onclick="window.location.href = this.href;">
         Notes <span class="badge text-bg-light">
                     {{ notes|length }}</span>
         <span class="visually-hidden">Open Requests</span>

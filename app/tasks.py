@@ -5892,7 +5892,7 @@ def get_impact_score_data(current_user_id, running_user):
         cur_proc = Processor.query.filter_by(campaign_id=c.id).all()
         bt_procs.extend(cur_proc)
     df = pd.DataFrame()
-    #['conv2': desktop_visits, 'conv3': desktop_bounce_rate, 
+    # ['conv2': desktop_visits, 'conv3': desktop_bounce_rate,
     # 'conv4': desktop_pages_per_visit, 'conv5': desktop_average_visit_duration,
     # 'conv6': desktop_unique_visitors]
     metric_cols = ['conv2', 'conv3', 'conv4', 'conv5', 'conv6']

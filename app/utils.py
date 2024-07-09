@@ -6,6 +6,7 @@ import re
 from app import db
 import pandas as pd
 import datetime as dt
+import sqlalchemy as sqa
 from app.models import Task, Processor, User, Campaign, Project, Client, \
     Product, Dashboard, Plan, RfpFile, Partner, Post, Uploader, Message, \
     PlanPhase, RateCard
@@ -467,7 +468,11 @@ def set_db_values(object_id, current_user_id, form_sources, table,
             change_log['add'].append(add_dict)
     if old_items:
         for item in old_items:
-            if item.id not in form_ids:
+            try:
+                item_id = item.id
+            except sqa.orm.exc.ObjectDeletedError:
+                continue
+            if item_id not in form_ids:
                 item_name = item.name if hasattr(item, 'name') else None
                 delete_dict = {'id': item.id, 'name': item_name}
                 change_log['delete'].append(delete_dict)

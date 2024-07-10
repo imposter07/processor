@@ -5213,8 +5213,16 @@ def get_sow(plan_id, current_user_id):
     program = 0
     if 'Programmatic' in sum_by_cat:
         program = sum_by_cat['Programmatic'] * 0.125
-    digital = net_media * cur_plan.digital_agency_fees
-    trad = net_media * cur_plan.trad_agency_fees
+    if net_media != 0 and cur_plan.digital_agency_fees != 0 \
+            and net_media and cur_plan.digital_agency_fees:
+        digital = net_media * float(cur_plan.digital_agency_fees)
+    else:
+        digital = 0
+    if net_media != 0 and cur_plan.trad_agency_fees != 0 \
+            and net_media and cur_plan.trad_agency_fees:
+        trad = net_media * float(cur_plan.trad_agency_fees)
+    else:
+        trad = 0
     ag_fee = digital + trad
     as_cost = cur_sow.ad_serving if cur_sow.ad_serving else 0
     camp_ttl = net_media + ag_fee + float(as_cost) + program

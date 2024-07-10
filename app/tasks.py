@@ -6523,6 +6523,7 @@ def add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
                               k.lower() in part_name.lower())
                 if part_check:
                     part_translation[part_name] = v
+                    break
     df[Specs.partner_id.name] = df[partner_col].replace(part_translation)
     df[Specs.rfp_file_id.name] = cur_rfp.id
     cols = {v: k for k, v in cols.items()}

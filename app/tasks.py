@@ -6519,7 +6519,9 @@ def add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
     for part_name in df[partner_col].unique():
         if part_name not in part_translation:
             for k, v in part_translation.items():
-                if part_name.lower() in k.lower():
+                part_check = (part_name.lower() in k.lower() or
+                              k.lower() in part_name.lower())
+                if part_check:
                     part_translation[part_name] = v
     df[Specs.partner_id.name] = df[partner_col].replace(part_translation)
     df[Specs.rfp_file_id.name] = cur_rfp.id

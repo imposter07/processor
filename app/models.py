@@ -972,7 +972,7 @@ class Processor(db.Model):
                 {'Campaign': ['main.edit_uploader_campaign_dcm', 'controller']},
                 {'Adset': ['main.edit_uploader_adset_dcm', 'bullseye']},
                 {'Ad': ['main.edit_uploader_ad_dcm', 'badge-ad']}]
-        elif buttons == 'UploaderFacebook':
+        elif buttons in ['UploaderFacebook', 'Uploader']:
             buttons = [
                 {'Basic': ['main.edit_uploader', 'upload']},
                 {'Campaign': ['main.edit_uploader_campaign', 'controller']},
@@ -2968,6 +2968,7 @@ class Plan(db.Model):
                               'Target B'],
                 'Creative': ['Creative 1', 'Creative 2', 'Creative 1',
                              'Creative 2'],
+                'Start Date': [datetime.today().strftime('%Y-%m-%d')] * 4,
                 'Copy': ['Copy 1', 'Copy 2', 'Copy 1', 'Copy 2'],
                 'Serving': [
                     vmc.clicks, vmc.clicks, vmc.clicks, vmc.impressions],
@@ -4064,7 +4065,8 @@ class PartnerPlacements(db.Model):
                 for place_dict in rule.rule_info:
                     cur_id = place_dict.get('id')
                     cur_place = db.session.get(PartnerPlacements, cur_id)
-                    data_with_id[cur_id] = cur_place.get_form_dict()
+                    if cur_place:
+                        data_with_id[cur_id] = cur_place.get_form_dict()
             elif rule.type == 'delete':
                 delete_names.extend([x['name'] for x in rule.rule_info])
         if delete_names:

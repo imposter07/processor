@@ -6508,11 +6508,14 @@ def add_specs_from_file(plan_id, current_user_id, new_data, cur_rfp,
     if not sheet_name:
         return False
     df = df[sheet_name[0]]
-    df = utl.first_last_adj(df, 1, 0).reset_index(drop=True)
-    df = df[~df.isna().all(axis=1)]
-    df = df.fillna(method='ffill').fillna('None')
     cols = Specs.column_translation()
     partner_col = cols[Specs.partner.name]
+    for x in range(10):
+        df = utl.first_last_adj(df, x, 0).reset_index(drop=True)
+        if partner_col in df.columns:
+            break
+    df = df[~df.isna().all(axis=1)]
+    df = df.fillna(method='ffill').fillna('None')
     for part_name in df[partner_col].unique():
         if part_name not in part_translation:
             for k, v in part_translation.items():
@@ -6547,7 +6550,6 @@ def set_placements_from_rfp(plan_id, current_user_id, cur_rfp):
 
 @error_handler
 def add_rfp_from_file(plan_id, current_user_id, new_data):
-
     cur_plan = db.session.get(Plan, plan_id)
     df = pd.read_excel(new_data, None)
     sheet_name = [x for x in df.keys() if 'plan' in x.lower()]
@@ -6563,7 +6565,8 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
         df = pd.read_excel(new_data, header=first_row, sheet_name=sheet_name[0])
         if partner_col in df.columns:
             break
-    df = df[df[partner_col] != 'Example Media '].reset_index(drop=True)
+    omit_parts = ['Example Media', 'Total']
+    df = df[~df[partner_col].isin(omit_parts)].reset_index(drop=True)
     mask = df.drop(partner_col, axis=1).isna().all(axis=1)
     df = df[~mask].reset_index(drop=True)
     no_fill_cols = [Rfp.planned_impressions, Rfp.planned_units,

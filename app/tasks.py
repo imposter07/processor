@@ -6559,7 +6559,7 @@ def add_rfp_from_file(plan_id, current_user_id, new_data):
     df = df[sheet_name[0]]
     cols = Rfp.column_translation()
     partner_col = cols[Rfp.partner_name.name]
-    for first_row in range(10):
+    for first_row in range(50):
         df = pd.read_excel(new_data, header=first_row, sheet_name=sheet_name[0])
         if partner_col in df.columns:
             break

@@ -64,16 +64,52 @@
         <div class="tab-content" id="nav-tabContent-processor{{ processor.id }}">
             <div class="tab-pane fade show active" id="nav-plinks{{ processor.id }}"
                  role="tabpanel" aria-labelledby="nav-plinks-tab{{ processor.id }}">
-                <div id='listTabs' class="btn-group w-100 btn-group-sm" style="opacity:.6;">
-                    {% with buttons=processor.get_navigation_buttons() %}
-                        {% with object_function_call=processor.get_object_function_call() %}
-                            {% with icon_only = true %}
-                                {% include '_nav_page_links.html' %}
+                {% set tabs = ['Processor', 'Plan', 'Uploader'] %}
+                <div id="topTabs" class="w-100 btn-group w-100 btn-group-sm mb-2" style="opacity:.6;">
+                    <nav class="w-100">
+                        <div class="nav nav-tabs nav-pills nav-justified"
+                             id=""
+                             role="tablist">
+                            {% for tab in tabs %}
+                                <a id="navButton{{ tab }}{{ processor.id }}"
+                                   type="button"
+                                   class="btn-outline-primary nav-link btn{% if loop.first %} active{% else %}{% endif %}"
+                                   data-bs-toggle="tab"
+                                   href="#{{ tab }}{{ processor.id }}"
+                                   role="tab" aria-controls="{{ tab }}"
+                                   aria-selected="{{ 'true' if loop.first else 'false' }}">{{ tab }}</a>
+                            {% endfor %}
+                        </div>
+                    </nav>
+                </div>
+                <div class="tab-content">
+                    {% for tab in tabs %}
+                    <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ tab }}{{ processor.id }}" role="tabpanel"
+                         aria-labelledby="{{ tab }}{{ processor.id }}">
+                        <div class="btn-group w-100 btn-group-sm" style="opacity:.6;">
+                            {% with buttons=processor.get_navigation_buttons(tab) %}
+                                {% with object_function_call=processor.get_object_function_call() %}
+                                    {% with object_exists=processor.has_related_object(tab) %}
+                                        {% if object_exists %}
+                                            {% with icon_only = true %}
+                                                {% include '_nav_page_links.html' %}
+                                            {% endwith %}
+                                        {% else %}
+                                            <button id="create{{ tab }}{{ processor.id }}"
+                                                    type="button"
+                                                    class="btn w-100 btn-outline-primary btn-sm">
+                                                Create/View {{ tab }}
+                                            </button>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% endwith %}
                             {% endwith %}
-                        {% endwith %}
-                    {% endwith %}
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
+
             <div class="tab-pane fade show" id="nav-appgraph{{ processor.id }}"
                  role="tabpanel" aria-labelledby="nav-appgraph-tab{{ processor.id }}">
                 <div class="col">

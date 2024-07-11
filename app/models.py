@@ -1143,6 +1143,18 @@ class Processor(db.Model):
     def get_base_path():
         return current_app.config['BASE_PROCESSOR_PATH']
 
+    def has_related_object(self, object_type='Processor'):
+        response = None
+        if object_type == Processor.__name__:
+            response = self
+        elif object_type == Uploader.__name__:
+            response = Uploader.query.filter_by(name=self.name).first()
+        elif object_type == Plan.__name__:
+            response = self.plans.all()
+            if response:
+                response = response[0]
+        return response
+
 
 class TaskScheduler(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -1993,6 +2005,16 @@ class Uploader(db.Model):
     @staticmethod
     def get_omit_cols():
         return [Uploader.media_plan.name]
+
+    def has_related_object(self, object_type='Uploader'):
+        response = None
+        if object_type == Uploader.__name__:
+            response = self
+        elif object_type == Processor.__name__:
+            response = Processor.query.filter_by(name=self.name).first()
+        elif object_type == Plan.__name__:
+            response = Plan.query.filter_by(name=self.name).first()
+        return response
 
 
 class UploaderObjects(db.Model):

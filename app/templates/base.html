@@ -304,12 +304,13 @@
         for (let i = 0; i < popups.length; i++) {
             const popover = new bootstrap.Popover(popups[i], {
                 content: 'Loading...',
+                animation: true,
                 trigger: 'hover focus',
-                placement: 'right',
+                placement: 'auto',
                 html: true,
                 sanitize: false,
-                delay: {show: 500, hide: 0},
-                container: popups[i],
+                delay: {show: 500, hide: 250},
+                container: 'body',
                 customClass: 'd-inline',
             });
             popups[i].addEventListener('show.bs.popover', async (ev) => {
@@ -326,8 +327,8 @@
                 }
             });
         }
-        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="hover"]')
-        const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
+        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="hover"]');
+        const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
     }
 
     function processorPopovers() {
@@ -370,6 +371,30 @@
                 }
             }, 10000);
         }
+
+        function createPlan(processorId) {
+            let data = {
+                processor_id: processorId,
+            }
+            let formData = convertDictToFormData(data);
+            fetch('/create_plan_from_processor', {
+              method: 'POST',
+              body: formData,
+            }).then(response => response.json()).then((data) => {
+                window.location.href = data['url'];
+            }).catch(error => {
+                console.log("Request failed: " + error);
+                displayAlert('An unexpected error occurred.', 'warning');
+                window.location.reload(true)
+            });
+        }
+
+        function addCreatePlanEvent() {
+            loadingBtn(this);
+            let processorId = this.id.replace('createPlan', '');
+            createPlan(processorId);
+        }
+
         document.addEventListener('DOMContentLoaded', initialize_notifications);
 
     {% endif %}

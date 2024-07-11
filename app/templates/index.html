@@ -206,6 +206,7 @@
         addSelectize();
         addOnClickEvent('[id^=dashSelect]', getSelectedDashboard, 'change');
         addElemRemoveLoadingBtn('processors');
+        addOnClickEvent('button[id*="createPlan"]', addCreatePlanEvent);
     }
 
     function getProcessors(pageNum, followed, filterDict=null){

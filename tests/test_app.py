@@ -628,6 +628,19 @@ class TestProcessor:
         edit_url = self.get_url(main_routes.edit_processor_request)
         assert sw.browser.current_url == edit_url
 
+    def test_follow_processor(self, sw, login, worker, set_up):
+        url = main_routes.explore.__name__
+        url = '{}{}'.format(base_url, url)
+        cur_proc = self.check_and_get_proc(sw, login, worker, set_up)
+        cur_proc.local_path = 'tmp'
+        db.session.commit()
+        plan_elem_id = 'navButtonPlan{}'.format(cur_proc.id)
+        sw.go_to_url(url, elem_id=plan_elem_id)
+        create_elem_id = 'createPlan{}'.format(cur_proc.id)
+        sw.xpath_from_id_and_click(plan_elem_id, load_elem_id=create_elem_id)
+        base_form_id = 'base_form_id'
+        sw.xpath_from_id_and_click(create_elem_id, load_elem_id=base_form_id)
+
 
 class TestPlan:
     test_name = 'testPlan'
@@ -1145,6 +1158,7 @@ class TestUploader:
         new_camp = '{}1'.format(cur_model.campaign.name)
         form_names = ['cur_campaign']
         submit_form(sw, form_names, test_name=new_camp)
+        sw.wait_for_elem_load('loadingBtnTopline')
         worker.work(burst=True)
         cur_up = db_model.query.filter_by(name=name).first()
         assert cur_up.campaign.name == new_camp

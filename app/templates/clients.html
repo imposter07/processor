@@ -265,29 +265,6 @@
             });
         }
 
-        function createPlan(processorId) {
-            let data = {
-                processor_id: processorId,
-            }
-            let formData = convertDictToFormData(data);
-            fetch('/create_plan_from_processor', {
-              method: 'POST',
-              body: formData,
-            }).then(response => response.json()).then((data) => {
-                window.location.href = data['url'];
-            }).catch(error => {
-                console.log("Request failed: " + error);
-                displayAlert('An unexpected error occurred.', 'warning');
-                window.location.reload(true)
-            });
-        }
-
-        function addCreatePlanEvent() {
-            loadingBtn(this);
-            let processorId = this.id.replace('createPlan', '');
-            createPlan(processorId);
-        }
-
         document.addEventListener("DOMContentLoaded", function() {
             addCalendar();
             let filterDict = [{'live': $('#liveProcessorsSwitch')[0].checked}];

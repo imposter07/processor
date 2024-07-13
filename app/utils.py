@@ -564,6 +564,14 @@ def form_continue_redirect(buttons, edit_name, form, cur_obj):
     return redirect(url_for(endpoint, object_name=cur_obj.name))
 
 
+def check_and_add_parents():
+    name = Client.get_default_name()[0]
+    cli = Client(name=name).check_and_add()
+    pro = Product(name=name, client_id=cli.id).check_and_add()
+    cam = Campaign(name=name, product_id=pro.id).check_and_add()
+    return name, cli, pro, cam
+
+
 class LiquidTable(object):
     id_col = 'liquid_table'
 

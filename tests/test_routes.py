@@ -14,8 +14,8 @@ import app.main.routes as main_routes
 import app.utils as app_utl
 from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
-    Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, Client, \
-    Product, Processor, Account, RequestLog, RateCard, Rates, \
+    Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, \
+    Processor, Account, RequestLog, RateCard, Rates, \
     ProcessorDatasources, Notes, TaskScheduler
 import app.tasks as app_tasks
 
@@ -213,10 +213,7 @@ class TestUtils:
 
     @staticmethod
     def check_and_add_parents():
-        name = Client.get_default_name()[0]
-        cli = Client(name=name).check_and_add()
-        pro = Product(name=name, client_id=cli.id).check_and_add()
-        cam = Campaign(name=name, product_id=pro.id).check_and_add()
+        name, cli, pro, cam = app_utl.check_and_add_parents()
         return name, cli, pro, cam
 
     def test_parse_filter_dict_from_clients(self, user, app_fixture):

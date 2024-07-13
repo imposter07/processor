@@ -28,7 +28,7 @@
                         <ol class="carousel-indicators">
                             {% for slide in walk['slides'] %}
                                 <li data-bs-target="#carouselExampleIndicators"
-                                    data-slide-to="{{ loop.index }}"
+                                    data-bs-slide-to="{{ loop.index }}"
                                     class="{% if loop.index == 1 %}active{% endif %}"></li>
                             {% endfor %}
                         </ol>
@@ -78,14 +78,14 @@
                     </div>
                     <a class="carousel-control-prev"
                        href="#carousel{{ loop.index }}"
-                       role="button" data-slide="prev">
+                       role="button" data-bs-slide="prev">
                 <span class="carousel-control-prev-icon"
                       aria-hidden="true"></span>
                         <span class="visually-hidden">Previous</span>
                     </a>
                     <a class="carousel-control-next"
                        href="#carousel{{ loop.index }}"
-                       role="button" data-slide="next">
+                       role="button" data-bs-slide="next">
                 <span class="carousel-control-next-icon"
                       aria-hidden="true"></span>
                         <span class="visually-hidden">Next</span>

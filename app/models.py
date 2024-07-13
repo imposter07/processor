@@ -2652,6 +2652,9 @@ class Plan(db.Model):
     brandtracker = db.relationship(
         'Brandtracker', backref='plan', lazy='dynamic')
 
+    def get_object_function_call(self):
+        return {'object_name': self.name}
+
     @staticmethod
     def get_output_links():
         output_links = {}
@@ -2998,6 +3001,16 @@ class Plan(db.Model):
             }
             df = pd.DataFrame(data)
         return df
+
+    def has_related_object(self, object_type='Plan'):
+        response = None
+        if object_type == Plan.__name__:
+            response = self
+        elif object_type == Processor.__name__:
+            response = Processor.query.filter_by(name=self.name).first()
+        elif object_type == Plan.__name__:
+            response = Uploader.query.filter_by(name=self.name).first()
+        return response
 
 
 class Sow(db.Model):

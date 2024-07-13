@@ -234,8 +234,8 @@ class TestUserLogin:
 
 
 class TestProcessor:
-    test_name = 'test'
-    request_test_name = 'test_request'
+    test_name = 'testProcessor'
+    request_test_name = 'testRequest'
     test_act_id = '123'
 
     @pytest.fixture(scope="class")
@@ -273,7 +273,8 @@ class TestProcessor:
         sw.go_to_url(create_url, elem_id=submit_id)
         form = ['cur_client', 'cur_product', 'cur_campaign', 'description',
                 'name', 'start_date', 'end_date']
-        submit_form(sw, form_names=form, submit_id=submit_id)
+        submit_form(sw, form_names=form, submit_id=submit_id,
+                    test_name=self.test_name)
         worker.work(burst=True)
         sw.wait_for_elem_load('refresh_imports')
         import_url = self.get_url(main_routes.edit_processor_import)
@@ -640,6 +641,19 @@ class TestProcessor:
         sw.xpath_from_id_and_click(plan_elem_id, load_elem_id=create_elem_id)
         base_form_id = 'base_form_id'
         sw.xpath_from_id_and_click(create_elem_id, load_elem_id=base_form_id)
+
+    def test_processor_sandbox(self, sw, login, worker, set_up, user):
+        elem_id = 'sandbox'
+        sw.go_to_url(base_url, elem_id=elem_id)
+        name = '{} - Sandbox'.format(user.username)
+        cur_proc = Processor.query.filter_by(name=name).first()
+        assert cur_proc
+        base_form_id = 'base_form_id'
+        elem_id = 'processorUrl{}'.format(cur_proc.id)
+        sw.wait_for_elem_load(elem_id)
+        sw.xpath_from_id_and_click(elem_id, load_elem_id=base_form_id)
+        elem = sw.browser.find_element_by_id(base_form_id)
+        assert elem
 
 
 class TestPlan:
@@ -1105,7 +1119,7 @@ class TestTutorial:
 
 
 class TestUploader:
-    test_name = 'test'
+    test_name = 'testUploader'
 
     @staticmethod
     def get_url(url_type=None, up_name=None, obj_type=main_routes.uploader):

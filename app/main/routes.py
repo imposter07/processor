@@ -174,13 +174,25 @@ def get_processor_by_date():
 def get_live_processors():
     page_num = int(request.form['page'])
     page = request.args.get('page', page_num, type=int)
-    if request.form['followed'] == 'true':
+    is_sandbox = request.form['elem_id'] == 'sandbox'
+    if is_sandbox:
+        name = '{} - Sandbox'.format(current_user.username)
+        cur_proc = Processor.query.filter_by(name=name).first()
+        if not cur_proc:
+            _, _, _, cam = app_utl.check_and_add_parents()
+            processors = Processor(name=name,
+                                   user_id=current_user.id, campaign_id=cam.id)
+            db.session.add(processors)
+            db.session.commit()
+        processors = Processor.query.filter_by(name=name)
+    elif request.form['followed'] == 'true':
         processors = current_user.processor_followed
     else:
         processors = Processor.query
-    processors = processors.filter(
-        Processor.end_date >= datetime.today().date()).order_by(
-        Processor.created_at.desc())
+    if not is_sandbox:
+        processors = processors.filter(
+            Processor.end_date >= datetime.today().date()).order_by(
+            Processor.created_at.desc())
     processors_all = [x.name for x in processors.all()]
     if 'filter_dict' in request.form and request.form['filter_dict'] != 'null':
         for d in json.loads(request.form['filter_dict']):

@@ -1,7 +1,7 @@
 <div class="card shadow outer">
     <div class="card-header">
         <h5 class="text-muted">
-            <a href="{{ processor.get_url() }}">
+            <a href="{{ processor.get_url() }}" id="processorUrl{{ processor.id }}">
             {{ processor.name }}
         </a>
             {% if not current_user.is_following_processor(processor) %}
@@ -58,7 +58,7 @@
             </div>
         {% endif %}
     </div>
-    {% if processor.local_path %}
+    {% if processor.local_path or processor.name == current_user.username %}
     <div class="card-body">
     <div class="" style="">
         <div class="tab-content" id="nav-tabContent-processor{{ processor.id }}">

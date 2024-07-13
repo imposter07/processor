@@ -877,34 +877,46 @@
 
         function appendMetricTable(dashForm, divId, rowNum, title, asDataTable=true){
             let tableName = dashForm['data']['name'];
-            $(rowNum).append('' +
-                '<div class="col">' +
-                '<div id="' + divId + '" class="card">' +
-                '<h6 class="card-header"><small class="text-muted">' + title +
-                '</small></h6>' +
-                '<div id=' + tableName + 'Elem></div>' +
-                '</div>' +
-                '</div>')
+            let colDiv = document.createElement('div');
+            colDiv.className = 'col';
+            let cardDiv = document.createElement('div');
+            cardDiv.id = divId;
+            cardDiv.className = 'card';
+            let header = document.createElement('h5');
+            header.className = 'card-header font-weight-bold text-primary';
+            header.textContent = title;
+            let tableElemDiv = document.createElement('div');
+            tableElemDiv.id = `${tableName}Elem`;
+            cardDiv.appendChild(header);
+            cardDiv.appendChild(tableElemDiv);
+            colDiv.appendChild(cardDiv);
+            document.querySelector(rowNum).appendChild(colDiv);
             if (asDataTable){
                 createMetricTable(dashForm['data']['cols'], dashForm['data']['data'],
                     tableName, tableName + 'Elem', dashForm['select_cols']['ds_raw_cols'],
-                    dashForm['select_cols']['vmc_cols'])
+                    dashForm['select_cols']['vmc_cols']);
             }
             else {
-                document.getElementById(tableName + 'Elem').innerHTML += dashForm['data']['data']
+                document.getElementById(tableName + 'Elem').innerHTML += dashForm['data']['data'];
             }
         }
 
         function appendCardAsTable(dashForm, divId, rowNum, title, asDataTable=true){
             let tableName = dashForm['data']['name'];
-            $(rowNum).append('' +
-                '<div class="col text-center">' +
-                '<div id="' + divId + '" class="card">' +
-                '<h5 class="card-header font-weight-bold text-primary">' + title +
-                '</h5>' +
-                '<div id=' + tableName + 'Elem></div>' +
-                '</div>' +
-                '</div>')
+            let colDiv = document.createElement('div');
+            colDiv.className = 'col text-center';
+            let cardDiv = document.createElement('div');
+            cardDiv.id = divId;
+            cardDiv.className = 'card';
+            let header = document.createElement('h5');
+            header.className = 'card-header font-weight-bold text-primary';
+            header.textContent = title;
+            let tableElemDiv = document.createElement('div');
+            tableElemDiv.id = `${tableName}Elem`;
+            cardDiv.appendChild(header);
+            cardDiv.appendChild(tableElemDiv);
+            colDiv.appendChild(cardDiv);
+            document.querySelector(rowNum).appendChild(colDiv);
             if (asDataTable){
                 createTable(dashForm['data']['cols'], dashForm['data']['data'],
                     tableName, tableName + 'Elem')

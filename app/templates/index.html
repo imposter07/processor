@@ -112,6 +112,7 @@
     </div>
     {% include 'tutorials/tutorial_available.html' %}
 </div>
+<br>
 <div class="row">
     <div class="col">
         <div class="card shadow outer">
@@ -126,6 +127,27 @@
                 </button>
             </div>
         </div>
+    </div>
+</div>
+<br>
+<div class="card shadow outer">
+    <div class="card-header">
+        <h3>Sandbox<i class="bi bi-hourglass btn btn-info"
+                              style="float:right; opacity:.8;"></i></h3>
+        <h6 class="card-subtitle mb-2 text-muted">
+            Tests instances of a Processor/Plan and Uploader built specially for you, {{ user.username }}!
+            Can complete challenges to learn here, or try things out without worrying about messing something up.
+        </h6>
+    </div>
+    <div class="card-body">
+        <div id="sandboxSelectContainer"></div>
+        <div id="sandbox" class="card-group"></div>
+        <br><br>
+        <nav aria-label="Page navigation example">
+            <ul id="sandboxPage"
+                class="pagination justify-content-center">
+            </ul>
+        </nav>
     </div>
 </div>
 <br><br>
@@ -168,14 +190,16 @@
     }
 
     function getProcessorsResponse(data, kwargs) {
+        console.log(data)
         let pageNum = kwargs['pageNum'];
         let proc = kwargs['proc'];
         let procNav = kwargs['procNav'];
         let followed = kwargs['followed'];
         let pages = data['pages'];
+        let originalElemId = kwargs['elemId'];
         addProcessorsToSelect(data['processors']);
         procNav.innerHTML = `
-            <ul id="processorsPage" class="pagination justify-content-center">\n</ul>
+            <ul id="${originalElemId}Page" class="pagination justify-content-center">\n</ul>
         `;
         proc.innerHTML = '';
         data['items'].forEach(item => {
@@ -205,26 +229,28 @@
         }
         addSelectize();
         addOnClickEvent('[id^=dashSelect]', getSelectedDashboard, 'change');
-        addElemRemoveLoadingBtn('processors');
+        addElemRemoveLoadingBtn(originalElemId);
         addOnClickEvent('button[id*="createPlan"]', addCreatePlanEvent);
     }
 
-    function getProcessors(pageNum, followed, filterDict=null){
-        let proc = document.getElementById('processors');
-        let procNav = document.getElementById('processorsPage');
+    function getProcessors(pageNum, followed, filterDict=null, elemId='processors') {
+        let proc = document.getElementById(elemId);
+        let procNav = document.getElementById(`${elemId}Page`);
         loadingBtn(proc);
         let data = {
             page: pageNum,
             followed: followed,
-            filter_dict: JSON.stringify(filterDict)
+            filter_dict: JSON.stringify(filterDict),
+            elem_id: elemId
         }
         let kwargs = {
             'pageNum': pageNum,
             'procNav': procNav,
             'proc': proc,
-            'followed': followed
+            'followed': followed,
+            'elemId': elemId
         }
-        makeRequest('get_live_processors', 'POST', data, getProcessorsResponse,
+        makeRequest(`get_live_processors`, 'POST', data, getProcessorsResponse,
             'json', kwargs);
     }
 
@@ -284,6 +310,7 @@
        else {
            getProcessors(1, true, filterDict);
            getOpenRequests(1, true, filterDict);
+           getProcessors(1, true, filterDict, 'sandbox');
        }
         addOnClickEvent('#notesTable', getNotes);
     }

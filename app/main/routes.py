@@ -176,15 +176,7 @@ def get_live_processors():
     page = request.args.get('page', page_num, type=int)
     is_sandbox = request.form['elem_id'] == 'sandbox'
     if is_sandbox:
-        name = '{} - Sandbox'.format(current_user.username)
-        cur_proc = Processor.query.filter_by(name=name).first()
-        if not cur_proc:
-            _, _, _, cam = app_utl.check_and_add_parents()
-            processors = Processor(name=name,
-                                   user_id=current_user.id, campaign_id=cam.id)
-            db.session.add(processors)
-            db.session.commit()
-        processors = Processor.query.filter_by(name=name)
+        processors = current_user.check_and_get_sandbox()
     elif request.form['followed'] == 'true':
         processors = current_user.processor_followed
     else:

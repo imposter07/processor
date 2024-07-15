@@ -100,6 +100,13 @@ user_tutorial = db.Table(
     db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
 )
 
+user_challenge = db.Table(
+    'user_challenge',
+    db.Column('challenge_id', db.Integer,
+              db.ForeignKey('challenge.id')),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+)
+
 project_number_plan = db.Table(
     'project_number_plan',
     db.Column('project_id', db.Integer, db.ForeignKey('project.id')),
@@ -166,6 +173,12 @@ class User(UserMixin, db.Model):
     brandtracker = db.relationship(
         'Brandtracker',  foreign_keys='Brandtracker.user_id', backref='user',
         lazy='dynamic')
+    challenges_completed = db.relationship(
+        'Challenge', secondary=user_challenge,
+        primaryjoin=(user_challenge.c.user_id == id),
+        secondaryjoin="user_challenge.c.challenge_id == Challenge.id",
+        backref=db.backref('user_challenge', lazy='dynamic'),
+        lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -222,6 +235,10 @@ class User(UserMixin, db.Model):
         if tutorial_stage not in self.tutorial_stages_completed.all():
             self.tutorial_stages_completed.append(tutorial_stage)
 
+    def complete_challenge(self, current_challenge):
+        if current_challenge not in self.challenges_completed.all():
+            self.challenges_completed.append(current_challenge)
+
     def get_reset_password_token(self, expires_in=600):
         return jwt.encode(
             {'reset_password': self.id, 'exp': time.time() + expires_in},
@@ -261,6 +278,24 @@ class User(UserMixin, db.Model):
     def get_task_in_progress(self, name):
         return Task.query.filter_by(name=name, user=self,
                                     complete=False).first()
+
+    def get_sandbox_name(self):
+        return '{} - Sandbox'.format(self.username)
+
+    def check_and_get_sandbox(self, user_id=None):
+        if not user_id:
+            user_id = current_user.id
+        name = self.get_sandbox_name()
+        cur_proc = Processor.query.filter_by(name=name).first()
+        if not cur_proc:
+            import app.utils as app_utl
+            _, _, _, cam = app_utl.check_and_add_parents()
+            processors = Processor(name=name,
+                                   user_id=user_id, campaign_id=cam.id)
+            db.session.add(processors)
+            db.session.commit()
+        processors = Processor.query.filter_by(name=name)
+        return processors
 
 
 @login.user_loader
@@ -4496,3 +4531,63 @@ class RequestLog(db.Model):
     processor_id = db.Column(db.Integer, db.ForeignKey('processor.id'))
     uploader_id = db.Column(db.Integer, db.ForeignKey('uploader.id'))
     plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'))
+
+
+class Challenge(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text)
+    description = db.Column(db.Text)
+
+    def build_challenges(self):
+        """
+        Builds the challenges from a list of lists and returns that list.
+
+        :returns: All challenges as lists in lists
+        """
+        follow_description = """
+            Follow your sandbox account.  
+            Following a processor helps makes it appear on the homepage for 
+            easy navigation.
+        """
+        challenges = [
+            ('Follow Object', follow_description, self.verify_follow)
+        ]
+        for challenge in challenges:
+            name = challenge[0]
+            description = challenge[1]
+            cur_challenge = Challenge.query.filter_by(name=name).first()
+            if not cur_challenge:
+                cur_challenge = Challenge(name=name, description=description)
+                db.session.add(cur_challenge)
+                db.session.commit()
+                msg = 'Added one new challenge named : {}'.format(name)
+                current_app.logger.info(msg)
+        return challenges
+
+    def verify_follow(self, user_id=None):
+        """
+        Checks if the user is following the sandbox processor for challenge.
+
+        :param user_id: user_id to check if not provided uses current_user
+        :returns: Boolean if the user completed the challenge
+        """
+        if user_id:
+            cur_user = db.session.get(User, user_id)
+        else:
+            cur_user = current_user
+        sand_name = cur_user.get_sandbox_name()
+        sand_processor = Processor.query.filter_by(name=sand_name).first()
+        if not sand_processor:
+            sand_processor = cur_user.check_and_get_sandbox(user_id)
+            sand_processor = sand_processor.first()
+        is_following = cur_user.is_following_processor(sand_processor)
+        if is_following:
+            cur_challenge = Challenge.query.filter_by(
+                name='Follow Object').first()
+            if not cur_challenge:
+                self.build_challenges()
+                cur_challenge = Challenge.query.filter_by(
+                    name='Follow Object').first()
+            cur_user.complete_challenge(cur_challenge)
+            db.session.commit()
+        return is_following

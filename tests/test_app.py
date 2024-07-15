@@ -645,7 +645,7 @@ class TestProcessor:
     def test_processor_sandbox(self, sw, login, worker, set_up, user):
         elem_id = 'sandbox'
         sw.go_to_url(base_url, elem_id=elem_id)
-        name = '{} - Sandbox'.format(user.username)
+        name = user.get_sandbox_name()
         cur_proc = Processor.query.filter_by(name=name).first()
         assert cur_proc
         base_form_id = 'base_form_id'

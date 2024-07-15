@@ -16,7 +16,7 @@ from app import db
 from app.models import Conversation, Plan, PlanPhase, User, Partner, Task, \
     Chat, Uploader, Project, PartnerPlacements, Campaign, PlanRule, \
     Processor, Account, RequestLog, RateCard, Rates, \
-    ProcessorDatasources, Notes, TaskScheduler
+    ProcessorDatasources, Notes, TaskScheduler, Challenge
 import app.tasks as app_tasks
 
 
@@ -630,3 +630,29 @@ class TestPlan:
         db.session.commit()
         task_response = app_tasks.get_sow(cur_plan.id, user.id)
         # assert not isinstance(task_response[0], pd.DataFrame)
+
+
+class TestChallenge:
+
+    def test_build_challenges(self, user, app_fixture):
+        """
+        Checks the member function that creates the challenges in db
+
+        :param user: conftest.py fixture that is the initial user
+        :param app_fixture: conftest.py fixture of the current app
+        """
+        challenge_list = Challenge().build_challenges()
+        assert len(challenge_list) > 0
+        challenges = Challenge.query.all()
+        assert len(challenges) == len(challenge_list)
+
+    def test_verify_follow(self, user, app_fixture):
+        is_following = Challenge().verify_follow(user.id)
+        assert not is_following
+        sand_name = user.get_sandbox_name()
+        sand_processor = Processor.query.filter_by(name=sand_name).first()
+        user.follow_processor(sand_processor)
+        db.session.commit()
+        is_following = Challenge().verify_follow(user.id)
+        assert is_following
+        assert len([x for x in user.challenges_completed]) > 0

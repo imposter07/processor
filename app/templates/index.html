@@ -130,6 +130,8 @@
     </div>
 </div>
 <br>
+<div class="row">
+<div class="col">
 <div class="card shadow outer">
     <div class="card-header">
         <h3>Sandbox<i class="bi bi-hourglass btn btn-info"
@@ -149,6 +151,24 @@
             </ul>
         </nav>
     </div>
+</div>
+</div>
+<div class="col">
+<div class="card shadow outer">
+    <div class="card-header">
+        <h3>Challenges<i class="bi bi-dice-1 btn btn-info"
+                              style="float:right; opacity:.8;"></i></h3>
+        <h6 class="card-subtitle mb-2 text-muted">
+            A list of challenges to complete in your sandbox to help verify understanding on app functionality.
+        </h6>
+    </div>
+    <div class="card-body">
+        <div id="challenges">
+            {% include '_challenges.html' %}
+        </div>
+    </div>
+</div>
+</div>
 </div>
 <br><br>
 
@@ -190,7 +210,6 @@
     }
 
     function getProcessorsResponse(data, kwargs) {
-        console.log(data)
         let pageNum = kwargs['pageNum'];
         let proc = kwargs['proc'];
         let procNav = kwargs['procNav'];

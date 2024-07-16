@@ -510,3 +510,16 @@ function loadScripts(scriptsToLoad) {
         document.body.appendChild(script);
     });
 }
+
+function loadDataTableScripts() {
+    // Dynamically load other scripts that depend on jQuery here
+    let jv = document.getElementById('jinjaValues');
+    let scriptsToLoad = [
+        'https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.js',
+        'https://cdn.datatables.net/v/bs4/jszip-2.5.0/dt-1.10.20/b-1.6.1/b-html5-1.6.1/b-colvis-1.6.1/sl-1.3.1/af-2.3.4/kt-2.5.1/fc-3.3.3/sp-1.3.0/datatables.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js',
+        jv.dataset['datatablesurl'],
+        jv.dataset['datatableseditorurl']
+    ];
+    loadScripts(scriptsToLoad);
+}

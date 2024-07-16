@@ -545,7 +545,6 @@ function syncSliderDataCell(elem, dataCell) {
         sliders[idx].dataset['key'] = k.value;
     });
     dataCell.value = JSON.stringify(data);
-    console.log(dataCell)
     let event = new Event('change');
     dataCell.dispatchEvent(event);
 }

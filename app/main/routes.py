@@ -31,11 +31,12 @@ from app.main.forms import EditProfileForm, PostForm, SearchForm, MessageForm, \
     BrandTrackerImportForm, EditProjectForm, StaticFilterForm
 from app.models import User, Post, Message, Notification, Processor, \
     Client, Product, Campaign, ProcessorDatasources, TaskScheduler, \
-    Uploader, Account, RateCard, Conversion, Requests, UploaderObjects, \
+    Uploader, Account, Conversion, Requests, UploaderObjects, \
     UploaderRelations, Dashboard, DashboardFilter, ProcessorAnalysis, Project, \
     Notes, ProcessorReports, Tutorial, TutorialStage, Task, Plan, Walkthrough, \
-    Conversation, Chat, WalkthroughSlide, Rfp, Specs, Contacts, RequestLog
-from app.plan.forms import PlotCategoryForm, CategoryComponentForm, \
+    Conversation, Chat, WalkthroughSlide, Rfp, Specs, Contacts, RequestLog, \
+    Challenge
+from app.plan.forms import PlotCategoryForm, \
     BrandtrackerForm
 from app.translate import translate
 from app.main import bp
@@ -98,6 +99,7 @@ def log_to_database(method, url, duration, status_code, form_data):
 def index():
     form = PostForm()
     tutorials = Tutorial.query.all()
+    challenges = Challenge.query.all()
     if form.validate_on_submit():
         language = guess_language(form.post.data)
         if language == 'UNKNOWN' or len(language) > 5:
@@ -118,7 +120,7 @@ def index():
     return render_template('index.html', title=_('Home'), form=form,
                            posts=posts.items, next_url=next_url,
                            prev_url=prev_url, tutorials=tutorials,
-                           user=current_user)
+                           user=current_user, challenges=challenges)
 
 
 @bp.route('/health_check', methods=['GET'])
@@ -176,7 +178,8 @@ def get_live_processors():
     page = request.args.get('page', page_num, type=int)
     is_sandbox = request.form['elem_id'] == 'sandbox'
     if is_sandbox:
-        processors = current_user.check_and_get_sandbox()
+        print('sanfdjsklafjaljdsdf')
+        processors = current_user.check_and_get_sandbox(user_id=current_user.id)
     elif request.form['followed'] == 'true':
         processors = current_user.processor_followed
     else:

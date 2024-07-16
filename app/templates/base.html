@@ -113,7 +113,10 @@
     {% if uploader_type %}data-uploader_type="{{ uploader_type }}"{% endif %}
     {% if object_name %}data-object_name="{{ object_name }}"{% endif %}
     {% if edit_name %}data-edit_name="{{ edit_name }}"{% endif %}
-    {% if current_user %}data-username="{{ current_user.username }}"{% endif %}>
+    {% if current_user %}data-username="{{ current_user.username }}"{% endif %}
+    data-datatablesurl="{{ url_for('static', filename='Editor/dataTable.js') }}"
+    data-datatableseditorurl="{{ url_for('static', filename='Editor/js/dataTables.editor.js') }}"
+>
 </div>
 <nav id="navbar" class="navbar navbar-expand-lg fixed-top align-items-center" style="padding-top:1px;">
     <a class="navbar-brand" href="{{ url_for('main.index') }}">

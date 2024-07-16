@@ -9,7 +9,7 @@ from app import db
 from app.models import User, Post, Processor, Client, Product, Campaign, Task, \
     Project, ProjectNumberMax, Plan, PlanEffectiveness, Tutorial, Uploader, \
     PartnerPlacements, PlanRule, ProcessorReports, Account, Dashboard, \
-    Partner, ProcessorDatasources
+    Partner, ProcessorDatasources, Challenge
 import app.plan.routes as plan_routes
 import app.main.routes as main_routes
 from config import basedir
@@ -654,6 +654,16 @@ class TestProcessor:
         sw.xpath_from_id_and_click(elem_id, load_elem_id=base_form_id)
         elem = sw.browser.find_element_by_id(base_form_id)
         assert elem
+
+    def test_challenges(self, sw, login, worker, set_up, user):
+        challenge_list = Challenge().build_challenges()
+        challenges = Challenge.query.all()
+        elem_id = 'challenges'
+        sw.go_to_url(base_url, elem_id=elem_id)
+        for challenge in challenges:
+            elem_id = 'challenge{}'.format(challenge.id)
+            elem = sw.browser.find_element_by_id(elem_id)
+            assert elem
 
 
 class TestPlan:

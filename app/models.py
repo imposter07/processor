@@ -4591,3 +4591,12 @@ class Challenge(db.Model):
             cur_user.complete_challenge(cur_challenge)
             db.session.commit()
         return is_following
+
+    def check_complete(self, challenge_name):
+        is_complete = False
+        challenges = self.build_challenges()
+        for challenge in challenges:
+            if challenge[0] == challenge_name:
+                is_complete = challenge[2]()
+                break
+        return is_complete

@@ -1409,32 +1409,21 @@
         }
 
         function loadJS() {
+            loadJQuery();
+            loadDataTableScripts();
             addOnClickEvent('a[id^="editTable"]', editTableOnClick);
             addOnClickEvent('a[id^="runObject"]', runObjectOnClick);
             addOnClickEvent('button[id^="getLog"]', getLogOnClick);
             addOnClickEvent('a[id^="load"]', loadButtonOnClick);
             addOnClickEvent('input[id*="refresh_"], button[id*="refresh_"]', refreshButtonsOnClick);
-            addOnClickEvent('input[id*="add_child"][value="Add API"]',
-                addApiOnClick);
-            addOnClickEvent('input[id*="apis"][id*="delete"][value="Delete"]',
-                deleteApiOnClick);
-            addOnClickEvent('input[id="brandtracker_toggle"]',
-                            brandTrackerToggle,
-                            'change');
             addOnClickEvent('input[id*="add_child"][value="Add Static Filter"]',
                 addStaticFilterOnClick);
-            loadJQuery();
             addFilePond();
             addFilePondMeta();
             addSelectize();
-            changeDataSource();
-            changeAutoNote();
             getSelectedDashboard();
             addWalkthrough();
             addOnClickEvent('[id^="viewSelector"]', viewSelectorChangeEvent, 'change');
-            addOnClickEvent('#data_source', changeImportFilter, 'change');
-            addOnClickEvent('#duplication_type', duplicationTypeOnChange, 'change');
-            addOnClickEvent('#name_create_type', nameCreateOnChange, 'change');
             addOnClickEvent('.list-group-item-linkable', listGroupOnClick);
             reloadPageOnModalCloseListener();
             reformatDataTableOnShown();
@@ -1445,12 +1434,18 @@
             let jv = document.getElementById('jinjaValues');
             let editName = jv.dataset['edit_name'];
             if (editName === 'Clean') {
+                changeDataSource();
                 getDatasourceTable();
             } else if (editName === 'Automatic Notes') {
                 getAutoNote();
             } else if (editName === 'Plan') {
                 getPlan();
             } else if (editName === 'Import') {
+                addOnClickEvent('input[id*="add_child"][value="Add API"]',
+                    addApiOnClick);
+                addOnClickEvent('input[id*="apis"][id*="delete"][value="Delete"]',
+                    deleteApiOnClick);
+                addOnClickEvent('#data_source', changeImportFilter, 'change');
                 removeSpecialChars();
                 checkTestProcessor();
                 addImportPlaceholders();
@@ -1458,6 +1453,7 @@
                 removeSpecialChars();
             } else if (editName === 'All Notes') {
                 getNotesTables();
+                changeAutoNote();
             } else if (editName === 'Report Builder') {
                 getReportBuilder();
             } else if (editName === 'Bill') {
@@ -1470,12 +1466,17 @@
                 getTable(billingTableId, billingTableId);
             } else if (editName === "Basic") {
                 brandTrackerToggle();
+                addOnClickEvent('input[id="brandtracker_toggle"]',
+                    brandTrackerToggle,
+                    'change');
             } else if (editName === "Brandtracker") {
                 brandTrackerListeners();
             } else if (editName === "ImpactScore") {
                 getImpactScoreTable();
             }
             if (jv.dataset['title'] === 'Uploader') {
+                addOnClickEvent('#name_create_type', nameCreateOnChange, 'change');
+                addOnClickEvent('#duplication_type', duplicationTypeOnChange, 'change');
                 checkDuplicationType();
                 getUnresolvedRelations();
                 checkUploaderPositionOrder();

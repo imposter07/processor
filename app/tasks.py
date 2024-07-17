@@ -7270,3 +7270,32 @@ def reset_processor_schedule():
                     user_id=x.user_id, processor=processor, complete=True)
         db.session.add(task)
         db.session.commit()
+
+
+@error_handler
+def audit_processor_export():
+    cur_path = adjust_path(os.path.abspath(os.getcwd()))
+    processors = Processor.query.all()
+    df = pd.DataFrame()
+    for cur_proc in processors:
+        app.logger.info('{}'.format(cur_proc.name))
+        try:
+            os.chdir(adjust_path(cur_proc.local_path))
+        except:
+            app.logger.info('COULD NOT GET TO PATH GOING NEXT')
+            continue
+        try:
+            with open(os.path.join('config', 's3config.json'), 'r') as f:
+                config_file = json.load(f)
+        except:
+            app.logger.info('COULD NOT READ FILE GOING NEXT')
+            continue
+        bucket = config_file['bucket']
+        cur_dict = {'processor': [cur_proc.name],
+                    'campaign': [cur_proc.campaign.name],
+                    'product': [cur_proc.campaign.product.name],
+                    'client': [cur_proc.campaign.product.client.name],
+                    'bucket': [bucket]}
+        tdf = pd.DataFrame(cur_dict)
+        df = pd.concat([df, tdf])
+    df.to_csv(os.path.join(cur_path, 'audit_s3.csv'))

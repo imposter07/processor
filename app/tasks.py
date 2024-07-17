@@ -7290,12 +7290,13 @@ def audit_processor_export():
         except:
             app.logger.info('COULD NOT READ FILE GOING NEXT')
             continue
-        bucket = config_file['bucket']
-        cur_dict = {'processor': [cur_proc.name],
-                    'campaign': [cur_proc.campaign.name],
-                    'product': [cur_proc.campaign.product.name],
-                    'client': [cur_proc.campaign.product.client.name],
-                    'bucket': [bucket]}
-        tdf = pd.DataFrame(cur_dict)
-        df = pd.concat([df, tdf])
+        if 'bucket' in config_file:
+            bucket = config_file['bucket']
+            cur_dict = {'processor': [cur_proc.name],
+                        'campaign': [cur_proc.campaign.name],
+                        'product': [cur_proc.campaign.product.name],
+                        'client': [cur_proc.campaign.product.client.name],
+                        'bucket': [bucket]}
+            tdf = pd.DataFrame(cur_dict)
+            df = pd.concat([df, tdf])
     df.to_csv(os.path.join(cur_path, 'audit_s3.csv'))

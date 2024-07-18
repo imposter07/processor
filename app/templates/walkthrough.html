@@ -118,13 +118,9 @@
             $('a[id^="showMe"]').unbind('click').click(function () {
                 let divId = this.id.replace('showMe', '')
                 let scrollIntoViewOptions = {'behavior': 'smooth'}
-                document.getElementById(divId).scrollIntoView(scrollIntoViewOptions);
-                let element = $('#' + divId)[0];
-                let originalColor = element.style.backgroundColor;
-                element.style.backgroundColor = "#b3ecff";
-                let t = setTimeout(function () {
-                    element.style.backgroundColor = originalColor;
-                }, (2 * 1000));
+                let element = document.getElementById(divId);
+                element.scrollIntoView(scrollIntoViewOptions);
+                flashElemBackground(element);
             });
         });
     }

@@ -4600,3 +4600,6 @@ class Challenge(db.Model):
                 is_complete = challenge[2]()
                 break
         return is_complete
+
+    def check_is_complete(self):
+        return self.check_complete(self.name)

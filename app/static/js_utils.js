@@ -523,3 +523,15 @@ function loadDataTableScripts() {
     ];
     loadScripts(scriptsToLoad);
 }
+
+function flashElemBackground(elem, color = '#b3ecff') {
+    let originalColor = elem.style.backgroundColor;
+    let originalOpacity = elem.style.opacity;
+    console.log(originalOpacity)
+    elem.style.backgroundColor = color;
+    elem.style.opacity = '.7';
+    let t = setTimeout(function () {
+        elem.style.backgroundColor = originalColor;
+        elem.style.opacity = originalOpacity;
+    }, (2 * 1000));
+}

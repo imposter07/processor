@@ -178,7 +178,6 @@ def get_live_processors():
     page = request.args.get('page', page_num, type=int)
     is_sandbox = request.form['elem_id'] == 'sandbox'
     if is_sandbox:
-        print('sanfdjsklafjaljdsdf')
         processors = current_user.check_and_get_sandbox(user_id=current_user.id)
     elif request.form['followed'] == 'true':
         processors = current_user.processor_followed
@@ -3489,3 +3488,17 @@ def speed_test():
     time.sleep(1)
     duration = time.time() - g.start
     return jsonify({'data': duration})
+
+
+@bp.route('/check_challenge', methods=['GET', 'POST'])
+@login_required
+@app_utl.error_handler
+def check_challenge():
+    challenge_id = request.form['challenge_id']
+    cur_challenge = db.session.get(Challenge, challenge_id)
+    msg = 'FAILED - Challenge was not completed.'
+    is_complete = cur_challenge.check_is_complete()
+    if is_complete:
+        msg = 'SUCCESS - Challenge was completed.'
+    return jsonify({'complete': is_complete, 'challenge_id': challenge_id,
+                    'message': msg})

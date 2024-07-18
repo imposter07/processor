@@ -58,7 +58,7 @@
             </div>
         {% endif %}
     </div>
-    {% if processor.local_path or processor.name == current_user.username %}
+    {% if processor.local_path or processor.name == current_user.get_sandbox_name() %}
     <div class="card-body">
     <div class="" style="">
         <div class="tab-content" id="nav-tabContent-processor{{ processor.id }}">

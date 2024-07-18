@@ -321,6 +321,32 @@
             'None', false, dash_metric_args);
     }
 
+    function checkChallengeResponse (data, kwargs) {
+        let isComplete = data['complete'];
+        let challengeId = data['challenge_id'];
+        let message = data['message'];
+        let challengeIconId = `challengeIcon${challengeId}`;
+        let challengeIcon = document.getElementById(challengeIconId);
+        let backgroundColor = '#ff6666';
+        let level = 'warning';
+        if (isComplete) {
+            challengeIcon.classList.remove('bi-x-lg', 'btn-danger');
+            challengeIcon.classList.add('bi-check-lg', 'btn-success');
+            backgroundColor = '#00cc44';
+            level = 'success';
+        }
+        displayAlert(message, level)
+        flashElemBackground(challengeIcon.parentElement.parentElement, backgroundColor);
+        addElemRemoveLoadingBtn(`challengeBtn${challengeId}`);
+    }
+
+    function checkChallengeOnClick() {
+        loadingBtn(this);
+        let challengeId = this.id.replace('challengeBtn', '');
+        let data = {challenge_id: challengeId}
+        makeRequest('/check_challenge', 'POST', data, checkChallengeResponse);
+    }
+
     function getProcessorBasedOnPage(filterDict=null) {
         if (window.location.pathname === "/explore"){
            getProcessors(1, false, filterDict);
@@ -332,6 +358,7 @@
            getProcessors(1, true, filterDict, 'sandbox');
        }
         addOnClickEvent('#notesTable', getNotes);
+        addOnClickEvent('[id^=challengeBtn]', checkChallengeOnClick);
     }
 
     document.addEventListener("DOMContentLoaded", function() {

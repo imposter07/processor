@@ -661,9 +661,10 @@ class TestProcessor:
         elem_id = 'challenges'
         sw.go_to_url(base_url, elem_id=elem_id)
         for challenge in challenges:
-            elem_id = 'challenge{}'.format(challenge.id)
+            elem_id = 'challengeBtn{}'.format(challenge.id)
             elem = sw.browser.find_element_by_id(elem_id)
             assert elem
+            sw.xpath_from_id_and_click(elem_id, load_elem_id='alertPlaceholder')
 
 
 class TestPlan:

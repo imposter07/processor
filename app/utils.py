@@ -497,6 +497,16 @@ def set_db_values(object_id, current_user_id, form_sources, table,
     return change_log
 
 
+def set_fees_from_form(obj, form):
+    obj.digital_agency_fees = form.digital_agency_fees.data
+    obj.trad_agency_fees = form.trad_agency_fees.data
+    obj.rate_card_id = form.rate_card.data.id
+    service_fees = int(form.dcm_service_fees.data.replace('%', '')) / 100
+    obj.dcm_service_fees = service_fees
+    db.session.commit()
+    return obj
+
+
 def obj_fees_route(object_name, current_user, object_type=Processor,
                    kwargs=None, template='create_processor.html'):
     from app.main.forms import FeeForm
@@ -515,12 +525,11 @@ def obj_fees_route(object_name, current_user, object_type=Processor,
     form = FeeForm()
     if request.method == 'POST':
         form.validate()
-        cur_proc.digital_agency_fees = form.digital_agency_fees.data
-        cur_proc.trad_agency_fees = form.trad_agency_fees.data
-        cur_proc.rate_card_id = form.rate_card.data.id
-        cur_proc.dcm_service_fees = int(
-            form.dcm_service_fees.data.replace('%', '')) / 100
-        db.session.commit()
+        set_fees_from_form(cur_proc, form)
+        other_obj = Processor if object_type.__name__ == Plan.__name__ else Plan
+        other_obj = cur_proc.has_related_object(other_obj.__name__).first()
+        if other_obj:
+            set_fees_from_form(other_obj, form)
         creation_text = '{} fees were edited.'.format(object_type.__name__)
         object_post_message(cur_proc, current_user, text=creation_text,
                             object_name=object_type.__name__)

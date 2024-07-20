@@ -1313,6 +1313,10 @@ def write_rate_card(processor_id, current_user_id, new_data, vk,
     if cur_proc.rate_card_id != rate_card.id:
         cur_proc.rate_card_id = rate_card.id
         db.session.commit()
+        other_obj = Processor if object_type.__name__ == Plan.__name__ else Plan
+        other_obj = cur_proc.has_related_object(other_obj.__name__).first()
+        if other_obj:
+            other_obj.rate_card_id = rate_card.id
 
 
 @error_handler

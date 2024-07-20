@@ -131,6 +131,7 @@
     {% endif %}
     {% if (object and object.local_path) or title == 'Plan' %}
     <div class="accordion" id="accordionExample">
+        {% if run_links %}
         <div class="card">
             <button class="btn btn-outline-success w-100
                            dropdown-toggle text-start"
@@ -145,7 +146,6 @@
             <div id="collapseOne" class="collapse"
                  aria-labelledby="headingOne" data-bs-parent="#accordionExample">
                 <div class="list-group">
-                    {% if run_links %}
                         {% for run_link_idx in run_links %}
                           <a class="list-group-item list-group-item-action" href="#"
                             data-bs-toggle="hover" data-placement="bottom"
@@ -154,10 +154,11 @@
                             id="{{ 'runObject{}'.format(run_links[run_link_idx]['title']) }}">
                               {{ run_links[run_link_idx]['title'] }}</a>
                         {% endfor %}
-                    {% endif %}
                 </div>
             </div>
         </div>
+        {% endif %}
+        {% if edit_links %}
         <div class="card">
             <button class="btn btn-outline-info w-100
                            dropdown-toggle text-start"
@@ -173,7 +174,6 @@
                  aria-labelledby="headingTwo"
                  data-bs-parent="#accordionExample">
                 <div class="list-group">
-                    {% if edit_links %}
                         {% for edit_link_idx in edit_links %}
                               <a class="list-group-item list-group-item-action" href="#"
                                  data-bs-toggle="hover" data-placement="bottom"
@@ -207,11 +207,11 @@
                               </div>
                               {% endif %}
                         {% endfor %}
-                    {% endif %}
                     </div>
                  </div>
             </div>
-        </div>
+
+        {% endif %}
         {% if output_links %}
         <div class="card">
             <button class="btn btn-outline-primary w-100
@@ -228,7 +228,6 @@
                  aria-labelledby="headingThree"
                  data-bs-parent="#accordionExample">
                 <div class="list-group">
-                    {% if output_links %}
                         {% for out_link_idx in output_links %}
                           <a class="list-group-item list-group-item-action"
                              data-bs-toggle="hover" data-placement="bottom"
@@ -238,11 +237,11 @@
                              href="#">
                               {{ output_links[out_link_idx]['title'] }}</a>
                         {% endfor %}
-                    {% endif %}
                 </div>
             </div>
         </div>
         {% endif %}
+        {% if request_links %}
         <div class="card">
             <button class="btn btn-outline-danger w-100
                            dropdown-toggle text-start"
@@ -258,7 +257,6 @@
                  aria-labelledby="headingFour"
                  data-bs-parent="#accordionExample">
                 <div class="list-group">
-                    {% if request_links %}
                         {% for request_link_idx in request_links %}
                           <a class="list-group-item list-group-item-action"
                              data-bs-toggle="hover" data-placement="bottom"
@@ -267,10 +265,10 @@
                              href="{{ request_links[request_link_idx]['href'] }}">
                               {{ request_links[request_link_idx]['title'] }}</a>
                         {% endfor %}
-                    {% endif %}
                 </div>
             </div>
         </div>
+        {% endif %}
         <div class="card">
             <button type="button"
                     class="btn btn-outline-secondary w-100 text-start"
@@ -280,6 +278,7 @@
               {{ _('Show Logs') }}
             </button>
         </div>
+    </div>
     <br>
     {% endif %}
     <div class="card shadow outer">

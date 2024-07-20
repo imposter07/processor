@@ -2722,7 +2722,6 @@ class Plan(db.Model):
             kwargs['next_url'] = next_url
             kwargs['prev_url'] = prev_url
         else:
-            kwargs['object'] = Plan()
             kwargs['object_name'] = ''
             kwargs['object_function_call']['object_name'] = ''
         return kwargs

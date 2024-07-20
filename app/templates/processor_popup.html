@@ -59,12 +59,15 @@
         {% endif %}
     </div>
     {% if processor.local_path or processor.name == current_user.get_sandbox_name() %}
+        {% set tabs = ['Processor', 'Plan', 'Uploader'] %}
+    {% else %}
+        {% set tabs = ['ProcessorRequest', 'Plan', 'Uploader'] %}
+    {% endif %}
     <div class="card-body">
     <div class="" style="">
         <div class="tab-content" id="nav-tabContent-processor{{ processor.id }}">
             <div class="tab-pane fade show active" id="nav-plinks{{ processor.id }}"
                  role="tabpanel" aria-labelledby="nav-plinks-tab{{ processor.id }}">
-                {% set tabs = ['Processor', 'Plan', 'Uploader'] %}
                 <div id="topTabs" class="w-100 btn-group w-100 btn-group-sm mb-2" style="opacity:.6;">
                     <nav class="w-100">
                         <div class="nav nav-tabs nav-pills nav-justified"
@@ -178,7 +181,6 @@
         </div>
     </div>
     </div>
-    {% endif %}
     <div class="card-footer">
         {% if title == "Processor" %}
             {% include 'processor_requests_button.html' %}

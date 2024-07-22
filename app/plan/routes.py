@@ -2,7 +2,6 @@ import json
 from app import db
 from flask_babel import _
 from app.plan import bp
-from datetime import datetime
 from werkzeug.datastructures import MultiDict
 import datetime as dt
 from flask_login import current_user, login_required
@@ -11,9 +10,10 @@ from app.plan.forms import PlanForm, EditPlanForm, PlanToplineForm, \
     CreateSowForm, RfpForm, PartnerPlacementForm, CompetitiveSpendForm, \
     PlotCategoryForm, BrandtrackerForm, CategoryComponentForm, ImpactScoreForm
 from app.main.forms import FeeForm
-from app.models import Client, Product, Campaign, Plan, Post, \
-    PlanPhase, Sow, Processor, Brandtracker, BrandtrackerDimensions
+from app.models import Plan, Post, \
+    PlanPhase, Sow, Processor, Brandtracker, BrandtrackerDimensions, Uploader
 import app.utils as app_utl
+import processor.reporting.analyze as az
 
 
 @bp.route('/plan', methods=['GET', 'POST'])
@@ -54,23 +54,23 @@ def plan():
 @bp.route('/create_plan_from_processor', methods=['GET', 'POST'])
 @login_required
 def create_plan_from_processor():
-    cur_processor = Processor.query.get(request.form['processor_id'])
-    cur_plans = cur_processor.plans.all()
+    object_type = request.form['object_type']
+    cur_processor = db.session.get(Processor, request.form['processor_id'])
+    cur_plans = cur_processor.has_related_object(object_type=object_type)
     if cur_plans:
         cur_plan = cur_plans[0]
-        plan_url = url_for('plan.edit_plan', object_name=cur_plan.name)
     else:
-        new_plan = Plan(
-            name=cur_processor.name, description=cur_processor.description,
-            start_date=cur_processor.start_date,
-            end_date=cur_processor.end_date,
-            user_id=current_user.id, created_at=datetime.utcnow(),
-            campaign_id=cur_processor.campaign.id)
-        db.session.add(new_plan)
-        db.session.commit()
-        cur_processor.plans.append(new_plan)
-        db.session.commit()
-        plan_url = url_for('plan.edit_plan', object_name=new_plan.name)
+        is_plan = object_type == Plan.__name__
+        db_model = Plan if is_plan else Uploader
+        ali_chat = az.AliChat()
+        ali_chat.db = db
+        ali_chat.current_user = current_user
+        msg = '{}'.format(cur_processor.name)
+        cur_plan = ali_chat.create_db_model_from_other(Processor, msg, db_model)
+        if is_plan:
+            cur_processor.plans.append(cur_plan)
+            db.session.commit()
+    plan_url = cur_plan.get_url()
     return jsonify({'url': plan_url})
 
 

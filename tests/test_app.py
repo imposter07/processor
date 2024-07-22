@@ -635,12 +635,18 @@ class TestProcessor:
         cur_proc = self.check_and_get_proc(sw, login, worker, set_up)
         cur_proc.local_path = 'tmp'
         db.session.commit()
-        plan_elem_id = 'navButtonPlan{}'.format(cur_proc.id)
-        sw.go_to_url(url, elem_id=plan_elem_id)
-        create_elem_id = 'createPlan{}'.format(cur_proc.id)
-        sw.xpath_from_id_and_click(plan_elem_id, load_elem_id=create_elem_id)
-        base_form_id = 'base_form_id'
-        sw.xpath_from_id_and_click(create_elem_id, load_elem_id=base_form_id)
+        for obj_type in [Plan, Uploader]:
+            obj_name = obj_type.__name__
+            plan_elem_id = 'navButton{}{}'.format(obj_name, cur_proc.id)
+            sw.go_to_url(url, elem_id=plan_elem_id)
+            create_id = 'create{}{}'.format(obj_name, cur_proc.id)
+            sw.xpath_from_id_and_click(plan_elem_id, load_elem_id=create_id)
+            base_form_id = 'base_form_id'
+            sw.xpath_from_id_and_click(create_id, load_elem_id=base_form_id)
+            new_obj = obj_type.query.filter_by(name=cur_proc.name).first()
+            assert new_obj
+            if obj_name == Uploader.__name__:
+                assert new_obj.local_path != cur_proc.local_path
 
     def test_processor_sandbox(self, sw, login, worker, set_up, user):
         elem_id = 'sandbox'
@@ -658,6 +664,7 @@ class TestProcessor:
     def test_challenges(self, sw, login, worker, set_up, user):
         challenge_list = Challenge().build_challenges()
         challenges = Challenge.query.all()
+        assert len(challenges) == len(challenge_list)
         elem_id = 'challenges'
         sw.go_to_url(base_url, elem_id=elem_id)
         for challenge in challenges:

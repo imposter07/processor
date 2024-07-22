@@ -527,7 +527,7 @@ def obj_fees_route(object_name, current_user, object_type=Processor,
         form.validate()
         set_fees_from_form(cur_proc, form)
         other_obj = Processor if object_type.__name__ == Plan.__name__ else Plan
-        other_obj = cur_proc.has_related_object(other_obj.__name__).first()
+        other_obj = cur_proc.has_related_object(other_obj.__name__)[0]
         if other_obj:
             set_fees_from_form(other_obj, form)
         creation_text = '{} fees were edited.'.format(object_type.__name__)

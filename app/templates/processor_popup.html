@@ -76,18 +76,19 @@
                             {% for tab in tabs %}
                                 <a id="navButton{{ tab }}{{ processor.id }}"
                                    type="button"
-                                   class="btn-outline-primary nav-link btn{% if loop.first %} active{% else %}{% endif %}"
+                                   class="btn-outline-primary nav-link btn
+                                        {% if processor.__table__.name == tab|lower %} active{% else %}{% endif %}"
                                    data-bs-toggle="tab"
                                    href="#{{ tab }}{{ processor.id }}"
                                    role="tab" aria-controls="{{ tab }}"
-                                   aria-selected="{{ 'true' if loop.first else 'false' }}">{{ tab }}</a>
+                                   aria-selected="{% if processor.__table__.name == tab|lower %}true{% else %}false{% endif %}">{{ tab }}</a>
                             {% endfor %}
                         </div>
                     </nav>
                 </div>
                 <div class="tab-content">
                     {% for tab in tabs %}
-                    <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ tab }}{{ processor.id }}" role="tabpanel"
+                    <div class="tab-pane fade {% if processor.__table__.name == tab|lower %}show active{% endif %}" id="{{ tab }}{{ processor.id }}" role="tabpanel"
                          aria-labelledby="{{ tab }}{{ processor.id }}">
                         <div class="btn-group w-100 btn-group-sm" style="opacity:.6;">
                             {% with buttons=processor.get_navigation_buttons(tab) %}

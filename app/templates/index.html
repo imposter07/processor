@@ -249,7 +249,7 @@
         addSelectize();
         addOnClickEvent('[id^=dashSelect]', getSelectedDashboard, 'change');
         addElemRemoveLoadingBtn(originalElemId);
-        addOnClickEvent('button[id*="createPlan"]', addCreatePlanEvent);
+        addOnClickEvent('button[id*="createPlan"], button[id*="createUploader"]', addCreatePlanEvent);
     }
 
     function getProcessors(pageNum, followed, filterDict=null, elemId='processors') {

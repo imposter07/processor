@@ -10,6 +10,7 @@ import itertools
 import numpy as np
 import pandas as pd
 from sqlalchemy import or_
+from sqlalchemy.inspection import inspect
 from datetime import datetime, timedelta
 from datetime import time as datetime_time
 from hashlib import md5
@@ -795,8 +796,9 @@ class Processor(db.Model):
         return self.processor_analysis.filter_by(key=analysis_key).first()
 
     def to_dict(self):
-        return dict([(k, getattr(self, k)) for k in self.__dict__.keys()
-                     if not k.startswith("_") and k != 'id'])
+        return {c.key: getattr(self, c.key)
+                for c in inspect(self).mapper.column_attrs
+                if not c.key.startswith("_") and c.key != 'id'}
 
     def get_all_dashboards(self, report=False):
         if report:
@@ -1902,7 +1904,9 @@ class Uploader(db.Model):
     @staticmethod
     def get_create_args_from_other(other_obj):
         args = None
-        if other_obj.__table__.name == Plan.__table__.name:
+        if other_obj.__table__.name == Processor.__table__.name:
+            other_obj = other_obj.has_related_object(Plan.__name__)
+        if other_obj and other_obj.__table__.name == Plan.__table__.name:
             args = other_obj.get_placements_as_df()
             col_dict = {
                 PlanPhase.__table__.name: cre.MediaPlan.campaign_phase,

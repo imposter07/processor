@@ -375,9 +375,10 @@
             }, 10000);
         }
 
-        function createPlan(processorId) {
+        function createPlan(processorId, objectType = 'Plan') {
             let data = {
                 processor_id: processorId,
+                object_type: objectType,
             }
             let formData = convertDictToFormData(data);
             fetch('/create_plan_from_processor', {
@@ -394,8 +395,9 @@
 
         function addCreatePlanEvent() {
             loadingBtn(this);
-            let processorId = this.id.replace('createPlan', '');
-            createPlan(processorId);
+            let objectType = this.id.includes('Plan') ? 'Plan' : 'Uploader';
+            let processorId = this.id.replace(`create${objectType}`, '');
+            createPlan(processorId, objectType);
         }
 
         document.addEventListener('DOMContentLoaded', initialize_notifications);

@@ -463,16 +463,22 @@ class TestPlan:
             assert place.total_budget == rule_info[cur_country] * total_budget
         assert place_budget == total_budget
 
-    def test_create_from_rules(self, user, app_fixture):
+    @staticmethod
+    def create_plan_with_partner(total_budget=100):
         cur_plan = TestTasks.create_test_processor(Plan)
         cur_phase = PlanPhase(name=cur_plan.name, plan_id=cur_plan.id)
         db.session.add(cur_phase)
         db.session.commit()
-        total_budget = 100
         cur_part = Partner(name=cur_plan.name, plan_phase_id=cur_phase.id,
                            total_budget=total_budget)
         db.session.add(cur_part)
         db.session.commit()
+        return cur_plan, cur_phase, cur_part
+
+    def test_create_from_rules(self, user, app_fixture):
+        total_budget = 100
+        cur_plan, cur_phase, cur_part = self.create_plan_with_partner(
+            total_budget)
         place_col = PartnerPlacements.country.name
         first_val = 'a'
         second_val = 'b'
@@ -614,6 +620,15 @@ class TestPlan:
         db.session.commit()
         db.session.delete(r)
         db.session.commit()
+
+    def test_check_missing_rules(self, user, app_fixture):
+        total_budget = 100
+        cur_plan, cur_phase, cur_part = self.create_plan_with_partner()
+        data = PartnerPlacements().create_from_rules(parent_id=cur_part.id,
+                                                     current_user_id=user.id)
+        cols = PartnerPlacements().get_col_order(for_loop=True, as_string=False)
+        rules = PlanRule.query.filter_by(partner_id=cur_part.id).all()
+        assert len(cols) == len(rules)
 
     def test_get_sow(self, user, app_fixture):
         """

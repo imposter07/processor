@@ -3872,6 +3872,15 @@ class PartnerPlacements(db.Model):
                     db.session.commit()
         return new_rule
 
+    def add_blank_rule_if_missing(self, old_rule, str_name, parent, plan_id):
+        if not old_rule:
+            old_rule = PlanRule(
+                place_col=str_name, rule_info={'': 1},
+                partner_id=parent.id, plan_id=plan_id, type='Create')
+            db.session.add(old_rule)
+            db.session.commit()
+        return old_rule
+
     def check_single_col_from_words(self, col, parent, plan_id, words,
                                     total_db, min_impressions, new_rules,
                                     message=''):
@@ -3969,12 +3978,7 @@ class PartnerPlacements(db.Model):
         elif not name_list and not old_rule:
             old_rule = self.get_default_value_for_col(
                 parent, total_db, db_col, str_name, plan_id)
-        if not old_rule:
-            old_rule = PlanRule(
-                place_col=str_name, rule_info={'': 1},
-                partner_id=parent.id, plan_id=plan_id, type='Create')
-            db.session.add(old_rule)
-            db.session.commit()
+        self.add_blank_rule_if_missing(old_rule, str_name, parent, plan_id)
         return new_rules, words
 
     def check_gg_children(self, parent_id, words, total_db, msg_text,
@@ -4084,7 +4088,8 @@ class PartnerPlacements(db.Model):
                 rule_info = json.loads(rule_info)
             for col_name, rule_details in rule_info.items():
                 rule_dict[rule.place_col] = {}
-                if isinstance(rule_details, (int, float)):
+                col_in_df = col_name in df.columns
+                if isinstance(rule_details, (int, float)) or not col_in_df:
                     continue
                 for old_col_val, new_col_vals in rule_details.items():
                     tdf = df[df[col_name] == old_col_val]
@@ -4188,10 +4193,22 @@ class PartnerPlacements(db.Model):
                 temp_dict[PartnerPlacements.reporting_rate.name] = rep_rate
         return temp_dict
 
+    def check_missing_rules(self, parent, plan_id):
+        cols = self.get_col_order(for_loop=True, as_string=False)
+        for col in cols:
+            str_name, db_col, col_names = self.get_col_names(col)
+            old_rule = PlanRule.query.filter_by(
+                place_col=str_name, partner_id=parent.id,
+                plan_id=plan_id).first()
+            self.add_blank_rule_if_missing(old_rule, str_name, parent, plan_id)
+
     def create_from_rules(self, parent_id, current_user_id):
         parent = db.session.get(Partner, parent_id)
         rates = self.get_rate_card(parent)
         parent_budget = float(parent.total_budget)
+        cur_phase = db.session.get(PlanPhase, parent.plan_phase_id)
+        cur_plan = db.session.get(Plan, cur_phase.plan_id)
+        PartnerPlacements().check_missing_rules(parent, cur_plan.id)
         combos, rule_dict = self.get_combos_from_rules(parent_id)
         combos, rule_dict = self.apply_lookup_rules(parent_id, combos,
                                                     rule_dict)

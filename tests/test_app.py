@@ -1256,6 +1256,8 @@ class TestUploader:
 
 class TestResearch:
     default_name = 'Research'
+    request_test_name = 'testRequest'
+    test_act_id = 'pcgamer.com'
 
     @pytest.fixture(scope="class")
     def bt_data(self):
@@ -1512,6 +1514,10 @@ class TestResearch:
         bt_df = pd.DataFrame(bt_dict)
         return bt_df
 
+    @pytest.fixture(scope="class")
+    def default_name(self):
+        return 'Research'
+
     @pytest.fixture(scope='class')
     def bt_setup(self, login, user, bt_data, worker, create_processor,
                  reporting_db):
@@ -1519,6 +1525,21 @@ class TestResearch:
             self.default_name, campaign='BRANDTRACKER', create_files=True,
             df=bt_data)
         export_proc_data(new_processor, user, worker)
+
+    @pytest.fixture(scope='class')
+    def bt_proc_setup(self, login, user, worker, default_name,
+                      create_processor):
+        new_processor = create_processor(
+            default_name, campaign='BRANDTRACKER', create_files=True)
+        worker.work(burst=True)
+        return new_processor
+
+    @staticmethod
+    def get_url(url_type=None, p_name=None, obj_type=main_routes.processor):
+        if not p_name:
+            p_name = TestProcessor.test_name
+        url = get_url(url_type, obj_name=p_name, obj_type=obj_type)
+        return url
 
     def test_research_url(self, sw, login, worker, bt_setup):
         r_url = get_url(plan_routes.research)
@@ -1569,6 +1590,73 @@ class TestResearch:
         impact_table_id = '{}Table'.format(impact_score_id)
         sw.wait_for_elem_load(impact_table_id)
         assert sw.browser.find_element_by_id(impact_table_id)
+
+    @staticmethod
+    def import_save(worker, sw):
+        sw.browser.execute_script("window.scrollTo(0, 0)")
+        submit_elem = 'loadRefresh'
+        load_elem = 'loadingBtn{}'.format(submit_elem)
+        sw.xpath_from_id_and_click(submit_elem, load_elem_id=load_elem)
+        sw.wait_for_elem_load('.alert.alert-info', selector=sw.select_css)
+        worker.work(burst=True)
+
+    def add_import_card(self, worker, sw, default_name, name,
+                        api_type='Rawfile'):
+        with adjust_path(basedir):
+            proc_url = self.get_url(main_routes.edit_processor_import,
+                                    p_name=default_name)
+            add_child_id = 'add_child'
+            sw.go_to_url(proc_url, elem_id=add_child_id)
+            api_elem = 'apis-0-key-selectized'
+            sw.xpath_from_id_and_click(add_child_id, load_elem_id=api_elem)
+            import_form = [(name, 'apis-0-name'),
+                           (api_type, api_elem, 'clear'),
+                           (self.test_act_id, 'apis-0-account_id'),
+                           ('06-01-2024', 'apis-0-start_date')]
+            sw.send_keys_from_list(import_form)
+            self.import_save(worker, sw)
+        sw.browser.refresh()
+        sw.wait_for_elem_load('base_form_id')
+
+    def delete_import_card(self, worker, sw, default_name, name):
+        with adjust_path(basedir):
+            proc_url = self.get_url(main_routes.edit_processor_import,
+                                    p_name=default_name)
+            sw.go_to_url(proc_url, elem_id='add_child')
+            xp = """//input[@value="{}"]""".format(name)
+            import_card = sw.browser.find_element_by_xpath(xp)
+            api_id = import_card.get_attribute('id').replace('name', 'delete')
+            sw.xpath_from_id_and_click(api_id, load_elem_id='add_child')
+            self.import_save(worker, sw)
+
+    def test_add_delete_import(self, bt_proc_setup, sw, worker, default_name):
+        names = [vmc.api_pix_key, vmc.api_sim_key]
+        for name in [vmc.api_pix_key, vmc.api_sim_key]:
+            self.add_import_card(worker, sw, default_name, name, api_type=name)
+        with adjust_path(bt_proc_setup.local_path):
+            matrix = vm.VendorMatrix()
+            vm_list = matrix.vm_df[vmc.vendorkey].to_list()
+            df = matrix.vm_df
+            for name in names:
+                vk = 'API_{}_{}'.format(name, name)
+                assert vk in vm_list
+                tdf = df[df[vmc.vendorkey].str.contains(vmc.api_pix_key)]
+                api_fields = tdf[vmc.apifields].to_list()
+                assert str(api_fields[0]) == str(api_fields[1])
+                ds = ProcessorDatasources.query.filter_by(
+                    vendor_key=vk, processor_id=bt_proc_setup.id).first()
+                assert ds.name == name
+                if name == vmc.api_sim_key:
+                    file_name = df[df[vmc.vendorkey] == vk][vmc.apifile]
+                    file_name = file_name.to_list()[0]
+                    file_name = os.path.join(utl.config_path, file_name)
+                    with open(file_name, 'rb') as f:
+                        data = json.load(f)
+                    assert data['act_id'] == 'act_{}'.format(self.test_act_id)
+                    assert ds.account_id == self.test_act_id
+                self.delete_import_card(worker, sw, default_name, name)
+                matrix = vm.VendorMatrix()
+                assert vk not in matrix.vm_df[vmc.vendorkey].to_list()
 
 
 class TestReportingDBReadWrite:

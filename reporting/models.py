@@ -959,34 +959,34 @@ class EventBrand(Base):
     event = relationship('Event')
     upload = relationship('Upload')
 
-
-class EventImpact(Base):
-    __tablename__ = 'eventimpact'
-    __table_args__ = {'schema': 'lqadb'}
-
-    eventbrandid = Column(BigInteger, primary_key=True, server_default=text(
-        "nextval('lqadb.eventimpact_eventimpactid_seq'::regclass)"))
-    eventimpactname = Column(Text)
-    eventid = Column(ForeignKey(
-        'lqadb.event.eventid', ondelete='CASCADE'))
-    media_spend = Column(Numeric)
-    all_traffic_visits = Column(Numeric)
-    desktop_visits = Column(Numeric)
-    mobile_visits = Column(Numeric)
-    all_traffic_bounce_rate = Column(Numeric)
-    desktop_bounce_rate = Column(Numeric)
-    mobile_bounce_rate = Column(Numeric)
-    all_traffic_pages_per_visit = Column(Numeric)
-    desktop_pages_per_visit = Column(Numeric)
-    mobile_pages_per_visit = Column(Numeric)
-    all_traffic_average_visit_duration = Column(Numeric)
-    desktop_average_visit_duration = Column(Numeric)
-    mobile_average_visit_duration = Column(Numeric)
-    desktop_unique_visitors = Column(Numeric)
-    mobile_unique_visitors = Column(Numeric)
-    deduplicated_audience = Column(Numeric)
-
-    uploadid = Column(ForeignKey('lqadb.upload.uploadid', ondelete='CASCADE'))
-
-    event = relationship('Event')
-    upload = relationship('Upload')
+#
+# class EventImpact(Base):
+#     __tablename__ = 'eventimpact'
+#     __table_args__ = {'schema': 'lqadb'}
+#
+#     eventbrandid = Column(BigInteger, primary_key=True, server_default=text(
+#         "nextval('lqadb.eventimpact_eventimpactid_seq'::regclass)"))
+#     eventimpactname = Column(Text)
+#     eventid = Column(ForeignKey(
+#         'lqadb.event.eventid', ondelete='CASCADE'))
+#     media_spend = Column(Numeric)
+#     all_traffic_visits = Column(Numeric)
+#     desktop_visits = Column(Numeric)
+#     mobile_visits = Column(Numeric)
+#     all_traffic_bounce_rate = Column(Numeric)
+#     desktop_bounce_rate = Column(Numeric)
+#     mobile_bounce_rate = Column(Numeric)
+#     all_traffic_pages_per_visit = Column(Numeric)
+#     desktop_pages_per_visit = Column(Numeric)
+#     mobile_pages_per_visit = Column(Numeric)
+#     all_traffic_average_visit_duration = Column(Numeric)
+#     desktop_average_visit_duration = Column(Numeric)
+#     mobile_average_visit_duration = Column(Numeric)
+#     desktop_unique_visitors = Column(Numeric)
+#     mobile_unique_visitors = Column(Numeric)
+#     deduplicated_audience = Column(Numeric)
+#
+#     uploadid = Column(ForeignKey('lqadb.upload.uploadid', ondelete='CASCADE'))
+#
+#     event = relationship('Event')
+#     upload = relationship('Upload')

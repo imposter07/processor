@@ -160,21 +160,21 @@ month_avg_user = 'Monthly Average Users'
 stickiness = 'Stickiness'
 days_played = 'Days Played'
 play_intent = 'Intent to Play (Non-Players)'
-all_traffic_visits = 'Total Visits'
-desktop_visits = 'Desktop Visits'
-mobile_visits = 'Mobile Visits'
-all_traffic_bounce_rate = 'All Traffic Bounce Rate'
-desktop_bounce_rate = 'Desktop Bounce Rate'
-mobile_bounce_rate = 'Mobile Bounce Rate'
-all_traffic_pages_per_visit = 'All Traffic Pages Per Visit'
-desktop_pages_per_visit = 'Desktop Pages Per Visit'
-mobile_pages_per_visit = 'Mobile Pages Per Visit'
-all_traffic_average_visit_duration = 'All Traffic Average Visit Duration'
-desktop_average_visit_duration = 'Desktop Average Visit Duration'
-mobile_average_visit_duration = 'Mobile Average Visit Duration'
-desktop_unique_visitors = 'Desktop Unique Visitors'
-mobile_unique_visitors = 'Mobile Unique Visitors'
-deduplicated_audience = 'Deduplicated Audience'
+# all_traffic_visits = 'Total Visits'
+# desktop_visits = 'Desktop Visits'
+# mobile_visits = 'Mobile Visits'
+# all_traffic_bounce_rate = 'All Traffic Bounce Rate'
+# desktop_bounce_rate = 'Desktop Bounce Rate'
+# mobile_bounce_rate = 'Mobile Bounce Rate'
+# all_traffic_pages_per_visit = 'All Traffic Pages Per Visit'
+# desktop_pages_per_visit = 'Desktop Pages Per Visit'
+# mobile_pages_per_visit = 'Mobile Pages Per Visit'
+# all_traffic_average_visit_duration = 'All Traffic Average Visit Duration'
+# desktop_average_visit_duration = 'Desktop Average Visit Duration'
+# mobile_average_visit_duration = 'Mobile Average Visit Duration'
+# desktop_unique_visitors = 'Desktop Unique Visitors'
+# mobile_unique_visitors = 'Mobile Unique Visitors'
+# deduplicated_audience = 'Deduplicated Audience'
 
 vmkeys = [filename, firstrow, lastrow, fullplacename, placement, filenamedict,
           filenameerror, startdate, enddate, dropcol, autodicplace, autodicord,
@@ -207,14 +207,14 @@ datacol = [date, impressions, clicks, cost, views, views25, views50, views75,
            twitch_views, twitch_viewers, subreddit_members, player_share,
            nz_awareness, np_score, coverage, month_avg_user, stickiness,
            days_played, play_intent,
-           all_traffic_visits, desktop_visits,
-           mobile_visits, all_traffic_bounce_rate, desktop_bounce_rate,
-           mobile_bounce_rate, all_traffic_pages_per_visit,
-           desktop_pages_per_visit, desktop_pages_per_visit,
-           mobile_pages_per_visit, all_traffic_average_visit_duration,
-           desktop_average_visit_duration, mobile_average_visit_duration,
-           desktop_unique_visitors, mobile_unique_visitors,
-           deduplicated_audience
+           # all_traffic_visits, desktop_visits,
+           # mobile_visits, all_traffic_bounce_rate, desktop_bounce_rate,
+           # mobile_bounce_rate, all_traffic_pages_per_visit,
+           # desktop_pages_per_visit, desktop_pages_per_visit,
+           # mobile_pages_per_visit, all_traffic_average_visit_duration,
+           # desktop_average_visit_duration, mobile_average_visit_duration,
+           # desktop_unique_visitors, mobile_unique_visitors,
+           # deduplicated_audience
            ]
 
 vmkeys += datacol
@@ -230,14 +230,14 @@ brand_cols = [media_spend, youtube_subscribers, twitter_followers,
               player_share, nz_awareness, np_score, coverage,
               month_avg_user, stickiness, days_played, play_intent]
 
-impact_cols = [all_traffic_visits, desktop_visits, mobile_visits,
-               all_traffic_bounce_rate, desktop_bounce_rate,
-               mobile_bounce_rate, all_traffic_pages_per_visit,
-               desktop_pages_per_visit, desktop_pages_per_visit,
-               mobile_pages_per_visit, all_traffic_average_visit_duration,
-               desktop_average_visit_duration, mobile_average_visit_duration,
-               desktop_unique_visitors, mobile_unique_visitors,
-               deduplicated_audience]
+# impact_cols = [all_traffic_visits, desktop_visits, mobile_visits,
+#                all_traffic_bounce_rate, desktop_bounce_rate,
+#                mobile_bounce_rate, all_traffic_pages_per_visit,
+#                desktop_pages_per_visit, desktop_pages_per_visit,
+#                mobile_pages_per_visit, all_traffic_average_visit_duration,
+#                desktop_average_visit_duration, mobile_average_visit_duration,
+#                desktop_unique_visitors, mobile_unique_visitors,
+#                deduplicated_audience]
 
 filename_true = 'FILENAME-TRUE'
 
